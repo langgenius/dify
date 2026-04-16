@@ -170,7 +170,7 @@ describe('AddCredentialInLoadBalancing', () => {
 
     // Component should render without error - the ?? [] fallback is used
     // Component should render without error - the ?? [] fallback is used
-expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should not throw when update action fires without onUpdate prop', () => {

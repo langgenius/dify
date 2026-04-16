@@ -547,37 +547,37 @@ describe('DebugItem', () => {
 
       // When provider/model doesn't match, ChatItem won't render
       // When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-// When provider/model doesn't match, ChatItem won't render
-expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
     })
   })
 })

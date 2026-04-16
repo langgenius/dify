@@ -340,37 +340,37 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/))!.toBeInTheDocument()
       // Should NOT show crossed-out yearly price
       // Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-// Should NOT show crossed-out yearly price
-expect(screen.queryByText(`$${teamPlan.price * 12}`)).not.toBeInTheDocument()
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      expect(screen.queryByText(`$${teamPlan.price * 12}`)).not.toBeInTheDocument()
     })
   })
 })

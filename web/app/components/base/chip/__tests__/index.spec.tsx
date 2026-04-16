@@ -220,7 +220,7 @@ describe('Chip', () => {
 
       // Panel should remain closed
       // Panel should remain closed
-expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('data-state', 'closed')
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
@@ -285,7 +285,7 @@ expect(trigger)!.toHaveAttribute('data-state', 'closed')
 
       // Closed by default
       // Closed by default
-expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('data-state', 'closed')
 
       openPanel(container)
       expect(trigger)!.toHaveAttribute('data-state', 'open')

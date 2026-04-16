@@ -153,7 +153,7 @@ describe('FilePreview', () => {
 
       // First file loading - spinner should be visible
       // First file loading - spinner should be visible
-expect(findLoadingSpinner(container))!.toBeInTheDocument()
+      expect(findLoadingSpinner(container))!.toBeInTheDocument()
 
       // Resolve first file
       await act(async () => {
@@ -250,7 +250,7 @@ expect(findLoadingSpinner(container))!.toBeInTheDocument()
       })
       // No error thrown, component still rendered
       // No error thrown, component still rendered
-expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
     })
 
     it('should handle empty content response', async () => {
@@ -398,7 +398,7 @@ expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocume
 
         // Assert - Header should still render
         // Assert - Header should still render
-expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
 
       it('should handle file with multiple dots in name', async () => {
@@ -408,7 +408,7 @@ expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocume
 
         // Assert - Should join all parts except last with comma
         // Assert - Should join all parts except last with comma
-expect(screen.getByText('my,document,v2'))!.toBeInTheDocument()
+        expect(screen.getByText('my,document,v2'))!.toBeInTheDocument()
       })
 
       it('should handle file with no extension in name', async () => {
@@ -431,7 +431,7 @@ expect(screen.getByText('my,document,v2'))!.toBeInTheDocument()
 
         // Assert - Should not crash
         // Assert - Should not crash
-expect(container.firstChild)!.toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
 
@@ -443,7 +443,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
         // Assert - No errors thrown
         // Assert - No errors thrown
-expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
     })
   })
@@ -640,7 +640,7 @@ expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocume
 
       // Assert - Should not crash, API should not be called again
       // Assert - Should not crash, API should not be called again
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
       expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
     })
   })
@@ -662,7 +662,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // Assert - Should join all parts except last with comma
       // Assert - Should join all parts except last with comma
-expect(screen.getByText('file,name,with,dots'))!.toBeInTheDocument()
+      expect(screen.getByText('file,name,with,dots'))!.toBeInTheDocument()
     })
 
     it('should return empty for filename without dot', async () => {

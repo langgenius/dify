@@ -299,7 +299,7 @@ describe('ActionButtons', () => {
 
       // Assert - regeneration button should show with default actionType='edit'
       // Assert - regeneration button should show with default actionType='edit'
-expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default isChildChunk of false', () => {
@@ -318,7 +318,7 @@ expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
 
       // Assert - regeneration button should show with default isChildChunk=false
       // Assert - regeneration button should show with default isChildChunk=false
-expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default showRegenerationButton of true', () => {
@@ -337,7 +337,7 @@ expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
 
       // Assert - regeneration button should show with default showRegenerationButton=true
       // Assert - regeneration button should show with default showRegenerationButton=true
-expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
   })
 

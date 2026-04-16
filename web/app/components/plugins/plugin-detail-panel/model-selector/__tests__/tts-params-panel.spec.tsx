@@ -162,7 +162,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       // Assert
-expect(container)!.toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render language label', () => {
@@ -174,7 +174,7 @@ expect(container)!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.voice.voiceSettings.language'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.voice.voiceSettings.language'))!.toBeInTheDocument()
     })
 
     it('should render voice label', () => {
@@ -186,7 +186,7 @@ expect(screen.getByText('appDebug.voice.voiceSettings.language'))!.toBeInTheDocu
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.voice.voiceSettings.voice'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.voice.voiceSettings.voice'))!.toBeInTheDocument()
     })
 
     it('should render two Select components', () => {
@@ -234,7 +234,7 @@ expect(screen.getByText('appDebug.voice.voiceSettings.voice'))!.toBeInTheDocumen
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-en-US'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-en-US'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-zh-Hans'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-ja-JP'))!.toBeInTheDocument()
       expect(screen.queryByTestId('select-item-unsupported-lang')).not.toBeInTheDocument()
@@ -249,7 +249,7 @@ expect(screen.getByTestId('select-item-en-US'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-echo'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-fable'))!.toBeInTheDocument()
     })
@@ -266,7 +266,7 @@ expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
+      expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
       expect(screen.getByTestId('tts-voice-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
     })
 
@@ -404,37 +404,37 @@ expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute('data
 
       // Assert - no voice items should be rendered
       // Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-// Assert - no voice items should be rendered
-expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      // Assert - no voice items should be rendered
+      expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
       expect(screen.queryByTestId('select-item-echo')).not.toBeInTheDocument()
     })
 
@@ -452,37 +452,37 @@ expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
 
     it('should map voices with mode as value', () => {
@@ -499,7 +499,7 @@ expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-voice-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-voice-2'))!.toBeInTheDocument()
     })
 
@@ -530,7 +530,7 @@ expect(screen.getByTestId('select-item-voice-1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-single-voice'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-single-voice'))!.toBeInTheDocument()
     })
   })
 
@@ -575,7 +575,7 @@ expect(screen.getByTestId('select-item-single-voice'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-voice-0'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-0'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-voice-19'))!.toBeInTheDocument()
     })
 
@@ -592,7 +592,7 @@ expect(screen.getByTestId('select-item-voice-0'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-voice-with_special.chars'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-with_special.chars'))!.toBeInTheDocument()
     })
 
     it('should handle onChange not being called multiple times', () => {
@@ -663,7 +663,7 @@ expect(screen.getByTestId('select-item-voice-with_special.chars'))!.toBeInTheDoc
 
       // Assert
       // Assert
-expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
       expect(screen.getByTestId('select-item-nova'))!.toBeInTheDocument()
     })
 
@@ -679,37 +679,37 @@ expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
   })
 

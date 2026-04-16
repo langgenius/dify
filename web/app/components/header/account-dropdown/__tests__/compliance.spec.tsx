@@ -100,7 +100,7 @@ describe('Compliance', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('common.userProfile.compliance'))!.toBeInTheDocument()
+      expect(screen.getByText('common.userProfile.compliance'))!.toBeInTheDocument()
     })
 
     it('should show SOC2, ISO, GDPR items when opened', () => {
@@ -109,7 +109,7 @@ expect(screen.getByText('common.userProfile.compliance'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('common.compliance.soc2Type1'))!.toBeInTheDocument()
+      expect(screen.getByText('common.compliance.soc2Type1'))!.toBeInTheDocument()
       expect(screen.getByText('common.compliance.soc2Type2'))!.toBeInTheDocument()
       expect(screen.getByText('common.compliance.iso27001'))!.toBeInTheDocument()
       expect(screen.getByText('common.compliance.gdpr'))!.toBeInTheDocument()

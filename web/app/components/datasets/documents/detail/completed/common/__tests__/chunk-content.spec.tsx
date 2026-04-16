@@ -49,37 +49,37 @@ describe('ChunkContent', () => {
 
       // Assert - In view mode, textarea should not be present, Markdown renders instead
       // Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-// Assert - In view mode, textarea should not be present, Markdown renders instead
-expect(container.querySelector('textarea')).not.toBeInTheDocument()
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
   })
 
@@ -98,7 +98,7 @@ expect(container.querySelector('textarea')).not.toBeInTheDocument()
 
       // Assert - QA mode has QUESTION and ANSWER labels
       // Assert - QA mode has QUESTION and ANSWER labels
-expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
+      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
       expect(screen.getByText('ANSWER'))!.toBeInTheDocument()
     })
 
@@ -195,37 +195,37 @@ expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
 
       // Assert - In view mode, Markdown is rendered instead of textarea
       // Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-// Assert - In view mode, Markdown is rendered instead of textarea
-expect(container.querySelector('textarea')).not.toBeInTheDocument()
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
 
     it('should disable textareas when isEditMode is false in QA mode', () => {
@@ -267,7 +267,7 @@ expect(container.querySelector('textarea')).not.toBeInTheDocument()
 
       // Assert - QA mode should show both question and answer
       // Assert - QA mode should show both question and answer
-expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
+      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
       expect(screen.getByText('ANSWER'))!.toBeInTheDocument()
     })
 
@@ -282,7 +282,7 @@ expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
 
       // Assert - parentChild should render like text mode
       // Assert - parentChild should render like text mode
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -327,7 +327,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Assert - should render without crashing
       // Assert - should render without crashing
-expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
+      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered', () => {

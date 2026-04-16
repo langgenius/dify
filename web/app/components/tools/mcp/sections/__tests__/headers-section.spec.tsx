@@ -170,37 +170,37 @@ describe('HeadersSection', () => {
       render(<HeadersSection {...defaultProps} isCreate={false} headers={headers} />)
       // Empty key headers don't trigger masking
       // Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-// Empty key headers don't trigger masking
-expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocument()
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      // Empty key headers don't trigger masking
+      expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocument()
     })
 
     it('should handle headers with whitespace-only keys', () => {
@@ -208,37 +208,37 @@ expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocu
       render(<HeadersSection {...defaultProps} isCreate={false} headers={headers} />)
       // Whitespace-only key doesn't count as having content
       // Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-// Whitespace-only key doesn't count as having content
-expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocument()
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      // Whitespace-only key doesn't count as having content
+      expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocument()
     })
 
     it('should handle multiple headers where some have empty keys', () => {
@@ -249,7 +249,7 @@ expect(screen.queryByText('tools.mcp.modal.maskedHeadersTip')).not.toBeInTheDocu
       render(<HeadersSection {...defaultProps} isCreate={false} headers={headers} />)
       // At least one header has a non-empty key, so masking should apply
       // At least one header has a non-empty key, so masking should apply
-expect(screen.getByText('tools.mcp.modal.maskedHeadersTip'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.maskedHeadersTip'))!.toBeInTheDocument()
     })
   })
 })

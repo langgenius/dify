@@ -98,7 +98,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // KnowledgeBaseInfo renders these labels
       // KnowledgeBaseInfo renders these labels
-expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
     })
 
@@ -107,7 +107,7 @@ expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
 
       // ExternalApiSelection renders this label
       // ExternalApiSelection renders this label
-expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.externalKnowledgeId'))!.toBeInTheDocument()
     })
 
@@ -116,7 +116,7 @@ expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
 
       // RetrievalSettings renders this label
       // RetrievalSettings renders this label
-expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
     })
 
     it('should render InfoPanel component', () => {
@@ -124,7 +124,7 @@ expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
 
       // InfoPanel renders these texts
       // InfoPanel renders these texts
-expect(screen.getByText('dataset.connectDatasetIntro.title'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectDatasetIntro.title'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.connectDatasetIntro.learnMore'))!.toBeInTheDocument()
     })
 
@@ -434,7 +434,7 @@ expect(screen.getByText('dataset.connectDatasetIntro.title'))!.toBeInTheDocument
 
       // The ExternalApiSelect should show the first selected API name
       // The ExternalApiSelect should show the first selected API name
-expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
     })
 
     it('should allow selecting different API from dropdown', async () => {
@@ -479,7 +479,7 @@ expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
 
       // Should show "no external knowledge" button
       // Should show "no external knowledge" button
-expect(screen.getByText('dataset.noExternalKnowledge'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.noExternalKnowledge'))!.toBeInTheDocument()
     })
 
     it('should open add API modal when add button is clicked', async () => {
@@ -542,7 +542,7 @@ expect(screen.getByText('dataset.noExternalKnowledge'))!.toBeInTheDocument()
 
       // Should show API URLs
       // Should show API URLs
-expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
+      expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
       expect(screen.getByText('https://api2.example.com'))!.toBeInTheDocument()
     })
 
@@ -555,7 +555,7 @@ expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
 
       // Should show create new API option
       // Should show create new API option
-expect(screen.getByText('dataset.createNewExternalAPI'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.createNewExternalAPI'))!.toBeInTheDocument()
     })
 
     it('should open add API modal when clicking create new API in dropdown', async () => {
@@ -621,7 +621,7 @@ expect(screen.getByText('dataset.createNewExternalAPI'))!.toBeInTheDocument()
 
       // Dropdown should be open - API URLs visible
       // Dropdown should be open - API URLs visible
-expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
+      expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
 
       // Select the second API
       const secondApi = screen.getByText('Test API 2')
@@ -629,37 +629,37 @@ expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
 
       // Dropdown should be closed - API URLs not visible
       // Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-// Dropdown should be closed - API URLs not visible
-expect(screen.queryByText('https://api1.example.com')).not.toBeInTheDocument()
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      expect(screen.queryByText('https://api1.example.com')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown open/close on selector click', async () => {
@@ -875,10 +875,10 @@ expect(screen.queryByText('https://api1.example.com')).not.toBeInTheDocument()
 
       // Should show the retrieval settings section title
       // Should show the retrieval settings section title
-expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
       // Should show Top K and Score Threshold labels
       // Should show Top K and Score Threshold labels
-expect(screen.getByText('appDebug.datasetConfig.top_k'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.datasetConfig.top_k'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.datasetConfig.score_threshold'))!.toBeInTheDocument()
     })
   })
@@ -899,37 +899,37 @@ expect(screen.getByText('appDebug.datasetConfig.top_k'))!.toBeInTheDocument()
 
       // In hit testing mode, the title should not be shown
       // In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-// In hit testing mode, the title should not be shown
-expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
     })
 
     it('should render with isInRetrievalSetting mode', () => {
@@ -946,37 +946,37 @@ expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
 
       // In retrieval setting mode, the title should not be shown
       // In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-// In retrieval setting mode, the title should not be shown
-expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
     })
 
     it('should call onChange with score_threshold_enabled when switch is toggled', async () => {
@@ -1131,7 +1131,7 @@ expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
 
       // Check labels exist
       // Check labels exist
-expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.externalKnowledgeId'))!.toBeInTheDocument()
     })

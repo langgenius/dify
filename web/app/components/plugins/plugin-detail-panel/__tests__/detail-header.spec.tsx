@@ -347,7 +347,7 @@ describe('DetailHeader', () => {
 
       // Badge component should render with the version
       // Badge component should render with the version
-expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
+      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
     })
 
     it('should not show new version indicator when versions match', () => {
@@ -359,7 +359,7 @@ expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
 
       // Badge component should render with the version
       // Badge component should render with the version
-expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
+      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
     })
 
     it('should show update button when new version is available', () => {
@@ -425,7 +425,7 @@ expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
 
       // Auto upgrade badge should be rendered
       // Auto upgrade badge should be rendered
-expect(screen.getByTestId('title'))!.toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should enable auto upgrade for partial mode when plugin is included', () => {
@@ -516,7 +516,7 @@ expect(screen.getByTestId('title'))!.toBeInTheDocument()
 
       // Component should still render but auto upgrade should be disabled
       // Component should still render but auto upgrade should be disabled
-expect(screen.getByTestId('title'))!.toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
   })
 

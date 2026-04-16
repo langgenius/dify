@@ -134,7 +134,7 @@ describe('SearchBox', () => {
 
       // In marketplace mode, TagsFilter comes before input
       // In marketplace mode, TagsFilter comes before input
-expect(container.querySelector('.rounded-xl'))!.toBeInTheDocument()
+      expect(container.querySelector('.rounded-xl'))!.toBeInTheDocument()
     })
 
     it('should render with non-marketplace mode styling', () => {
@@ -144,7 +144,7 @@ expect(container.querySelector('.rounded-xl'))!.toBeInTheDocument()
 
       // In non-marketplace mode, search icon appears first
       // In non-marketplace mode, search icon appears first
-expect(container.querySelector('.rounded-lg'))!.toBeInTheDocument()
+      expect(container.querySelector('.rounded-lg'))!.toBeInTheDocument()
     })
 
     it('should render placeholder correctly', () => {
@@ -178,7 +178,7 @@ expect(container.querySelector('.rounded-lg'))!.toBeInTheDocument()
 
       // Both should be rendered
       // Both should be rendered
-expect(portalElem)!.toBeInTheDocument()
+      expect(portalElem)!.toBeInTheDocument()
       expect(input)!.toBeInTheDocument()
     })
 
@@ -211,7 +211,7 @@ expect(portalElem)!.toBeInTheDocument()
 
       // Search icon should be present
       // Search icon should be present
-expect(container.querySelector('.text-components-input-text-placeholder'))!.toBeInTheDocument()
+      expect(container.querySelector('.text-components-input-text-placeholder'))!.toBeInTheDocument()
     })
 
     it('should render clear button when search has value', () => {
@@ -237,7 +237,7 @@ expect(container.querySelector('.text-components-input-text-placeholder'))!.toBe
       const input = screen.getByRole('textbox')
       // autoFocus is a boolean attribute that React handles specially
       // autoFocus is a boolean attribute that React handles specially
-expect(input)!.toBeInTheDocument()
+      expect(input)!.toBeInTheDocument()
     })
   })
 
@@ -458,7 +458,7 @@ describe('SearchBoxWrapper', () => {
 
       // Check for z-11 class from wrapper
       // Check for z-11 class from wrapper
-expect(container.querySelector('.z-11'))!.toBeInTheDocument()
+      expect(container.querySelector('.z-11'))!.toBeInTheDocument()
     })
   })
 
@@ -518,7 +518,7 @@ describe('MarketplaceTrigger', () => {
 
       // Arrow down icon should be present
       // Arrow down icon should be present
-expect(container.querySelector('.size-4'))!.toBeInTheDocument()
+      expect(container.querySelector('.size-4'))!.toBeInTheDocument()
     })
   })
 
@@ -585,7 +585,7 @@ expect(container.querySelector('.size-4'))!.toBeInTheDocument()
 
       // RiCloseCircleFill icon should be present
       // RiCloseCircleFill icon should be present
-expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
+      expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
     })
 
     it('should not show clear button when no tags selected', () => {
@@ -595,37 +595,37 @@ expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
 
       // Clear button should not be present
       // Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-// Clear button should not be present
-expect(container.querySelector('.text-text-quaternary')).not.toBeInTheDocument()
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      expect(container.querySelector('.text-text-quaternary')).not.toBeInTheDocument()
     })
 
     it('should call onTagsChange with empty array when clear is clicked', () => {
@@ -851,7 +851,7 @@ describe('ToolSelectorTrigger', () => {
 
       // Should have border styling, not hover
       // Should have border styling, not hover
-expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
+      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
     })
   })
 
@@ -910,7 +910,7 @@ describe('TagsFilter', () => {
 
       // MarketplaceTrigger should show "All Tags"
       // MarketplaceTrigger should show "All Tags"
-expect(screen.getByText('All Tags'))!.toBeInTheDocument()
+      expect(screen.getByText('All Tags'))!.toBeInTheDocument()
     })
 
     it('should show selected tags count in TagsFilter trigger', () => {
@@ -1139,7 +1139,7 @@ expect(screen.getByText('All Tags'))!.toBeInTheDocument()
 
       // Verify dropdown content is rendered
       // Verify dropdown content is rendered
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should render tag options when dropdown is open', async () => {
@@ -1161,7 +1161,7 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // When no tags selected, these should appear once each in dropdown
       // When no tags selected, these should appear once each in dropdown
-expect(screen.getByText('Agent'))!.toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
       expect(screen.getByText('RAG'))!.toBeInTheDocument()
       expect(screen.getByText('Search'))!.toBeInTheDocument()
     })

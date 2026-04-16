@@ -147,7 +147,7 @@ describe('CredentialSelector', () => {
 
       // Assert - All credentials should be visible (current credential appears in both trigger and list)
       // Assert - All credentials should be visible (current credential appears in both trigger and list)
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       // 3 in dropdown list + 1 in trigger (current) = 4 total
       expect(screen.getAllByText(/Credential \d/)).toHaveLength(4)
     })
@@ -296,37 +296,37 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Assert - Initially closed
       // Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-// Assert - Initially closed
-expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
 
       // Act - Click trigger
       const trigger = screen.getByTestId('portal-trigger')
@@ -334,7 +334,7 @@ expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
 
       // Assert - Now open
       // Assert - Now open
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should call onCredentialChange when clicking a credential item', () => {
@@ -381,7 +381,7 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Assert - Should not crash
       // Assert - Should not crash
-expect(trigger)!.toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should allow selecting credentials multiple times', () => {
@@ -539,7 +539,7 @@ expect(trigger)!.toBeInTheDocument()
 
       // Assert - Should display credential 2
       // Assert - Should display credential 2
-expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
     })
 
     it('should update currentCredential when currentCredentialId changes', () => {
@@ -548,14 +548,14 @@ expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
 
       // Assert initial
       // Assert initial
-expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change currentCredentialId
       rerender(<CredentialSelector {...props} currentCredentialId="cred-3" />)
 
       // Assert - Should now display credential 3
       // Assert - Should now display credential 3
-expect(screen.getByText('Credential 3'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 3'))!.toBeInTheDocument()
     })
 
     it('should update currentCredential when credentials array changes', () => {
@@ -564,7 +564,7 @@ expect(screen.getByText('Credential 3'))!.toBeInTheDocument()
 
       // Assert initial
       // Assert initial
-expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change credentials
       const newCredentials = [
@@ -574,7 +574,7 @@ expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Assert - Should display updated name
       // Assert - Should display updated name
-expect(screen.getByText('Updated Credential 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Updated Credential 1'))!.toBeInTheDocument()
     })
 
     it('should return undefined currentCredential when id not found', () => {
@@ -621,7 +621,7 @@ expect(screen.getByText('Updated Credential 1'))!.toBeInTheDocument()
 
       // Assert initial
       // Assert initial
-expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       rerender(<CredentialSelector {...props} currentCredentialId="cred-2" />)
 
@@ -672,7 +672,7 @@ expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Assert - Should render without crashing
       // Assert - Should render without crashing
-expect(screen.getByTestId('portal-root'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-root'))!.toBeInTheDocument()
     })
 
     it('should handle undefined avatar_url in credential', () => {
@@ -690,13 +690,13 @@ expect(screen.getByTestId('portal-root'))!.toBeInTheDocument()
 
       // Assert - Should render without crashing and show first letter fallback
       // Assert - Should render without crashing and show first letter fallback
-expect(screen.getByText('No Avatar Credential'))!.toBeInTheDocument()
+      expect(screen.getByText('No Avatar Credential'))!.toBeInTheDocument()
       // When avatar_url is undefined, CredentialIcon shows first letter instead of img
       const iconImg = container.querySelector('img')
       expect(iconImg).not.toBeInTheDocument()
       // First letter 'N' should be displayed
       // First letter 'N' should be displayed
-expect(screen.getByText('N'))!.toBeInTheDocument()
+      expect(screen.getByText('N'))!.toBeInTheDocument()
     })
 
     it('should handle empty string name in credential', () => {
@@ -713,7 +713,7 @@ expect(screen.getByText('N'))!.toBeInTheDocument()
 
       // Assert - Should render without crashing
       // Assert - Should render without crashing
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle very long credential name', () => {
@@ -832,7 +832,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert - Should render without crashing
       // Assert - Should render without crashing
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -877,7 +877,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert - Trigger should display the correct credential
       // Assert - Trigger should display the correct credential
-expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
     })
 
     it('should pass isOpen state to Trigger component', () => {
@@ -894,7 +894,7 @@ expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
 
       // Assert - Now open
       // Assert - Now open
-expect(portalRoot)!.toHaveAttribute('data-open', 'true')
+      expect(portalRoot)!.toHaveAttribute('data-open', 'true')
     })
 
     it('should pass credentials to List component', () => {

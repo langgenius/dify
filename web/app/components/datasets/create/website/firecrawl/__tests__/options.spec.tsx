@@ -36,7 +36,7 @@ describe('Options', () => {
 
       // Check that key elements are rendered
       // Check that key elements are rendered
-expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
+      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
       expect(screen.getByText(/limit/i))!.toBeInTheDocument()
       expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
     })
@@ -47,12 +47,12 @@ expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
 
       // Checkboxes
       // Checkboxes
-expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
+      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
       expect(screen.getByText(/extractOnlyMainContent/i))!.toBeInTheDocument()
 
       // Text/Number fields
       // Text/Number fields
-expect(screen.getByText(/limit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
       expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
       expect(screen.getByText(/excludePaths/i))!.toBeInTheDocument()
       expect(screen.getByText(/includeOnlyPaths/i))!.toBeInTheDocument()
@@ -110,7 +110,7 @@ expect(screen.getByText(/limit/i))!.toBeInTheDocument()
 
       // First checkbox should have check icon when checked
       // First checkbox should have check icon when checked
-expect(screen.queryByTestId('check-icon-crawl-sub-page'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('check-icon-crawl-sub-page'))!.toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
@@ -256,7 +256,7 @@ expect(screen.queryByTestId('check-icon-crawl-sub-page'))!.toBeInTheDocument()
 
       // Component should render without crashing
       // Component should render without crashing
-expect(screen.getByText(/limit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
     })
 
     it('should handle zero values', () => {

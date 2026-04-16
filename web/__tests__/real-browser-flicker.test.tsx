@@ -474,7 +474,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
         // Should default to light theme when localStorage fails
         // Should default to light theme when localStorage fails
-expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
+        expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
       }
       finally {
         Reflect.deleteProperty(window, 'localStorage')

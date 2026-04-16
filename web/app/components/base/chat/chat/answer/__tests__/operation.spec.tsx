@@ -443,7 +443,7 @@ describe('Operation', () => {
       await user.click(thumbDown)
       // Check if modal title/labels fallback works
       // Check if modal title/labels fallback works
-expect(screen.getByRole('tooltip'))!.toBeInTheDocument()
+      expect(screen.getByRole('tooltip'))!.toBeInTheDocument()
       mockT.mockImplementation(key => key)
     })
   })
@@ -556,8 +556,8 @@ expect(screen.getByRole('tooltip'))!.toBeInTheDocument()
       // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
       // the like/dislike regular ActionButtons should hit the Default state
       // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
-// the like/dislike regular ActionButtons should hit the Default state
-expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
+      // the like/dislike regular ActionButtons should hit the Default state
+      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
     })
   })
 

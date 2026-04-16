@@ -258,7 +258,7 @@ describe('Operations', () => {
       await openPopover()
       // Check if popover content is visible
       // Check if popover content is visible
-expect(screen.getByText('datasetDocuments.list.table.rename'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetDocuments.list.table.rename'))!.toBeInTheDocument()
     })
 
     it('should call archive when archive action is clicked', async () => {
@@ -299,7 +299,7 @@ expect(screen.getByText('datasetDocuments.list.table.rename'))!.toBeInTheDocumen
       })
       // Check if confirmation modal is shown
       // Check if confirmation modal is shown
-expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
     })
 
     it('should call delete when confirm is clicked in delete modal', async () => {
@@ -327,7 +327,7 @@ expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocumen
       })
       // Verify modal is shown
       // Verify modal is shown
-expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
       // Find and click the cancel button
       const cancelButton = screen.getByText('common.operation.cancel')
       await act(async () => {

@@ -644,7 +644,7 @@ describe('FieldListContainer', () => {
 
       // ReactSortable renders a wrapper div even for empty lists
       // ReactSortable renders a wrapper div even for empty lists
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should apply custom className', () => {
@@ -1107,7 +1107,7 @@ describe('FieldList', () => {
 
       // Component renders without errors even with no fields
       // Component renders without errors even with no fields
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle null LabelRightContent', () => {
@@ -1249,7 +1249,7 @@ describe('useFieldList Hook', () => {
 
       // Component renders without errors even with no fields
       // Component renders without errors even with no fields
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 

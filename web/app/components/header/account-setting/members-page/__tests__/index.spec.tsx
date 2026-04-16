@@ -280,7 +280,7 @@ describe('MembersPage', () => {
 
     // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
     // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
+    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
   it('should show invite button when user is manager but not owner', () => {

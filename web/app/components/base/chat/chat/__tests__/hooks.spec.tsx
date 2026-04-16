@@ -2011,7 +2011,7 @@ describe('useChat', () => {
 
       // Empty file list
       // Empty file list
-result.current.chatList[1]!.message_files = undefined
+      result.current.chatList[1]!.message_files = undefined
       // Call onFile while agent_thoughts is empty/undefined to hit the `else` fallback branch
       resumeCallbacks.onFile({ id: 'f-agent', type: 'image', url: 'agent.png' })
     })
@@ -2094,7 +2094,7 @@ result.current.chatList[1]!.message_files = undefined
 
       // Empty message files fallback
       // Empty message files fallback
-result.current.chatList[1]!.message_files = undefined
+      result.current.chatList[1]!.message_files = undefined
       sendCallbacks.onFile({ id: 'f-send', type: 'image', url: 'img.png' })
 
       // Empty message files passing to processing fallback

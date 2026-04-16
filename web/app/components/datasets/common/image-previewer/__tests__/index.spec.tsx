@@ -66,7 +66,7 @@ describe('ImagePreviewer', () => {
 
       // Should render in portal
       // Should render in portal
-expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
+      expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
     })
 
     it('should render close button', async () => {
@@ -79,7 +79,7 @@ expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
 
       // Esc text should be visible
       // Esc text should be visible
-expect(screen.getByText('Esc'))!.toBeInTheDocument()
+      expect(screen.getByText('Esc'))!.toBeInTheDocument()
     })
 
     it('should show loading state initially', async () => {
@@ -95,7 +95,7 @@ expect(screen.getByText('Esc'))!.toBeInTheDocument()
 
       // Loading component should be visible
       // Loading component should be visible
-expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
+      expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
     })
   })
 
@@ -111,7 +111,7 @@ expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
       await waitFor(() => {
         // Should start at second image
         // Should start at second image
-expect(screen.getByText('image2.png'))!.toBeInTheDocument()
+        expect(screen.getByText('image2.png'))!.toBeInTheDocument()
       })
     })
 
@@ -505,7 +505,7 @@ expect(screen.getByText('image2.png'))!.toBeInTheDocument()
       await waitFor(() => {
         // Should display dimensions (800 × 600 from MockImage)
         // Should display dimensions (800 × 600 from MockImage)
-expect(screen.getByText(/800.*600/))!.toBeInTheDocument()
+        expect(screen.getByText(/800.*600/))!.toBeInTheDocument()
       })
     })
 
@@ -520,7 +520,7 @@ expect(screen.getByText(/800.*600/))!.toBeInTheDocument()
       await waitFor(() => {
         // Should display formatted file size
         // Should display formatted file size
-expect(screen.getByText('image1.png'))!.toBeInTheDocument()
+        expect(screen.getByText('image1.png'))!.toBeInTheDocument()
       })
     })
   })

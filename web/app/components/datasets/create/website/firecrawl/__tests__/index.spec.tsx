@@ -132,37 +132,37 @@ describe('FireCrawl', () => {
 
       // Crawling and result components should not be visible in init state
       // Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-// Crawling and result components should not be visible in init state
-expect(screen.queryByText(/crawling/i)).not.toBeInTheDocument()
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      // Crawling and result components should not be visible in init state
+      expect(screen.queryByText(/crawling/i)).not.toBeInTheDocument()
     })
   })
 

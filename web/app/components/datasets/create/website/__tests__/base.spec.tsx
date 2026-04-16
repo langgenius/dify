@@ -385,7 +385,7 @@ describe('CrawledResult', () => {
 
       // The component uses i18n, so we check for the key pattern
       // The component uses i18n, so we check for the key pattern
-expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
+      expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
     })
 
     it('should render select all checkbox', () => {
@@ -529,7 +529,7 @@ expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
 
       // Should still render the header with resetAll (empty list = all checked)
       // Should still render the header with resetAll (empty list = all checked)
-expect(screen.getByText('datasetCreation.stepOne.website.resetAll'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.resetAll'))!.toBeInTheDocument()
     })
 
     it('should handle className prop', () => {

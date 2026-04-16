@@ -199,7 +199,7 @@ describe('PlanComp', () => {
 
     // Sandbox plan with finite apiRateLimit and null reset uses getDaysUntilEndOfMonth()
     // Sandbox plan with finite apiRateLimit and null reset uses getDaysUntilEndOfMonth()
-expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
+    expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
   })
 
   it('shows apiRateLimit reset info when reset is a number', () => {

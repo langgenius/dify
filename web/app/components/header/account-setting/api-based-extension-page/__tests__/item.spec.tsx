@@ -40,7 +40,7 @@ describe('Item Component', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('Test Extension'))!.toBeInTheDocument()
+      expect(screen.getByText('Test Extension'))!.toBeInTheDocument()
       expect(screen.getByText('https://api.example.com'))!.toBeInTheDocument()
     })
 
@@ -53,7 +53,7 @@ expect(screen.getByText('Test Extension'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('common.operation.edit'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.edit'))!.toBeInTheDocument()
       expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
     })
   })
@@ -98,7 +98,7 @@ expect(screen.getByText('common.operation.edit'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i))!.toBeInTheDocument()
+      expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i))!.toBeInTheDocument()
     })
 
     it('should call delete API and triggers onUpdate when confirming deletion', async () => {
@@ -192,7 +192,7 @@ expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i))!.toBe
 
       // Assert
       // Assert
-expect(screen.getByText(/.*Test Extension.*\?/i))!.toBeInTheDocument()
+      expect(screen.getByText(/.*Test Extension.*\?/i))!.toBeInTheDocument()
 
       useTranslationSpy.mockRestore()
     })

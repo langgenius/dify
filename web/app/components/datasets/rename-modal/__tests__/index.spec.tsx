@@ -139,7 +139,7 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       // Check title is rendered (translation mock returns 'datasetSettings.title')
       // Check title is rendered (translation mock returns 'datasetSettings.title')
-expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
     })
 
     it('should render modal when show is true', () => {
@@ -170,8 +170,8 @@ expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
       // The modal renders with title and other elements
       // The close functionality is tested in user interactions
       // The modal renders with title and other elements
-// The close functionality is tested in user interactions
-expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
+      // The close functionality is tested in user interactions
+      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
     })
 
     it('should render form labels', () => {
@@ -280,7 +280,7 @@ expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
 
       // Verify the textarea contains the multiline value
       // Verify the textarea contains the multiline value
-expect(descriptionTextarea)!.toHaveValue(multilineDesc)
+      expect(descriptionTextarea)!.toHaveValue(multilineDesc)
     })
   })
 
@@ -360,37 +360,37 @@ expect(descriptionTextarea)!.toHaveValue(multilineDesc)
 
       // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
       // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-// Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-expect(nameInput).not.toBeDisabled()
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      expect(nameInput).not.toBeDisabled()
     })
 
     it('should handle description textarea focus', () => {
@@ -402,37 +402,37 @@ expect(nameInput).not.toBeDisabled()
 
       // Just verify the element is focusable
       // Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-// Just verify the element is focusable
-expect(descriptionTextarea).not.toBeDisabled()
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      expect(descriptionTextarea).not.toBeDisabled()
     })
   })
 
@@ -672,37 +672,37 @@ expect(descriptionTextarea).not.toBeDisabled()
 
       // Save button should be enabled again
       // Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-// Save button should be enabled again
-expect(saveButton).not.toBeDisabled()
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      expect(saveButton).not.toBeDisabled()
     })
   })
 
@@ -758,8 +758,8 @@ expect(saveButton).not.toBeDisabled()
       // The modal should render with name label and input
       // AppIcon is rendered alongside the name input
       // The modal should render with name label and input
-// AppIcon is rendered alongside the name input
-expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
+      // AppIcon is rendered alongside the name input
+      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
       expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
@@ -769,8 +769,8 @@ expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
       // The component initializes with the dataset's icon_info
       // This is verified by checking the form renders correctly
       // The component initializes with the dataset's icon_info
-// This is verified by checking the form renders correctly
-expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
+      // This is verified by checking the form renders correctly
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should initialize icon state from image icon dataset', () => {
@@ -837,37 +837,37 @@ expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       // Initially picker should not be visible
       // Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-// Initially picker should not be visible
-expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       const appIcon = screen.getByTestId('app-icon')
       await act(async () => {
@@ -876,7 +876,7 @@ expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Picker should now be visible
       // Picker should now be visible
-expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
     })
 
     it('should select emoji icon and close picker (handleSelectAppIcon)', async () => {
@@ -896,37 +896,37 @@ expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
 
       // Picker should close after selection
       // Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Save and verify new icon is used
       const saveButton = screen.getByText('common.operation.save')
@@ -966,37 +966,37 @@ expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Picker should close after selection
       // Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-// Picker should close after selection
-expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      // Picker should close after selection
+      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Save and verify new image icon is used
       const saveButton = screen.getByText('common.operation.save')
@@ -1036,37 +1036,37 @@ expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Picker should close
       // Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-// Picker should close
-expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      // Picker should close
+      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Save and verify original icon is preserved
       const saveButton = screen.getByText('common.operation.save')
@@ -1222,7 +1222,7 @@ expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Button should be disabled now
       // Button should be disabled now
-expect(saveButton)!.toBeDisabled()
+      expect(saveButton)!.toBeDisabled()
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
@@ -1279,8 +1279,8 @@ expect(saveButton)!.toBeDisabled()
       // Note: The component uses useState with initial value, so it won't update
       // This tests that the initial render works correctly with different props
       // Note: The component uses useState with initial value, so it won't update
-// This tests that the initial render works correctly with different props
-expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
+      // This tests that the initial render works correctly with different props
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle show prop toggle', () => {
@@ -1379,37 +1379,37 @@ expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       // Button should be re-enabled after error
       // Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-// Button should be re-enabled after error
-expect(saveButton).not.toBeDisabled()
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      expect(saveButton).not.toBeDisabled()
     })
   })
 })

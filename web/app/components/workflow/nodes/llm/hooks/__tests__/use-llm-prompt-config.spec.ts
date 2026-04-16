@@ -246,8 +246,8 @@ describe('use-llm-prompt-config', () => {
       value_selector: ['start', 'city'],
     }])
     expect((handleSetInputs.mock.calls[3]![0].prompt_template as Array<{
-    jinja2_text?: string;
-}>)[0]!.jinja2_text).toBe('{{ new_name }}')
+      jinja2_text?: string
+    }>)[0]!.jinja2_text).toBe('{{ new_name }}')
     expect(handleSetInputs.mock.calls[4]![0].context).toEqual({
       enabled: true,
       variable_selector: ['start', 'sys.query'],

@@ -238,7 +238,7 @@ describe('NewSegmentModal', () => {
 
       // Assert - checkbox state should toggle
       // Assert - checkbox state should toggle
-expect(checkbox)!.toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
     })
   })
 
@@ -395,7 +395,7 @@ expect(checkbox)!.toBeInTheDocument()
 
       // Assert - image uploader should be rendered
       // Assert - image uploader should be rendered
-expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
+      expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered with different docForm', () => {
@@ -594,8 +594,8 @@ expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
       // Assert - should show count of 5 (3 + 2)
       // The component uses formatNumber and shows "X characters"
       // Assert - should show count of 5 (3 + 2)
-// The component uses formatNumber and shows "X characters"
-expect(screen.getByText(/5/))!.toBeInTheDocument()
+      // The component uses formatNumber and shows "X characters"
+      expect(screen.getByText(/5/))!.toBeInTheDocument()
     })
   })
 
@@ -607,7 +607,7 @@ expect(screen.getByText(/5/))!.toBeInTheDocument()
 
       // Assert - footer should have both AddAnother and ActionButtons
       // Assert - footer should have both AddAnother and ActionButtons
-expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
+      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
       expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
   })

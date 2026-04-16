@@ -25,7 +25,7 @@ describe('DatePicker Header', () => {
 
       // The useMonths hook returns translated keys; check for year
       // The useMonths hook returns translated keys; check for year
-expect(screen.getByText(/2024/))!.toBeInTheDocument()
+      expect(screen.getByText(/2024/))!.toBeInTheDocument()
     })
 
     it('should render navigation buttons', () => {

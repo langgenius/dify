@@ -264,7 +264,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
 
     it('should render configure required badge when not published', () => {
@@ -276,7 +276,7 @@ expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('workflow.common.configureRequired'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.common.configureRequired'))!.toBeInTheDocument()
     })
 
     it('should not render configure required badge when published', async () => {
@@ -315,7 +315,7 @@ expect(screen.getByText('workflow.common.configureRequired'))!.toBeInTheDocument
 
       // Assert
       // Assert
-expect(screen.getByText('Please save the workflow first'))!.toBeInTheDocument()
+      expect(screen.getByText('Please save the workflow first'))!.toBeInTheDocument()
     })
 
     it('should render loading state when published and fetching details', () => {
@@ -425,37 +425,37 @@ expect(screen.getByText('Please save the workflow first'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
     })
 
     it('should not open modal when published (use configure button instead)', async () => {
@@ -476,37 +476,37 @@ expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
 
       // Should not open modal from main click
       // Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-// Should not open modal from main click
-expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
 
       // Click configure button
       await user.click(screen.getByText('workflow.common.configure'))
@@ -561,7 +561,7 @@ expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
 
       // Assert - should not crash
       // Assert - should not crash
-expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
 
     it('should handle paragraph type input conversion', async () => {
@@ -641,7 +641,7 @@ describe('WorkflowToolAsModal', () => {
 
       // Assert
       // Assert
-expect(screen.getByTestId('drawer-title'))!.toHaveTextContent('workflow.common.workflowAsTool')
+      expect(screen.getByTestId('drawer-title'))!.toHaveTextContent('workflow.common.workflowAsTool')
     })
 
     it('should render name input field', () => {
@@ -657,7 +657,7 @@ expect(screen.getByTestId('drawer-title'))!.toHaveTextContent('workflow.common.w
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))!.toBeInTheDocument()
     })
 
     it('should render name for tool call input', () => {
@@ -673,7 +673,7 @@ expect(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))!.toB
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder'))!.toBeInTheDocument()
     })
 
     it('should render description textarea', () => {
@@ -689,7 +689,7 @@ expect(screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder'
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render tool input table', () => {
@@ -705,7 +705,7 @@ expect(screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder'))!.
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.toolInput.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.title'))!.toBeInTheDocument()
     })
 
     it('should render tool output table', () => {
@@ -721,7 +721,7 @@ expect(screen.getByText('tools.createTool.toolInput.title'))!.toBeInTheDocument(
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.toolOutput.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolOutput.title'))!.toBeInTheDocument()
     })
 
     it('should render reserved output parameters', () => {
@@ -737,7 +737,7 @@ expect(screen.getByText('tools.createTool.toolOutput.title'))!.toBeInTheDocument
 
       // Assert
       // Assert
-expect(screen.getByText('text'))!.toBeInTheDocument()
+      expect(screen.getByText('text'))!.toBeInTheDocument()
       expect(screen.getByText('files'))!.toBeInTheDocument()
       expect(screen.getByText('json'))!.toBeInTheDocument()
     })
@@ -755,7 +755,7 @@ expect(screen.getByText('text'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('label-selector'))!.toBeInTheDocument()
+      expect(screen.getByTestId('label-selector'))!.toBeInTheDocument()
     })
 
     it('should render privacy policy input', () => {
@@ -771,7 +771,7 @@ expect(screen.getByTestId('label-selector'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render delete button when editing and onRemove provided', () => {
@@ -788,7 +788,7 @@ expect(screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder'))
 
       // Assert
       // Assert
-expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
     })
 
     it('should not render delete button when adding', () => {
@@ -805,37 +805,37 @@ expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
 
@@ -859,7 +859,7 @@ expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByDisplayValue('Custom Label'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Custom Label'))!.toBeInTheDocument()
       expect(screen.getByDisplayValue('custom_name'))!.toBeInTheDocument()
       expect(screen.getByDisplayValue('Custom description'))!.toBeInTheDocument()
     })
@@ -878,7 +878,7 @@ expect(screen.getByDisplayValue('Custom Label'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('label-values'))!.toHaveTextContent('tag1,tag2')
+      expect(screen.getByTestId('label-values'))!.toHaveTextContent('tag1,tag2')
     })
   })
 
@@ -900,7 +900,7 @@ expect(screen.getByTestId('label-values'))!.toHaveTextContent('tag1,tag2')
 
       // Assert
       // Assert
-expect(labelInput)!.toHaveValue('New Label')
+      expect(labelInput)!.toHaveValue('New Label')
     })
 
     it('should update name state on input change', async () => {
@@ -919,7 +919,7 @@ expect(labelInput)!.toHaveValue('New Label')
 
       // Assert
       // Assert
-expect(nameInput)!.toHaveValue('new_name')
+      expect(nameInput)!.toHaveValue('new_name')
     })
 
     it('should update description state on textarea change', async () => {
@@ -938,7 +938,7 @@ expect(nameInput)!.toHaveValue('new_name')
 
       // Assert
       // Assert
-expect(descInput)!.toHaveValue('New description')
+      expect(descInput)!.toHaveValue('New description')
     })
 
     it('should show emoji picker on icon click', async () => {
@@ -957,7 +957,7 @@ expect(descInput)!.toHaveValue('New description')
 
       // Assert
       // Assert
-expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
+      expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
     })
 
     it('should update emoji on selection', async () => {
@@ -1006,37 +1006,37 @@ expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument()
     })
 
     it('should update labels when label selector changes', async () => {
@@ -1054,7 +1054,7 @@ expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('label-values'))!.toHaveTextContent('initial,new-label')
+      expect(screen.getByTestId('label-values'))!.toHaveTextContent('initial,new-label')
     })
 
     it('should update privacy policy on input change', async () => {
@@ -1073,7 +1073,7 @@ expect(screen.getByTestId('label-values'))!.toHaveTextContent('initial,new-label
 
       // Assert
       // Assert
-expect(privacyInput)!.toHaveValue('https://example.com/privacy')
+      expect(privacyInput)!.toHaveValue('https://example.com/privacy')
     })
   })
 
@@ -1172,7 +1172,7 @@ expect(privacyInput)!.toHaveValue('https://example.com/privacy')
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
     })
 
     it('should call onSave after confirm in edit mode', async () => {
@@ -1221,7 +1221,7 @@ expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(descInput)!.toHaveValue('New parameter description')
+      expect(descInput)!.toHaveValue('New parameter description')
     })
   })
 
@@ -1285,7 +1285,7 @@ expect(descInput)!.toHaveValue('New parameter description')
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.nameForToolCallTip'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.nameForToolCallTip'))!.toBeInTheDocument()
     })
 
     it('should accept valid name format', async () => {
@@ -1304,37 +1304,37 @@ expect(screen.getByText('tools.createTool.nameForToolCallTip'))!.toBeInTheDocume
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('tools.createTool.nameForToolCallTip')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('tools.createTool.nameForToolCallTip')).not.toBeInTheDocument()
     })
   })
 
@@ -1385,7 +1385,7 @@ expect(screen.queryByText('tools.createTool.nameForToolCallTip')).not.toBeInTheD
 
       // Assert - __image should show method as text, not selector
       // Assert - __image should show method as text, not selector
-expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
     })
 
     it('should show warning for reserved output parameter name collision', () => {
@@ -1501,7 +1501,7 @@ describe('MethodSelector', () => {
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
 
     it('should display parameter method text when value is llm', () => {
@@ -1516,7 +1516,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
     })
 
     it('should display setting method text when value is form', () => {
@@ -1531,7 +1531,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTh
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
 
     it('should display setting method text when value is undefined', () => {
@@ -1546,7 +1546,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheD
 
       // Assert
       // Assert
-expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
   })
 
@@ -1566,7 +1566,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheD
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange with llm when parameter option clicked', async () => {
@@ -1685,7 +1685,7 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Assert - should not crash
       // Assert - should not crash
-expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
 
     it('should handle empty string value', () => {
@@ -1831,7 +1831,7 @@ describe('Integration Tests', () => {
 
       // Assert - component should not crash and callbacks should be stable
       // Assert - component should not crash and callbacks should be stable
-expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
   })
 })

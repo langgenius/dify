@@ -228,7 +228,7 @@ describe('MCPDetailContent', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
       // Operation dropdown trigger should be present
       // Operation dropdown trigger should be present
-expect(document.querySelector('button'))!.toBeInTheDocument()
+      expect(document.querySelector('button'))!.toBeInTheDocument()
     })
   })
 

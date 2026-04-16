@@ -76,7 +76,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert - Check for modal title as it appears in the mock
       // Assert - Check for modal title as it appears in the mock
-expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should not render modal when isShow is false', () => {
@@ -88,37 +88,37 @@ expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('appAnnotation.editModal.title')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('appAnnotation.editModal.title')).not.toBeInTheDocument()
     })
 
     it('should display query and answer sections', () => {
@@ -130,7 +130,7 @@ expect(screen.queryByText('appAnnotation.editModal.title')).not.toBeInTheDocumen
 
       // Assert - Look for query and answer content
       // Assert - Look for query and answer content
-expect(screen.getByText('Test query'))!.toBeInTheDocument()
+      expect(screen.getByText('Test query'))!.toBeInTheDocument()
       expect(screen.getByText('Test answer'))!.toBeInTheDocument()
     })
   })
@@ -150,7 +150,7 @@ expect(screen.getByText('Test query'))!.toBeInTheDocument()
 
       // Assert - Check content is displayed
       // Assert - Check content is displayed
-expect(screen.getByText('Custom query content'))!.toBeInTheDocument()
+      expect(screen.getByText('Custom query content'))!.toBeInTheDocument()
       expect(screen.getByText('Custom answer content'))!.toBeInTheDocument()
     })
 
@@ -166,7 +166,7 @@ expect(screen.getByText('Custom query content'))!.toBeInTheDocument()
 
       // Assert - Remove option should be present (using pattern)
       // Assert - Remove option should be present (using pattern)
-expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
   })
 
@@ -196,7 +196,7 @@ expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDo
 
       // Assert
       // Assert
-expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
 
     it('should save content when edited', async () => {
@@ -327,37 +327,37 @@ expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDo
 
       // Assert - Confirm dialog should not be visible initially
       // Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-// Assert - Confirm dialog should not be visible initially
-expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
     })
 
     it('should show confirm modal when remove is clicked', async () => {
@@ -374,7 +374,7 @@ expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBe
 
       // Assert - Confirmation dialog should appear
       // Assert - Confirmation dialog should appear
-expect(screen.getByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
     })
 
     it('should call onRemove when removal is confirmed', async () => {
@@ -435,7 +435,7 @@ expect(screen.getByText('appDebug.feature.annotation.removeConfirm'))!.toBeInThe
 
       // Assert
       // Assert
-expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should handle very long content', () => {
@@ -453,7 +453,7 @@ expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(longQuery))!.toBeInTheDocument()
+      expect(screen.getByText(longQuery))!.toBeInTheDocument()
       expect(screen.getByText(longAnswer))!.toBeInTheDocument()
     })
 
@@ -472,7 +472,7 @@ expect(screen.getByText(longQuery))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(specialQuery))!.toBeInTheDocument()
+      expect(screen.getByText(specialQuery))!.toBeInTheDocument()
       expect(screen.getByText(specialAnswer))!.toBeInTheDocument()
     })
 
@@ -530,7 +530,7 @@ expect(screen.getByText(specialQuery))!.toBeInTheDocument()
 
       // Verify edit mode remains open (textarea should still be visible)
       // Verify edit mode remains open (textarea should still be visible)
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
@@ -566,7 +566,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Verify edit mode remains open (textarea should still be visible)
       // Verify edit mode remains open (textarea should still be visible)
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
@@ -606,7 +606,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Verify edit mode remains open (textarea should still be visible)
       // Verify edit mode remains open (textarea should still be visible)
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
@@ -644,7 +644,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Verify edit mode remains open (textarea should still be visible)
       // Verify edit mode remains open (textarea should still be visible)
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
   })
@@ -695,7 +695,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Assert - Should have remove functionality
       // Assert - Should have remove functionality
-expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
   })
 
@@ -738,7 +738,7 @@ expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDo
 
       // Assert - Component should still be visible (no errors thrown)
       // Assert - Component should still be visible (no errors thrown)
-expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should re-render when props change', () => {
@@ -752,7 +752,7 @@ expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
 
       // Assert - Should show new content
       // Assert - Should show new content
-expect(screen.getByText('New query content'))!.toBeInTheDocument()
+      expect(screen.getByText('New query content'))!.toBeInTheDocument()
     })
   })
 })

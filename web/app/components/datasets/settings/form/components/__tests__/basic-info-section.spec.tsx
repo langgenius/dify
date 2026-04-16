@@ -159,7 +159,7 @@ describe('BasicInfoSection', () => {
       render(<BasicInfoSection {...defaultProps} />)
       // Use exact match to avoid matching "permissionsOnlyMe"
       // Use exact match to avoid matching "permissionsOnlyMe"
-expect(screen.getByText('datasetSettings.form.permissions'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.form.permissions'))!.toBeInTheDocument()
     })
 
     it('should render name input with correct value', () => {
@@ -263,8 +263,8 @@ expect(screen.getByText('datasetSettings.form.permissions'))!.toBeInTheDocument(
       // AppIconPicker renders a modal with emoji tabs and options via portal
       // We just verify the component renders without crashing when picker is shown
       // AppIconPicker renders a modal with emoji tabs and options via portal
-// We just verify the component renders without crashing when picker is shown
-expect(baseElement)!.toBeInTheDocument()
+      // We just verify the component renders without crashing when picker is shown
+      expect(baseElement)!.toBeInTheDocument()
     })
 
     it('should not render AppIconPicker when showAppIconPicker is false', () => {
@@ -272,37 +272,37 @@ expect(baseElement)!.toBeInTheDocument()
 
       // Check that AppIconPicker is not rendered
       // Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-// Check that AppIconPicker is not rendered
-expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
     })
 
     it('should render image icon when icon_type is image', () => {
@@ -384,9 +384,9 @@ expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInThe
       // The exact interaction depends on the MemberSelector component
       // We verify the component renders without crashing
       // For partial members permission, the member selector should be visible
-// The exact interaction depends on the MemberSelector component
-// We verify the component renders without crashing
-expect(container)!.toBeInTheDocument()
+      // The exact interaction depends on the MemberSelector component
+      // We verify the component renders without crashing
+      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -396,7 +396,7 @@ expect(container)!.toBeInTheDocument()
 
       // Should still render but inputs might behave differently
       // Should still render but inputs might behave differently
-expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
+      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
     })
   })
 
@@ -445,8 +445,8 @@ expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
       // For partial members, a member selector component should be rendered
       // We verify it renders without crashing
       // For partial members, a member selector component should be rendered
-// We verify it renders without crashing
-expect(container)!.toBeInTheDocument()
+      // We verify it renders without crashing
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should handle empty member list', () => {

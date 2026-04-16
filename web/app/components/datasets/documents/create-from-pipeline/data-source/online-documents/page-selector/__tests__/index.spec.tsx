@@ -302,37 +302,37 @@ describe('PageSelector', () => {
         expect(screen.getAllByText('Apple Pie').length).toBeGreaterThan(0)
         // Banana Page is filtered out because it doesn't contain "Apple"
         // Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-// Banana Page is filtered out because it doesn't contain "Apple"
-expect(screen.queryByText('Banana Page')).not.toBeInTheDocument()
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        // Banana Page is filtered out because it doesn't contain "Apple"
+        expect(screen.queryByText('Banana Page')).not.toBeInTheDocument()
       })
 
       it('should show empty state when no pages match search', () => {
@@ -377,7 +377,7 @@ expect(screen.queryByText('Banana Page')).not.toBeInTheDocument()
 
         // Assert - page name should be visible
         // Assert - page name should be visible
-expect(screen.getByText('Grandchild 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Grandchild 1'))!.toBeInTheDocument()
       })
 
       it('should perform case-sensitive search', () => {
@@ -531,14 +531,14 @@ expect(screen.getByText('Grandchild 1'))!.toBeInTheDocument()
 
         // Assert - Initial render
         // Assert - Initial render
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
         // Rerender with new credential
         rerender(<PageSelector {...props} currentCredentialId="cred-2" />)
 
         // Assert - Should still show pages (reset and rebuild)
         // Assert - Should still show pages (reset and rebuild)
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
       })
     })
   })
@@ -556,40 +556,40 @@ expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Assert - Only root level page should be visible initially
       // Assert - Only root level page should be visible initially
-expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
       // Child pages should not be visible until expanded
       // Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-// Child pages should not be visible until expanded
-expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      // Child pages should not be visible until expanded
+      expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
     })
 
     it('should update dataList when expanding a page with children', () => {
@@ -669,7 +669,7 @@ expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
       // Assert - Component should still render correctly
       // Assert - Component should still render correctly
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     })
 
     it('should filter root pages correctly on initialization', () => {
@@ -683,7 +683,7 @@ expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Assert - Only root level pages visible
       // Assert - Only root level pages visible
-expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
       expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
     })
 
@@ -702,7 +702,7 @@ expect(screen.getByText(rootPage.page_name))!.toBeInTheDocument()
 
       // Assert - Orphan page should be visible at root level
       // Assert - Orphan page should be visible at root level
-expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
+      expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
     })
   })
 
@@ -724,7 +724,7 @@ expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
 
       // Assert - Children should be visible
       // Assert - Children should be visible
-expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
       expect(screen.getByText(childPage2.page_name))!.toBeInTheDocument()
     })
 
@@ -747,37 +747,37 @@ expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
 
       // Assert - Children should be hidden again
       // Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-// Assert - Children should be hidden again
-expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      // Assert - Children should be hidden again
+      expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
       expect(screen.queryByText(childPage2.page_name)).not.toBeInTheDocument()
     })
 
@@ -895,7 +895,7 @@ expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
       // Assert - Should not throw
       // Assert - Should not throw
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     })
 
     it('should handle empty list in memoization', () => {
@@ -923,37 +923,37 @@ expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Initially children are hidden
       // Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-// Initially children are hidden
-expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      // Initially children are hidden
+      expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
       const expandArrow = document.querySelector('[class*="hover:bg-components-button-ghost-bg-hover"]')
       if (expandArrow)
@@ -961,7 +961,7 @@ expect(screen.queryByText(childPage1.page_name)).not.toBeInTheDocument()
 
       // Children become visible
       // Children become visible
-expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
+      expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
     })
 
     it('should check/uncheck page when clicking checkbox', () => {
@@ -1091,7 +1091,7 @@ expect(screen.getByText(childPage1.page_name))!.toBeInTheDocument()
 
       // Assert - NotionIcon renders the emoji
       // Assert - NotionIcon renders the emoji
-expect(screen.getByText('📄'))!.toBeInTheDocument()
+      expect(screen.getByText('📄'))!.toBeInTheDocument()
     })
 
     it('should handle empty searchValue correctly', () => {
@@ -1163,7 +1163,7 @@ expect(screen.getByText('📄'))!.toBeInTheDocument()
 
       // Assert - Only root level visible
       // Assert - Only root level visible
-expect(screen.getByText('Level 0'))!.toBeInTheDocument()
+      expect(screen.getByText('Level 0'))!.toBeInTheDocument()
       expect(screen.queryByText('Level 1')).not.toBeInTheDocument()
     })
 
@@ -1185,7 +1185,7 @@ expect(screen.getByText('Level 0'))!.toBeInTheDocument()
 
       // Assert - Should render the orphan page at root level
       // Assert - Should render the orphan page at root level
-expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
+      expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
     })
 
     it('should handle empty checkedIds Set', () => {
@@ -1278,7 +1278,7 @@ expect(screen.getByText('Orphan Page'))!.toBeInTheDocument()
 
       // Assert - Defaults should be applied
       // Assert - Defaults should be applied
-expect(getCheckbox())!.toBeInTheDocument()
+      expect(getCheckbox())!.toBeInTheDocument()
       expect(screen.getByText('common.dataSource.notion.selector.preview'))!.toBeInTheDocument()
     })
   })

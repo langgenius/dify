@@ -27,7 +27,7 @@ describe('MethodSelector', () => {
 
       // Should display the current method text
       // Should display the current method text
-expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
     })
 
     it('should render with llm value selected', () => {
@@ -47,7 +47,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTh
 
       // When value is undefined, it should show the form method text (else branch)
       // When value is undefined, it should show the form method text (else branch)
-expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
 
     it('should render arrow down icon', () => {
@@ -222,7 +222,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheD
       await waitFor(() => {
         // Should show both option titles and descriptions
         // Should show both option titles and descriptions
-expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
         expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
       })
     })
@@ -271,7 +271,7 @@ expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeI
 
       // Should not crash and should be in a consistent state
       // Should not crash and should be in a consistent state
-expect(trigger)!.toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should handle selecting the already selected value', async () => {

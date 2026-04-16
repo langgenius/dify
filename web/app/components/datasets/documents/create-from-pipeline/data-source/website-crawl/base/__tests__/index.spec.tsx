@@ -311,7 +311,7 @@ describe('CrawledResult', () => {
 
       // Assert - Check for time info which contains total count
       // Assert - Check for time info which contains total count
-expect(screen.getByText(/1.5/))!.toBeInTheDocument()
+      expect(screen.getByText(/1.5/))!.toBeInTheDocument()
     })
 
     it('should render all list items', () => {
@@ -327,7 +327,7 @@ expect(screen.getByText(/1.5/))!.toBeInTheDocument()
 
       // Assert - Check for the time display
       // Assert - Check for the time display
-expect(screen.getByText(/2.5/))!.toBeInTheDocument()
+      expect(screen.getByText(/2.5/))!.toBeInTheDocument()
     })
 
     it('should render select all checkbox when isMultipleChoice is true', () => {
@@ -531,7 +531,7 @@ expect(screen.getByText(/2.5/))!.toBeInTheDocument()
 
       // Assert - Should not throw error, component still renders
       // Assert - Should not throw error, component still renders
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     })
   })
 
@@ -541,7 +541,7 @@ expect(screen.getByText('Page 1'))!.toBeInTheDocument()
 
       // Assert - Should show time info with 0 count
       // Assert - Should show time info with 0 count
-expect(screen.getByText(/0.5/))!.toBeInTheDocument()
+      expect(screen.getByText(/0.5/))!.toBeInTheDocument()
     })
 
     it('should handle single item list', () => {
@@ -628,7 +628,7 @@ describe('Crawling', () => {
 
       // Assert - Check for various width classes
       // Assert - Check for various width classes
-expect(container.querySelector('.w-\\[35\\%\\]'))!.toBeInTheDocument()
+      expect(container.querySelector('.w-\\[35\\%\\]'))!.toBeInTheDocument()
       expect(container.querySelector('.w-\\[50\\%\\]'))!.toBeInTheDocument()
       expect(container.querySelector('.w-\\[40\\%\\]'))!.toBeInTheDocument()
     })
@@ -695,7 +695,7 @@ describe('ErrorMessage', () => {
 
       // Assert - Empty string should not render message div
       // Assert - Empty string should not render message div
-expect(screen.getByText('Error Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Error Title'))!.toBeInTheDocument()
     })
 
     it('should handle long title text', () => {
@@ -751,7 +751,7 @@ describe('Base Components Integration', () => {
 
     // Assert - Both items should render
     // Assert - Both items should render
-expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+    expect(screen.getByText('Page 1'))!.toBeInTheDocument()
     expect(screen.getByText('Page 2'))!.toBeInTheDocument()
   })
 

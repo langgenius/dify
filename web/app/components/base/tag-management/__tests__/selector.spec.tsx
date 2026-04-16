@@ -92,14 +92,14 @@ describe('TagSelector', () => {
       const { container } = render(<TagSelector {...defaultProps} isPopover={false} />)
       // Only the empty fragment wrapper
       // Only the empty fragment wrapper
-expect(container)!.toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should render the popover trigger button', () => {
       render(<TagSelector {...defaultProps} />)
       // The trigger is wrapped in a PopoverButton
       // The trigger is wrapped in a PopoverButton
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render when minWidth is provided', () => {
@@ -120,7 +120,7 @@ expect(screen.getByRole('button'))!.toBeInTheDocument()
       )
       // 'Frontend' is in tagList, 'Unknown' is not
       // 'Frontend' is in tagList, 'Unknown' is not
-expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
@@ -271,37 +271,37 @@ expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       )
       // Orphan tag is not in store tagList, so tags memo returns []
       // Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-// Orphan tag is not in store tagList, so tags memo returns []
-expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
       expect(screen.getByText(i18n.addTag))!.toBeInTheDocument()
     })
 

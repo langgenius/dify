@@ -135,7 +135,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
     // Assert
     // Assert
-expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
+    expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.credentialUnavailable')).not.toBeInTheDocument()
   })
 
@@ -207,7 +207,7 @@ expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocumen
 
     // Component still renders (Authorized receives undefined currentCustomConfigurationModelFixedFields)
     // Component still renders (Authorized receives undefined currentCustomConfigurationModelFixedFields)
-expect(screen.getByTestId('authorized-mock'))!.toBeInTheDocument()
+    expect(screen.getByTestId('authorized-mock'))!.toBeInTheDocument()
     expect(screen.getByText('Key 1'))!.toBeInTheDocument()
   })
 
@@ -224,7 +224,7 @@ expect(screen.getByTestId('authorized-mock'))!.toBeInTheDocument()
 
     // credentials is undefined → empty=true → unavailable text shown
     // credentials is undefined → empty=true → unavailable text shown
-expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
+    expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
     expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
   })
 
@@ -243,39 +243,39 @@ expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocumen
 
     // indicator-green shown (not authRemoved, not unavailable, not empty)
     // indicator-green shown (not authRemoved, not unavailable, not empty)
-expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-// credential_name is empty so nothing printed for name
-expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    // credential_name is empty so nothing printed for name
+    expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
 })

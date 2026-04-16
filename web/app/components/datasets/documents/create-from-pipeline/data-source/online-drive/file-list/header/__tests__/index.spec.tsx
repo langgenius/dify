@@ -61,7 +61,7 @@ describe('Header', () => {
 
       // Assert - search input should be visible
       // Assert - search input should be visible
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render with correct container styles', () => {
@@ -159,7 +159,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
         // Assert - Component should render without errors
         // Assert - Component should render without errors
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should render with single breadcrumb', () => {
@@ -187,7 +187,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
         // Assert - keywords are passed through, component renders
         // Assert - keywords are passed through, component renders
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
 
@@ -225,7 +225,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
         // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
         // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should handle large search results count', () => {
@@ -370,7 +370,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should re-render when inputValue changes', () => {
@@ -385,7 +385,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
       // Assert - Input value should be updated
       // Assert - Input value should be updated
-expect(input)!.toHaveValue('changed')
+      expect(input)!.toHaveValue('changed')
     })
 
     it('should re-render when breadcrumbs change', () => {
@@ -398,7 +398,7 @@ expect(input)!.toHaveValue('changed')
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should re-render when keywords change', () => {
@@ -411,7 +411,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
   })
 
@@ -534,7 +534,7 @@ expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.sear
 
       // Assert - Component should render successfully, meaning props are passed correctly
       // Assert - Component should render successfully, meaning props are passed correctly
-expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should pass correct props to Input component', () => {

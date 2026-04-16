@@ -233,7 +233,7 @@ describe('Explore App List Flow', () => {
 
       // Step 6: DSL confirm modal appears and user confirms
       // Step 6: DSL confirm modal appears and user confirms
-expect(await screen.findByTestId('dsl-confirm-modal'))!.toBeInTheDocument()
+      expect(await screen.findByTestId('dsl-confirm-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('dsl-confirm'))
 
       // Step 7: Flow completes successfully

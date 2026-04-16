@@ -1691,7 +1691,7 @@ describe('StepTwoPreview - File List Mapping', () => {
 
     // ChunkPreview should be rendered
     // ChunkPreview should be rendered
-expect(screen.getByTestId('chunk-preview'))!.toBeInTheDocument()
+    expect(screen.getByTestId('chunk-preview'))!.toBeInTheDocument()
   })
 })
 

@@ -47,7 +47,7 @@ describe('AssistantTypePicker', () => {
 
       // Assert
       // Assert
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should render chat assistant by default when value is "chat"', () => {
@@ -56,7 +56,7 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should render agent assistant when value is "agent"', () => {
@@ -65,7 +65,7 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
     })
   })
 
@@ -77,7 +77,7 @@ expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should handle agentConfig prop', () => {
@@ -96,7 +96,7 @@ expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should handle undefined agentConfig prop', () => {
@@ -107,7 +107,7 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
   })
 
@@ -344,37 +344,37 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Assert - Agent settings modal should not appear (value is 'chat')
       // Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-// Assert - Agent settings modal should not appear (value is 'chat')
-expect(screen.queryByText(/common.operation.save/i)).not.toBeInTheDocument()
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      expect(screen.queryByText(/common.operation.save/i)).not.toBeInTheDocument()
     })
 
     it('should call onAgentSettingChange when saving agent settings', async () => {
@@ -510,7 +510,7 @@ expect(screen.queryByText(/common.operation.save/i)).not.toBeInTheDocument()
 
       // Assert - Should not crash
       // Assert - Should not crash
-expect(trigger)!.toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should handle multiple rapid selection changes', async () => {
@@ -562,7 +562,7 @@ expect(trigger)!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     describe('should render with different prop combinations', () => {
@@ -781,7 +781,7 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Assert - Element should be focusable
       // Assert - Element should be focusable
-expect(trigger)!.toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
       expect(trigger.parentElement)!.toBeInTheDocument()
     })
 
@@ -804,7 +804,7 @@ expect(trigger)!.toBeInTheDocument()
 
       // Assert - Options should be focusable
       // Assert - Options should be focusable
-expect(chatOption)!.toBeInTheDocument()
+      expect(chatOption)!.toBeInTheDocument()
       expect(agentOption)!.toBeInTheDocument()
 
       // Verify options exist and can receive focus programmatically
@@ -869,7 +869,7 @@ expect(chatOption)!.toBeInTheDocument()
 
       // Should start in closed state
       // Should start in closed state
-expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
+      expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
     })
 
     it('should maintain accessible structure for screen readers', () => {
@@ -878,7 +878,7 @@ expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
 
       // Assert - Text content should be accessible
       // Assert - Text content should be accessible
-expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Icons should have proper structure
       const { container } = renderComponent()
@@ -903,7 +903,7 @@ expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Title text should be visible
       // Title text should be visible
-expect(screen.getByText(/assistantType.name/i))!.toBeInTheDocument()
+      expect(screen.getByText(/assistantType.name/i))!.toBeInTheDocument()
     })
   })
 })

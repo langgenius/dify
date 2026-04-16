@@ -131,7 +131,7 @@ describe('DocumentList', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
       // Pagination component should be present
       // Pagination component should be present
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should not render pagination when total is 0', () => {
@@ -167,7 +167,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
       // Row checkboxes should still be there, but header checkbox should be hidden
       // Row checkboxes should still be there, but header checkbox should be hidden
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should call onSelectedIdChange when select all is clicked', () => {
@@ -209,8 +209,8 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
       // Header checkbox should show indeterminate icon, not check icon
       // Just verify it's rendered
       // Header checkbox should show indeterminate icon, not check icon
-// Just verify it's rendered
-expect(checkboxes[0])!.toBeInTheDocument()
+      // Just verify it's rendered
+      expect(checkboxes[0])!.toBeInTheDocument()
     })
 
     it('should call onSelectedIdChange with single document when row checkbox is clicked', () => {
@@ -256,7 +256,7 @@ expect(checkboxes[0])!.toBeInTheDocument()
 
       // BatchAction component should be visible
       // BatchAction component should be visible
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should not show batch action bar when no documents selected', () => {
@@ -264,7 +264,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // BatchAction should not be present
       // BatchAction should not be present
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with archive option', () => {
@@ -276,7 +276,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // BatchAction component should be visible when documents are selected
       // BatchAction component should be visible when documents are selected
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with enable option', () => {
@@ -337,7 +337,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // BatchAction should be visible
       // BatchAction should be visible
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should show re-index option for error documents', () => {
@@ -352,7 +352,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // BatchAction with re-index should be present for error documents
       // BatchAction with re-index should be present for error documents
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -399,7 +399,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // The handleRenamed callback wraps onUpdate
       // The handleRenamed callback wraps onUpdate
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -432,7 +432,7 @@ expect(screen.getByRole('table'))!.toBeInTheDocument()
 
       // The onShowManage callback in EditMetadataBatchModal should call hideEditModal then onManageMetadata
       // The onShowManage callback in EditMetadataBatchModal should call hideEditModal then onManageMetadata
-expect(screen.getByRole('table'))!.toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 

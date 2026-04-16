@@ -149,7 +149,7 @@ describe('reference-setting-modal', () => {
 
         // Assert
         // Assert
-expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should render install permission section', () => {
@@ -158,7 +158,7 @@ expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
         // Assert
         // Assert
-expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
       })
 
       it('should render debug permission section', () => {
@@ -167,7 +167,7 @@ expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
 
         // Assert
         // Assert
-expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
       })
 
       it('should render all permission options for install', () => {
@@ -184,7 +184,7 @@ expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
 
         // Assert
         // Assert
-expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
+        expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
         expect(screen.getByText('common.operation.save'))!.toBeInTheDocument()
       })
 
@@ -197,7 +197,7 @@ expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
 
         // Assert
         // Assert
-expect(screen.getByTestId('auto-update-setting'))!.toBeInTheDocument()
+        expect(screen.getByTestId('auto-update-setting'))!.toBeInTheDocument()
       })
 
       it('should not render AutoUpdateSetting when marketplace is disabled', () => {
@@ -209,37 +209,37 @@ expect(screen.getByTestId('auto-update-setting'))!.toBeInTheDocument()
 
         // Assert
         // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
       })
 
       it('should render modal with closable attribute', () => {
@@ -248,7 +248,7 @@ expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
 
         // Assert
         // Assert
-expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
+        expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
       })
     })
 
@@ -284,7 +284,7 @@ expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
 
         // Assert - the option should now be selected
         // Assert - the option should now be selected
-expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
+        expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should initialize with payload auto_upgrade values', () => {
@@ -300,7 +300,7 @@ expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
 
         // Assert
         // Assert
-expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
+        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
       })
 
       it('should use default auto_upgrade when payload.auto_upgrade is undefined', () => {
@@ -315,7 +315,7 @@ expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
 
         // Assert - should use default value (disabled)
         // Assert - should use default value (disabled)
-expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled')
+        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled')
       })
     })
 
@@ -395,7 +395,7 @@ expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled'
 
         // Assert
         // Assert
-expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
+        expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should update debug permission when Admins Only option is clicked', () => {
@@ -416,7 +416,7 @@ expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
 
         // Assert
         // Assert
-expect(adminOptions[1])!.toHaveAttribute('aria-pressed', 'true')
+        expect(adminOptions[1])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should update auto_upgrade config when changed in AutoUpdateSetting', async () => {
@@ -453,7 +453,7 @@ expect(adminOptions[1])!.toHaveAttribute('aria-pressed', 'true')
 
         // Assert - component should render without issues
         // Assert - component should render without issues
-expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('handleSave should be memoized with useCallback', async () => {
@@ -481,7 +481,7 @@ expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
         // Assert - install permission should be updated
         // Assert - install permission should be updated
-expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
+        expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
     })
 
@@ -532,7 +532,7 @@ expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
 
         // Assert - should fall back to PermissionType.noOne
         // Assert - should fall back to PermissionType.noOne
-expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should handle missing debug_permission', () => {
@@ -549,7 +549,7 @@ expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
         // Assert - should fall back to PermissionType.noOne
         // Assert - should fall back to PermissionType.noOne
-expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should handle slow async onSave gracefully', async () => {
@@ -602,7 +602,7 @@ expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
             // Assert - should render without crashing
             // Assert - should render without crashing
-expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
+            expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
             unmount()
           })
@@ -630,7 +630,7 @@ expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
           // Assert
           // Assert
-expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent(strategy)
+          expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent(strategy)
 
           unmount()
         })
@@ -657,7 +657,7 @@ expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent(strategy)
 
           // Assert
           // Assert
-expect(screen.getByTestId('auto-update-mode'))!.toHaveTextContent(mode)
+          expect(screen.getByTestId('auto-update-mode'))!.toHaveTextContent(mode)
 
           unmount()
         })
@@ -775,7 +775,7 @@ expect(screen.getByTestId('auto-update-mode'))!.toHaveTextContent(mode)
 
         // Assert - modal should be visible
         // Assert - modal should be visible
-expect(screen.getByTestId('modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('modal'))!.toBeInTheDocument()
       })
     })
 
@@ -914,7 +914,7 @@ expect(screen.getByTestId('modal'))!.toBeInTheDocument()
 
       // Assert - Labels are rendered correctly
       // Assert - Labels are rendered correctly
-expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
       expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
     })
   })

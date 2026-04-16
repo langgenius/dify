@@ -240,7 +240,7 @@ describe('ConfigContent', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
       expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()

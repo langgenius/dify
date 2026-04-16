@@ -364,7 +364,7 @@ describe('EditCustomCollectionModal', () => {
 
       // The table should still be visible but empty (no tools)
       // The table should still be visible but empty (no tools)
-expect(screen.getByText('tools.createTool.availableTools.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.availableTools.title'))!.toBeInTheDocument()
     })
 
     it('should not parse schema when empty', async () => {
@@ -397,7 +397,7 @@ expect(screen.getByText('tools.createTool.availableTools.title'))!.toBeInTheDocu
 
       // Name label should be present
       // Name label should be present
-expect(screen.getByText('tools.createTool.name'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.name'))!.toBeInTheDocument()
     })
   })
 
@@ -414,7 +414,7 @@ expect(screen.getByText('tools.createTool.name'))!.toBeInTheDocument()
 
       // The default auth type is 'none'
       // The default auth type is 'none'
-expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
     })
   })
 
@@ -553,7 +553,7 @@ expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDoc
 
       // Should not crash and show the row
       // Should not crash and show the row
-expect(screen.getByText('testOp'))!.toBeInTheDocument()
+      expect(screen.getByText('testOp'))!.toBeInTheDocument()
     })
 
     it('should handle invalid URL by returning the original string', () => {
@@ -561,7 +561,7 @@ expect(screen.getByText('testOp'))!.toBeInTheDocument()
 
       // Should show the original string
       // Should show the original string
-expect(screen.getByText('not-a-valid-url'))!.toBeInTheDocument()
+      expect(screen.getByText('not-a-valid-url'))!.toBeInTheDocument()
     })
 
     it('should handle URL with only domain', () => {
@@ -569,7 +569,7 @@ expect(screen.getByText('not-a-valid-url'))!.toBeInTheDocument()
 
       // Path would be empty or "/"
       // Path would be empty or "/"
-expect(screen.getByText('testOp'))!.toBeInTheDocument()
+      expect(screen.getByText('testOp'))!.toBeInTheDocument()
     })
   })
 

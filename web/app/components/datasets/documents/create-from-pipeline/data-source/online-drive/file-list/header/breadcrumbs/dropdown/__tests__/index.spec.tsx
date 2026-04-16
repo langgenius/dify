@@ -24,7 +24,7 @@ describe('Dropdown', () => {
 
       // Assert - Trigger button should be visible
       // Assert - Trigger button should be visible
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render trigger button with more icon', () => {
@@ -45,7 +45,7 @@ expect(screen.getByRole('button'))!.toBeInTheDocument()
 
       // Assert - Separator "/" should be visible
       // Assert - Separator "/" should be visible
-expect(screen.getByText('/'))!.toBeInTheDocument()
+      expect(screen.getByText('/'))!.toBeInTheDocument()
     })
 
     it('should render trigger button with correct default styles', () => {
@@ -68,37 +68,37 @@ expect(screen.getByText('/'))!.toBeInTheDocument()
 
       // Assert - Menu content should not be visible when dropdown is closed
       // Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-// Assert - Menu content should not be visible when dropdown is closed
-expect(screen.queryByText('visible-folder')).not.toBeInTheDocument()
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      // Assert - Menu content should not be visible when dropdown is closed
+      expect(screen.queryByText('visible-folder')).not.toBeInTheDocument()
     })
 
     it('should render menu content when opened', async () => {
@@ -204,7 +204,7 @@ expect(screen.queryByText('visible-folder')).not.toBeInTheDocument()
         await waitFor(() => {
           // The menu container should exist but be empty
           // The menu container should exist but be empty
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+          expect(screen.getByRole('button'))!.toBeInTheDocument()
         })
       })
 
@@ -272,37 +272,37 @@ expect(screen.getByRole('button'))!.toBeInTheDocument()
 
         // Assert - Menu content should not be visible
         // Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-// Assert - Menu content should not be visible
-expect(screen.queryByText('test-folder')).not.toBeInTheDocument()
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        // Assert - Menu content should not be visible
+        expect(screen.queryByText('test-folder')).not.toBeInTheDocument()
       })
 
       it('should toggle to open state when trigger is clicked', async () => {
@@ -363,7 +363,7 @@ expect(screen.queryByText('test-folder')).not.toBeInTheDocument()
 
         // Assert - Initial state (closed): should have hover:bg-state-base-hover
         // Assert - Initial state (closed): should have hover:bg-state-base-hover
-expect(button)!.toHaveClass('hover:bg-state-base-hover')
+        expect(button)!.toHaveClass('hover:bg-state-base-hover')
 
         // Act - Open dropdown
         fireEvent.click(button)
@@ -385,37 +385,37 @@ expect(button)!.toHaveClass('hover:bg-state-base-hover')
 
         // Act & Assert - Initially closed
         // Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-// Act & Assert - Initially closed
-expect(screen.queryByText('folder')).not.toBeInTheDocument()
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        // Act & Assert - Initially closed
+        expect(screen.queryByText('folder')).not.toBeInTheDocument()
 
         // Act - Click to open
         fireEvent.click(screen.getByRole('button'))
@@ -580,7 +580,7 @@ expect(screen.queryByText('folder')).not.toBeInTheDocument()
 
       // Assert - Component should render without errors
       // Assert - Component should render without errors
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
   })
 

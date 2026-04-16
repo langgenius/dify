@@ -89,7 +89,7 @@ describe('VarPicker', () => {
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('var1'))!.toBeInTheDocument()
     })
 
@@ -102,12 +102,12 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('var1'))!.toBeInTheDocument()
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
       expect(screen.getByText('{{'))!.toBeInTheDocument()
       expect(screen.getByText('}}'))!.toBeInTheDocument()
       // IconTypeIcon should be rendered (check for svg icon)
       // IconTypeIcon should be rendered (check for svg icon)
-expect(document.querySelector('svg'))!.toBeInTheDocument()
+      expect(document.querySelector('svg'))!.toBeInTheDocument()
     })
 
     it('should show placeholder text when no value is selected', () => {
@@ -122,37 +122,37 @@ expect(document.querySelector('svg'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('var1')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('var1')).not.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -169,7 +169,7 @@ expect(screen.queryByText('var1')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
+      expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
     })
 
     it('should render dropdown indicator icon', () => {
@@ -181,7 +181,7 @@ expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
 
       // Assert - Trigger should be present
       // Assert - Trigger should be present
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -199,7 +199,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
+      expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
     })
 
     it('should apply custom triggerClassName to trigger button', () => {
@@ -214,7 +214,7 @@ expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-trigger'))!.toHaveClass('custom-trigger-class')
+      expect(screen.getByTestId('portal-trigger'))!.toHaveClass('custom-trigger-class')
     })
 
     it('should display selected value with proper formatting', () => {
@@ -232,7 +232,7 @@ expect(screen.getByTestId('portal-trigger'))!.toHaveClass('custom-trigger-class'
 
       // Assert
       // Assert
-expect(screen.getByText('customVar'))!.toBeInTheDocument()
+      expect(screen.getByText('customVar'))!.toBeInTheDocument()
       expect(screen.getByText('{{'))!.toBeInTheDocument()
       expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
@@ -252,7 +252,7 @@ expect(screen.getByText('customVar'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange and close dropdown when selecting an option', async () => {
@@ -309,37 +309,37 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown state on trigger click', async () => {
@@ -377,7 +377,7 @@ expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('var1'))!.toBeInTheDocument() // Original value still displayed
+      expect(screen.getByText('var1'))!.toBeInTheDocument() // Original value still displayed
     })
   })
 
@@ -395,7 +395,7 @@ expect(screen.getByText('var1'))!.toBeInTheDocument() // Original value still di
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
       expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
 
@@ -412,7 +412,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholde
 
       // Assert
       // Assert
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -428,7 +428,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle variable names with special characters safely', () => {
@@ -446,7 +446,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholde
 
       // Assert
       // Assert
-expect(screen.getByText('specialVar'))!.toBeInTheDocument()
+      expect(screen.getByText('specialVar'))!.toBeInTheDocument()
     })
 
     it('should handle long variable names', () => {
@@ -464,7 +464,7 @@ expect(screen.getByText('specialVar'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('longVar'))!.toBeInTheDocument()
+      expect(screen.getByText('longVar'))!.toBeInTheDocument()
       expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })

@@ -166,7 +166,7 @@ describe('AppSelector Component', () => {
       expect(screen.queryByText('App 2')).not.toBeInTheDocument()
       // "New App" should still be there if editor
       // "New App" should still be there if editor
-expect(screen.getByText('common.menus.newApp'))!.toBeInTheDocument()
+      expect(screen.getByText('common.menus.newApp'))!.toBeInTheDocument()
     })
   })
 })

@@ -257,7 +257,7 @@ describe('Action Component', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
     })
 
     it('should display plugin name in delete confirm content', () => {
@@ -275,7 +275,7 @@ expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('my-awesome-plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('my-awesome-plugin'))!.toBeInTheDocument()
     })
 
     it('should hide confirm modal when cancel is clicked', () => {
@@ -440,7 +440,7 @@ expect(screen.getByText('my-awesome-plugin'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
       expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-repo', 'owner/repo-name')
       expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-release', '2.0.0')
       expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-package', 'my-package.difypkg')
@@ -463,37 +463,37 @@ expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
     })
   })
 
@@ -865,7 +865,7 @@ expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
 
       // The confirm button should be disabled during deletion
       // The confirm button should be disabled during deletion
-expect(getDeleteConfirmButton())!.toBeDisabled()
+      expect(getDeleteConfirmButton())!.toBeDisabled()
 
       // Resolve the deletion
       resolveFirst!({ success: true })
@@ -890,7 +890,7 @@ expect(getDeleteConfirmButton())!.toBeDisabled()
 
       // Assert
       // Assert
-expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
     })
   })
 

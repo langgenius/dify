@@ -85,7 +85,7 @@ describe('Breadcrumbs', () => {
 
         // Assert - Search result text should be displayed
         // Assert - Search result text should be displayed
-expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/))!.toBeInTheDocument()
+        expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/))!.toBeInTheDocument()
       })
 
       it('should not show search results when keywords is empty', () => {
@@ -123,7 +123,7 @@ expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult
 
         // Assert - Should use bucket name in search result
         // Assert - Should use bucket name in search result
-expect(screen.getByText(/searchResult.*my-bucket/i))!.toBeInTheDocument()
+        expect(screen.getByText(/searchResult.*my-bucket/i))!.toBeInTheDocument()
       })
 
       it('should use last breadcrumb as folderName when breadcrumbs exist', () => {
@@ -138,7 +138,7 @@ expect(screen.getByText(/searchResult.*my-bucket/i))!.toBeInTheDocument()
 
         // Assert - Should use last breadcrumb in search result
         // Assert - Should use last breadcrumb in search result
-expect(screen.getByText(/searchResult.*folder2/i))!.toBeInTheDocument()
+        expect(screen.getByText(/searchResult.*folder2/i))!.toBeInTheDocument()
       })
     })
 
@@ -179,37 +179,37 @@ expect(screen.getByText(/searchResult.*folder2/i))!.toBeInTheDocument()
 
         // Assert - Should show bucket name instead
         // Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-// Assert - Should show bucket name instead
-expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).not.toBeInTheDocument()
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).not.toBeInTheDocument()
       })
     })
 
@@ -225,7 +225,7 @@ expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))
 
         // Assert - Bucket name should be displayed
         // Assert - Bucket name should be displayed
-expect(screen.getByText('test-bucket'))!.toBeInTheDocument()
+        expect(screen.getByText('test-bucket'))!.toBeInTheDocument()
       })
 
       it('should not render Bucket when hasBucket is false', () => {
@@ -239,37 +239,37 @@ expect(screen.getByText('test-bucket'))!.toBeInTheDocument()
 
         // Assert - Bucket should not be displayed, Drive should be shown instead
         // Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-// Assert - Bucket should not be displayed, Drive should be shown instead
-expect(screen.queryByText('test-bucket')).not.toBeInTheDocument()
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        expect(screen.queryByText('test-bucket')).not.toBeInTheDocument()
       })
     })
 
@@ -284,7 +284,7 @@ expect(screen.queryByText('test-bucket')).not.toBeInTheDocument()
 
         // Assert - "All Files" should be displayed
         // Assert - "All Files" should be displayed
-expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
       })
 
       it('should not render Drive component when hasBucket is true', () => {
@@ -355,7 +355,7 @@ expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.to
 
         // Assert - Dropdown trigger (more button) should be present
         // Assert - Dropdown trigger (more button) should be present
-expect(screen.getByRole('button', { name: '' }))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: '' }))!.toBeInTheDocument()
       })
 
       it('should not show dropdown when breadcrumbs do not exceed displayBreadcrumbNum', () => {
@@ -370,8 +370,8 @@ expect(screen.getByRole('button', { name: '' }))!.toBeInTheDocument()
         // Assert - Should not have dropdown, just regular breadcrumbs
         // All breadcrumbs should be directly visible
         // Assert - Should not have dropdown, just regular breadcrumbs
-// All breadcrumbs should be directly visible
-expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        // All breadcrumbs should be directly visible
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
         expect(screen.getByText('folder2'))!.toBeInTheDocument()
         // Count buttons - should be 3 (allFiles + folder1 + folder2)
         const buttons = container.querySelectorAll('button')
@@ -389,42 +389,42 @@ expect(screen.getByText('folder1'))!.toBeInTheDocument()
 
         // Assert - First breadcrumb and last breadcrumb should be visible
         // Assert - First breadcrumb and last breadcrumb should be visible
-expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
         expect(screen.getByText('folder2'))!.toBeInTheDocument()
         expect(screen.getByText('folder5'))!.toBeInTheDocument()
         // Middle breadcrumbs should be in dropdown
         // Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-// Middle breadcrumbs should be in dropdown
-expect(screen.queryByText('folder3')).not.toBeInTheDocument()
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        expect(screen.queryByText('folder3')).not.toBeInTheDocument()
         expect(screen.queryByText('folder4')).not.toBeInTheDocument()
       })
 
@@ -460,7 +460,7 @@ expect(screen.queryByText('folder3')).not.toBeInTheDocument()
 
         // Assert - Only Drive should be visible
         // Assert - Only Drive should be visible
-expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
       })
 
       it('should handle single breadcrumb', () => {
@@ -519,7 +519,7 @@ expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.to
 
         // Assert - Whitespace is truthy, so should show search results
         // Assert - Whitespace is truthy, so should show search results
-expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
+        expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
       })
     })
 
@@ -558,37 +558,37 @@ expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
 
         // Assert - Should not show search results
         // Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-// Assert - Should not show search results
-expect(screen.queryByText(/searchResult/)).not.toBeInTheDocument()
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        expect(screen.queryByText(/searchResult/)).not.toBeInTheDocument()
       })
 
       it('should handle large searchResultsLength', () => {
@@ -631,7 +631,7 @@ expect(screen.queryByText(/searchResult/)).not.toBeInTheDocument()
 
         // Assert - Should NOT collapse because 3 <= 3
         // Assert - Should NOT collapse because 3 <= 3
-expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
         expect(screen.getByText('folder2'))!.toBeInTheDocument()
         expect(screen.getByText('folder3'))!.toBeInTheDocument()
       })
@@ -670,8 +670,8 @@ expect(screen.getByText('folder1'))!.toBeInTheDocument()
         // Assert - displayBreadcrumbNum = 3, so 4 breadcrumbs should collapse
         // First 2 visible, dropdown, last 1 visible
         // Assert - displayBreadcrumbNum = 3, so 4 breadcrumbs should collapse
-// First 2 visible, dropdown, last 1 visible
-expect(screen.getByText('a'))!.toBeInTheDocument()
+        // First 2 visible, dropdown, last 1 visible
+        expect(screen.getByText('a'))!.toBeInTheDocument()
         expect(screen.getByText('b'))!.toBeInTheDocument()
         expect(screen.getByText('d'))!.toBeInTheDocument()
         expect(screen.queryByText('c')).not.toBeInTheDocument()
@@ -689,7 +689,7 @@ expect(screen.getByText('a'))!.toBeInTheDocument()
 
         // Assert - displayBreadcrumbNum = 2, so 3 breadcrumbs should collapse
         // Assert - displayBreadcrumbNum = 2, so 3 breadcrumbs should collapse
-expect(screen.getByText('a'))!.toBeInTheDocument()
+        expect(screen.getByText('a'))!.toBeInTheDocument()
         expect(screen.getByText('c'))!.toBeInTheDocument()
         expect(screen.queryByText('b')).not.toBeInTheDocument()
       })
@@ -706,7 +706,7 @@ expect(screen.getByText('a'))!.toBeInTheDocument()
 
         // Assert - displayBreadcrumbNum = 3 - 1 = 2, so 3 breadcrumbs should collapse
         // Assert - displayBreadcrumbNum = 3 - 1 = 2, so 3 breadcrumbs should collapse
-expect(screen.getByText('a'))!.toBeInTheDocument()
+        expect(screen.getByText('a'))!.toBeInTheDocument()
         expect(screen.getByText('c'))!.toBeInTheDocument()
         expect(screen.queryByText('b')).not.toBeInTheDocument()
       })
@@ -730,9 +730,9 @@ expect(screen.getByText('a'))!.toBeInTheDocument()
         // collapsedBreadcrumbs = ['f3', 'f4']
         // lastBreadcrumb = 'f5'
         // prefixBreadcrumbs = ['f1', 'f2']
-// collapsedBreadcrumbs = ['f3', 'f4']
-// lastBreadcrumb = 'f5'
-expect(screen.getByText('f1'))!.toBeInTheDocument()
+        // collapsedBreadcrumbs = ['f3', 'f4']
+        // lastBreadcrumb = 'f5'
+        expect(screen.getByText('f1'))!.toBeInTheDocument()
         expect(screen.getByText('f2'))!.toBeInTheDocument()
         expect(screen.getByText('f5'))!.toBeInTheDocument()
         await waitFor(() => {
@@ -752,7 +752,7 @@ expect(screen.getByText('f1'))!.toBeInTheDocument()
 
         // Assert - All breadcrumbs should be visible
         // Assert - All breadcrumbs should be visible
-expect(screen.getByText('f1'))!.toBeInTheDocument()
+        expect(screen.getByText('f1'))!.toBeInTheDocument()
         expect(screen.getByText('f2'))!.toBeInTheDocument()
       })
     })
@@ -960,7 +960,7 @@ expect(screen.getByText('f1'))!.toBeInTheDocument()
 
       // Assert - First, last, and collapsed should be accessible
       // Assert - First, last, and collapsed should be accessible
-expect(screen.getByText('folder-0'))!.toBeInTheDocument()
+      expect(screen.getByText('folder-0'))!.toBeInTheDocument()
       expect(screen.getByText('folder-1'))!.toBeInTheDocument()
       expect(screen.getByText('folder-19'))!.toBeInTheDocument()
       await waitFor(() => {
@@ -979,7 +979,7 @@ expect(screen.getByText('folder-0'))!.toBeInTheDocument()
 
       // Assert - Should show all buckets title
       // Assert - Should show all buckets title
-expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
     })
 
     it('should handle breadcrumb with only whitespace', () => {
@@ -992,7 +992,7 @@ expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.
 
       // Assert - Both should be rendered
       // Assert - Both should be rendered
-expect(screen.getByText('normal-folder'))!.toBeInTheDocument()
+      expect(screen.getByText('normal-folder'))!.toBeInTheDocument()
     })
   })
 
@@ -1064,7 +1064,7 @@ expect(screen.getByText('normal-folder'))!.toBeInTheDocument()
 
       // Assert - Search result should be shown, navigation elements should be hidden
       // Assert - Search result should be shown, navigation elements should be hidden
-expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
+      expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
       expect(screen.queryByText('my-bucket')).not.toBeInTheDocument()
     })
   })

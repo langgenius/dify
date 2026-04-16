@@ -191,7 +191,7 @@ describe('PageSelector', () => {
 
     // Both children should be visible
     // Both children should be visible
-expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+    expect(screen.getByText('Child 1'))!.toBeInTheDocument()
     expect(screen.getByText('Child 2'))!.toBeInTheDocument()
   })
 
@@ -298,42 +298,42 @@ expect(screen.getByText('Child 1'))!.toBeInTheDocument()
 
     // Should show Root 1, Child 1, and Grandchild 1
     // Should show Root 1, Child 1, and Grandchild 1
-expect(screen.getByTestId('notion-page-name-root-1'))!.toBeInTheDocument()
+    expect(screen.getByTestId('notion-page-name-root-1'))!.toBeInTheDocument()
     expect(screen.getByTestId('notion-page-name-child-1'))!.toBeInTheDocument()
     expect(screen.getByTestId('notion-page-name-grandchild-1'))!.toBeInTheDocument()
     // Should not show Root 2, Child 2
     // Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-// Should not show Root 2, Child 2
-expect(screen.queryByTestId('notion-page-name-root-2')).not.toBeInTheDocument()
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    // Should not show Root 2, Child 2
+    expect(screen.queryByTestId('notion-page-name-root-2')).not.toBeInTheDocument()
     expect(screen.queryByTestId('notion-page-name-child-2')).not.toBeInTheDocument()
   })
 
@@ -347,6 +347,6 @@ expect(screen.queryByTestId('notion-page-name-root-2')).not.toBeInTheDocument()
 
     // Should expand even though parent is disabled
     // Should expand even though parent is disabled
-expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+    expect(screen.getByText('Child 1'))!.toBeInTheDocument()
   })
 })

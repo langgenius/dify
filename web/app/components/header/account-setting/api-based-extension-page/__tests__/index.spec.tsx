@@ -39,7 +39,7 @@ describe('ApiBasedExtensionPage', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('common.apiBasedExtension.title'))!.toBeInTheDocument()
+      expect(screen.getByText('common.apiBasedExtension.title'))!.toBeInTheDocument()
     })
 
     it('should render list of extensions when data exists', () => {
@@ -60,7 +60,7 @@ expect(screen.getByText('common.apiBasedExtension.title'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
       expect(screen.getByText('url1'))!.toBeInTheDocument()
       expect(screen.getByText('Extension 2'))!.toBeInTheDocument()
       expect(screen.getByText('url2'))!.toBeInTheDocument()
@@ -79,37 +79,37 @@ expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.add'))!.toBeInTheDocument()
     })
   })

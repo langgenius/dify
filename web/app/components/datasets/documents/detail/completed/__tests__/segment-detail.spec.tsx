@@ -547,7 +547,7 @@ describe('SegmentDetail', () => {
 
       // Assert - should show combined length of question and answer
       // Assert - should show combined length of question and answer
-expect(screen.getByText(/segment\.characters/i))!.toBeInTheDocument()
+      expect(screen.getByText(/segment\.characters/i))!.toBeInTheDocument()
     })
   })
 

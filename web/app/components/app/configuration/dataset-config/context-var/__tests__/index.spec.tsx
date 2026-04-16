@@ -88,7 +88,7 @@ describe('ContextVar', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
     })
 
     it('should show selected variable with proper formatting when value is provided', () => {
@@ -100,7 +100,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeIn
 
       // Assert
       // Assert
-expect(screen.getByText('var1'))!.toBeInTheDocument()
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
       expect(screen.getByText('{{'))!.toBeInTheDocument()
       expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
@@ -117,7 +117,7 @@ expect(screen.getByText('var1'))!.toBeInTheDocument()
 
       // Assert - Should display the selected value
       // Assert - Should display the selected value
-expect(screen.getByText('var2'))!.toBeInTheDocument()
+      expect(screen.getByText('var2'))!.toBeInTheDocument()
     })
 
     it('should show placeholder text when no value is selected', () => {
@@ -132,37 +132,37 @@ expect(screen.getByText('var2'))!.toBeInTheDocument()
 
       // Assert - Should show placeholder instead of variable
       // Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-// Assert - Should show placeholder instead of variable
-expect(screen.queryByText('var1')).not.toBeInTheDocument()
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      expect(screen.queryByText('var1')).not.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -179,7 +179,7 @@ expect(screen.queryByText('var1')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
+      expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
     })
 
     it('should apply custom className to VarPicker when provided', () => {
@@ -194,7 +194,7 @@ expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
+      expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
     })
   })
 
@@ -260,7 +260,7 @@ expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
     })
@@ -278,7 +278,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeIn
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -294,7 +294,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeIn
 
       // Assert
       // Assert
-expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
@@ -315,7 +315,7 @@ expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeIn
 
       // Assert
       // Assert
-expect(screen.getByText('strVar'))!.toBeInTheDocument()
+      expect(screen.getByText('strVar'))!.toBeInTheDocument()
       expect(screen.getByText('{{'))!.toBeInTheDocument()
       expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
@@ -335,7 +335,7 @@ expect(screen.getByText('strVar'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('specialVar'))!.toBeInTheDocument()
+      expect(screen.getByText('specialVar'))!.toBeInTheDocument()
     })
   })
 })

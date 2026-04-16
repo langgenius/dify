@@ -339,7 +339,7 @@ describe('SearchBox Component', () => {
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
     it('should render with provided searchQuery value', () => {
@@ -348,7 +348,7 @@ expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByDisplayValue('test query'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('test query'))!.toBeInTheDocument()
     })
 
     it('should render search icon', () => {
@@ -467,7 +467,7 @@ describe('CategoriesFilter Component', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
     })
 
     it('should render dropdown arrow when no selection', () => {
@@ -485,7 +485,7 @@ expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Models'))!.toBeInTheDocument()
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
 
     it('should show clear button when categories are selected', () => {
@@ -503,7 +503,7 @@ expect(screen.getByText('Models'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('+1'))!.toBeInTheDocument()
+      expect(screen.getByText('+1'))!.toBeInTheDocument()
     })
   })
 
@@ -636,7 +636,7 @@ expect(screen.getByText('+1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Models'))!.toBeInTheDocument()
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
       expect(screen.queryByText('Extensions')).not.toBeInTheDocument()
     })
 
@@ -655,7 +655,7 @@ expect(screen.getByText('Models'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Models'))!.toBeInTheDocument()
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
   })
 
@@ -704,7 +704,7 @@ describe('TagFilter Component', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
     })
 
     it('should render selected tag labels', () => {
@@ -713,7 +713,7 @@ expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Agent'))!.toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show count badge for more than 2 selections', () => {
@@ -722,7 +722,7 @@ expect(screen.getByText('Agent'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('+1'))!.toBeInTheDocument()
+      expect(screen.getByText('+1'))!.toBeInTheDocument()
     })
 
     it('should show clear button when tags are selected', () => {
@@ -846,7 +846,7 @@ expect(screen.getByText('+1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('RAG'))!.toBeInTheDocument()
+      expect(screen.getByText('RAG'))!.toBeInTheDocument()
       expect(screen.queryByText('Image')).not.toBeInTheDocument()
     })
   })
@@ -867,7 +867,7 @@ describe('FilterManagement Component', () => {
 
       // Assert - All three filters should be present
       // Assert - All three filters should be present
-expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
       expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
@@ -892,7 +892,7 @@ expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
       expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toHaveValue('')
     })
@@ -906,7 +906,7 @@ expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Models'))!.toBeInTheDocument()
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
 
     it('should initialize with pre-selected tags', () => {
@@ -918,7 +918,7 @@ expect(screen.getByText('Models'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Agent'))!.toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should initialize with search query', () => {
@@ -930,7 +930,7 @@ expect(screen.getByText('Agent'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByDisplayValue('initial search'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('initial search'))!.toBeInTheDocument()
     })
   })
 
@@ -1141,7 +1141,7 @@ expect(screen.getByDisplayValue('initial search'))!.toBeInTheDocument()
 
       // Assert - Should render without errors
       // Assert - Should render without errors
-expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
     })
 
     it('should handle multiple rapid filter changes', () => {

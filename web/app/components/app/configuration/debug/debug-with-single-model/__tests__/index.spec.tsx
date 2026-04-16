@@ -592,7 +592,7 @@ describe('DebugWithSingleModel', () => {
 
       // Verify Chat component is rendered
       // Verify Chat component is rendered
-expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
       expect(screen.getByTestId('chat-input'))!.toBeInTheDocument()
       expect(screen.getByTestId('send-button'))!.toBeInTheDocument()
     })
@@ -761,7 +761,7 @@ expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
 
       // Component should render successfully with filtered variables
       // Component should render successfully with filtered variables
-expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle empty prompt variables', () => {

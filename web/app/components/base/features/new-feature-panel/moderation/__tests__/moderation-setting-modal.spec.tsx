@@ -328,37 +328,37 @@ describe('ModerationSettingModal', () => {
 
     // The keywords textarea should no longer be visible since type changed
     // The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-// The keywords textarea should no longer be visible since type changed
-expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
   it('should update keywords on textarea change', async () => {
@@ -626,7 +626,7 @@ expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.plac
 
     // API selector should now be visible, keywords textarea should be hidden
     // API selector should now be visible, keywords textarea should be hidden
-expect(screen.getByTestId('api-selector'))!.toBeInTheDocument()
+    expect(screen.getByTestId('api-selector'))!.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
@@ -812,7 +812,7 @@ expect(screen.getByTestId('api-selector'))!.toBeInTheDocument()
 
     // The form input should use the default value from form schema
     // The form input should use the default value from form schema
-expect(screen.getByDisplayValue('https://default.com'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('https://default.com'))!.toBeInTheDocument()
   })
 
   it('should show error when required form schema field is empty on save', async () => {

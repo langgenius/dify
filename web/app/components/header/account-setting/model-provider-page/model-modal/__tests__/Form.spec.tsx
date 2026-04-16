@@ -498,7 +498,7 @@ describe('Form', () => {
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('API Key'))!.toBeDisabled()
+      expect(screen.getByPlaceholderText('API Key'))!.toBeDisabled()
     })
 
     // Override returns null: falls through to default renderer
@@ -530,7 +530,7 @@ expect(screen.getByPlaceholderText('API Key'))!.toBeDisabled()
 
       // Assert - should fall through to default textInput renderer
       // Assert - should fall through to default textInput renderer
-expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
     })
 
     // isShowDefaultValue=true, value is null → default shown
@@ -562,7 +562,7 @@ expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('Nullable'))!.toHaveValue('default-val')
+      expect(screen.getByPlaceholderText('Nullable'))!.toHaveValue('default-val')
     })
 
     // isShowDefaultValue=true, value is undefined → default shown
@@ -594,7 +594,7 @@ expect(screen.getByPlaceholderText('Nullable'))!.toHaveValue('default-val')
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('Undef'))!.toHaveValue('default-undef')
+      expect(screen.getByPlaceholderText('Undef'))!.toHaveValue('default-undef')
     })
 
     // isEditMode=true, variable=__model_type → textInput disabled
@@ -624,7 +624,7 @@ expect(screen.getByPlaceholderText('Undef'))!.toHaveValue('default-undef')
 
       // Assert
       // Assert
-expect(screen.getByPlaceholderText('Model Type'))!.toBeDisabled()
+      expect(screen.getByPlaceholderText('Model Type'))!.toBeDisabled()
     })
 
     // Label with missing language key → en_US fallback used
@@ -655,7 +655,7 @@ expect(screen.getByPlaceholderText('Model Type'))!.toBeDisabled()
 
       // Assert
       // Assert
-expect(screen.getByText('English Label'))!.toBeInTheDocument()
+      expect(screen.getByText('English Label'))!.toBeInTheDocument()
     })
 
     // Select field with isShowDefaultValue=true
@@ -687,7 +687,7 @@ expect(screen.getByText('English Label'))!.toBeInTheDocument()
 
       // Assert - Select B should be the rendered default
       // Assert - Select B should be the rendered default
-expect(screen.getByText('Select B'))!.toBeInTheDocument()
+      expect(screen.getByText('Select B'))!.toBeInTheDocument()
     })
 
     // Radio option with show_on condition not met → option filtered out
@@ -720,7 +720,7 @@ expect(screen.getByText('Select B'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Always Visible'))!.toBeInTheDocument()
+      expect(screen.getByText('Always Visible'))!.toBeInTheDocument()
       expect(screen.queryByText('Conditional')).not.toBeInTheDocument()
     })
 
@@ -813,7 +813,7 @@ expect(screen.getByText('Always Visible'))!.toBeInTheDocument()
 
       // Both rendered successfully
       // Both rendered successfully
-expect(screen.getByPlaceholderText('Secret'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Secret'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('Number'))!.toBeInTheDocument()
     })
 
@@ -876,7 +876,7 @@ expect(screen.getByPlaceholderText('Secret'))!.toBeInTheDocument()
 
       // ValidatingTip should appear for api_key
       // ValidatingTip should appear for api_key
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     // Select with show_on not met: hidden
@@ -1436,37 +1436,37 @@ expect(screen.getByText('Validating...'))!.toBeInTheDocument()
 
       // Should not crash - the field simply doesn't render
       // Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-// Should not crash - the field simply doesn't render
-expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
     it('should render fieldMoreInfo for checkbox field', () => {
@@ -1737,7 +1737,7 @@ expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
 
       // Assert - should render without crash (value[variable] || [] path taken)
       // Assert - should render without crash (value[variable] || [] path taken)
-expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
+      expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for multiToolSelector field being validated', () => {
@@ -1769,7 +1769,7 @@ expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for appSelector field being validated', () => {
@@ -1801,7 +1801,7 @@ expect(screen.getByText('Validating...'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for any-type field being validated', () => {
@@ -1834,7 +1834,7 @@ expect(screen.getByText('Validating...'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should use empty string fallback for nodeId in any-type when nodeId is not provided', () => {
@@ -1864,7 +1864,7 @@ expect(screen.getByText('Validating...'))!.toBeInTheDocument()
 
       // Assert - should render without crash
       // Assert - should render without crash
-expect(screen.getByText('Any Field'))!.toBeInTheDocument()
+      expect(screen.getByText('Any Field'))!.toBeInTheDocument()
     })
 
     it('should use en_US label fallback for multiToolSelector when language key is missing', () => {
@@ -1896,7 +1896,7 @@ expect(screen.getByText('Any Field'))!.toBeInTheDocument()
 
       // Assert - MultipleToolSelector mock renders with the label prop
       // Assert - MultipleToolSelector mock renders with the label prop
-expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
+      expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for select field being validated', () => {
@@ -1930,7 +1930,7 @@ expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
 
       // Assert: ValidatingTip shows for the select field
       // Assert: ValidatingTip shows for the select field
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for toolSelector field being validated', () => {
@@ -1963,7 +1963,7 @@ expect(screen.getByText('Validating...'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should not render customRenderField for a FormTypeEnum value that is unhandled by Form', () => {

@@ -484,44 +484,44 @@ describe('WorkflowAppLogList', () => {
 
       // Before click - no highlight
       // Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-// Before click - no highlight
-expect(dataRow).not.toHaveClass('bg-background-default-hover')
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      expect(dataRow).not.toHaveClass('bg-background-default-hover')
 
       // After click - has highlight (via currentLog state)
       await user.click(dataRow!)
 
       // The row should have the selected class
       // The row should have the selected class
-expect(dataRow)!.toHaveClass('bg-background-default-hover')
+      expect(dataRow)!.toHaveClass('bg-background-default-hover')
     })
   })
 
@@ -606,37 +606,37 @@ expect(dataRow)!.toHaveClass('bg-background-default-hover')
 
       // Replay button should not be present for webhook triggers
       // Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-// Replay button should not be present for webhook triggers
-expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
     })
   })
 
@@ -804,37 +804,37 @@ expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })
 
       // Should render without trigger column
       // Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-// Should render without trigger column
-expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
   })
 })

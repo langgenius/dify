@@ -32,7 +32,7 @@ describe('DelimiterInput', () => {
     render(<DelimiterInput />)
     // Tooltip triggers render; component mounts without error
     // Tooltip triggers render; component mounts without error
-expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
+    expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
   })
 
   it('should suppress onChange during IME composition', () => {

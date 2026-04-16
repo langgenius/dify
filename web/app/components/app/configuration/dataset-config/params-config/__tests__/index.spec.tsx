@@ -165,7 +165,7 @@ describe('dataset-config/params-config', () => {
 
       // Assert
       // Assert
-expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeDisabled()
+      expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeDisabled()
     })
   })
 
@@ -202,7 +202,7 @@ expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeD
 
       // Assert
       // Assert
-expect(reopenedTopKInput)!.toHaveValue('5')
+      expect(reopenedTopKInput)!.toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -237,7 +237,7 @@ expect(reopenedTopKInput)!.toHaveValue('5')
 
       // Assert
       // Assert
-expect(reopenedTopKInput)!.toHaveValue('4')
+      expect(reopenedTopKInput)!.toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {

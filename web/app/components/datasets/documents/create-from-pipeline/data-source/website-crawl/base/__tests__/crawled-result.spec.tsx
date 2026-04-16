@@ -73,7 +73,7 @@ describe('CrawledResult', () => {
       expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
       // The global i18n mock serialises params, so verify total and time appear
       // The global i18n mock serialises params, so verify total and time appear
-expect(screen.getByText(/"total":3/))!.toBeInTheDocument()
+      expect(screen.getByText(/"total":3/))!.toBeInTheDocument()
       expect(screen.getByText(/"time":"12.3"/))!.toBeInTheDocument()
     })
 

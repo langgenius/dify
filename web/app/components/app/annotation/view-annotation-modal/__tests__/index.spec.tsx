@@ -127,7 +127,7 @@ describe('ViewAnnotationModal', () => {
 
     // Assert
     // Assert
-expect(await screen.findByText('appAnnotation.viewModal.noHitHistory'))!.toBeInTheDocument()
+    expect(await screen.findByText('appAnnotation.viewModal.noHitHistory'))!.toBeInTheDocument()
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
 

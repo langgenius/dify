@@ -258,7 +258,7 @@ describe('DebugWithMultipleModel', () => {
 
       // Should still render but handle gracefully
       // Should still render but handle gracefully
-expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
       expect(capturedChatInputProps?.inputsForm).toHaveLength(3)
     })
   })
@@ -424,7 +424,7 @@ expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
       expect(capturedChatInputProps?.inputs).toEqual({ audience: 'engineers' })
       expect(capturedChatInputProps?.inputsForm).toEqual([
         expect.objectContaining({ label: 'City', variable: 'city', hide: false, required: true }),
@@ -449,7 +449,7 @@ expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
     })
 
     it('should hide chat input when not in chat mode', () => {
@@ -464,37 +464,37 @@ expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
       expect(screen.getAllByTestId('debug-item')).toHaveLength(1)
     })
   })
@@ -573,7 +573,7 @@ expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
 
       // Check that the element still renders the same content
       // Check that the element still renders the same content
-expect(firstItems[0])!.toHaveTextContent(secondItems[0]!.textContent || '')
+      expect(firstItems[0])!.toHaveTextContent(secondItems[0]!.textContent || '')
     })
 
     it('should recalculate size and position when number of models changes', () => {

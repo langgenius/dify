@@ -365,7 +365,7 @@ describe('Header Component', () => {
       })
       // The separator is just a div with text content '/'
       // The separator is just a div with text content '/'
-expect(screen.getByText('/'))!.toBeInTheDocument()
+      expect(screen.getByText('/'))!.toBeInTheDocument()
     })
 
     it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {

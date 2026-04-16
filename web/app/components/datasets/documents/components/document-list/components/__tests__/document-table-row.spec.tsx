@@ -249,7 +249,7 @@ describe('DocumentTableRow', () => {
       render(<DocumentTableRow {...defaultProps} isGeneralMode isQAMode={false} />, { wrapper: createWrapper() })
       // ChunkingModeLabel should be rendered
       // ChunkingModeLabel should be rendered
-expect(screen.getByRole('row'))!.toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should render ChunkingModeLabel with QA mode', () => {

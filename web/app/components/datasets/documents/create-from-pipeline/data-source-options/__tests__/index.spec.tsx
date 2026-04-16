@@ -146,7 +146,7 @@ describe('DatasourceIcon', () => {
 
       // Assert - Default size is 'sm' which maps to 'w-5 h-5'
       // Assert - Default size is 'sm' which maps to 'w-5 h-5'
-expect(container.firstChild)!.toHaveClass('w-5')
+      expect(container.firstChild)!.toHaveClass('w-5')
       expect(container.firstChild)!.toHaveClass('h-5')
     })
   })
@@ -246,7 +246,7 @@ expect(container.firstChild)!.toHaveClass('w-5')
 
       // Assert - Default size 'sm' has shadow-xs
       // Assert - Default size 'sm' has shadow-xs
-expect(container.firstChild)!.toHaveClass('shadow-xs')
+      expect(container.firstChild)!.toHaveClass('shadow-xs')
     })
 
     it('should have inner div with bg-cover class', () => {
@@ -614,7 +614,7 @@ describe('OptionCard', () => {
 
         // Assert - Component should still be rendered
         // Assert - Component should still be rendered
-expect(screen.getByText('Test Option'))!.toBeInTheDocument()
+        expect(screen.getByText('Test Option'))!.toBeInTheDocument()
       })
     })
 
@@ -732,7 +732,7 @@ describe('DataSourceOptions', () => {
       expect(screen.queryByText('Data Source')).not.toBeInTheDocument()
       // Grid container should still exist
       // Grid container should still exist
-expect(container.firstChild)!.toHaveClass('grid')
+      expect(container.firstChild)!.toHaveClass('grid')
     })
 
     it('should render single option card when only one option exists', () => {
@@ -852,7 +852,7 @@ expect(container.firstChild)!.toHaveClass('grid')
 
         // Assert - Component renders without error
         // Assert - Component renders without error
-expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
       })
     })
   })
@@ -954,7 +954,7 @@ expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
 
       // Get initial click handlers
       // Get initial click handlers
-expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
 
       // Trigger clicks to test handlers work
       fireEvent.click(screen.getByText('Data Source 1'))
@@ -1250,7 +1250,7 @@ expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
 
         // Assert - Special characters should be escaped/rendered safely
         // Assert - Special characters should be escaped/rendered safely
-expect(screen.getByText('Data Source <script>alert("xss")</script>'))!.toBeInTheDocument()
+        expect(screen.getByText('Data Source <script>alert("xss")</script>'))!.toBeInTheDocument()
       })
 
       it('should handle unicode characters in option labels', () => {
@@ -1356,37 +1356,37 @@ expect(screen.getByText('Data Source <script>alert("xss")</script>'))!.toBeInThe
 
         // Assert - No errors thrown, component cleanly unmounted
         // Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-// Assert - No errors thrown, component cleanly unmounted
-expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
       })
 
       it('should handle unmounting during rapid interactions', async () => {
@@ -1407,37 +1407,37 @@ expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
 
         // Assert - Should not throw
         // Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-// Assert - Should not throw
-expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
       })
     })
   })

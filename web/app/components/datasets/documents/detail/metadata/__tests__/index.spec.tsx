@@ -201,37 +201,37 @@ describe('Metadata', () => {
 
       // Assert - Loading component should be rendered, title should not
       // Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-// Assert - Loading component should be rendered, title should not
-expect(screen.queryByText(/metadata\.title/i)).not.toBeInTheDocument()
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      expect(screen.queryByText(/metadata\.title/i)).not.toBeInTheDocument()
     })
 
     it('should display document type icon and text', () => {
@@ -270,7 +270,7 @@ expect(screen.queryByText(/metadata\.title/i)).not.toBeInTheDocument()
 
       // Assert - should be back to view mode
       // Assert - should be back to view mode
-expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
     })
 
     it('should save metadata when save button is clicked', async () => {
@@ -370,7 +370,7 @@ expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Data Source Type'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source Type'))!.toBeInTheDocument()
     })
 
     it('should render technical parameters fields', () => {
@@ -389,7 +389,7 @@ expect(screen.getByText('Data Source Type'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle undefined docDetail gracefully', () => {
@@ -397,7 +397,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should update document type display when docDetail changes', () => {
@@ -405,7 +405,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // Act - verify initial state shows Book
       // Act - verify initial state shows Book
-expect(screen.getByText('Book'))!.toBeInTheDocument()
+      expect(screen.getByText('Book'))!.toBeInTheDocument()
 
       // Update with new doc type
       const updatedDocDetail = createMockDocDetail({ doc_type: 'paper' })
@@ -480,7 +480,7 @@ describe('FieldInfo', () => {
 
       // Assert - SimpleSelect should be rendered
       // Assert - SimpleSelect should be rendered
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render textarea when showEdit is true and inputType is textarea', () => {
@@ -548,14 +548,14 @@ describe('useMetadataState coverage', () => {
 
       // Now in doc type selector mode — should show cancel button
       // Now in doc type selector mode — should show cancel button
-expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
 
       // Act — cancel the doc type change
       fireEvent.click(screen.getByText(/operation\.cancel/i))
 
       // Assert — should be back to edit mode (cancel + save buttons visible)
       // Assert — should be back to edit mode (cancel + save buttons visible)
-expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
 
@@ -570,14 +570,14 @@ expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
 
       // DocTypeSelector shows save/cancel buttons
       // DocTypeSelector shows save/cancel buttons
-expect(screen.getByText(/metadata\.docTypeChangeTitle/i))!.toBeInTheDocument()
+      expect(screen.getByText(/metadata\.docTypeChangeTitle/i))!.toBeInTheDocument()
 
       // Act — click save to confirm same doc type (tempDocType='book')
       fireEvent.click(screen.getByText(/operation\.save/i))
 
       // Assert — should return to edit mode with metadata fields visible
       // Assert — should return to edit mode with metadata fields visible
-expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
       expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
@@ -593,8 +593,8 @@ expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
       // 'others' is normalized to '' → useEffect fires (doc_type truthy) → view mode
       // The rendered type uses default 'book' fallback for display
       // 'others' is normalized to '' → useEffect fires (doc_type truthy) → view mode
-// The rendered type uses default 'book' fallback for display
-expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
+      // The rendered type uses default 'book' fallback for display
+      expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
 
       // Enter edit mode
       fireEvent.click(screen.getByText(/operation\.edit/i))
@@ -605,7 +605,7 @@ expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
 
       // Assert — should show doc type selection since normalized docType was ''
       // Assert — should show doc type selection since normalized docType was ''
-expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
+      expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
     })
   })
 
@@ -624,7 +624,7 @@ expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
 
       // Assert — the input should have the new value
       // Assert — the input should have the new value
-expect(inputs[0])!.toHaveValue('Updated Title')
+      expect(inputs[0])!.toHaveValue('Updated Title')
     })
   })
 
@@ -675,7 +675,7 @@ expect(inputs[0])!.toHaveValue('Updated Title')
 
       // Assert — should render without crashing, showing Paper type
       // Assert — should render without crashing, showing Paper type
-expect(screen.getByText('Paper'))!.toBeInTheDocument()
+      expect(screen.getByText('Paper'))!.toBeInTheDocument()
     })
   })
 })

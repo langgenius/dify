@@ -510,7 +510,7 @@ describe('InstallMulti Component', () => {
 
       // Package plugins are initialized immediately
       // Package plugins are initialized immediately
-expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
     })
 
     it('should update plugins when GitHub plugin is fetched', async () => {
@@ -619,7 +619,7 @@ expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
 
       // Version should be displayed
       // Version should be displayed
-expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
     })
   })
 
@@ -709,7 +709,7 @@ expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
       await waitFor(() => {
         // Component should render
         // Component should render
-expect(document.body)!.toBeInTheDocument()
+        expect(document.body)!.toBeInTheDocument()
       })
     })
   })
@@ -850,7 +850,7 @@ expect(document.body)!.toBeInTheDocument()
 
       // The version should be displayed (from dependency or plugin)
       // The version should be displayed (from dependency or plugin)
-expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
     })
   })
 

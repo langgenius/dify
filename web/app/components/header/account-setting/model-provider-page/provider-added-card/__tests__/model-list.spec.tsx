@@ -127,37 +127,37 @@ describe('ModelList', () => {
 
     // Assert
     // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
@@ -203,37 +203,37 @@ expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
 
     // Assert
     // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
@@ -258,7 +258,7 @@ expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
 
     // Assert: custom model actions are shown (isConfigurable=true && isCurrentWorkspaceManager=true)
     // Assert: custom model actions are shown (isConfigurable=true && isCurrentWorkspaceManager=true)
-expect(screen.getByTestId('manage-credentials'))!.toBeInTheDocument()
+    expect(screen.getByTestId('manage-credentials'))!.toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model'))!.toBeInTheDocument()
   })
 
@@ -283,37 +283,37 @@ expect(screen.getByTestId('manage-credentials'))!.toBeInTheDocument()
 
     // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
     // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-// Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 })

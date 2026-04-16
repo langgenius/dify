@@ -143,37 +143,37 @@ describe('QueryInput', () => {
 
       // Submit should be enabled since we have text + uploaded image
       // Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-// Submit should be enabled since we have text + uploaded image
-expect(screen.getByRole('button', { name: /input\.testing/ })).not.toBeDisabled()
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      // Submit should be enabled since we have text + uploaded image
+      expect(screen.getByRole('button', { name: /input\.testing/ })).not.toBeDisabled()
     })
   })
 

@@ -40,37 +40,37 @@ describe('Select', () => {
 
       // No item title should appear for a non-matching default
       // No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-// No item title should appear for a non-matching default
-expect(screen.queryByTitle('Apple')).not.toBeInTheDocument()
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      // No item title should appear for a non-matching default
+      expect(screen.queryByTitle('Apple')).not.toBeInTheDocument()
       expect(screen.queryByTitle('Banana')).not.toBeInTheDocument()
     })
 
@@ -168,37 +168,37 @@ expect(screen.queryByTitle('Apple')).not.toBeInTheDocument()
 
       // Citrus should be filtered away
       // Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-// Citrus should be filtered away
-expect(screen.queryByText('Citrus')).not.toBeInTheDocument()
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      // Citrus should be filtered away
+      expect(screen.queryByText('Citrus')).not.toBeInTheDocument()
     })
 
     it('should not filter or update query when disabled and allowSearch=true', async () => {
@@ -220,68 +220,68 @@ expect(screen.queryByText('Citrus')).not.toBeInTheDocument()
       // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
       // Since it's disabled, no search dropdown should appear.
       // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-// We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
-// Since it's disabled, no search dropdown should appear.
-expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      // We just want to ensure it doesn't throw and covers the !disabled branch in onChange.
+      // Since it's disabled, no search dropdown should appear.
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     })
 
     it('should not call onSelect when a disabled Combobox value changes externally', () => {
@@ -332,37 +332,37 @@ expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
 
       // Dropdown options should not appear because the internal `if (!disabled)` guards it
       // Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-// Dropdown options should not appear because the internal `if (!disabled)` guards it
-expect(screen.queryByText('Banana')).not.toBeInTheDocument()
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      // Dropdown options should not appear because the internal `if (!disabled)` guards it
+      expect(screen.queryByText('Banana')).not.toBeInTheDocument()
     })
 
     it('should handle missing item nicely in renderTrigger', () => {
@@ -424,7 +424,7 @@ expect(screen.queryByText('Banana')).not.toBeInTheDocument()
       await user.click(screen.getByTitle('Apple'))
       // Dropdown is now open
       // Dropdown is now open
-expect(screen.getByText('Banana'))!.toBeInTheDocument()
+      expect(screen.getByText('Banana'))!.toBeInTheDocument()
     })
   })
 })
@@ -487,7 +487,7 @@ describe('SimpleSelect', () => {
 
       // Loader icon should be rendered (RiLoader4Line has aria hidden)
       // Loader icon should be rendered (RiLoader4Line has aria hidden)
-expect(screen.getByText('Apple'))!.toBeInTheDocument()
+      expect(screen.getByText('Apple'))!.toBeInTheDocument()
     })
 
     it('should render group items as non-selectable headers', async () => {
@@ -540,37 +540,37 @@ expect(screen.getByText('Apple'))!.toBeInTheDocument()
 
       // Banana should not be visible as it won't open
       // Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-// Banana should not be visible as it won't open
-expect(screen.queryByText('Banana')).not.toBeInTheDocument()
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      // Banana should not be visible as it won't open
+      expect(screen.queryByText('Banana')).not.toBeInTheDocument()
     })
 
     it('should not trigger onSelect via onChange when Listbox is disabled', () => {
@@ -711,7 +711,7 @@ expect(screen.queryByText('Banana')).not.toBeInTheDocument()
       expect(screen.getByTestId('simple-opt-banana'))!.toBeInTheDocument()
       // Verify the custom render shows selected state
       // Verify the custom render shows selected state
-expect(screen.getByTestId('simple-opt-apple'))!.toHaveTextContent('Apple (selected)')
+      expect(screen.getByTestId('simple-opt-apple'))!.toHaveTextContent('Apple (selected)')
     })
 
     it('should call onOpenChange when the button is clicked', async () => {
@@ -751,7 +751,7 @@ expect(screen.getByTestId('simple-opt-apple'))!.toHaveTextContent('Apple (select
       await user.click(screen.getByRole('button'))
       // Banana should be rendered but not selectable
       // Banana should be rendered but not selectable
-expect(screen.getByText('Banana'))!.toBeInTheDocument()
+      expect(screen.getByText('Banana'))!.toBeInTheDocument()
     })
   })
 })
@@ -932,7 +932,7 @@ describe('PortalSelect', () => {
       await user.click(screen.getByTitle('Banana'))
       // The installed badge should appear in the dropdown
       // The installed badge should appear in the dropdown
-expect(screen.getByText('INSTALLED'))!.toBeInTheDocument()
+      expect(screen.getByText('INSTALLED'))!.toBeInTheDocument()
     })
 
     it('should render item.extra content in dropdown', async () => {

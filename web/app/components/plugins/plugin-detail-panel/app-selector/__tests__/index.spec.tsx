@@ -394,7 +394,7 @@ describe('AppTrigger', () => {
       render(<AppTrigger open={false} />)
       // i18n mock returns key with namespace in dot format
       // i18n mock returns key with namespace in dot format
-expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render app details when app is selected', () => {
@@ -643,7 +643,7 @@ describe('AppPicker', () => {
 
       // The component should render without errors
       // The component should render without errors
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle isShow toggle correctly', () => {
@@ -657,7 +657,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Should not crash
       // Should not crash
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should setup intersection observer when isShow is true', () => {
@@ -678,7 +678,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Component should render without errors
       // Component should render without errors
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should cleanup observer on component unmount', () => {
@@ -696,7 +696,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Component should still work correctly
       // Component should still work correctly
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should not setup IntersectionObserver when observerTarget is null', () => {
@@ -705,7 +705,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // The guard at line 84 should prevent setup
       // The guard at line 84 should prevent setup
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should debounce onLoadMore calls using loadingRef', () => {
@@ -866,7 +866,7 @@ describe('AppInputsForm', () => {
       render(<AppInputsForm {...defaultProps} inputsForms={forms} inputs={{ singleFile: existingFile }} />)
       // The file uploader should receive the existing file as an array
       // The file uploader should receive the existing file as an array
-expect(screen.getByTestId('file-value'))!.toHaveTextContent(JSON.stringify([existingFile]))
+      expect(screen.getByTestId('file-value'))!.toHaveTextContent(JSON.stringify([existingFile]))
     })
 
     it('should render file uploader for multi files', () => {
@@ -1113,37 +1113,37 @@ describe('AppInputsPanel', () => {
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
       // Loading component should be rendered
       // Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-// Loading component should be rendered
-expect(screen.queryByText('app.appSelector.params')).not.toBeInTheDocument()
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      expect(screen.queryByText('app.appSelector.params')).not.toBeInTheDocument()
     })
 
     it('should show loading state when workflow is loading', () => {
@@ -1532,7 +1532,7 @@ describe('AppSelector', () => {
       )
       // Should show the app trigger with app info
       // Should show the app trigger with app info
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -1553,7 +1553,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
       fireEvent.click(trigger)
       // Portal should remain closed when disabled
       // Portal should remain closed when disabled
-expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
     })
 
     it('should handle scope prop', () => {
@@ -1591,7 +1591,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open'
 
       // The portal state should update synchronously - get the first one (outer portal)
       // The portal state should update synchronously - get the first one (outer portal)
-expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should not toggle isShow when disabled', () => {
@@ -1611,7 +1611,7 @@ expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data
 
       // Portal content should be visible after click
       // Portal content should be visible after click
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should render correctly during load more setup', () => {
@@ -1622,7 +1622,7 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Trigger should be rendered
       // Trigger should be rendered
-expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1650,7 +1650,7 @@ expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
 
       // The component should maintain the correct value structure
       // The component should maintain the correct value structure
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should clear inputs when selecting different app', () => {
@@ -1665,7 +1665,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Component renders with existing value
       // Component renders with existing value
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should preserve inputs when selecting same app', () => {
@@ -1784,7 +1784,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Should render without errors
       // Should render without errors
-expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should handle fetchNextPage rejection gracefully in handleLoadMore', async () => {
@@ -1795,7 +1795,7 @@ expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Should not crash even if fetchNextPage rejects
       // Should not crash even if fetchNextPage rejects
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should call fetchNextPage when intersection observer triggers handleLoadMore', async () => {
@@ -2057,7 +2057,7 @@ expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
 
       // Should not crash
       // Should not crash
-expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 })
@@ -2095,7 +2095,7 @@ describe('AppSelector Integration', () => {
 
       // Get the first portal element (outer portal)
       // Get the first portal element (outer portal)
-expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should handle app change with input preservation logic', () => {
@@ -2117,7 +2117,7 @@ expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data
 
       // AppTrigger should show placeholder when no app selected
       // AppTrigger should show placeholder when no app selected
-expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should pass correct props to AppPicker', () => {

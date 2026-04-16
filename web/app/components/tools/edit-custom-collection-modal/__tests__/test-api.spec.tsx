@@ -205,7 +205,7 @@ describe('TestApi', () => {
 
       // Check that the auth method is displayed
       // Check that the auth method is displayed
-expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
     })
 
     it('should display current auth type in the button', async () => {
@@ -225,7 +225,7 @@ expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDoc
 
       // Check that the auth method display shows the correct type
       // Check that the auth method display shows the correct type
-expect(screen.getByText('tools.createTool.authMethod.types.api_key_header'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.api_key_header'))!.toBeInTheDocument()
     })
   })
 

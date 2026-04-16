@@ -701,7 +701,7 @@ describe('MarkdownForm', () => {
 
       // Select renders with empty items list
       // Select renders with empty items list
-expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
+      expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

@@ -363,7 +363,7 @@ describe('MetadataDocument', () => {
 
       // Should show save/cancel buttons
       // Should show save/cancel buttons
-expect(screen.getByText(/save/i))!.toBeInTheDocument()
+      expect(screen.getByText(/save/i))!.toBeInTheDocument()
       expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
     })
   })
@@ -551,7 +551,7 @@ expect(screen.getByText(/save/i))!.toBeInTheDocument()
       )
       // Component should render without errors
       // Component should render without errors
-expect(screen.getByText('field_one'))!.toBeInTheDocument()
+      expect(screen.getByText('field_one'))!.toBeInTheDocument()
     })
   })
 
@@ -592,37 +592,37 @@ expect(screen.getByText('field_one'))!.toBeInTheDocument()
 
       // NoData component should not be rendered
       // NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-// NoData component should not be rendered
-expect(screen.queryByText(/start/i)).not.toBeInTheDocument()
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      // NoData component should not be rendered
+      expect(screen.queryByText(/start/i)).not.toBeInTheDocument()
     })
 
     it('should not show edit buttons in edit mode when embedding not available', () => {
@@ -642,37 +642,37 @@ expect(screen.queryByText(/start/i)).not.toBeInTheDocument()
 
       // headerRight should be null/undefined
       // headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-// headerRight should be null/undefined
-expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      // headerRight should be null/undefined
+      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
     })
   })
 

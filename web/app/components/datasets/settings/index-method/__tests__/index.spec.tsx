@@ -189,7 +189,7 @@ describe('IndexMethod', () => {
       render(<IndexMethod {...defaultProps} currentValue={undefined} />)
       // Should render without error
       // Should render without error
-expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should handle minimum keywordNumber', () => {

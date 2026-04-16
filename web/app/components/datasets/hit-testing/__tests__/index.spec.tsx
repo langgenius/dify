@@ -323,7 +323,7 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // The records section should be present
       // The records section should be present
-expect(container.querySelector('.flex-col'))!.toBeInTheDocument()
+      expect(container.querySelector('.flex-col'))!.toBeInTheDocument()
     })
 
     it('should render query input', () => {
@@ -425,7 +425,7 @@ expect(container.querySelector('.flex-col'))!.toBeInTheDocument()
 
       // The component should still be functional after the click
       // The component should still be functional after the click
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -448,7 +448,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // The right panel should show empty state initially
       // The right panel should show empty state initially
-expect(container.querySelector('.rounded-tl-2xl'))!.toBeInTheDocument()
+      expect(container.querySelector('.rounded-tl-2xl'))!.toBeInTheDocument()
     })
 
     it('should render loading skeleton when retrieval is in progress', async () => {
@@ -462,7 +462,7 @@ expect(container.querySelector('.rounded-tl-2xl'))!.toBeInTheDocument()
 
       // Component should render without crashing
       // Component should render without crashing
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render results when hit testing returns data', async () => {
@@ -484,7 +484,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // The component should render the result display area
       // The component should render the result display area
-expect(container.querySelector('.bg-background-body'))!.toBeInTheDocument()
+      expect(container.querySelector('.bg-background-body'))!.toBeInTheDocument()
     })
   })
 
@@ -519,7 +519,7 @@ expect(container.querySelector('.bg-background-body'))!.toBeInTheDocument()
 
       // The query input should be updated - this causes re-render with new key
       // The query input should be updated - this causes re-render with new key
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -543,7 +543,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Component should render
       // Component should render
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -557,7 +557,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
       // Component should still render
       // Component should still render
-expect(container.firstChild)!.toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -647,7 +647,7 @@ describe('Integration: Hit Testing Flow', () => {
 
     // Component should still be functional - check for the main container
     // Component should still be functional - check for the main container
-expect(container.firstChild)!.toBeInTheDocument()
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 
   it('should render hit results after successful submission', async () => {
@@ -772,7 +772,7 @@ expect(container.firstChild)!.toBeInTheDocument()
 
     // Component should render
     // Component should render
-expect(container.firstChild)!.toBeInTheDocument()
+    expect(container.firstChild)!.toBeInTheDocument()
 
     // Wait for textbox with timeout for CI
     const textarea = await waitFor(
@@ -830,13 +830,13 @@ describe('Drawer and Modal Interactions', () => {
       await waitFor(() => {
         // The drawer should open - verify container is still there
         // The drawer should open - verify container is still there
-expect(container.firstChild)!.toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     }
 
     // Component should still be functional - verify main container
     // Component should still be functional - verify main container
-expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
+    expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
   })
 
   it('should close retrieval modal when onHide is called', async () => {
@@ -854,7 +854,7 @@ expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
 
     // Component should still be functional
     // Component should still be functional
-expect(container.firstChild)!.toBeInTheDocument()
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 })
 
@@ -973,7 +973,7 @@ describe('ModifyRetrievalModal onSave Coverage', () => {
 
     // Verify component renders correctly
     // Verify component renders correctly
-expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
+    expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
   })
 
   it('should close modal after saving', async () => {
@@ -990,7 +990,7 @@ expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
 
     // Component should still be rendered
     // Component should still be rendered
-expect(container.firstChild)!.toBeInTheDocument()
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 })
 
@@ -1086,7 +1086,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
     // Component should still work
     // Component should still work
-expect(container.firstChild)!.toBeInTheDocument()
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 
   it('should show hit count in results panel after successful query', async () => {

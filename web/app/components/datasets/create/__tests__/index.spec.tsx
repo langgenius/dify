@@ -327,37 +327,37 @@ describe('DatasetUpdateForm', () => {
 
       // Assert - Loading component should be rendered (not the steps)
       // Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-// Assert - Loading component should be rendered (not the steps)
-expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      // Assert - Loading component should be rendered (not the steps)
+      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
     })
 
     it('should show error state when fetching fails', () => {
@@ -705,37 +705,37 @@ expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
 
       // Assert - StepTwo should not render due to condition
       // Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-// Assert - StepTwo should not render due to condition
-expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      // Assert - StepTwo should not render due to condition
+      expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
     })
 
     it('should render StepTwo when datasetId exists and datasetDetail is defined', () => {
@@ -807,7 +807,7 @@ expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
 
       // Assert - Should use datasetDetail value, not cache
       // Assert - Should use datasetDetail value, not cache
-expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('economy')
+      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('economy')
     })
 
     it('should use retrieval method from datasetDetail when available', () => {
@@ -897,7 +897,7 @@ expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('econo
 
       // Assert - Should use cached value
       // Assert - Should use cached value
-expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
+      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
     })
 
     it('should handle step state correctly after multiple navigations', () => {
@@ -952,7 +952,7 @@ expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('se
 
       // Assert - All state should be preserved
       // Assert - All state should be preserved
-expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataSourceType.NOTION)
+      expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataSourceType.NOTION)
       expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('1')
       expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('1')
     })
@@ -975,7 +975,7 @@ expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataS
 
       // Assert - All data flows through to Step 3
       // Assert - All data flows through to Step 3
-expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
+      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
       expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
       expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
     })
@@ -1037,7 +1037,7 @@ expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_
 
       // Assert - Step 3 should show dataset details
       // Assert - Step 3 should show dataset details
-expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existing Dataset')
+      expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existing Dataset')
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
     })
   })
@@ -1101,7 +1101,7 @@ expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existi
 
       // Assert - Error state renders AppUnavailable, not the normal layout
       // Assert - Error state renders AppUnavailable, not the normal layout
-expect(screen.getByText('500'))!.toBeInTheDocument()
+      expect(screen.getByText('500'))!.toBeInTheDocument()
       expect(screen.queryByTestId('top-bar')).not.toBeInTheDocument()
     })
   })
@@ -1130,37 +1130,37 @@ expect(screen.getByText('500'))!.toBeInTheDocument()
 
       // Assert - Initially not rendered
       // Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-// Assert - Initially not rendered
-expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      // Assert - Initially not rendered
+      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
 
       // Act - Loading completes
       mockIsLoadingDataSourceList = false

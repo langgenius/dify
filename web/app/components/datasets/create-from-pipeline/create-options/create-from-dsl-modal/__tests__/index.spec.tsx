@@ -196,7 +196,7 @@ describe('CreateFromDSLModal', () => {
 
       // File tab content should be visible
       // File tab content should be visible
-expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
     })
 
     it('should use provided activeTab prop', () => {
@@ -254,13 +254,13 @@ expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
 
       // Initially file tab is active
       // Initially file tab is active
-expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByText('app.importFromDSLUrl'))
 
       // URL input should be visible
       // URL input should be visible
-expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
+      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
     })
 
     it('should update URL value when typing', () => {
@@ -1488,7 +1488,7 @@ describe('Uploader', () => {
 
       // Event should be handled without errors
       // Event should be handled without errors
-expect(dropArea)!.toBeInTheDocument()
+      expect(dropArea)!.toBeInTheDocument()
     })
 
     it('should handle dragLeave event and reset dragging state when target is dragRef', async () => {
@@ -1790,7 +1790,7 @@ describe('DSLConfirmModal', () => {
 
       // Should not crash with default empty strings
       // Should not crash with default empty strings
-expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     it('should disable confirm button when confirmDisabled is true', () => {
@@ -1885,7 +1885,7 @@ expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument
 
       // Component should render without crashing
       // Component should render without crashing
-expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     it('should use default confirmDisabled when not provided', () => {

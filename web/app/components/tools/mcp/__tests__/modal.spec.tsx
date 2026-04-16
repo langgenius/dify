@@ -403,7 +403,7 @@ describe('MCPModal', () => {
 
       // Should show edit mode data
       // Should show edit mode data
-expect(screen.getByDisplayValue('Edit Server'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Edit Server'))!.toBeInTheDocument()
     })
   })
 
@@ -417,7 +417,7 @@ expect(screen.getByDisplayValue('Edit Server'))!.toBeInTheDocument()
 
       // The blur handler trims the value
       // The blur handler trims the value
-expect(urlInput)!.toHaveValue('  https://test.com/mcp  ')
+      expect(urlInput)!.toHaveValue('  https://test.com/mcp  ')
     })
 
     it('should handle URL blur-sm with empty value', () => {
@@ -689,7 +689,7 @@ expect(urlInput)!.toHaveValue('  https://test.com/mcp  ')
 
       // The switch should toggle
       // The switch should toggle
-expect(switchElements[0])!.toBeInTheDocument()
+      expect(switchElements[0])!.toBeInTheDocument()
     })
   })
 

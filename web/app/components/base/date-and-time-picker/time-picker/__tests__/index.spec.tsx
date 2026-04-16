@@ -234,7 +234,7 @@ describe('TimePicker', () => {
 
       // Verify the component renders successfully with triggerFullWidth
       // Verify the component renders successfully with triggerFullWidth
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should use renderTrigger when provided', () => {
@@ -267,7 +267,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // In test env the icon stays in DOM, but must remain hidden when notClearable is set
       // In test env the icon stays in DOM, but must remain hidden when notClearable is set
-expect(screen.getByRole('button', { name: /clear/i }))!.toHaveClass('hidden')
+      expect(screen.getByRole('button', { name: /clear/i }))!.toHaveClass('hidden')
     })
   })
 
@@ -610,7 +610,7 @@ expect(screen.getByRole('button', { name: /clear/i }))!.toHaveClass('hidden')
 
       // But the display should update
       // But the display should update
-expect(screen.getByDisplayValue('02:00 PM'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('02:00 PM'))!.toBeInTheDocument()
     })
 
     it('should handle timezone change when value is undefined', () => {
@@ -657,7 +657,7 @@ expect(screen.getByDisplayValue('02:00 PM'))!.toBeInTheDocument()
       )
       // Input should be empty now
       // Input should be empty now
-expect(screen.getByRole('textbox'))!.toHaveValue('')
+      expect(screen.getByRole('textbox'))!.toHaveValue('')
       // onChange should not fire when value is undefined, even if selectedTime was set
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -743,7 +743,7 @@ expect(screen.getByRole('textbox'))!.toHaveValue('')
 
       // 15:00 UTC in America/New_York (UTC-5) = 10:00 AM
       // 15:00 UTC in America/New_York (UTC-5) = 10:00 AM
-expect(screen.getByDisplayValue('10:00 AM'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('10:00 AM'))!.toBeInTheDocument()
     })
   })
 

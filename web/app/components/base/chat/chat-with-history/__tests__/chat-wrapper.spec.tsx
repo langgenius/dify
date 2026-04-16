@@ -1224,7 +1224,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     // This tests line 91 - using currentConversationItem.introduction
     // This tests line 91 - using currentConversationItem.introduction
-expect(screen.getByText('Custom introduction from conversation item'))!.toBeInTheDocument()
+    expect(screen.getByText('Custom introduction from conversation item'))!.toBeInTheDocument()
   })
 
   it('should handle early return when hasEmptyInput is already set', () => {
@@ -1611,8 +1611,8 @@ expect(screen.getByText('Custom introduction from conversation item'))!.toBeInTh
     // Just verify the component renders - the actual editedQuestion flow
     // is tested through the doRegenerate callback that's passed to Chat
     // Just verify the component renders - the actual editedQuestion flow
-// is tested through the doRegenerate callback that's passed to Chat
-expect(screen.getByText('Answer'))!.toBeInTheDocument()
+    // is tested through the doRegenerate callback that's passed to Chat
+    expect(screen.getByText('Answer'))!.toBeInTheDocument()
     expect(handleSend).toBeDefined()
   })
 
@@ -1633,8 +1633,8 @@ expect(screen.getByText('Answer'))!.toBeInTheDocument()
     // The doRegenerate is passed to Chat component and would be called
     // This ensures lines 198-200 are covered
     // The doRegenerate is passed to Chat component and would be called
-// This ensures lines 198-200 are covered
-expect(screen.getByText('A1'))!.toBeInTheDocument()
+    // This ensures lines 198-200 are covered
+    expect(screen.getByText('A1'))!.toBeInTheDocument()
   })
 
   it('should handle doRegenerate when question has message_files', async () => {
@@ -1817,37 +1817,37 @@ expect(screen.getByText('A1'))!.toBeInTheDocument()
     const container = chatInput!.closest('.pointer-events-none')
     // Should not be disabled because it's not required
     // Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-// Should not be disabled because it's not required
-expect(container).not.toBeInTheDocument()
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    // Should not be disabled because it's not required
+    expect(container).not.toBeInTheDocument()
   })
 
   it('should handle fallback branches for appParams, appId and empty chat instance ref', async () => {

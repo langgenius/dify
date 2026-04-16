@@ -166,7 +166,7 @@ describe('HeaderInMobile', () => {
 
     // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
     // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
-expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
+    expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
     expect(screen.getByTestId('sidebar-content'))!.toBeInTheDocument()
 
     // Close sidebar via overlay click
@@ -190,7 +190,7 @@ expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
 
     // Sidebar should still be visible
     // Sidebar should still be visible
-expect(screen.getByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
   })
 
   it('should open and close chat settings', async () => {
@@ -212,7 +212,7 @@ expect(screen.getByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
 
     // Check if chat settings overlay is open
     // Check if chat settings overlay is open
-expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
 
     // Close chat settings via overlay click
     fireEvent.click(screen.getByTestId('mobile-chat-settings-overlay'))
@@ -244,7 +244,7 @@ expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
 
     // Settings should still be visible
     // Settings should still be visible
-expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
   })
 
   it('should hide chat settings option when no input forms', async () => {
@@ -349,7 +349,7 @@ expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
 
     // RenameModal should be visible
     // RenameModal should be visible
-expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     const input = screen.getByDisplayValue('Conv 1')
     fireEvent.change(input, { target: { value: 'New Name' } })
 
@@ -378,7 +378,7 @@ expect(screen.getByRole('dialog'))!.toBeInTheDocument()
 
     // RenameModal should be visible
     // RenameModal should be visible
-expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog'))!.toBeInTheDocument()
 
     // Click cancel button
     const cancelButton = screen.getByRole('button', { name: /common\.operation\.cancel/i })
@@ -411,7 +411,7 @@ expect(screen.getByRole('dialog'))!.toBeInTheDocument()
 
     // RenameModal should be visible with loading state
     // RenameModal should be visible with loading state
-expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog'))!.toBeInTheDocument()
   })
 
   it('should handle delete conversation', async () => {
@@ -546,37 +546,37 @@ expect(screen.getByRole('dialog'))!.toBeInTheDocument()
 
     // Initially no modals
     // Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-// Initially no modals
-expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
   })
 

@@ -60,7 +60,7 @@ describe('PermissionSelector', () => {
       )
       // Should show member names
       // Should show member names
-expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
   })
 
@@ -158,7 +158,7 @@ expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
       await waitFor(() => {
         // Should show member list
         // Should show member list
-expect(screen.getByText('John Doe'))!.toBeInTheDocument()
+        expect(screen.getByText('John Doe'))!.toBeInTheDocument()
         expect(screen.getByText('Jane Smith'))!.toBeInTheDocument()
       })
     })
@@ -368,8 +368,8 @@ expect(screen.getByText('John Doe'))!.toBeInTheDocument()
       // Current user (showMe) should remain visible based on name match
       // The component uses useMemo to check if userProfile.name.includes(searchKeywords)
       // Current user (showMe) should remain visible based on name match
-// The component uses useMemo to check if userProfile.name.includes(searchKeywords)
-expect(searchInput)!.toHaveValue('Current')
+      // The component uses useMemo to check if userProfile.name.includes(searchKeywords)
+      expect(searchInput)!.toHaveValue('Current')
       // Current User label appears multiple times (trigger + member list)
       expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
     })
@@ -393,7 +393,7 @@ expect(searchInput)!.toHaveValue('Current')
 
       // The component checks userProfile.email.includes(searchKeywords)
       // The component checks userProfile.email.includes(searchKeywords)
-expect(searchInput)!.toHaveValue('current@')
+      expect(searchInput)!.toHaveValue('current@')
       // Current User should remain visible based on email match
       expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
     })
@@ -420,7 +420,7 @@ expect(searchInput)!.toHaveValue('current@')
 
       // Should display single avatar
       // Should display single avatar
-expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
 
     it('should display two avatars when two or more members selected', () => {
@@ -434,7 +434,7 @@ expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
 
       // Should display member names
       // Should display member names
-expect(screen.getByTitle(/Current User, John Doe/))!.toBeInTheDocument()
+      expect(screen.getByTitle(/Current User, John Doe/))!.toBeInTheDocument()
     })
   })
 
@@ -480,7 +480,7 @@ expect(screen.getByTitle(/Current User, John Doe/))!.toBeInTheDocument()
 
       // The component renders - the filtering logic is internal
       // The component renders - the filtering logic is internal
-expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
   })
 

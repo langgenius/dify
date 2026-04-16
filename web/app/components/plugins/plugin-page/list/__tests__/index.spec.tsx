@@ -114,7 +114,7 @@ describe('PluginList', () => {
 
       // Assert
       // Assert
-expect(container)!.toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render container with correct structure', () => {
@@ -187,7 +187,7 @@ expect(container)!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Plugin A'))!.toBeInTheDocument()
+      expect(screen.getByText('Plugin A'))!.toBeInTheDocument()
       expect(screen.getByText('Plugin B'))!.toBeInTheDocument()
     })
   })
@@ -254,37 +254,37 @@ expect(screen.getByText('Plugin A'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
     })
 
     it('should handle large number of plugins', () => {
@@ -337,7 +337,7 @@ expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should handle plugin with minimal data', () => {
@@ -352,7 +352,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should handle plugins with undefined optional fields', () => {
@@ -369,7 +369,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
   })
 
@@ -442,37 +442,37 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
     })
 
     it('should handle pluginList update from empty to non-empty', () => {
@@ -503,7 +503,7 @@ expect(screen.queryByTestId('plugin-item')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Updated Name'))!.toBeInTheDocument()
+      expect(screen.getByText('Updated Name'))!.toBeInTheDocument()
       expect(screen.queryByText('Original Name')).not.toBeInTheDocument()
     })
   })
@@ -545,7 +545,7 @@ expect(screen.getByText('Updated Name'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render deleted/deprecated plugins', () => {
@@ -562,7 +562,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render mixed status plugins', () => {
@@ -600,7 +600,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
 
     it('should render plugins with outdated version', () => {
@@ -617,7 +617,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
     })
   })
 
@@ -680,7 +680,7 @@ expect(screen.getByTestId('plugin-item'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Marketplace Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('Marketplace Plugin'))!.toBeInTheDocument()
       expect(screen.getByText('GitHub Plugin'))!.toBeInTheDocument()
       expect(screen.getByText('Local Plugin'))!.toBeInTheDocument()
     })
@@ -710,7 +710,7 @@ expect(screen.getByText('Marketplace Plugin'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Tool Plugin'))!.toBeInTheDocument()
+      expect(screen.getByText('Tool Plugin'))!.toBeInTheDocument()
       expect(screen.getByText('Model Plugin'))!.toBeInTheDocument()
       expect(screen.getByText('Agent Plugin'))!.toBeInTheDocument()
     })

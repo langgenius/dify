@@ -89,7 +89,7 @@ describe('PromptLogModal', () => {
 
       // Call the last registered handler (simulating click away)
       // Call the last registered handler (simulating click away)
-clickAwayHandlers[clickAwayHandlers.length - 1]!()
+      clickAwayHandlers[clickAwayHandlers.length - 1]!()
       expect(onCancel).toHaveBeenCalled()
     })
 
@@ -100,7 +100,7 @@ clickAwayHandlers[clickAwayHandlers.length - 1]!()
       expect(clickAwayHandlers.length).toBeGreaterThan(0)
       // The first handler in the array is captured during the initial render before useEffect runs
       // The first handler in the array is captured during the initial render before useEffect runs
-clickAwayHandlers[0]!()
+      clickAwayHandlers[0]!()
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

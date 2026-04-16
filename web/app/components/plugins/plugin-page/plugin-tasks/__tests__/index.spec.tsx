@@ -310,7 +310,7 @@ describe('TaskStatusIndicator Component', () => {
       render(<TaskStatusIndicator {...defaultProps} isInstalling />)
       // DownloadingIcon is rendered when isInstalling is true
       // DownloadingIcon is rendered when isInstalling is true
-expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
     })
 
     it('should show downloading icon when installing with error', () => {
@@ -441,7 +441,7 @@ describe('PluginTaskList Component', () => {
       expect(screen.getAllByText(/task\.installing/i).length).toBeGreaterThan(0)
       // Verify section container is rendered
       // Verify section container is rendered
-expect(document.querySelector('.max-h-\\[300px\\]'))!.toBeInTheDocument()
+      expect(document.querySelector('.max-h-\\[300px\\]'))!.toBeInTheDocument()
     })
 
     it('should render success plugins section when plugins exist', () => {
@@ -607,7 +607,7 @@ describe('PluginTasks Component', () => {
 
       // The component renders with a tooltip, we verify it exists
       // The component renders with a tooltip, we verify it exists
-expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
     })
 
     it('should show success tip when all succeeded', () => {
@@ -641,7 +641,7 @@ expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
 
       // The popover content should be visible (PluginTaskList)
       // The popover content should be visible (PluginTaskList)
-expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
+      expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
     })
 
     it('should not toggle when status does not allow', () => {
@@ -652,7 +652,7 @@ expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
 
       // Component should still render
       // Component should still render
-expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
     })
   })
 

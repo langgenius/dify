@@ -24,8 +24,8 @@ describe('CustomizedPagination', () => {
       // current + 1 = 1, totalPages = 10
       // The page info display shows "1 / 10" and page buttons also show numbers
       // current + 1 = 1, totalPages = 10
-// The page info display shows "1 / 10" and page buttons also show numbers
-expect(screen.getByText('/'))!.toBeInTheDocument()
+      // The page info display shows "1 / 10" and page buttons also show numbers
+      expect(screen.getByText('/'))!.toBeInTheDocument()
       expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(1)
     })
 
@@ -39,7 +39,7 @@ expect(screen.getByText('/'))!.toBeInTheDocument()
       render(<CustomizedPagination {...defaultProps} total={50} limit={10} />)
       // 5 pages total, should see page numbers
       // 5 pages total, should see page numbers
-expect(screen.getByText('2'))!.toBeInTheDocument()
+      expect(screen.getByText('2'))!.toBeInTheDocument()
       expect(screen.getByText('3'))!.toBeInTheDocument()
     })
 
@@ -73,7 +73,7 @@ expect(screen.getByText('2'))!.toBeInTheDocument()
       const buttons = screen.getAllByRole('button')
       // First button is prev
       // First button is prev
-expect(buttons[0])!.toBeDisabled()
+      expect(buttons[0])!.toBeDisabled()
     })
 
     it('should disable next button on last page', () => {
@@ -81,7 +81,7 @@ expect(buttons[0])!.toBeDisabled()
       const buttons = screen.getAllByRole('button')
       // Last button is next
       // Last button is next
-expect(buttons[buttons.length - 1])!.toBeDisabled()
+      expect(buttons[buttons.length - 1])!.toBeDisabled()
     })
 
     it('should not render limit selector when onLimitChange is not provided', () => {
@@ -94,7 +94,7 @@ expect(buttons[buttons.length - 1])!.toBeDisabled()
       render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
       // Should show limit options 10, 25, 50
       // Should show limit options 10, 25, 50
-expect(screen.getByText('25'))!.toBeInTheDocument()
+      expect(screen.getByText('25'))!.toBeInTheDocument()
       expect(screen.getByText('50'))!.toBeInTheDocument()
     })
   })
@@ -123,7 +123,7 @@ expect(screen.getByText('25'))!.toBeInTheDocument()
       fireEvent.click(screen.getByText('/'))
       // Input should appear
       // Input should appear
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should navigate to entered page on Enter key', () => {
@@ -147,37 +147,37 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       fireEvent.keyDown(input, { key: 'Escape' })
       // Input should be hidden and page display should return
       // Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-// Input should be hidden and page display should return
-expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       expect(screen.getByText('/'))!.toBeInTheDocument()
     })
 
@@ -244,7 +244,7 @@ expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       fireEvent.mouseEnter(container)
       // I18n mock returns ns.key
       // I18n mock returns ns.key
-expect(screen.getByText('common.pagination.perPage'))!.toBeInTheDocument()
+      expect(screen.getByText('common.pagination.perPage'))!.toBeInTheDocument()
 
       fireEvent.mouseLeave(container)
       expect(screen.queryByText('common.pagination.perPage')).not.toBeInTheDocument()
@@ -344,37 +344,37 @@ expect(screen.getByText('common.pagination.perPage'))!.toBeInTheDocument()
 
       // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
       // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-// Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
-expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
     it('should explicitly trigger Escape key logic in handleInputKeyDown', async () => {
@@ -408,37 +408,37 @@ expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       fireEvent.blur(input)
       // Should close input without calling onChange, restoring to current + 1
       // Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-// Should close input without calling onChange, restoring to current + 1
-expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
 })

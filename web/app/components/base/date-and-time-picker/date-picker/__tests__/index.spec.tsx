@@ -105,7 +105,7 @@ describe('DatePicker', () => {
 
       // Calendar should be showing June 2024
       // Calendar should be showing June 2024
-expect(screen.getByText(/2024/))!.toBeInTheDocument()
+      expect(screen.getByText(/2024/))!.toBeInTheDocument()
     })
 
     it('should close when clicking outside the container', () => {
@@ -121,7 +121,7 @@ expect(screen.getByText(/2024/))!.toBeInTheDocument()
 
       // The picker should now be closed - input shows its value
       // The picker should now be closed - input shows its value
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -156,7 +156,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // In time view, the "pickDate" text should appear instead of the time
       // In time view, the "pickDate" text should appear instead of the time
-expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
     })
 
     it('should switch back to date view when pickDate is clicked in time view', () => {
@@ -185,7 +185,7 @@ expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
 
       // Should show AM/PM options (TimePickerOptions renders these)
       // Should show AM/PM options (TimePickerOptions renders these)
-expect(screen.getByText('AM'))!.toBeInTheDocument()
+      expect(screen.getByText('AM'))!.toBeInTheDocument()
       expect(screen.getByText('PM'))!.toBeInTheDocument()
     })
 
@@ -205,7 +205,7 @@ expect(screen.getByText('AM'))!.toBeInTheDocument()
 
       // The picker should still be in time view
       // The picker should still be in time view
-expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
     })
 
     it('should update selected time when minute is selected in time view', () => {
@@ -320,7 +320,7 @@ expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
 
       // The date should now appear in the header/display
       // The date should now appear in the header/display
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should immediately confirm when noConfirm is true and a date is clicked', () => {
@@ -457,7 +457,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Cancel button visible in year/month picker footer
       // Cancel button visible in year/month picker footer
-expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
     })
 
     it('should close year/month picker when cancel is clicked', () => {
@@ -678,7 +678,7 @@ expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
 
       // The footer should show the time from selectedDate (02:30 PM)
       // The footer should show the time from selectedDate (02:30 PM)
-expect(screen.getByText(/\d{2}:\d{2}\s(AM|PM)/))!.toBeInTheDocument()
+      expect(screen.getByText(/\d{2}:\d{2}\s(AM|PM)/))!.toBeInTheDocument()
     })
   })
 })

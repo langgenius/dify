@@ -592,7 +592,7 @@ describe('useLocalFileUpload', () => {
 
       // dragover should not throw
       // dragover should not throw
-expect(dropzone)!.toBeInTheDocument()
+      expect(dropzone)!.toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {

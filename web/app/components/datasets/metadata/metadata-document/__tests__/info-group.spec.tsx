@@ -240,7 +240,7 @@ describe('InfoGroup', () => {
 
       // The onManage callback triggers the navigation
       // The onManage callback triggers the navigation
-expect(screen.getByTestId('manage-action'))!.toBeInTheDocument()
+      expect(screen.getByTestId('manage-action'))!.toBeInTheDocument()
     })
   })
 
@@ -307,7 +307,7 @@ expect(screen.getByTestId('manage-action'))!.toBeInTheDocument()
       )
       // The mock formatTime returns formatted date
       // The mock formatTime returns formatted date
-expect(screen.getByTestId('field-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('field-content'))!.toBeInTheDocument()
     })
   })
 

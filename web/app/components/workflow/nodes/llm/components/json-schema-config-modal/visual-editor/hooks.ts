@@ -343,7 +343,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
 
         // other options change
         // other options change
-schema!.description = fields.description
+        schema!.description = fields.description
         schema!.enum = fields.enum
       }
 
@@ -430,7 +430,7 @@ schema!.description = fields.description
 
         // other options change
         // other options change
-schema!.description = fields.description
+        schema!.description = fields.description
         schema!.enum = fields.enum
       }
     })

@@ -88,7 +88,7 @@ describe('ImageList', () => {
       render(<ImageList images={images} size="md" limit={9} />)
       // More button should be visible
       // More button should be visible
-expect(screen.getByText(/\+6/))!.toBeInTheDocument()
+      expect(screen.getByText(/\+6/))!.toBeInTheDocument()
     })
   })
 
@@ -106,7 +106,7 @@ expect(screen.getByText(/\+6/))!.toBeInTheDocument()
       render(<ImageList images={images} size="md" />)
       // Should show "+3" for remaining images
       // Should show "+3" for remaining images
-expect(screen.getByText(/\+3/))!.toBeInTheDocument()
+      expect(screen.getByText(/\+3/))!.toBeInTheDocument()
     })
 
     it('should respect custom limit', () => {
@@ -114,7 +114,7 @@ expect(screen.getByText(/\+3/))!.toBeInTheDocument()
       render(<ImageList images={images} size="md" limit={5} />)
       // Should show "+5" for remaining images
       // Should show "+5" for remaining images
-expect(screen.getByText(/\+5/))!.toBeInTheDocument()
+      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
     })
 
     it('should handle size prop sm', () => {
@@ -140,37 +140,37 @@ expect(screen.getByText(/\+5/))!.toBeInTheDocument()
 
       // More button should disappear
       // More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-// More button should disappear
-expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
     })
 
     it('should open preview when image is clicked', () => {
@@ -183,7 +183,7 @@ expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
         fireEvent.click(thumbnails[0]!)
         // Preview should open
         // Preview should open
-expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
+        expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
       }
     })
 
@@ -202,37 +202,37 @@ expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
 
         // Preview should be closed
         // Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-// Preview should be closed
-expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
       }
     })
   })
@@ -252,7 +252,7 @@ expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
 
       // Preview should open for valid image
       // Preview should open for valid image
-expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
+      expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
 
       // Close preview
       fireEvent.click(screen.getByTestId('close-preview'))
@@ -285,37 +285,37 @@ expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
 
       // Preview should NOT open because the file was not found in limitedImages
       // Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-// Preview should NOT open because the file was not found in limitedImages
-expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
     })
 
     it('should handle single image', () => {
@@ -335,7 +335,7 @@ expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
       render(<ImageList images={images} size="md" limit={0} />)
       // Should show "+5" for all images
       // Should show "+5" for all images
-expect(screen.getByText(/\+5/))!.toBeInTheDocument()
+      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
     })
 
     it('should handle limit larger than images count', () => {
@@ -343,37 +343,37 @@ expect(screen.getByText(/\+5/))!.toBeInTheDocument()
       render(<ImageList images={images} size="md" limit={100} />)
       // Should not show More button
       // Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-// Should not show More button
-expect(screen.queryByText(/\+/)).not.toBeInTheDocument()
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      expect(screen.queryByText(/\+/)).not.toBeInTheDocument()
     })
   })
 })

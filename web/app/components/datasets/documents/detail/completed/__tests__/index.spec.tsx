@@ -480,7 +480,7 @@ describe('Completed Component', () => {
 
       // Limit change is handled internally
       // Limit change is handled internally
-expect(changeLimitButton)!.toBeInTheDocument()
+      expect(changeLimitButton)!.toBeInTheDocument()
     })
   })
 
@@ -519,7 +519,7 @@ expect(changeLimitButton)!.toBeInTheDocument()
 
       // Context is provided, components should render without errors
       // Context is provided, components should render without errors
-expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
   })
 })
@@ -620,7 +620,7 @@ describe('Integration Tests', () => {
 
     // All components should render without errors
     // All components should render without errors
-expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
+    expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
     expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
@@ -701,37 +701,37 @@ describe('Batch Action Callbacks', () => {
 
     // Initially no segments are selected, so batch action should not be visible
     // Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-// Initially no segments are selected, so batch action should not be visible
-expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
   it('should render batch actions after selecting all segments', async () => {
@@ -922,14 +922,14 @@ describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
       true: (() => {
-    mockInvalidAll();
-    mockInvalidDisabled();
-})!,
+        mockInvalidAll()
+        mockInvalidDisabled()
+      })!,
     }
 
     // Execute the 'true' branch
     // Execute the 'true' branch
-refreshMap.true!()
+    refreshMap.true!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidDisabled).toHaveBeenCalled()
@@ -943,14 +943,14 @@ refreshMap.true!()
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
       false: (() => {
-    mockInvalidAll();
-    mockInvalidEnabled();
-})!,
+        mockInvalidAll()
+        mockInvalidEnabled()
+      })!,
     }
 
     // Execute the 'false' branch
     // Execute the 'false' branch
-refreshMap.false!()
+    refreshMap.false!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidEnabled).toHaveBeenCalled()

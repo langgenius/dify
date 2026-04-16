@@ -201,7 +201,7 @@ describe('Filter', () => {
 
       // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
       // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
-expect(screen.getByText('filter.period.today'))!.toBeInTheDocument()
+      expect(screen.getByText('filter.period.today'))!.toBeInTheDocument()
     })
 
     it('should display "last7days" when period is set to 2', () => {
@@ -220,7 +220,7 @@ expect(screen.getByText('filter.period.today'))!.toBeInTheDocument()
 
       // Default period is '9' which maps to 'allTime'
       // Default period is '9' which maps to 'allTime'
-expect(screen.getByText('filter.period.allTime'))!.toBeInTheDocument()
+      expect(screen.getByText('filter.period.allTime'))!.toBeInTheDocument()
     })
 
     it('should display annotated status with count when annotation_status is annotated', () => {
@@ -233,7 +233,7 @@ expect(screen.getByText('filter.period.allTime'))!.toBeInTheDocument()
 
       // The mock returns count: 10, so the text should include the count
       // The mock returns count: 10, so the text should include the count
-expect(screen.getByText('filter.annotation.annotated (10)'))!.toBeInTheDocument()
+      expect(screen.getByText('filter.annotation.annotated (10)'))!.toBeInTheDocument()
     })
 
     it('should display not_annotated status when annotation_status is not_annotated', () => {
@@ -252,7 +252,7 @@ expect(screen.getByText('filter.annotation.annotated (10)'))!.toBeInTheDocument(
 
       // Default annotation_status is 'all'
       // Default annotation_status is 'all'
-expect(screen.getByText('filter.annotation.all'))!.toBeInTheDocument()
+      expect(screen.getByText('filter.annotation.all'))!.toBeInTheDocument()
     })
 
     it('should return null when annotation count data is unavailable', () => {

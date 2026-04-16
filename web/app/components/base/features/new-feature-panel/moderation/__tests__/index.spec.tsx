@@ -360,7 +360,7 @@ describe('Moderation', () => {
 
     // For unknown types, falls back to codeBasedExtensionList label or '-'
     // For unknown types, falls back to codeBasedExtensionList label or '-'
-expect(screen.getByText('-'))!.toBeInTheDocument()
+    expect(screen.getByText('-'))!.toBeInTheDocument()
   })
 
   it('should show code-based extension label when custom type is configured', () => {
@@ -512,13 +512,13 @@ expect(screen.getByText('-'))!.toBeInTheDocument()
 
     // Info is visible before hover
     // Info is visible before hover
-expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
 
     fireEvent.mouseEnter(card)
 
     // Info hidden, settings button shown
     // Info hidden, settings button shown
-expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
+    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
 
   it('should show info display again when mouse leaves', () => {

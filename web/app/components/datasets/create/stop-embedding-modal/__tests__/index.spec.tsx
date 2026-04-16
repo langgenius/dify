@@ -109,7 +109,7 @@ describe('StopEmbeddingModal', () => {
 
       // Assert - Modal should contain title, content, and buttons
       // Assert - Modal should contain title, content, and buttons
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel'))!.toBeInTheDocument()
@@ -169,7 +169,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
 
         // Assert - No errors thrown
         // Assert - No errors thrown
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       })
     })
 
@@ -181,7 +181,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
 
         // Assert - No errors thrown
         // Assert - No errors thrown
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       })
     })
   })
@@ -312,7 +312,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
         else {
           // If no close span found with class, just verify the modal renders
           // If no close span found with class, just verify the modal renders
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+          expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
         }
       })
 
@@ -537,7 +537,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
 
       // Assert - Modal should be visible
       // Assert - Modal should be visible
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
 
       // Act - Hide modal
       await act(async () => {
@@ -614,7 +614,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
 
       // Verify initial render
       // Verify initial render
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
 
       // Update props
       await act(async () => {
@@ -623,7 +623,7 @@ expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocum
 
       // Assert - Still renders correctly
       // Assert - Still renders correctly
-expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
     })
   })
 })

@@ -235,7 +235,7 @@ describe('DSL Import with Human Input Node', () => {
 
       // Delivery method type labels are rendered in lowercase
       // Delivery method type labels are rendered in lowercase
-expect(screen.getByText('webapp'))!.toBeInTheDocument()
+      expect(screen.getByText('webapp'))!.toBeInTheDocument()
       expect(screen.getByText('email'))!.toBeInTheDocument()
     })
 
@@ -280,37 +280,37 @@ expect(screen.getByText('webapp'))!.toBeInTheDocument()
 
       // Delivery method section should not be rendered
       // Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-// Delivery method section should not be rendered
-expect(screen.queryByText('webapp')).not.toBeInTheDocument()
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      expect(screen.queryByText('webapp')).not.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
     })
 
@@ -328,7 +328,7 @@ expect(screen.queryByText('webapp')).not.toBeInTheDocument()
 
       // Timeout handle should still exist
       // Timeout handle should still exist
-expect(screen.getByText('Timeout'))!.toBeInTheDocument()
+      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
     })
 
     it('should render without crashing when both delivery_methods and user_actions are empty', () => {

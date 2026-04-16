@@ -55,37 +55,37 @@ describe('CreateAppTemplateDialog', () => {
 
       // FullScreenModal should not render any content when open is false
       // FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-// FullScreenModal should not render any content when open is false
-expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      // FullScreenModal should not render any content when open is false
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should render modal when show is true', () => {
@@ -93,7 +93,7 @@ expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       // FullScreenModal renders with role="dialog"
       // FullScreenModal renders with role="dialog"
-expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
     })
 
@@ -145,7 +145,7 @@ expect(screen.getByRole('dialog'))!.toBeInTheDocument()
 
       // Test that AppList component renders (child component interactions)
       // Test that AppList component renders (child component interactions)
-expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-list-success'))!.toBeInTheDocument()
     })
 

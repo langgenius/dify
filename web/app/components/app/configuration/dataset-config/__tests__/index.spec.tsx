@@ -459,7 +459,7 @@ describe('DatasetConfig', () => {
       expect(screen.getByTestId('context-var'))!.toBeInTheDocument()
       // Should find the selected context variable in the options
       // Should find the selected context variable in the options
-expect(screen.getByText('Select context variable'))!.toBeInTheDocument()
+      expect(screen.getByText('Select context variable'))!.toBeInTheDocument()
     })
 
     it('should not show context variable selector in chat mode', () => {
@@ -864,7 +864,7 @@ expect(screen.getByText('Select context variable'))!.toBeInTheDocument()
       expect(metadataFilter)!.toBeInTheDocument()
       // Should show intersection (only 'category')
       // Should show intersection (only 'category')
-expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('1')
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('1')
     })
   })
 
@@ -944,7 +944,7 @@ expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('1')
 
       // The editable property should be false when no permission
       // The editable property should be false when no permission
-expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should show readonly state for non-editable datasets', () => {
@@ -993,7 +993,7 @@ expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
 
       // Verify order is maintained
       // Verify order is maintained
-expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
       expect(screen.getByText('Dataset 2'))!.toBeInTheDocument()
       expect(screen.getByText('Dataset 3'))!.toBeInTheDocument()
     })
@@ -1123,7 +1123,7 @@ expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
 
       // Should calculate intersection correctly
       // Should calculate intersection correctly
-expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
     })
   })
 })

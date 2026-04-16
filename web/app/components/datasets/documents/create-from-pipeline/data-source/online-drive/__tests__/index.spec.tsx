@@ -567,7 +567,7 @@ describe('OnlineDrive', () => {
 
       // Assert - filteredOnlineDriveFileList should have 2 items matching 'test'
       // Assert - filteredOnlineDriveFileList should have 2 items matching 'test'
-expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('2')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('2')
     })
 
     it('should return all files when keywords is empty', () => {
@@ -1003,7 +1003,7 @@ expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('2')
 
       // Assert - Should find file with special characters
       // Assert - Should find file with special characters
-expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('1')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('1')
     })
 
     it('should handle very long file names', () => {

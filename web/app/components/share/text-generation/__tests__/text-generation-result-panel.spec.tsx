@@ -50,12 +50,12 @@ const batchTasks = [
     id: 1,
     status: TaskStatus.completed,
     params: { inputs: { name: 'Alpha' } },
-}!,
+  }!,
   {
     id: 2,
     status: TaskStatus.failed,
     params: { inputs: { name: 'Beta' } },
-}!,
+  }!,
 ]
 
 const baseProps = {

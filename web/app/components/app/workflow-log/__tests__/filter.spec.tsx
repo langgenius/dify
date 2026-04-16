@@ -57,7 +57,7 @@ describe('Filter', () => {
 
       // Should render status chip, period chip, and search input
       // Should render status chip, period chip, and search input
-expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByText('All'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
 
@@ -71,13 +71,13 @@ expect(screen.getByText('All'))!.toBeInTheDocument()
 
       // Status chip
       // Status chip
-expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByText('All'))!.toBeInTheDocument()
       // Period chip (shows translated key)
       // Period chip (shows translated key)
-expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
       // Search input
       // Search input
-expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
   })
 
@@ -95,7 +95,7 @@ expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocumen
 
       // Chip should show Success for succeeded status
       // Chip should show Success for succeeded status
-expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
     })
 
     it('should open status dropdown when clicked', async () => {

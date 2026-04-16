@@ -47,7 +47,7 @@ describe('ApiBasedExtensionSelector', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('common.apiBasedExtension.selector.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByText('common.apiBasedExtension.selector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render selected item name', async () => {
@@ -56,7 +56,7 @@ expect(screen.getByText('common.apiBasedExtension.selector.placeholder'))!.toBeI
 
       // Assert
       // Assert
-expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
     })
   })
 
@@ -69,7 +69,7 @@ expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(await screen.findByText('common.apiBasedExtension.selector.title'))!.toBeInTheDocument()
+      expect(await screen.findByText('common.apiBasedExtension.selector.title'))!.toBeInTheDocument()
     })
 
     it('should call onChange and closes dropdown when an extension is selected', async () => {

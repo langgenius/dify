@@ -61,7 +61,7 @@ describe('PreviewContainer', () => {
       expect(mainEl)!.toHaveClass('custom-main')
       // Default classes should still be present
       // Default classes should still be present
-expect(mainEl)!.toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
+      expect(mainEl)!.toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
     })
 
     it('should forward ref to the inner container div', () => {

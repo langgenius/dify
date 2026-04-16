@@ -38,8 +38,8 @@ describe('StreamdownWrapper', () => {
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
       // The content should contain the tilde as literal text
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
-// The content should contain the tilde as literal text
-expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
+      // The content should contain the tilde as literal text
+      expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
       expect(document.querySelector('del')).toBeNull()
     })
 
@@ -71,7 +71,7 @@ expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
 
       // Single tilde should remain as literal text
       // Single tilde should remain as literal text
-expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
+      expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
     })
   })
 
@@ -85,7 +85,7 @@ expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('Hello World'))!.toBeInTheDocument()
+      expect(screen.getByText('Hello World'))!.toBeInTheDocument()
     })
 
     it('should render bold text', () => {
@@ -97,7 +97,7 @@ expect(screen.getByText('Hello World'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('bold text'))!.toBeInTheDocument()
+      expect(screen.getByText('bold text'))!.toBeInTheDocument()
       expect(document.querySelector('[data-streamdown="strong"]')).not.toBeNull()
     })
 
@@ -110,7 +110,7 @@ expect(screen.getByText('bold text'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByText('italic text'))!.toBeInTheDocument()
+      expect(screen.getByText('italic text'))!.toBeInTheDocument()
       expect(document.querySelector('em')).not.toBeNull()
     })
 
@@ -120,7 +120,7 @@ expect(screen.getByText('italic text'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('img'))!.toBeInTheDocument()
+      expect(screen.getByTestId('img'))!.toBeInTheDocument()
     })
 
     it('should render a CodeBlock component for code markdown', async () => {
@@ -148,7 +148,7 @@ expect(screen.getByTestId('img'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('plugin-img'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-img'))!.toBeInTheDocument()
       expect(screen.queryByTestId('img')).toBeNull()
 
       expect(screen.getAllByTestId('plugin-paragraph').length).toBeGreaterThan(0)
@@ -168,7 +168,7 @@ expect(screen.getByTestId('plugin-img'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('custom-link'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-link'))!.toBeInTheDocument()
     })
 
     it('should disallow customDisallowedElements', () => {
@@ -187,7 +187,7 @@ expect(screen.getByTestId('custom-link'))!.toBeInTheDocument()
 
       // Assert - ref attribute should be removed
       // Assert - ref attribute should be removed
-expect(screen.getByText('content'))!.toBeInTheDocument()
+      expect(screen.getByText('content'))!.toBeInTheDocument()
       expect(document.querySelector('[ref="someRef"]')).toBeNull()
     })
 
@@ -197,7 +197,7 @@ expect(screen.getByText('content'))!.toBeInTheDocument()
 
       // Assert - rehype-sanitize strips the tag but keeps inner text
       // Assert - rehype-sanitize strips the tag but keeps inner text
-expect(screen.getByText('content'))!.toBeInTheDocument()
+      expect(screen.getByText('content'))!.toBeInTheDocument()
       expect(document.querySelector('custom-element')).toBeNull()
     })
   })

@@ -149,7 +149,7 @@ describe('Billing Plan Assets - Integration Tests', () => {
 
       // Components should not affect each other
       // Components should not affect each other
-expect(svg1)!.toBeInTheDocument()
+      expect(svg1)!.toBeInTheDocument()
       expect(svg2)!.toBeInTheDocument()
       expect(svg1).not.toBe(svg2)
     })

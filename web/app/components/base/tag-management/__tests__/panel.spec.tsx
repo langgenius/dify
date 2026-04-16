@@ -115,7 +115,7 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
       // tag-2 and tag-3 are app type and not in value[]
       // tag-2 and tag-3 are app type and not in value[]
-expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
       expect(screen.getByText('API'))!.toBeInTheDocument()
     })
 
@@ -123,37 +123,37 @@ expect(screen.getByText('Backend'))!.toBeInTheDocument()
       render(<Panel {...defaultProps} />)
       // knowledgeTag is type 'knowledge', should not appear
       // knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-// knowledgeTag is type 'knowledge', should not appear
-expect(screen.queryByText('KnowledgeDB')).not.toBeInTheDocument()
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      expect(screen.queryByText('KnowledgeDB')).not.toBeInTheDocument()
     })
 
     it('should render the manage tags button', () => {
@@ -212,7 +212,7 @@ expect(screen.queryByText('KnowledgeDB')).not.toBeInTheDocument()
 
       // The create row shows "Create 'BrandNewTag'"
       // The create row shows "Create 'BrandNewTag'"
-expect(screen.getByText(/BrandNewTag/))!.toBeInTheDocument()
+      expect(screen.getByText(/BrandNewTag/))!.toBeInTheDocument()
       expect(screen.getByText(i18n.create, { exact: false }))!.toBeInTheDocument()
     })
 
@@ -229,37 +229,37 @@ expect(screen.getByText(/BrandNewTag/))!.toBeInTheDocument()
 
       // 'Frontend' matches tag-1 name, so notExisted = false
       // 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-// 'Frontend' matches tag-1 name, so notExisted = false
-expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
     })
 
     it('should clear search when clear button is clicked', async () => {
@@ -277,7 +277,7 @@ expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument(
       expect(input)!.toHaveValue('')
       // All tags should be visible again
       // All tags should be visible again
-expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
       expect(screen.getByText('API'))!.toBeInTheDocument()
     })
   })
@@ -449,37 +449,37 @@ expect(screen.getByText('Backend'))!.toBeInTheDocument()
 
       // The create option should not appear when no keywords
       // The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-// The create option should not appear when no keywords
-expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
       expect(createTag).not.toHaveBeenCalled()
     })
 
@@ -665,7 +665,7 @@ expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument(
       render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
       // All app-type tags should appear in the unselected list
       // All app-type tags should appear in the unselected list
-expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       expect(screen.getByText('Backend'))!.toBeInTheDocument()
       expect(screen.getByText('API'))!.toBeInTheDocument()
     })
@@ -688,7 +688,7 @@ expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       )
       // All app tags appear in selectedTags, filteredTagList should be empty
       // All app tags appear in selectedTags, filteredTagList should be empty
-expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       expect(screen.getByText('Backend'))!.toBeInTheDocument()
       expect(screen.getByText('API'))!.toBeInTheDocument()
     })

@@ -1718,7 +1718,7 @@ describe('StepTwoFooter', () => {
 
       // Should render Previous and Next buttons with correct text
       // Should render Previous and Next buttons with correct text
-expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
+      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
       expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
     })
 
@@ -1813,7 +1813,7 @@ describe('PreviewPanel', () => {
 
       // Check for the preview header title text
       // Check for the preview header title text
-expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
     })
 
     it('should render idle state when isIdle is true', () => {
@@ -1827,37 +1827,37 @@ expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
 
       // Should show skeleton containers
       // Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-// Should show skeleton containers
-expect(screen.queryByText(/previewChunkTip/i)).not.toBeInTheDocument()
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      expect(screen.queryByText(/previewChunkTip/i)).not.toBeInTheDocument()
     })
   })
 
@@ -1927,10 +1927,10 @@ expect(screen.queryByText(/previewChunkTip/i)).not.toBeInTheDocument()
 
       // Should render parent chunk label
       // Should render parent chunk label
-expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
+      expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
       // Should render child chunks
       // Should render child chunks
-expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 1'))!.toBeInTheDocument()
       expect(screen.getByText('Child 2'))!.toBeInTheDocument()
       expect(screen.getByText('Child 3'))!.toBeInTheDocument()
     })
@@ -1956,44 +1956,44 @@ expect(screen.getByText('Child 1'))!.toBeInTheDocument()
 
       // Should render parent chunk
       // Should render parent chunk
-expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
+      expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
       // full-doc mode limits to FULL_DOC_PREVIEW_LENGTH (50)
       // full-doc mode limits to FULL_DOC_PREVIEW_LENGTH (50)
-expect(screen.getByText('ChildChunk1'))!.toBeInTheDocument()
+      expect(screen.getByText('ChildChunk1'))!.toBeInTheDocument()
       expect(screen.getByText('ChildChunk50'))!.toBeInTheDocument()
       // Should not render beyond the limit
       // Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-// Should not render beyond the limit
-expect(screen.queryByText('ChildChunk51')).not.toBeInTheDocument()
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      expect(screen.queryByText('ChildChunk51')).not.toBeInTheDocument()
     })
 
     it('should render multiple parent chunks in parent-child mode', () => {
@@ -2297,7 +2297,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section
       // Should render the segmentation section
-expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show footer with Previous and Next buttons', () => {
@@ -2377,7 +2377,7 @@ expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
       )
       // When currentDataset has parentChild doc_form, should show parent-child option
       // When currentDataset has parentChild doc_form, should show parent-child option
-expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should render setting mode with Save/Cancel buttons', () => {
@@ -2433,7 +2433,7 @@ expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
       render(<StepTwo {...defaultStepTwoProps} />)
       // When isInInit (no datasetId, no isSetting), both options should show
       // When isInInit (no datasetId, no isSetting), both options should show
-expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
 
@@ -2448,8 +2448,8 @@ expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
       // showGeneralOption should be false (parentChild not in [text, qa])
       // showParentChildOption should be true
       // showGeneralOption should be false (parentChild not in [text, qa])
-// showParentChildOption should be true
-expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
+      // showParentChildOption should be true
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
 
     it('should show general option only when dataset has text doc_form', () => {
@@ -2462,7 +2462,7 @@ expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocume
       )
       // showGeneralOption should be true (text is in [text, qa])
       // showGeneralOption should be true (text is in [text, qa])
-expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
     })
   })
 
@@ -2501,7 +2501,7 @@ expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
       )
       // isUploadInEmptyDataset=true shows both options
       // isUploadInEmptyDataset=true shows both options
-expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
   })
@@ -2511,21 +2511,21 @@ expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
       render(<StepTwo {...defaultStepTwoProps} />)
       // IndexingModeSection renders the index mode title
       // IndexingModeSection renders the index mode title
-expect(screen.getByText(/stepTwo\.indexMode/i))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.indexMode/i))!.toBeInTheDocument()
     })
 
     it('should render embedding model selector when QUALIFIED', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // ModelSelector is mocked and rendered with data-testid
       // ModelSelector is mocked and rendered with data-testid
-expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
+      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
     })
 
     it('should render retrieval method config', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // RetrievalMethodConfig is mocked with data-testid
       // RetrievalMethodConfig is mocked with data-testid
-expect(screen.getByTestId('retrieval-method-config'))!.toBeInTheDocument()
+      expect(screen.getByTestId('retrieval-method-config'))!.toBeInTheDocument()
     })
 
     it('should disable model and retrieval config when datasetId has existing data source', () => {
@@ -2560,7 +2560,7 @@ expect(screen.getByTestId('retrieval-method-config'))!.toBeInTheDocument()
       )
       // Preview panel should still render
       // Preview panel should still render
-expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
     })
   })
 

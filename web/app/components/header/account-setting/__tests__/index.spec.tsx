@@ -201,7 +201,7 @@ describe('AccountSetting', () => {
 
       // Assert
       // Assert
-expect(screen.getByText('common.userProfile.settings'))!.toBeInTheDocument()
+      expect(screen.getByText('common.userProfile.settings'))!.toBeInTheDocument()
       expect(screen.getByText('common.settings.provider'))!.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
@@ -232,68 +232,68 @@ expect(screen.getByText('common.userProfile.settings'))!.toBeInTheDocument()
       // Assert
       // On mobile, the labels should not be rendered as per the implementation
       // Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-// Assert
-// On mobile, the labels should not be rendered as per the implementation
-expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
     })
 
     it('should filter items for dataset operator', () => {
@@ -308,37 +308,37 @@ expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.members')).not.toBeInTheDocument()
       expect(screen.getByText('common.settings.language'))!.toBeInTheDocument()
     })
@@ -356,37 +356,37 @@ expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
     })
   })
@@ -403,7 +403,7 @@ expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
       expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.PROVIDER)
       // Check for content from ModelProviderPage
       // Check for content from ModelProviderPage
-expect(screen.getByText('common.modelProvider.models'))!.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.models'))!.toBeInTheDocument()
     })
 
     it('should navigate through various tabs and show correct details', () => {
@@ -471,7 +471,7 @@ expect(screen.getByText('common.modelProvider.models'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(input)!.toHaveValue('test-search')
+      expect(input)!.toHaveValue('test-search')
       expect(screen.getByText('common.modelProvider.models'))!.toBeInTheDocument()
     })
 
@@ -482,7 +482,7 @@ expect(input)!.toHaveValue('test-search')
 
       // Assert
       // Assert
-expect(scrollContainer)!.toBeInTheDocument()
+      expect(scrollContainer)!.toBeInTheDocument()
       if (scrollContainer) {
         // Scroll down
         fireEvent.scroll(scrollContainer, { target: { scrollTop: 100 } })

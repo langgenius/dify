@@ -174,20 +174,20 @@ describe('ConversationOpener', () => {
 
     // Before hover, opening statement visible
     // Before hover, opening statement visible
-expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
+    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
 
     // After hover, button visible, statement hidden
     // After hover, button visible, statement hidden
-expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
+    expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
 
     fireEvent.mouseLeave(card)
 
     // After leave, statement visible again
     // After leave, statement visible again
-expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
+    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
   })
 
   it('should return early from opener handler when disabled and hovered', () => {

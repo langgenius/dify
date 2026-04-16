@@ -618,7 +618,7 @@ describe('Popup', () => {
         await openPopup(user)
         // Verify it renders without key collision (no console error expected, though not explicitly checked here)
         // Verify it renders without key collision (no console error expected, though not explicitly checked here)
-expect(screen.getByTestId('popup-source-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('popup-source-item'))!.toBeInTheDocument()
       })
 
       it('should use data.documentId when both source ids are missing', async () => {
@@ -678,68 +678,68 @@ expect(screen.getByTestId('popup-source-item'))!.toBeInTheDocument()
         // Even if the button is rendered (it shouldn't be based on line 71),
         // we check the handler directly if possible, or just the button absence.
         // Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-// Even if the button is rendered (it shouldn't be based on line 71),
-// we check the handler directly if possible, or just the button absence.
-expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
       })
 
       it('should return early if both documentIds are missing', async () => {

@@ -358,7 +358,7 @@ describe('VideoPlayer', () => {
 
       // Initial state: visible
       // Initial state: visible
-expect(controls)!.toHaveAttribute('data-is-visible', 'true')
+      expect(controls)!.toHaveAttribute('data-is-visible', 'true')
 
       // Let controls hide
       fireEvent.mouseMove(container)

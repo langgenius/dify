@@ -185,37 +185,37 @@ describe('PluginTaskList', () => {
 
       // Running section has no headerAction and no onClearSingle
       // Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-// Running section has no headerAction and no onClearSingle
-expect(screen.queryByText(/plugin\.task\.clearAll/)).not.toBeInTheDocument()
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      expect(screen.queryByText(/plugin\.task\.clearAll/)).not.toBeInTheDocument()
     })
 
     it('should show installing hint as status text', () => {

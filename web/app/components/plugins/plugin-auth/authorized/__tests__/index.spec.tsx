@@ -181,7 +181,7 @@ describe('Authorized Component', () => {
 
       // Text is split by elements, use regex to find partial match
       // Text is split by elements, use regex to find partial match
-expect(screen.getByText(/plugin\.auth\.authorization/))!.toBeInTheDocument()
+      expect(screen.getByText(/plugin\.auth\.authorization/))!.toBeInTheDocument()
     })
 
     it('should show plural authorizations text for multiple credentials', () => {
@@ -201,7 +201,7 @@ expect(screen.getByText(/plugin\.auth\.authorization/))!.toBeInTheDocument()
 
       // Text is split by elements, use regex to find partial match
       // Text is split by elements, use regex to find partial match
-expect(screen.getByText(/plugin\.auth\.authorizations/))!.toBeInTheDocument()
+      expect(screen.getByText(/plugin\.auth\.authorizations/))!.toBeInTheDocument()
     })
 
     it('should show unavailable count when there are unavailable credentials', () => {
@@ -238,7 +238,7 @@ expect(screen.getByText(/plugin\.auth\.authorizations/))!.toBeInTheDocument()
 
       // The indicator should be rendered
       // The indicator should be rendered
-expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDocument()
+      expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDocument()
     })
   })
 
@@ -261,7 +261,7 @@ expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDo
 
       // Popup should be open - check for popup content
       // Popup should be open - check for popup content
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should use controlled open state when isOpen and onOpenChange are provided', () => {
@@ -281,7 +281,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Popup should be open since isOpen is true
       // Popup should be open since isOpen is true
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Click trigger to close - get all buttons and click the first one (trigger)
       const buttons = screen.getAllByRole('button')
@@ -411,7 +411,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Selected icon should be visible
       // Selected icon should be visible
-expect(document.querySelector('.text-text-accent'))!.toBeInTheDocument()
+      expect(document.querySelector('.text-text-accent'))!.toBeInTheDocument()
     })
   })
 
@@ -489,7 +489,7 @@ expect(document.querySelector('.text-text-accent'))!.toBeInTheDocument()
 
       // Component should render correctly regardless of button finding
       // Component should render correctly regardless of button finding
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
     })
 
     it('should call deletePluginCredential when confirm is clicked', async () => {
@@ -701,7 +701,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       else {
         // Verify component renders properly
         // Verify component renders properly
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -725,7 +725,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Verify component renders
       // Verify component renders
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
     })
 
     it('should execute handleRename function body when saving', async () => {
@@ -755,7 +755,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Wait for component to render
       // Wait for component to render
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       expect(screen.getByText('Execute Rename Test'))!.toBeInTheDocument()
 
       // The handleRename is tested through the "should call updatePluginCredential when rename is confirmed" test
@@ -789,7 +789,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Verify OAuth section renders
       // Verify OAuth section renders
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Find all action buttons in the credential item
       // The rename button should be present for OAuth credentials
@@ -869,7 +869,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
         await waitFor(() => {
           // The modal should be rendered
           // The modal should be rendered
-expect(document.querySelector('.fixed'))!.toBeInTheDocument()
+          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
         })
       }
     })
@@ -920,7 +920,7 @@ expect(document.querySelector('.fixed'))!.toBeInTheDocument()
           await waitFor(() => {
             // Verify component state is cleared by checking we can open again
             // Verify component state is cleared by checking we can open again
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
       }
@@ -991,7 +991,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       else {
         // Verify component renders
         // Verify component renders
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
 
@@ -1017,7 +1017,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Wait for component to render
       // Wait for component to render
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button by looking for settings icon
       const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
@@ -1079,7 +1079,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Wait for component to render
       // Wait for component to render
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find and click edit button to open ApiKeyModal
       const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
@@ -1139,7 +1139,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Verify API Keys section is shown
       // Verify API Keys section is shown
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button - look for buttons in the action area
       const actionAreaButtons = Array.from(document.querySelectorAll('.group-hover\\:flex button, .hidden button'))
@@ -1167,7 +1167,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Verify component renders correctly
       // Verify component renders correctly
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should trigger handleRemove when remove button is clicked in ApiKeyModal', async () => {
@@ -1192,7 +1192,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Verify component renders
       // Verify component renders
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button by looking for action buttons (not in the confirm dialog)
       // These are grouped in hidden elements that show on hover
@@ -1223,7 +1223,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Verify component still works
       // Verify component still works
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should show confirm dialog when remove is clicked from edit modal', async () => {
@@ -1331,7 +1331,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       else {
         // If no edit button found, just verify the component renders
         // If no edit button found, just verify the component renders
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
   })
@@ -1381,7 +1381,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Should have divider and authorize buttons
       // Should have divider and authorize buttons
-expect(document.querySelector('.bg-divider-subtle'))!.toBeInTheDocument()
+      expect(document.querySelector('.bg-divider-subtle'))!.toBeInTheDocument()
     })
 
     it('should not render Authorize component when notAllowCustomCredential is true', () => {
@@ -1442,7 +1442,7 @@ expect(document.querySelector('.bg-divider-subtle'))!.toBeInTheDocument()
 
       // Component should render without error
       // Component should render without error
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should pass disabled to Item components', () => {
@@ -1469,7 +1469,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       else {
         // If no set default button, verify the component rendered
         // If no set default button, verify the component rendered
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
 
@@ -1489,37 +1489,37 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Set default button should not be visible
       // Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-// Set default button should not be visible
-expect(screen.queryByText('plugin.auth.setDefault')).not.toBeInTheDocument()
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      expect(screen.queryByText('plugin.auth.setDefault')).not.toBeInTheDocument()
     })
   })
 
@@ -1679,7 +1679,7 @@ expect(screen.queryByText('plugin.auth.setDefault')).not.toBeInTheDocument()
 
       // Component should render without error
       // Component should render without error
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
   })
 
@@ -1787,7 +1787,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       else {
         // Component should still render correctly
         // Component should still render correctly
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -1811,7 +1811,7 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Verify component renders
       // Verify component renders
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should prevent handleConfirm when doingAction is true', async () => {
@@ -1871,7 +1871,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       if (!foundDeleteButton) {
         // Verify component renders
         // Verify component renders
-expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -1894,99 +1894,99 @@ expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       // so pendingOperationCredentialId stays null
       // This edge case is handled by the component's internal logic
       // With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-// With no credentials, there's no way to trigger openConfirm,
-// so pendingOperationCredentialId stays null
-// This edge case is handled by the component's internal logic
-expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
     })
   })
 
@@ -2256,7 +2256,7 @@ expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDo
 
       // Verify component renders correctly
       // Verify component renders correctly
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should execute handleRemove to set deleteCredentialId from pendingOperationCredentialId', async () => {
@@ -2319,7 +2319,7 @@ expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Verify component still renders correctly
       // Verify component still renders correctly
-expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
   })
 

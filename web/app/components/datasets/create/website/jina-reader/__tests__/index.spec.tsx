@@ -153,7 +153,7 @@ describe('JinaReader', () => {
       else {
         // Options might not be visible, just verify component renders
         // Options might not be visible, just verify component renders
-expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
       }
     })
 
@@ -193,7 +193,7 @@ expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDo
 
       // Assert - component renders with empty limit
       // Assert - component renders with empty limit
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -308,7 +308,7 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Options should be visible initially
       // Options should be visible initially
-expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const input = screen.getByRole('textbox')
       await userEvent.type(input, 'https://example.com')
@@ -359,7 +359,7 @@ expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeIn
 
       // Initially options should be visible
       // Initially options should be visible
-expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
 
       const input = screen.getByRole('textbox')
       await userEvent.type(input, 'https://example.com')
@@ -416,7 +416,7 @@ expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDo
 
       // Assert - component should still work correctly
       // Assert - component should still work correctly
-expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -514,50 +514,50 @@ expect(screen.getByRole('textbox'))!.toBeInTheDocument()
 
       // Options content should be visible initially
       // Options content should be visible initially
-expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
       await userEvent.click(optionsHeader)
 
       // Assert - options should be hidden
       // Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-// Assert - options should be hidden
-expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
 
       await userEvent.click(optionsHeader)
 
       // Options should be visible again
       // Options should be visible again
-expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
     })
   })
 

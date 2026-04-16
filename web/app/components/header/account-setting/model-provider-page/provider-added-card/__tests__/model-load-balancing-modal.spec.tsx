@@ -553,7 +553,7 @@ describe('ModelLoadBalancingModal', () => {
 
     // draftConfig.enabled=true → title shows configLoadBalancing
     // draftConfig.enabled=true → title shows configLoadBalancing
-expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
 
     // Clicking the card when enabled=true toggles to disabled
     const card = screen.getByText(/modelProvider\.auth\.providerManaged$/).closest('div[class]')!.closest('div[class]')!
@@ -561,7 +561,7 @@ expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheD
 
     // After toggling, title should show configModel (disabled state)
     // After toggling, title should show configModel (disabled state)
-expect(screen.getByText(/modelProvider\.auth\.configModel/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.auth\.configModel/))!.toBeInTheDocument()
   })
 
   it('should use customModelCredential credential_id when present in handleSave', async () => {
@@ -668,7 +668,7 @@ expect(screen.getByText(/modelProvider\.auth\.configModel/))!.toBeInTheDocument(
 
     // Assert: component renders without error (extendedSecretFormSchemas = [])
     // Assert: component renders without error (extendedSecretFormSchemas = [])
-expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
   })
 
   it('should use custom model credential schema without fallback when credential_form_schemas is undefined', () => {

@@ -247,7 +247,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-expect(container)!.toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should render without crashing when supportedMethods is provided', () => {
@@ -263,37 +263,37 @@ expect(container)!.toBeEmptyDOMElement()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(container).not.toBeEmptyDOMElement()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(container).not.toBeEmptyDOMElement()
     })
 
     it('should render full button by default', () => {
@@ -309,7 +309,7 @@ expect(container).not.toBeEmptyDOMElement()
 
       // Assert
       // Assert
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render icon button when buttonType is ICON_BUTTON', () => {
@@ -343,7 +343,7 @@ expect(screen.getByRole('button'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should apply shape prop correctly', () => {
@@ -359,7 +359,7 @@ expect(screen.getByRole('button'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -516,7 +516,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
+      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
     })
 
     it('should display correct button text for MANUAL method', () => {
@@ -534,7 +534,7 @@ expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscriptio
 
       // Assert
       // Assert
-expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.manual')
+      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.manual')
     })
 
     it('should display default button text when multiple methods are supported', () => {
@@ -552,7 +552,7 @@ expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscriptio
 
       // Assert
       // Assert
-expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.empty.button')
+      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.empty.button')
     })
   })
 
@@ -709,37 +709,37 @@ expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscriptio
 
       // Assert - modal should not open
       // Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-// Assert - modal should not open
-expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      // Assert - modal should not open
+      expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
     })
 
     it('should call onChooseCreateType when single method (non-OAuth) is used', () => {
@@ -759,7 +759,7 @@ expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
 
       // Assert - modal should open
       // Assert - modal should open
-expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
     })
 
     it('should not call onChooseCreateType for DEFAULT_METHOD or single OAuth', () => {
@@ -782,68 +782,68 @@ expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
       // Assert - For single OAuth, should not directly create but wait for dropdown
       // The modal should not immediately open
       // Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-// Assert - For single OAuth, should not directly create but wait for dropdown
-// The modal should not immediately open
-expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      // Assert - For single OAuth, should not directly create but wait for dropdown
+      // The modal should not immediately open
+      expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
     })
   })
 
@@ -967,7 +967,7 @@ expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
 
       // Assert that settings div exists and click it
       // Assert that settings div exists and click it
-expect(settingsDiv)!.toBeInTheDocument()
+      expect(settingsDiv)!.toBeInTheDocument()
       if (settingsDiv) {
         fireEvent.click(settingsDiv)
 
@@ -994,7 +994,7 @@ expect(settingsDiv)!.toBeInTheDocument()
 
       // Assert - Component renders, which means hook was called
       // Assert - Component renders, which means hook was called
-expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
     })
 
     it('should handle OAuth initiation success', async () => {
@@ -1092,37 +1092,37 @@ expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-// Assert
-expect(container).not.toBeEmptyDOMElement()
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      expect(container).not.toBeEmptyDOMElement()
     })
 
     it('should handle undefined provider gracefully', () => {
@@ -1138,7 +1138,7 @@ expect(container).not.toBeEmptyDOMElement()
 
       // Assert - component should still render
       // Assert - component should still render
-expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
     })
 
     it('should handle empty oauthConfig gracefully', () => {
@@ -1157,7 +1157,7 @@ expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
     })
 
     it('should show max count tooltip when subscriptions reach limit', () => {
@@ -1178,7 +1178,7 @@ expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
 
       // Assert - ActionButton should be in disabled state
       // Assert - ActionButton should be in disabled state
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle showOAuthCreateModal callback from OAuthClientSettingsModal', async () => {
@@ -1275,7 +1275,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert - icon button should exist
       // Assert - icon button should exist
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
 
     it('should apply circle shape class when shape is circle', () => {
@@ -1293,7 +1293,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1390,7 +1390,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert
       // Assert
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1685,8 +1685,8 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
       // The methodType will be DEFAULT_METHOD since multiple methods
       // This verifies the render doesn't crash with multiple methods
       // The methodType will be DEFAULT_METHOD since multiple methods
-// This verifies the render doesn't crash with multiple methods
-expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-value', 'default')
+      // This verifies the render doesn't crash with multiple methods
+      expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-value', 'default')
     })
   })
 
@@ -1708,7 +1708,7 @@ expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-value', 'defa
 
       // Assert - tooltip should be enabled (disabled prop = false for single method)
       // Assert - tooltip should be enabled (disabled prop = false for single method)
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
 
     it('should disable tooltip when multiple methods and not at max count', () => {
@@ -1727,7 +1727,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert - tooltip should be disabled (neither single method nor at max)
       // Assert - tooltip should be disabled (neither single method nor at max)
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1750,7 +1750,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert - component renders with max subscriptions
       // Assert - component renders with max subscriptions
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
 
     it('should show method description when not at max', () => {
@@ -1769,7 +1769,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert - component renders without max subscriptions
       // Assert - component renders without max subscriptions
-expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1791,7 +1791,7 @@ expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
 
       // Assert - should render null when supported methods fallback to empty
       // Assert - should render null when supported methods fallback to empty
-expect(container)!.toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should handle providerInfo with null supported_creation_methods', () => {
@@ -1806,7 +1806,7 @@ expect(container)!.toBeEmptyDOMElement()
 
       // Assert - should render null
       // Assert - should render null
-expect(container)!.toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
   })
 
