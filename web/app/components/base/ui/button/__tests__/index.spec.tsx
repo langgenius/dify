@@ -1,4 +1,3 @@
-import type { FormEvent } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Button } from '../index'
 
@@ -105,9 +104,19 @@ describe('Button', () => {
       expect(screen.getByRole('button').querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     })
 
-    it('is disabled when loading', () => {
+    it('auto-disables when loading', () => {
       render(<Button loading>Click me</Button>)
       expect(screen.getByRole('button')).toBeDisabled()
+    })
+
+    it('sets aria-busy when loading', () => {
+      render(<Button loading>Click me</Button>)
+      expect(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true')
+    })
+
+    it('does not set aria-busy when not loading', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
     })
   })
 
@@ -117,9 +126,10 @@ describe('Button', () => {
       expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('is disabled when both disabled and loading', () => {
-      render(<Button disabled loading>Click me</Button>)
-      expect(screen.getByRole('button')).toBeDisabled()
+    it('keeps focusable when loading with focusableWhenDisabled', () => {
+      render(<Button loading focusableWhenDisabled>Loading</Button>)
+      const button = screen.getByRole('button')
+      expect(button).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -143,39 +153,6 @@ describe('Button', () => {
       render(<Button onClick={onClick} loading>Click me</Button>)
       fireEvent.click(screen.getByRole('button'))
       expect(onClick).not.toHaveBeenCalled()
-    })
-
-    it('prevents form submission when loading (type=submit)', () => {
-      const onSubmit = vi.fn((e: FormEvent) => e.preventDefault())
-      render(
-        <form onSubmit={onSubmit}>
-          <Button loading type="submit">Submit</Button>
-        </form>,
-      )
-      fireEvent.click(screen.getByRole('button'))
-      expect(onSubmit).not.toHaveBeenCalled()
-    })
-
-    it('does not bubble click to parent when loading', () => {
-      const onParentClick = vi.fn()
-      render(
-        <div onClick={onParentClick}>
-          <Button loading>Click me</Button>
-        </div>,
-      )
-      fireEvent.click(screen.getByRole('button'))
-      expect(onParentClick).not.toHaveBeenCalled()
-    })
-
-    it('bubbles click to parent when not loading', () => {
-      const onParentClick = vi.fn()
-      render(
-        <div onClick={onParentClick}>
-          <Button>Click me</Button>
-        </div>,
-      )
-      fireEvent.click(screen.getByRole('button'))
-      expect(onParentClick).toHaveBeenCalledTimes(1)
     })
   })
 

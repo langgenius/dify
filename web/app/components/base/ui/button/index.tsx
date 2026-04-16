@@ -121,6 +121,7 @@ export function Button({
       type={type}
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
       {children}
