@@ -50,8 +50,8 @@ class AppSiteUpdatePayload(BaseModel):
 
 class AppSiteResponse(ResponseModel):
     app_id: str
-    access_token: str = Field(validation_alias="code")
-    code: str
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
     title: str
     icon: str | None = None
     icon_background: str | None = None
