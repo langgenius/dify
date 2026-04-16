@@ -561,18 +561,13 @@ class TestWebhookServiceUnit:
             assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
 
 
-
 # === Merged from test_webhook_service_additional.py ===
 
 
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import MagicMock
 
-import pytest
-from flask import Flask
 from graphon.variables.types import SegmentType
-from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -587,7 +582,6 @@ from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as service_module
-from services.trigger.webhook_service import WebhookService
 
 
 class _FakeQuery:

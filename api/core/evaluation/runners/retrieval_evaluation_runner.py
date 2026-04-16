@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from graphon.node_events import NodeRunResult
+
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
@@ -8,7 +10,6 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
-from graphon.node_events import NodeRunResult
 
 logger = logging.getLogger(__name__)
 

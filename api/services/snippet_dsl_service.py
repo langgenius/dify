@@ -7,6 +7,8 @@ from enum import StrEnum
 from urllib.parse import urlparse
 
 import yaml  # type: ignore
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -15,8 +17,6 @@ from sqlalchemy.orm import Session
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_redis import redis_client
-from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow

@@ -85,7 +85,7 @@ class EvaluationConfiguration(Base):
         """Return judgment config (stored in the judgement_conditions column)."""
         if self.judgement_conditions:
             parsed = json.loads(self.judgement_conditions)
-            return parsed if parsed else None
+            return parsed or None
         return None
 
     @property

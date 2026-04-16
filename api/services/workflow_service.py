@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from graphon.entities import GraphInitParams, WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (

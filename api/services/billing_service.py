@@ -53,6 +53,8 @@ class QuotaReleaseResult(TypedDict):
 _quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
 _quota_commit_adapter = TypeAdapter(QuotaCommitResult)
 _quota_release_adapter = TypeAdapter(QuotaReleaseResult)
+
+
 class _BillingQuota(TypedDict):
     size: int
     limit: int

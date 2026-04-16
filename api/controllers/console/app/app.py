@@ -568,7 +568,7 @@ class AppApi(Resource):
             row = db.session.execute(
                 select(Workflow.type).where(Workflow.id == app_model.workflow_id)
             ).scalar()
-            app_model.workflow_type = row if row else None
+            app_model.workflow_type = row or None
         else:
             app_model.workflow_type = None
 

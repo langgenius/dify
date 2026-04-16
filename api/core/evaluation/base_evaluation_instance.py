@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.node_events.base import NodeRunResult
+
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetrics,
     EvaluationCategory,
@@ -11,7 +13,6 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     NodeInfo,
 )
-from graphon.node_events.base import NodeRunResult
 
 logger = logging.getLogger(__name__)
 
