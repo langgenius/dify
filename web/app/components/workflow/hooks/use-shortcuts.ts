@@ -68,7 +68,17 @@ export const useShortcuts = (): void => {
 
   const shouldHandleCopy = useCallback(() => {
     const selection = document.getSelection()
-    return !selection || selection.isCollapsed
+    if (!selection || selection.isCollapsed || !selection.rangeCount)
+      return true
+
+    const selectionContainer = selection.getRangeAt(0).commonAncestorContainer
+    const selectionElement = selectionContainer instanceof Element
+      ? selectionContainer
+      : selectionContainer.parentElement
+
+    // Preserve native text copy outside the canvas, but don't let incidental
+    // canvas text selection block node copy.
+    return !!selectionElement?.closest('.react-flow')
   }, [])
 
   useKeyPress(['delete', 'backspace'], (e) => {
