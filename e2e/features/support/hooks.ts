@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
+import { deleteTestApp } from '../../support/api'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 import type { DifyWorld } from './world'
 
@@ -84,6 +85,8 @@ After(async function (this: DifyWorld, { pickle, result }) {
   console.log(
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
+
+  for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
 
   await this.closeSession()
 })
