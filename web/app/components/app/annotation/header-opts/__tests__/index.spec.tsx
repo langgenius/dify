@@ -188,8 +188,7 @@ const renderComponent = (
 }
 
 const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = document.querySelector('button.btn.btn-secondary') as HTMLButtonElement
-  expect(trigger).toBeTruthy()
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' }) as HTMLButtonElement
   await user.click(trigger)
 }
 
