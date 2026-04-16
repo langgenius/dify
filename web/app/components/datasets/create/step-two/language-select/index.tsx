@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/base/ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@/app/components/base/ui/select'
 import { languages } from '@/i18n-config/language'
 
 export type ILanguageSelectProps = {
@@ -46,7 +46,8 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       >
         {supportedLanguages.map(({ prompt_name }) => (
           <SelectItem key={prompt_name} value={prompt_name}>
-            {prompt_name}
+            <SelectItemText>{prompt_name}</SelectItemText>
+            <SelectItemIndicator />
           </SelectItem>
         ))}
       </SelectContent>

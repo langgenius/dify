@@ -118,6 +118,8 @@ describe('LanguageSelect', () => {
         SelectTrigger: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button type="button" {...props}>{children}</button>,
         SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+        SelectItemIndicator: () => null,
       }))
 
       const { default: IsolatedLanguageSelect } = await import('../index')
