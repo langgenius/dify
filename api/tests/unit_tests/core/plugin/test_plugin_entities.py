@@ -4,12 +4,6 @@ from enum import StrEnum
 
 import pytest
 from flask import Response
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    SystemPromptMessage,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
 from pydantic import ValidationError
 
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
@@ -31,6 +25,12 @@ from core.plugin.entities.request import (
 )
 from core.plugin.utils.http_parser import serialize_response
 from core.tools.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 
 
 class TestEndpointEntity:

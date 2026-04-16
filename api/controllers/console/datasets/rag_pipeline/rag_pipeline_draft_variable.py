@@ -4,7 +4,6 @@ from typing import Any, NoReturn
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
-from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -28,6 +27,7 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline

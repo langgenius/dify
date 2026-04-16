@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphon.runtime import GraphRuntimeState
-
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.runtime import GraphRuntimeState
 
 if TYPE_CHECKING:
     from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
