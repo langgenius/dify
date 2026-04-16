@@ -8,6 +8,8 @@ from collections.abc import Callable, Generator, Mapping
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from graphon.enums import WorkflowExecutionStatus
+
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -358,7 +360,7 @@ class AppGenerateService:
                 "data": {
                     "id": workflow_run_id,
                     "workflow_id": workflow.id,
-                    "status": "scheduled",
+                    "status": WorkflowExecutionStatus.SCHEDULED.value,
                     "created_at": int(workflow_run.created_at.timestamp()),
                 },
             }
@@ -384,8 +386,6 @@ class AppGenerateService:
         args: Mapping[str, Any],
     ) -> WorkflowRun:
         """Pre-create a WorkflowRun row with SCHEDULED status for async polling."""
-        from graphon.enums import WorkflowExecutionStatus
-
         workflow_run = WorkflowRun()
         workflow_run.id = workflow_run_id
         workflow_run.tenant_id = app_model.tenant_id
@@ -413,9 +413,7 @@ class AppGenerateService:
         """Mark a pre-created WorkflowRun as failed."""
         workflow_run = db.session.get(WorkflowRun, workflow_run_id)
         if workflow_run:
-            from graphon.enums import WorkflowExecutionStatus as WFStatus
-
-            workflow_run.status = WFStatus.FAILED
+            workflow_run.status = WorkflowExecutionStatus.FAILED
             workflow_run.error = error
             workflow_run.finished_at = datetime.now(UTC)
             db.session.commit()
@@ -457,7 +455,7 @@ class AppGenerateService:
             db.session.query(func.count(WorkflowRun.id))
             .filter(
                 WorkflowRun.tenant_id == tenant_id,
-                WorkflowRun.status.in_(["scheduled", "running"]),
+                WorkflowRun.status.in_([WorkflowExecutionStatus.SCHEDULED, WorkflowExecutionStatus.RUNNING]),
             )
             .scalar()
         )

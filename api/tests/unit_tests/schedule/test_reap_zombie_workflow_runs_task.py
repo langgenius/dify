@@ -6,11 +6,13 @@ Covers:
   - Stuck RUNNING runs are force-failed after timeout
   - Recent runs within the timeout window are left untouched
   - Both categories reaped in a single invocation
+  - finished_at is set on reaped rows
 """
 
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.enums import WorkflowExecutionStatus
 
 from configs import dify_config
 
@@ -40,8 +42,9 @@ class TestReapZombieWorkflowRunsTask:
 
             # Check the first update was for scheduled runs
             first_update_args = mock_query.update.call_args_list[0][0][0]
-            assert first_update_args["status"] == "failed"
+            assert first_update_args["status"] == WorkflowExecutionStatus.FAILED
             assert "not picked up" in first_update_args["error"]
+            assert "finished_at" in first_update_args
 
     def test_reaps_stuck_running_runs(self, monkeypatch):
         with (
@@ -62,8 +65,9 @@ class TestReapZombieWorkflowRunsTask:
 
             # Check the second update was for running runs
             second_update_args = mock_query.update.call_args_list[1][0][0]
-            assert second_update_args["status"] == "failed"
+            assert second_update_args["status"] == WorkflowExecutionStatus.FAILED
             assert "timed out" in second_update_args["error"]
+            assert "finished_at" in second_update_args
 
     def test_no_zombies_still_commits(self, monkeypatch):
         with (

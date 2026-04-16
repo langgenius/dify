@@ -151,8 +151,7 @@ class TestGenerateAsync:
         )
 
         store_spy.assert_called_once()
-        call_kwargs = store_spy.call_args
-        assert call_kwargs[1]["idempotency_key"] == "new-key" or call_kwargs[0][1] == "new-key"
+        assert store_spy.call_args.kwargs["idempotency_key"] == "new-key"
 
     def test_no_idempotency_key_skips_check_and_store(self, mocker):
         mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
