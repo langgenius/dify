@@ -1,4 +1,6 @@
-from unittest.mock import patch
+import inspect
+import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -6,6 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.tool_label_manager import ToolLabelManager
 from models import Account, Tenant
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -28,6 +31,11 @@ class TestApiToolManageService:
             mock_encrypter.encrypt.return_value = {"encrypted": "credentials"}
             mock_provider_controller.from_db.return_value = mock_provider_controller
             mock_provider_controller.load_bundled_tools.return_value = None
+
+            # Firmware fix for cache.detete()
+            mock_cache = MagicMock()
+            mock_cache.delete.return_value = None
+            mock_encrypter.return_value = (mock_encrypter, mock_cache)
 
             yield {
                 "tool_label_manager": mock_tool_label_manager,
@@ -589,6 +597,97 @@ class TestApiToolManageService:
 
         with pytest.raises(ValueError, match="you have not added provider"):
             ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
+
+    def test_update_api_tool_provider_success(
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        fake = Faker()
+
+        # Get fake account and tenant
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # original provider name
+        original_name = "original-provider"
+
+        # Create original provider
+        _ = ApiToolManageService.create_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            provider_name=original_name,
+            icon={"type": "emoji", "value": "🔧"},
+            credentials={"auth_type": "none"},
+            schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=self._create_test_openapi_schema(),
+            privacy_policy="",
+            custom_disclaimer="",
+            labels=["old-label"],
+        )
+
+        # new provide name and new labels for update
+        new_name = "updated-provider"
+        new_labels = ["new-label-1", "new-label-2"]
+
+        # Act: Update the provider with new values
+        result = ApiToolManageService.update_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            # new provider name     - changed 1
+            provider_name=new_name,
+            original_provider=original_name,
+            # new icon              - changed 2
+            icon={"type": "emoji", "value": "🚀"},
+            credentials={"auth_type": "none"},
+            _schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=self._create_test_openapi_schema(),
+            # new privacy policy    - changed 3
+            privacy_policy="https://new-policy.com",
+            # new custom disclaimer - changed 4
+            custom_disclaimer="New disclaimer",
+            # new labels            - changed 5 (However, we will not verify this, not this layer responsibility.)
+            labels=new_labels,
+        )
+
+        # Assert: Verify the result
+        assert result == {"result": "success"}
+
+        # Get the updated provider from the database
+        updated_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == new_name)
+            .first()
+        )
+
+        # Manually refresh to keep object detachment
+        db_session_with_containers.refresh(updated_provider)
+
+        # Verify the provider was updated successfully
+        assert updated_provider is not None
+        # Verify all the updated fields
+        # - changed 1
+        assert updated_provider.name == new_name
+        # - changed 2
+        icon_data = json.loads(updated_provider.icon)
+        assert icon_data["type"] == "emoji"
+        assert icon_data["value"] == "🚀"
+        # - changed 3
+        assert updated_provider.privacy_policy == "https://new-policy.com"
+        # - changed 4
+        assert updated_provider.custom_disclaimer == "New disclaimer"
+
+        # Deeply verify on session propagation of labels update logics:
+        # Since in refactoring, we pass session down to label manager to keep atomicity.
+        # The assertion here is to verify this.
+        sig = inspect.signature(ToolLabelManager.update_tool_labels)
+        args, kwargs = mock_external_service_dependencies["tool_label_manager"].update_tool_labels.call_args
+        bound_args = sig.bind(*args, **kwargs)
+        passed_session = bound_args.arguments.get("session")
+        # Ensure the type: Session
+        assert isinstance(passed_session, Session), f"Expected Session object, got {type(passed_session)}"
+        assert passed_session is not None, (
+            "Atomicity Failure: Session cannot be passed to Label Manager in update_api_tool_provider"
+        )
 
     def test_update_api_tool_provider_not_found(
         self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
