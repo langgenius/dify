@@ -12,7 +12,7 @@ const DIAGNOSTIC_PATTERN = /^(.+?\.(?:ts|tsx))\((\d+),(\d+)\): error TS(\d+): (.
 const DEFAULT_BATCH_SIZE = 100
 const DEFAULT_BATCH_ITERATIONS = 5
 const DEFAULT_MAX_ROUNDS = 20
-const TYPECHECK_CACHE_DIR = path.join(os.tmpdir(), 'dify-no-unchecked-indexed-access')
+const TYPECHECK_CACHE_DIR = path.join(os.tmpdir(), 'migrate-no-unchecked-indexed-access')
 
 type CliOptions = {
   batchIterations: number

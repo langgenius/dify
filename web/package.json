@@ -159,7 +159,6 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
     "@chromatic-com/storybook": "catalog:",
-    "@dify/cli": "workspace:*",
     "@dify/iconify-collections": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",

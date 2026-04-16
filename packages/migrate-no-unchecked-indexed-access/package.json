@@ -1,10 +1,10 @@
 {
-  "name": "@dify/cli",
+  "name": "migrate-no-unchecked-indexed-access",
   "private": true,
   "version": "0.0.0-private",
   "type": "module",
   "bin": {
-    "dify-cli": "./bin/dify-cli.js"
+    "migrate-no-unchecked-indexed-access": "./bin/migrate-no-unchecked-indexed-access.js"
   },
   "scripts": {
     "build": "vp pack"

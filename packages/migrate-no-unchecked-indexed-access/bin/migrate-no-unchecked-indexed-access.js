@@ -10,7 +10,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const entryFile = path.join(packageRoot, 'dist', 'cli.mjs')
 
 if (!fs.existsSync(entryFile))
-  throw new Error(`Built CLI entry not found at ${entryFile}. Run "pnpm --filter @dify/cli build" first.`)
+  throw new Error(`Built CLI entry not found at ${entryFile}. Run "pnpm --filter migrate-no-unchecked-indexed-access build" first.`)
 
 const result = spawnSync(
   process.execPath,
