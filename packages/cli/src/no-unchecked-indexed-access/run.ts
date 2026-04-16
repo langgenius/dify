@@ -104,15 +104,30 @@ function getTypeCheckBuildInfoPath(projectPath: string): string {
   return path.join(TYPECHECK_CACHE_DIR, `${hash}.tsbuildinfo`)
 }
 
-async function runTypeCheck(project: string): Promise<{ diagnostics: DiagnosticEntry[], exitCode: number, rawOutput: string }> {
+async function runTypeCheck(
+  project: string,
+  options?: {
+    incremental?: boolean
+  },
+): Promise<{ diagnostics: DiagnosticEntry[], exitCode: number, rawOutput: string }> {
   const projectPath = path.resolve(process.cwd(), project)
   const projectDirectory = path.dirname(projectPath)
   const buildInfoPath = getTypeCheckBuildInfoPath(projectPath)
+  const incremental = options?.incremental ?? true
 
   await fs.mkdir(TYPECHECK_CACHE_DIR, { recursive: true })
 
+  const tscArgs = ['exec', 'tsc', '--noEmit', '--pretty', 'false']
+  if (incremental) {
+    tscArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
+  }
+  else {
+    tscArgs.push('--incremental', 'false')
+  }
+  tscArgs.push('--project', projectPath)
+
   try {
-    const { stdout, stderr } = await execFileAsync('pnpm', ['exec', 'tsc', '--noEmit', '--pretty', 'false', '--incremental', '--tsBuildInfoFile', buildInfoPath, '--project', projectPath], {
+    const { stdout, stderr } = await execFileAsync('pnpm', tscArgs, {
       cwd: projectDirectory,
       env: {
         ...process.env,
@@ -190,6 +205,54 @@ async function runBatchMigration(options: CliOptions) {
   for (let round = 1; round <= options.maxRounds; round += 1) {
     const { diagnostics, exitCode, rawOutput } = await runTypeCheck(options.project)
     if (exitCode === 0) {
+      const finalCheck = await runTypeCheck(options.project, { incremental: false })
+      if (finalCheck.exitCode !== 0) {
+        const finalDiagnostics = finalCheck.diagnostics
+        console.log(`Final cold type check found ${finalDiagnostics.length} diagnostic(s). ${summarizeCodes(finalDiagnostics)}`)
+
+        if (options.verbose) {
+          for (const diagnostic of finalDiagnostics.slice(0, 40))
+            console.log(`${path.relative(process.cwd(), diagnostic.fileName)}:${diagnostic.line} TS${diagnostic.code} ${diagnostic.message}`)
+        }
+
+        const finalSupportedFiles = Array.from(new Set(
+          finalDiagnostics
+            .filter(diagnostic => SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code))
+            .map(diagnostic => diagnostic.fileName),
+        ))
+
+        if (finalSupportedFiles.length > 0) {
+          console.log(`  Final pass batch: ${finalSupportedFiles.length} file(s)`)
+          let finalResult = await runMigration({
+            files: finalSupportedFiles,
+            maxIterations: options.batchIterations,
+            project: options.project,
+            verbose: options.verbose,
+            write: true,
+          })
+
+          if (finalResult.totalEdits === 0) {
+            console.log('    No edits produced; retrying final pass with full project roots.')
+            finalResult = await runMigration({
+              files: finalSupportedFiles,
+              maxIterations: options.batchIterations,
+              project: options.project,
+              useFullProjectRoots: true,
+              verbose: options.verbose,
+              write: true,
+            })
+          }
+
+          if (finalResult.totalEdits > 0)
+            continue
+        }
+
+        if (finalCheck.rawOutput)
+          process.stderr.write(`${finalCheck.rawOutput}\n`)
+        process.exitCode = 1
+        return
+      }
+
       console.log(`Type check passed after ${round - 1} migration round(s).`)
       return
     }
