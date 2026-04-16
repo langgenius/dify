@@ -163,7 +163,7 @@ describe('WorkplaceSelector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'common.provider.saveFailed',
+          message: 'common.actionMsg.modifiedUnsuccessfully',
         })
       })
     })
