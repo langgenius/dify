@@ -113,6 +113,19 @@ def test_api_based_extension_get_returns_tenant_extensions(app: Flask, monkeypat
     service_mock.assert_called_once_with("tenant-123")
 
 
+def test_api_based_extension_get_preserves_empty_api_key(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    extension = _make_extension(api_key="")
+    monkeypatch.setattr(
+        "controllers.console.extension.APIBasedExtensionService.get_all_by_tenant_id",
+        MagicMock(return_value=[extension]),
+    )
+
+    with app.test_request_context("/console/api/api-based-extension", method="GET"):
+        response = APIBasedExtensionAPI().get()
+
+    assert response[0]["api_key"] == ""
+
+
 def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pytest.MonkeyPatch):
     saved_extension = _make_extension(name="Docs API", api_key="saved-secret")
     save_mock = MagicMock(return_value=saved_extension)
@@ -125,7 +138,7 @@ def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pyt
     }
 
     with app.test_request_context("/console/api/api-based-extension", method="POST", json=payload):
-        response = APIBasedExtensionAPI().post()
+        response, status_code = APIBasedExtensionAPI().post()
 
     args, _ = save_mock.call_args
     created_extension: APIBasedExtension = args[0]
@@ -134,6 +147,7 @@ def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pyt
     assert created_extension.api_endpoint == payload["api_endpoint"]
     assert created_extension.api_key == payload["api_key"]
     assert response["name"] == saved_extension.name
+    assert status_code == 201
     save_mock.assert_called_once()
 
 

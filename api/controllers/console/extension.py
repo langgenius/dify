@@ -34,8 +34,8 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
 
 
 def _mask_api_key(api_key: str | None) -> str | None:
-    if api_key is None:
-        return None
+    if not api_key:
+        return api_key
     if len(api_key) <= 8:
         return api_key[0] + "******" + api_key[-1]
     return api_key[:3] + "******" + api_key[-3:]
