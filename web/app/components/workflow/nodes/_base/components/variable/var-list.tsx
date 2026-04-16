@@ -67,11 +67,11 @@ const VarList: FC<Props> = ({
 
       const newKey = e.target.value
 
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
 
-      onVarNameChange?.(list[index].variable, newKey)
+      onVarNameChange?.(list[index]!.variable, newKey)
       const newList = produce(list, (draft) => {
-        draft[index].variable = newKey
+        draft[index]!.variable = newKey
       })
       onChange(newList)
     }
@@ -81,26 +81,26 @@ const VarList: FC<Props> = ({
     return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
       const newList = produce(list, (draft) => {
         if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-          draft[index].value_selector = value as ValueSelector
-          draft[index].value_type = varInfo?.type
+          draft[index]!.value_selector = value as ValueSelector
+          draft[index]!.value_type = varInfo?.type
           if (isSupportConstantValue)
-            draft[index].variable_type = VarKindType.variable
+            draft[index]!.variable_type = VarKindType.variable
 
-          if (!draft[index].variable) {
+          if (!draft[index]!.variable) {
             const variables = draft.map(v => v.variable)
-            let newVarName = value[value.length - 1]
+            let newVarName = value[value.length - 1]!
             let count = 1
-            while (variables.includes(newVarName)) {
+            while (variables.includes(newVarName!)) {
               newVarName = `${value[value.length - 1]}_${count}`
               count++
             }
-            draft[index].variable = newVarName
+            draft[index]!.variable = newVarName
           }
         }
         else {
-          draft[index].variable_type = VarKindType.constant
-          draft[index].value_selector = value as ValueSelector
-          draft[index].value = value as string
+          draft[index]!.variable_type = VarKindType.constant
+          draft[index]!.value_selector = value as ValueSelector
+          draft[index]!.value = value as string
         }
       })
       onChange(newList)

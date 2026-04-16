@@ -52,7 +52,7 @@ describe('end/use-config', () => {
 
   it('should build var-list handlers against outputs and surface the readonly state', () => {
     const { result } = renderHook(() => useConfig('end-node', currentInputs))
-    const config = mockUseVarList.mock.calls[0][0] as { setInputs: (inputs: EndNodeType) => void }
+    const config = mockUseVarList.mock.calls[0]![0] as { setInputs: (inputs: EndNodeType) => void }
 
     expect(mockUseVarList).toHaveBeenCalledWith(expect.objectContaining({
       inputs: currentInputs,

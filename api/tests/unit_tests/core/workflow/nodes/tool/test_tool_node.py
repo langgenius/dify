@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment
-
-from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only

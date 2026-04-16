@@ -4,6 +4,11 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
+from factories import variable_factory
+from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import (
     ArrayNumberVariable,
@@ -31,11 +36,6 @@ from graphon.variables.segments import (
     StringSegment,
 )
 from graphon.variables.types import SegmentType
-from hypothesis import HealthCheck, given, settings
-from hypothesis import strategies as st
-
-from factories import variable_factory
-from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 
 
 def test_string_variable():

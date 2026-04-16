@@ -61,7 +61,7 @@ const VarList: FC<Props> = ({
         payload: {
           type: ChangeType.remove,
           payload: {
-            beforeKey: list[index].variable,
+            beforeKey: list[index]!.variable,
           },
         },
       })

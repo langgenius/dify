@@ -239,8 +239,8 @@ const Flowchart = (props: FlowchartProps) => {
               if (!taskMatch)
                 return line // Not a task line, return as is.
 
-              const taskName = taskMatch[1].trim()
-              let paramsStr = taskMatch[2].trim()
+              const taskName = taskMatch[1]!.trim()
+              let paramsStr = taskMatch[2]!.trim()
 
               // Rule 1: Correct multiple "after" dependencies ONLY if they exist.
               // This is a common mistake, e.g., "..., after task1, after task2, ..."

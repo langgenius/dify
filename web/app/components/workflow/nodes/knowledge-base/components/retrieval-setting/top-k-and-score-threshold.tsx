@@ -72,11 +72,11 @@ const TopKAndScoreThreshold = ({
           value={topK}
           onValueChange={value => handleTopKChange(value ?? 0)}
         >
-          <NumberFieldGroup size="regular">
-            <NumberFieldInput size="regular" />
+          <NumberFieldGroup>
+            <NumberFieldInput />
             <NumberFieldControls>
-              <NumberFieldIncrement size="regular" />
-              <NumberFieldDecrement size="regular" />
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
@@ -107,11 +107,11 @@ const TopKAndScoreThreshold = ({
               value={scoreThreshold ?? null}
               onValueChange={value => handleScoreThresholdChange(value ?? 0)}
             >
-              <NumberFieldGroup size="regular">
-                <NumberFieldInput size="regular" />
+              <NumberFieldGroup>
+                <NumberFieldInput />
                 <NumberFieldControls>
-                  <NumberFieldIncrement size="regular" />
-                  <NumberFieldDecrement size="regular" />
+                  <NumberFieldIncrement />
+                  <NumberFieldDecrement />
                 </NumberFieldControls>
               </NumberFieldGroup>
             </NumberField>
