@@ -24,7 +24,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
         className="w-[618px] max-w-[618px] rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
-        overlayClassName="bg-workflow-canvas-canvas-overlay"
+        backdropClassName="bg-workflow-canvas-canvas-overlay"
       >
         <DialogCloseButton />
 

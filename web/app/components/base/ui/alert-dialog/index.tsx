@@ -14,16 +14,16 @@ export const AlertDialogDescription = BaseAlertDialog.Description
 type AlertDialogContentProps = {
   children: ReactNode
   className?: string
-  overlayClassName?: string
   popupProps?: Omit<BaseAlertDialog.Popup.Props, 'children' | 'className'>
+  backdropClassName?: string
   backdropProps?: Omit<BaseAlertDialog.Backdrop.Props, 'className'>
 }
 
 export function AlertDialogContent({
   children,
   className,
-  overlayClassName,
   popupProps,
+  backdropClassName,
   backdropProps,
 }: AlertDialogContentProps) {
   return (
@@ -33,7 +33,7 @@ export function AlertDialogContent({
         className={cn(
           'fixed inset-0 z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
-          overlayClassName,
+          backdropClassName,
         )}
       />
       <BaseAlertDialog.Popup
