@@ -1,4 +1,5 @@
 import type { FileUpload } from '@/app/components/base/features/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { FILE_URL_REGEX } from '../constants'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'

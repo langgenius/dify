@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import Editor, { loader } from '@monaco-editor/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -10,7 +11,6 @@ import {
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import Base from '../base'
 import './style.css'
@@ -167,7 +167,7 @@ const CodeEditor: FC<Props> = ({
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && !isFocus && <div className="pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-components-input-text-placeholder">{placeholder}</div>}
+      {!outPutValue && !isFocus && <div className="pointer-events-none absolute top-0 left-[36px] text-[13px] leading-[18px] font-normal text-components-input-text-placeholder">{placeholder}</div>}
     </>
   )
 

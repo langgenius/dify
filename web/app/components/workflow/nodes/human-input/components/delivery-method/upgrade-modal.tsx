@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiMailSendFill,
 } from '@remixicon/react'
@@ -8,7 +9,6 @@ import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { Button } from '@/app/components/base/ui/button'
 import { useModalContextSelector } from '@/context/modal-context'
-import { cn } from '@/utils/classnames'
 
 type UpgradeModalProps = {
   isShow: boolean

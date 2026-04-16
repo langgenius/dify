@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -19,7 +20,6 @@ import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/compo
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   icon?: string | { content?: string, background?: string }
@@ -120,8 +120,8 @@ const ToolItem = ({
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            value={switchValue ?? false}
-            onChange={onSwitchChange}
+            checked={switchValue ?? false}
+            onCheckedChange={onSwitchChange}
           />
         </div>
       )}

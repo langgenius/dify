@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
@@ -117,7 +117,7 @@ const renderInputCell = (
       className={cn(
         'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
-        'text-text-secondary system-sm-regular placeholder:text-text-quaternary',
+        'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
     />
   )
@@ -140,8 +140,8 @@ const renderSelectCell = (
       notClearable={true}
       wrapperClassName="h-6 w-full min-w-0"
       className={cn(
-        'h-6 rounded-none bg-transparent pl-0 pr-6 text-text-secondary',
-        'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
+        'h-6 rounded-none bg-transparent pr-6 pl-0 text-text-secondary',
+        'group-hover/simple-select:bg-transparent hover:bg-transparent focus-visible:bg-transparent',
       )}
       optionWrapClassName="w-26 min-w-26 z-60 -ml-3"
     />
@@ -248,7 +248,7 @@ const GenericTable: FC<GenericTableProps> = ({
     return (
       <div className="rounded-lg border border-divider-regular">
         {showHeader && (
-          <div className="flex h-7 items-center leading-7 text-text-tertiary system-xs-medium-uppercase">
+          <div className="flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
             {columns.map((column, index) => (
               <div
                 key={column.key}
@@ -296,7 +296,7 @@ const GenericTable: FC<GenericTableProps> = ({
                   </div>
                 ))}
                 {!readonly && dataIndex !== null && hasContent && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => removeRow(dataIndex)}
@@ -322,12 +322,12 @@ const GenericTable: FC<GenericTableProps> = ({
   return (
     <div className={className}>
       <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-text-secondary system-sm-semibold-uppercase">{title}</h4>
+        <h4 className="system-sm-semibold-uppercase text-text-secondary">{title}</h4>
       </div>
 
       {showPlaceholder
         ? (
-            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
+            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-[18px] font-normal text-text-quaternary">
               {placeholder}
             </div>
           )

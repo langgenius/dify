@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'

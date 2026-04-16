@@ -1,9 +1,9 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useAccountIntegrates } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 
 const titleClassName = `
@@ -40,8 +40,8 @@ export default function IntegrationsPage() {
               <div key={integrate.provider} className="mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2">
                 <div className={cn('mr-3 h-8 w-8 rounded-lg border border-gray-100 bg-white', s[`${integrate.provider}-icon`])} />
                 <div className="grow">
-                  <div className="text-sm font-medium leading-[21px] text-gray-800">{info.name}</div>
-                  <div className="text-xs font-normal leading-[18px] text-gray-500">{info.description}</div>
+                  <div className="text-sm leading-[21px] font-medium text-gray-800">{info.name}</div>
+                  <div className="text-xs leading-[18px] font-normal text-gray-500">{info.description}</div>
                 </div>
                 {
                   !integrate.is_bound && (

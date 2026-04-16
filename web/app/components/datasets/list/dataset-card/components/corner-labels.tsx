@@ -14,7 +14,7 @@ const CornerLabels = ({ dataset }: CornerLabelsProps) => {
     return (
       <CornerLabel
         label={t('cornerLabel.unavailable', { ns: 'dataset' })}
-        className="absolute right-0 top-0 z-10"
+        className="absolute top-0 right-0 z-5"
         labelClassName="rounded-tr-xl"
       />
     )
@@ -24,7 +24,7 @@ const CornerLabels = ({ dataset }: CornerLabelsProps) => {
     return (
       <CornerLabel
         label={t('cornerLabel.pipeline', { ns: 'dataset' })}
-        className="absolute right-0 top-0 z-10"
+        className="absolute top-0 right-0 z-5"
         labelClassName="rounded-tr-xl"
       />
     )

@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ModelItem } from '../declarations'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
@@ -39,7 +39,7 @@ const ModelName: FC<ModelNameProps> = ({
   if (!modelItem)
     return null
   return (
-    <div className={cn('flex items-center gap-0.5 overflow-hidden truncate text-ellipsis text-components-input-text-filled system-sm-regular', className)}>
+    <div className={cn('flex items-center gap-0.5 truncate overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled', className)}>
       <div
         className="truncate"
         title={modelItem.label[language] || modelItem.label.en_US}

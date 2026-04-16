@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus
+from models.account import Account, AccountStatus, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -1697,7 +1697,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="user-123", email="test@example.com"
         )
@@ -1759,7 +1759,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock Redis data
         invitation_data = {
@@ -1784,7 +1784,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="different-user-456", email="test@example.com"
         )

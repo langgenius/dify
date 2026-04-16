@@ -16,7 +16,7 @@ const meta = {
   },
   tags: ['autodocs'],
   args: {
-    value: false,
+    checked: false,
   },
   argTypes: {
     size: {
@@ -24,7 +24,7 @@ const meta = {
       options: ['xs', 'sm', 'md', 'lg'],
       description: 'Switch size',
     },
-    value: {
+    checked: {
       control: 'boolean',
       description: 'Checked state (controlled)',
     },
@@ -43,14 +43,14 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const SwitchDemo = (args: any) => {
-  const [enabled, setEnabled] = useState(args.value ?? false)
+  const [enabled, setEnabled] = useState(args.checked ?? false)
 
   return (
     <div className="flex items-center justify-center gap-3">
       <Switch
         {...args}
-        value={enabled}
-        onChange={setEnabled}
+        checked={enabled}
+        onCheckedChange={setEnabled}
       />
       <span className="text-sm text-gray-700">
         {enabled ? 'On' : 'Off'}
@@ -63,7 +63,7 @@ export const Default: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    value: false,
+    checked: false,
     disabled: false,
   },
 }
@@ -72,7 +72,7 @@ export const DefaultOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    value: true,
+    checked: true,
     disabled: false,
   },
 }
@@ -81,7 +81,7 @@ export const DisabledOff: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    value: false,
+    checked: false,
     disabled: true,
   },
 }
@@ -90,7 +90,7 @@ export const DisabledOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    value: true,
+    checked: true,
     disabled: true,
   },
 }
@@ -116,20 +116,20 @@ const AllStatesDemo = () => {
               <td className="py-3 font-medium text-gray-900">{size}</td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} value={false} onChange={() => {}} />
-                  <Switch size={size} value={true} onChange={() => {}} />
+                  <Switch size={size} checked={false} onCheckedChange={() => {}} />
+                  <Switch size={size} checked={true} onCheckedChange={() => {}} />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} value={false} disabled />
-                  <Switch size={size} value={true} disabled />
+                  <Switch size={size} checked={false} disabled />
+                  <Switch size={size} checked={true} disabled />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} value={false} loading />
-                  <Switch size={size} value={true} loading />
+                  <Switch size={size} checked={false} loading />
+                  <Switch size={size} checked={true} loading />
                 </div>
               </td>
               <td className="py-3">
@@ -165,19 +165,19 @@ const SizeComparisonDemo = () => {
   return (
     <div className="flex flex-col items-center space-y-4">
       <div className="flex items-center gap-3">
-        <Switch size="xs" value={states.xs} onChange={v => setStates({ ...states, xs: v })} />
+        <Switch size="xs" checked={states.xs} onCheckedChange={v => setStates({ ...states, xs: v })} />
         <span className="text-sm text-gray-700">Extra Small (xs) — 14×10</span>
       </div>
       <div className="flex items-center gap-3">
-        <Switch size="sm" value={states.sm} onChange={v => setStates({ ...states, sm: v })} />
+        <Switch size="sm" checked={states.sm} onCheckedChange={v => setStates({ ...states, sm: v })} />
         <span className="text-sm text-gray-700">Small (sm) — 20×12</span>
       </div>
       <div className="flex items-center gap-3">
-        <Switch size="md" value={states.md} onChange={v => setStates({ ...states, md: v })} />
+        <Switch size="md" checked={states.md} onCheckedChange={v => setStates({ ...states, md: v })} />
         <span className="text-sm text-gray-700">Regular (md) — 28×16</span>
       </div>
       <div className="flex items-center gap-3">
-        <Switch size="lg" value={states.lg} onChange={v => setStates({ ...states, lg: v })} />
+        <Switch size="lg" checked={states.lg} onCheckedChange={v => setStates({ ...states, lg: v })} />
         <span className="text-sm text-gray-700">Large (lg) — 36×20</span>
       </div>
     </div>
@@ -201,27 +201,27 @@ const LoadingDemo = () => {
       </button>
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <Switch size="lg" value={false} loading={loading} />
+          <Switch size="lg" checked={false} loading={loading} />
           <span className="text-sm text-gray-700">Large unchecked</span>
         </div>
         <div className="flex items-center gap-3">
-          <Switch size="lg" value={true} loading={loading} />
+          <Switch size="lg" checked={true} loading={loading} />
           <span className="text-sm text-gray-700">Large checked</span>
         </div>
         <div className="flex items-center gap-3">
-          <Switch size="md" value={false} loading={loading} />
+          <Switch size="md" checked={false} loading={loading} />
           <span className="text-sm text-gray-700">Regular unchecked</span>
         </div>
         <div className="flex items-center gap-3">
-          <Switch size="md" value={true} loading={loading} />
+          <Switch size="md" checked={true} loading={loading} />
           <span className="text-sm text-gray-700">Regular checked</span>
         </div>
         <div className="flex items-center gap-3">
-          <Switch size="sm" value={false} loading={loading} />
+          <Switch size="sm" checked={false} loading={loading} />
           <span className="text-sm text-gray-700">Small (no spinner)</span>
         </div>
         <div className="flex items-center gap-3">
-          <Switch size="xs" value={false} loading={loading} />
+          <Switch size="xs" checked={false} loading={loading} />
           <span className="text-sm text-gray-700">Extra Small (no spinner)</span>
         </div>
       </div>
@@ -280,9 +280,9 @@ const MutationLoadingDemo = () => {
         </div>
         <Switch
           size="lg"
-          value={enabled}
+          checked={enabled}
           loading={isPending}
-          onChange={handleChange}
+          onCheckedChange={handleChange}
           aria-label="Enable Auto Retry"
         />
       </div>
@@ -348,7 +348,7 @@ export const Playground: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    value: false,
+    checked: false,
     disabled: false,
     loading: false,
   },

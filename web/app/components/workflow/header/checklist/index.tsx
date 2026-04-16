@@ -2,6 +2,7 @@ import type { ChecklistItem } from '../../hooks/use-checklist'
 import type {
   CommonEdgeType,
 } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -19,7 +20,6 @@ import {
 } from '@/app/components/base/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { cn } from '@/utils/classnames'
 import {
   useChecklist,
   useNodesInteractions,

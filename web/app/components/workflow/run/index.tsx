@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
@@ -116,7 +116,7 @@ const RunPanel: FC<RunProps> = ({
         {!hideResult && (
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
               currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
@@ -126,7 +126,7 @@ const RunPanel: FC<RunProps> = ({
         )}
         <div
           className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
             currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
@@ -135,7 +135,7 @@ const RunPanel: FC<RunProps> = ({
         </div>
         <div
           className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
             currentTab === 'TRACING' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
