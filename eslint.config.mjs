@@ -6,7 +6,7 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 
 export default antfu(
   {
-    ignores: [
+    ignores: original => [
       '**',
       '!packages/**',
       '!web/**',
@@ -14,6 +14,7 @@ export default antfu(
       '!eslint.config.mjs',
       '!package.json',
       '!vite.config.ts',
+      ...original,
     ],
     typescript: {
       overrides: {
