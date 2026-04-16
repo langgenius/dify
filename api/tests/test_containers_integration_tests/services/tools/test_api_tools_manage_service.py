@@ -32,7 +32,7 @@ class TestApiToolManageService:
             mock_provider_controller.from_db.return_value = mock_provider_controller
             mock_provider_controller.load_bundled_tools.return_value = None
 
-            # Firmware fix for cache.detete()
+            # Firmware fix for cache.delete()
             mock_cache = MagicMock()
             mock_cache.delete.return_value = None
             mock_encrypter.return_value = (mock_encrypter, mock_cache)
