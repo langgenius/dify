@@ -105,7 +105,7 @@ catalog:
   date-fns: 4.1.0
   dayjs: 1.11.20
   decimal.js: 10.6.0
-  dompurify: 3.3.3
+  dompurify: 3.4.0
   echarts: 6.0.0
   echarts-for-react: 3.0.6
   elkjs: 0.11.1
