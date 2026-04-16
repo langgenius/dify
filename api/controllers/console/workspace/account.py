@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 import pytz
 from flask import request
@@ -175,7 +175,7 @@ reg(CheckEmailUniquePayload)
 register_schema_models(console_ns, AccountResponse)
 
 
-def _serialize_account(account) -> dict:
+def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 
@@ -184,9 +184,15 @@ def _to_timestamp(value: datetime | int | str | None) -> int | None:
         return None
     if isinstance(value, int):
         return value
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return int(datetime.fromisoformat(value).astimezone(pytz.utc).timestamp())
+    dt = value
+    if isinstance(value, str):
+        normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
+        dt = datetime.fromisoformat(normalized)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    else:
+        dt = dt.astimezone(pytz.utc)
+    return int(dt.timestamp())
 
 
 class AccountIntegrateResponse(ResponseModel):
