@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -347,3 +348,87 @@ def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.Monk
     ):
         with pytest.raises(NotFound):
             handler(api, app_model=SimpleNamespace(id="app"))
+
+
+def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    app_id_1 = "11111111-1111-1111-1111-111111111111"
+    app_id_2 = "22222222-2222-2222-2222-222222222222"
+    signed_avatar_url = "https://files.example.com/signed/avatar-1"
+    sign_avatar = Mock(return_value=signed_avatar_url)
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: {app_id_1}),
+    )
+    monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+
+    workflow_module.redis_client.hgetall.side_effect = lambda key: (
+        {
+            b"sid-1": json.dumps(
+                {
+                    "user_id": "u-1",
+                    "username": "Alice",
+                    "avatar": "avatar-file-id",
+                    "sid": "sid-1",
+                }
+            )
+        }
+        if key == f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
+        else {}
+    )
+
+    api = workflow_module.WorkflowOnlineUsersApi()
+    handler = _unwrap(api.get)
+
+    with app.test_request_context(
+        f"/apps/workflows/online-users?app_ids={app_id_1},{app_id_2}",
+        method="GET",
+    ):
+        response = handler(api)
+
+    assert response == {
+        "data": [
+            {
+                "app_id": app_id_1,
+                "users": [
+                    {
+                        "user_id": "u-1",
+                        "username": "Alice",
+                        "avatar": signed_avatar_url,
+                        "sid": "sid-1",
+                    }
+                ],
+            }
+        ]
+    }
+    workflow_module.redis_client.hgetall.assert_called_once_with(
+        f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
+    )
+    sign_avatar.assert_called_once_with("avatar-file-id")
+
+
+def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
+    accessible_app_ids = Mock(return_value=set())
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
+    )
+
+    excessive_ids = ",".join(f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS + 1))
+
+    api = workflow_module.WorkflowOnlineUsersApi()
+    handler = _unwrap(api.get)
+
+    with app.test_request_context(
+        f"/apps/workflows/online-users?app_ids={excessive_ids}",
+        method="GET",
+    ):
+        with pytest.raises(HTTPException) as exc:
+            handler(api)
+
+    assert exc.value.code == 400
+    assert "Maximum" in exc.value.description
+    accessible_app_ids.assert_not_called()

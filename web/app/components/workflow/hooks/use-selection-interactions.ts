@@ -9,10 +9,14 @@ import {
 } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
+import { useNodesReadOnly } from './use-workflow'
 
 export const useSelectionInteractions = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleSelectionStart = useCallback(() => {
     const {
@@ -81,15 +85,14 @@ export const useSelectionInteractions = () => {
   }, [store])
 
   const handleSelectionDrag = useCallback((_: MouseEvent, nodesWithDrag: Node[]) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
     workflowStore.setState({
       nodeAnimation: false,
     })
-    const nodes = getNodes()
+
+    if (getNodesReadOnly())
+      return
+
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         const dragNode = nodesWithDrag.find(n => n.id === node.id)
@@ -98,8 +101,8 @@ export const useSelectionInteractions = () => {
           node.position = dragNode.position
       })
     })
-    setNodes(newNodes)
-  }, [store, workflowStore])
+    setNodes(newNodes, true, 'use-selection-interactions:handleSelectionDrag')
+  }, [collaborativeWorkflow, getNodesReadOnly, workflowStore])
 
   const handleSelectionCancel = useCallback(() => {
     const {

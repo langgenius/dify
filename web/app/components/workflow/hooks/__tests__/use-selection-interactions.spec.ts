@@ -4,6 +4,7 @@ import { act, waitFor } from '@testing-library/react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { useSelectionInteractions } from '../use-selection-interactions'
 
 type BundledState = {
@@ -126,6 +127,7 @@ describe('useSelectionInteractions', () => {
   })
 
   it('handleSelectionDrag should sync node positions', async () => {
+    const setNodesSpy = vi.spyOn(collaborationManager, 'setNodes')
     const { result, store } = renderSelectionInteractions()
     const draggedNodes = [
       { id: 'n1', position: { x: 50, y: 60 }, data: {} },
@@ -136,6 +138,9 @@ describe('useSelectionInteractions', () => {
     })
 
     expect(store.getState().nodeAnimation).toBe(false)
+    expect(setNodesSpy).toHaveBeenCalledOnce()
+    expect(setNodesSpy.mock.calls[0]?.[2]).toBe('use-selection-interactions:handleSelectionDrag')
+    expect(setNodesSpy.mock.calls[0]?.[1].find(node => node.id === 'n1')?.position).toEqual({ x: 50, y: 60 })
 
     await waitFor(() => {
       expect(result.current.nodes.find(node => node.id === 'n1')?.position).toEqual({ x: 50, y: 60 })
