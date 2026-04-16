@@ -1,13 +1,13 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type { HTMLAttributes } from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 
 export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Root>
+export type NumberFieldRootProps = BaseNumberField.Root.Props
 
 export const numberFieldGroupVariants = cva(
   [
@@ -32,7 +32,7 @@ export const numberFieldGroupVariants = cva(
 )
 export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Group> & VariantProps<typeof numberFieldGroupVariants>
+export type NumberFieldGroupProps = BaseNumberField.Group.Props & VariantProps<typeof numberFieldGroupVariants>
 
 export function NumberFieldGroup({
   className,
@@ -67,7 +67,7 @@ export const numberFieldInputVariants = cva(
   },
 )
 
-export type NumberFieldInputProps = Omit<React.ComponentPropsWithoutRef<typeof BaseNumberField.Input>, 'size'> & VariantProps<typeof numberFieldInputVariants>
+export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> & VariantProps<typeof numberFieldInputVariants>
 
 export function NumberFieldInput({
   className,
@@ -97,7 +97,7 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
 
 export function NumberFieldUnit({
   className,
@@ -116,7 +116,7 @@ const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = React.HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = HTMLAttributes<HTMLDivElement>
 
 export function NumberFieldControls({
   className,
@@ -185,7 +185,7 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & NumberFieldButtonVariantProps
+export type NumberFieldButtonProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
 
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
