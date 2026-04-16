@@ -4,7 +4,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -63,6 +63,11 @@ register_schema_models(
 )
 
 
+snippet_workflow_model = console_ns.clone("SnippetWorkflow", workflow_model, {
+    "input_fields": fields.Raw(default=[]),
+})
+
+
 class SnippetNotFoundError(Exception):
     """Snippet not found error."""
 
@@ -100,14 +105,14 @@ def get_snippet(view_func: Callable[P, R]):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft")
 class SnippetDraftWorkflowApi(Resource):
     @console_ns.doc("get_snippet_draft_workflow")
-    @console_ns.response(200, "Draft workflow retrieved successfully", workflow_model)
+    @console_ns.response(200, "Draft workflow retrieved successfully", snippet_workflow_model)
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @marshal_with(workflow_model)
+    @marshal_with(snippet_workflow_model)
     def get(self, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = SnippetService()
@@ -118,6 +123,7 @@ class SnippetDraftWorkflowApi(Resource):
 
         db.session.expunge(workflow)
         workflow.conversation_variables = []
+        workflow.input_fields = snippet.input_fields_list
         return workflow
 
     @console_ns.doc("sync_snippet_draft_workflow")
@@ -175,14 +181,14 @@ class SnippetDraftConfigApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/publish")
 class SnippetPublishedWorkflowApi(Resource):
     @console_ns.doc("get_snippet_published_workflow")
-    @console_ns.response(200, "Published workflow retrieved successfully", workflow_model)
+    @console_ns.response(200, "Published workflow retrieved successfully", snippet_workflow_model)
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @marshal_with(workflow_model)
+    @marshal_with(snippet_workflow_model)
     def get(self, snippet: CustomizedSnippet):
         """Get published workflow for snippet."""
         if not snippet.is_published:
@@ -190,6 +196,9 @@ class SnippetPublishedWorkflowApi(Resource):
 
         snippet_service = SnippetService()
         workflow = snippet_service.get_published_workflow(snippet=snippet)
+
+        if workflow:
+            workflow.input_fields = snippet.input_fields_list
 
         return workflow
 
