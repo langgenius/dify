@@ -116,8 +116,8 @@ const CommentsPanel = () => {
                 <span className="text-sm text-text-secondary">{t('comments.filter.showResolved', { ns: 'workflow' })}</span>
                 <Switch
                   size="md"
-                  value={showResolvedComments}
-                  onChange={(checked) => {
+                  checked={showResolvedComments}
+                  onCheckedChange={(checked: boolean) => {
                     setShowResolvedComments(checked)
                   }}
                 />
