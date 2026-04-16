@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -7,7 +8,6 @@ import VoiceSettings from '@/app/components/base/features/new-feature-panel/text
 import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 import Tooltip from '@/app/components/base/tooltip'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   isChatMode?: boolean

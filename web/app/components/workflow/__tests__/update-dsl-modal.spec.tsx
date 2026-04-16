@@ -17,6 +17,7 @@ class MockFileReader {
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
+const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
@@ -37,6 +38,12 @@ vi.mock('@/service/apps', () => ({
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+}))
+
+vi.mock('../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    emitWorkflowUpdate: mockEmitWorkflowUpdate,
+  },
 }))
 
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -138,6 +145,7 @@ describe('UpdateDSLModal', () => {
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
       type: 'WORKFLOW_DATA_UPDATE',
     }))
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
@@ -187,6 +195,7 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
   })
 
   it('should open the pending modal after the timeout and allow dismissing it', async () => {

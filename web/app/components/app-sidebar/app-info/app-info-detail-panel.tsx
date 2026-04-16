@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { Button } from '@/app/components/base/ui/button'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'
 import AppOperations from './app-operations'
@@ -126,11 +126,13 @@ const AppInfoDetailPanel = ({
           secondaryOperations={secondaryOperations}
         />
       </div>
-      <CardView
-        appId={appDetail.id}
-        isInPanel={true}
-        className="flex flex-1 flex-col gap-2 overflow-auto px-2 py-1"
-      />
+      {appDetail.type !== AppTypeEnum.EVALUATION && (
+        <CardView
+          appId={appDetail.id}
+          isInPanel={true}
+          className="flex flex-1 flex-col gap-2 overflow-auto px-2 py-1"
+        />
+      )}
       {switchOperation && (
         <div className="flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2">
           <Button

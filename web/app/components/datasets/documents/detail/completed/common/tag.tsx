@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 const Tag = ({ text, className }: { text: string, className?: string }) => {
   return (

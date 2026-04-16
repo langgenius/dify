@@ -2,7 +2,7 @@ import type { App, AppSSO } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import AppInfoDetailPanel from '../app-info-detail-panel'
 
 vi.mock('../../../base/app-icon', () => ({
@@ -133,6 +133,17 @@ describe('AppInfoDetailPanel', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
       const cardView = screen.getByTestId('card-view')
       expect(cardView).toHaveAttribute('data-app-id', 'app-1')
+    })
+
+    it('should not render CardView when app type is evaluation', () => {
+      render(
+        <AppInfoDetailPanel
+          {...defaultProps}
+          appDetail={createAppDetail({ type: AppTypeEnum.EVALUATION })}
+        />,
+      )
+
+      expect(screen.queryByTestId('card-view')).not.toBeInTheDocument()
     })
 
     it('should render app icon with large size', () => {

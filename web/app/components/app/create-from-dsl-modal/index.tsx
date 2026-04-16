@@ -1,12 +1,12 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
@@ -26,7 +26,6 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'

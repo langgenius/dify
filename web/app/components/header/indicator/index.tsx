@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 export type IndicatorProps = {
   color?: 'green' | 'orange' | 'red' | 'blue' | 'yellow' | 'gray'

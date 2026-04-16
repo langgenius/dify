@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { VersionHistoryContextMenuOptions } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type MenuItemProps = {
   item: {
@@ -20,7 +20,7 @@ const MenuItem: FC<MenuItemProps> = ({
   return (
     <div
       className={cn(
-        'flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 ',
+        'flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5',
         isDestructive ? 'hover:bg-state-destructive-hover' : 'hover:bg-state-base-hover',
       )}
       onClick={() => {
@@ -28,7 +28,7 @@ const MenuItem: FC<MenuItemProps> = ({
       }}
     >
       <div className={cn(
-        'system-md-regular flex-1 text-text-primary',
+        'flex-1 system-md-regular text-text-primary',
         isDestructive && 'hover:text-text-destructive',
       )}
       >

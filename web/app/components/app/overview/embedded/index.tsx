@@ -1,4 +1,5 @@
 import type { SiteInfo } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiClipboardFill,
   RiClipboardLine,
@@ -13,7 +14,6 @@ import Modal from '@/app/components/base/modal'
 import Tooltip from '@/app/components/base/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import style from './style.module.css'
 
@@ -139,7 +139,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       wrapperClassName={className}
       closable={true}
     >
-      <div className="system-sm-medium mb-4 mt-8 text-text-primary">
+      <div className="mt-8 mb-4 system-sm-medium text-text-primary">
         {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-y-2">
@@ -165,13 +165,13 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
         <div className="mt-6 w-full">
           <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
             <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
+            <div className="font-['Inter'] text-sm leading-tight font-medium text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
           </div>
         </div>
       )}
       <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
-        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
-          <div className="system-sm-medium shrink-0 grow text-text-secondary">
+        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
+          <div className="shrink-0 grow system-sm-medium text-text-secondary">
             {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
           </div>
           <Tooltip

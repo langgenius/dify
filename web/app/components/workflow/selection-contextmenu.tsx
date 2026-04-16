@@ -1,26 +1,36 @@
-import type { Node } from './types'
+import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
+import type { Edge, Node } from './types'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { produce } from 'immer'
 import {
   memo,
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
+import { toast } from '@/app/components/base/ui/toast'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
+import { useRouter } from '@/next/navigation'
+import { consoleClient } from '@/service/client'
+import { useCreateSnippetMutation } from '@/service/use-snippets'
+import { cn } from '@langgenius/dify-ui/cn'
+import CreateSnippetDialog from './create-snippet-dialog'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import ShortcutsName from './shortcuts-name'
 import { useStore, useWorkflowStore } from './store'
+import { BlockEnum, TRIGGER_NODE_TYPES } from './types'
 
 const AlignType = {
   Bottom: 'bottom',
@@ -42,37 +52,31 @@ type AlignBounds = {
   maxY: number
 }
 
-type MenuItem = {
+type AlignMenuItem = {
   alignType: AlignTypeValue
   icon: string
   iconClassName?: string
   translationKey: string
 }
 
-type MenuSection = {
-  titleKey: string
-  items: MenuItem[]
+type ActionMenuItem = {
+  action: 'copy' | 'createSnippet' | 'delete' | 'duplicate'
+  disabled?: boolean
+  shortcutKeys?: string[]
+  translationKey: string
 }
 
-const menuSections: MenuSection[] = [
-  {
-    titleKey: 'operator.vertical',
-    items: [
-      { alignType: AlignType.Top, icon: 'i-ri-align-top', translationKey: 'operator.alignTop' },
-      { alignType: AlignType.Middle, icon: 'i-ri-align-center', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
-      { alignType: AlignType.Bottom, icon: 'i-ri-align-bottom', translationKey: 'operator.alignBottom' },
-      { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
-    ],
-  },
-  {
-    titleKey: 'operator.horizontal',
-    items: [
-      { alignType: AlignType.Left, icon: 'i-ri-align-left', translationKey: 'operator.alignLeft' },
-      { alignType: AlignType.Center, icon: 'i-ri-align-center', translationKey: 'operator.alignCenter' },
-      { alignType: AlignType.Right, icon: 'i-ri-align-right', translationKey: 'operator.alignRight' },
-      { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify', translationKey: 'operator.distributeHorizontal' },
-    ],
-  },
+const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }
+
+const alignMenuItems: AlignMenuItem[] = [
+  { alignType: AlignType.Left, icon: 'i-ri-align-item-left-line', translationKey: 'operator.alignLeft' },
+  { alignType: AlignType.Center, icon: 'i-ri-align-item-horizontal-center-line', translationKey: 'operator.alignCenter' },
+  { alignType: AlignType.Right, icon: 'i-ri-align-item-right-line', translationKey: 'operator.alignRight' },
+  { alignType: AlignType.Top, icon: 'i-ri-align-item-top-line', translationKey: 'operator.alignTop' },
+  { alignType: AlignType.Middle, icon: 'i-ri-align-item-vertical-center-line', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
+  { alignType: AlignType.Bottom, icon: 'i-ri-align-item-bottom-line', translationKey: 'operator.alignBottom' },
+  { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify-line', translationKey: 'operator.distributeHorizontal' },
+  { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify-line', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
 ]
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
@@ -220,14 +224,98 @@ const distributeNodes = (
   })
 }
 
+const getSelectedSnippetGraph = (
+  nodes: Node[],
+  edges: Edge[],
+  selectedNodes: Node[],
+): SnippetCanvasData => {
+  const includedNodeIds = new Set(selectedNodes.map(node => node.id))
+
+  let shouldExpand = true
+  while (shouldExpand) {
+    shouldExpand = false
+
+    nodes.forEach((node) => {
+      if (!includedNodeIds.has(node.id))
+        return
+
+      if (node.parentId && !includedNodeIds.has(node.parentId)) {
+        includedNodeIds.add(node.parentId)
+        shouldExpand = true
+      }
+
+      node.data._children?.forEach((child) => {
+        if (!includedNodeIds.has(child.nodeId)) {
+          includedNodeIds.add(child.nodeId)
+          shouldExpand = true
+        }
+      })
+    })
+  }
+
+  const rootNodes = nodes.filter(node => includedNodeIds.has(node.id) && (!node.parentId || !includedNodeIds.has(node.parentId)))
+  const minRootX = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.x)) : 0
+  const minRootY = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.y)) : 0
+
+  return {
+    nodes: nodes
+      .filter(node => includedNodeIds.has(node.id))
+      .map((node) => {
+        const isRootNode = !node.parentId || !includedNodeIds.has(node.parentId)
+        const nextPosition = isRootNode
+          ? { x: node.position.x - minRootX, y: node.position.y - minRootY }
+          : node.position
+
+        return {
+          ...node,
+          position: nextPosition,
+          positionAbsolute: node.positionAbsolute
+            ? (isRootNode
+                ? {
+                    x: node.positionAbsolute.x - minRootX,
+                    y: node.positionAbsolute.y - minRootY,
+                  }
+                : node.positionAbsolute)
+            : undefined,
+          selected: false,
+          data: {
+            ...node.data,
+            selected: false,
+            _children: node.data._children?.filter(child => includedNodeIds.has(child.nodeId)),
+          },
+        }
+      }),
+    edges: edges
+      .filter(edge => includedNodeIds.has(edge.source) && includedNodeIds.has(edge.target))
+      .map(edge => ({
+        ...edge,
+        selected: false,
+      })),
+    viewport: DEFAULT_SNIPPET_VIEWPORT,
+  }
+}
+
 const SelectionContextmenu = () => {
   const { t } = useTranslation()
+  const { push } = useRouter()
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
+  const createSnippetMutation = useCreateSnippetMutation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { handleSelectionContextmenuCancel } = useSelectionInteractions()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
+  const { handleSelectionContextmenuCancel } = useSelectionInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
+  const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
+  const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
+  const [selectedGraphSnapshot, setSelectedGraphSnapshot] = useState<SnippetCanvasData | undefined>()
+
+  // Access React Flow methods
   const store = useStoreApi()
+
+  // Access React Flow methods
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  // Get selected nodes for alignment logic
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
@@ -253,20 +341,127 @@ const SelectionContextmenu = () => {
       handleSelectionContextmenuCancel()
   }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
 
-  const handleCopyNodes = useCallback(() => {
-    handleNodesCopy()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesCopy, handleSelectionContextmenuCancel])
+  const isAddToSnippetDisabled = useMemo(() => {
+    return selectedNodes.some(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.End
+      || node.data.type === BlockEnum.HumanInput
+      || TRIGGER_NODE_TYPES.includes(node.data.type as typeof TRIGGER_NODE_TYPES[number]))
+  }, [selectedNodes])
 
-  const handleDuplicateNodes = useCallback(() => {
-    handleNodesDuplicate()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesDuplicate, handleSelectionContextmenuCancel])
+  const handleOpenCreateSnippetDialog = useCallback(() => {
+    if (!canAccessSnippetsAndEvaluation || isAddToSnippetDisabled)
+      return
 
-  const handleDeleteNodes = useCallback(() => {
-    handleNodesDelete()
+    const nodes = store.getState().getNodes()
+    const { edges } = store.getState()
+
+    setSelectedGraphSnapshot(getSelectedSnippetGraph(nodes, edges, selectedNodes))
+    setIsCreateSnippetDialogOpen(true)
     handleSelectionContextmenuCancel()
-  }, [handleNodesDelete, handleSelectionContextmenuCancel])
+  }, [canAccessSnippetsAndEvaluation, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store])
+
+  const handleCloseCreateSnippetDialog = useCallback(() => {
+    setIsCreateSnippetDialogOpen(false)
+    setSelectedGraphSnapshot(undefined)
+  }, [])
+
+  const handleCreateSnippet = useCallback(async ({
+    name,
+    description,
+    icon,
+    graph,
+  }: CreateSnippetDialogPayload) => {
+    setIsCreatingSnippet(true)
+
+    try {
+      const snippet = await createSnippetMutation.mutateAsync({
+        body: {
+          name,
+          description: description || undefined,
+          icon_info: {
+            icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
+            icon_type: icon.type,
+            icon_background: icon.type === 'emoji' ? icon.background : undefined,
+            icon_url: icon.type === 'image' ? icon.url : undefined,
+          },
+        },
+      })
+
+      await consoleClient.snippets.syncDraftWorkflow({
+        params: { snippetId: snippet.id },
+        body: { graph },
+      })
+
+      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      handleCloseCreateSnippetDialog()
+      push(`/snippets/${snippet.id}/orchestrate`)
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
+    }
+    finally {
+      setIsCreatingSnippet(false)
+    }
+  }, [createSnippetMutation, handleCloseCreateSnippetDialog, push, t])
+
+  const menuActions = useMemo<ActionMenuItem[]>(() => {
+    const nextActions: ActionMenuItem[] = []
+
+    if (canAccessSnippetsAndEvaluation) {
+      nextActions.push({
+        action: 'createSnippet',
+        disabled: isAddToSnippetDisabled,
+        translationKey: 'snippet.addToSnippet',
+      })
+    }
+
+    nextActions.push(
+      {
+        action: 'copy',
+        shortcutKeys: ['ctrl', 'c'],
+        translationKey: 'common.copy',
+      },
+      {
+        action: 'duplicate',
+        shortcutKeys: ['ctrl', 'd'],
+        translationKey: 'common.duplicate',
+      },
+      {
+        action: 'delete',
+        shortcutKeys: ['del'],
+        translationKey: 'operation.delete',
+      },
+    )
+
+    return nextActions
+  }, [canAccessSnippetsAndEvaluation, isAddToSnippetDisabled])
+
+  const getActionLabel = useCallback((translationKey: string) => {
+    if (translationKey === 'operation.delete')
+      return t(translationKey, { ns: 'common', defaultValue: translationKey })
+
+    return t(translationKey, { ns: 'workflow', defaultValue: translationKey })
+  }, [t])
+
+  const handleMenuAction = useCallback((action: ActionMenuItem['action']) => {
+    switch (action) {
+      case 'createSnippet':
+        handleOpenCreateSnippetDialog()
+        return
+      case 'copy':
+        handleSelectionContextmenuCancel()
+        handleNodesCopy()
+        return
+      case 'duplicate':
+        handleSelectionContextmenuCancel()
+        handleNodesDuplicate()
+        return
+      case 'delete':
+        handleSelectionContextmenuCancel()
+        handleNodesDelete()
+    }
+  }, [handleNodesCopy, handleNodesDelete, handleNodesDuplicate, handleOpenCreateSnippetDialog, handleSelectionContextmenuCancel])
 
   const handleAlignNodes = useCallback((alignType: AlignTypeValue) => {
     if (getNodesReadOnly() || selectedNodes.length <= 1) {
@@ -276,7 +471,33 @@ const SelectionContextmenu = () => {
 
     workflowStore.setState({ nodeAnimation: false })
 
-    const nodes = store.getState().getNodes()
+    // Get all current nodes
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+
+    // Get all selected nodes
+    const selectedNodeIds = selectedNodes.map(node => node.id)
+
+    // Find container nodes and their children
+    // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
+    // when the container is selected. This prevents child nodes from being moved outside their containers.
+    const childNodeIds = new Set<string>()
+
+    nodes.forEach((node) => {
+      // Check if this is a container node (Iteration or Loop)
+      if (node.data._children && node.data._children.length > 0) {
+        // If container node is selected, add its children to the exclusion set
+        if (selectedNodeIds.includes(node.id)) {
+          // Add all its children to the childNodeIds set
+          node.data._children.forEach((child: { nodeId: string, nodeType: string }) => {
+            childNodeIds.add(child.nodeId)
+          })
+        }
+      }
+    })
+
+    // Filter out child nodes from the alignment operation
+    // Only align nodes that are selected AND are not children of container nodes
+    // This ensures container nodes can be aligned while their children stay in the same relative position
     const nodesToAlign = getAlignableNodes(nodes, selectedNodes)
 
     if (nodesToAlign.length <= 1) {
@@ -293,7 +514,7 @@ const SelectionContextmenu = () => {
     if (alignType === AlignType.DistributeHorizontal || alignType === AlignType.DistributeVertical) {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
-        store.getState().setNodes(distributedNodes)
+        setNodes(distributedNodes)
         handleSelectionContextmenuCancel()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
@@ -318,7 +539,10 @@ const SelectionContextmenu = () => {
     })
 
     try {
-      store.getState().setNodes(newNodes)
+      // Directly use setNodes to update nodes - consistent with handleNodeDrag
+      setNodes(newNodes)
+
+      // Close popup
       handleSelectionContextmenuCancel()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
       setHelpLineHorizontal()
@@ -329,75 +553,76 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
 
-  if (!selectionMenu)
+  if ((!selectionMenu || !anchor) && !isCreateSnippetDialogOpen)
     return null
 
   return (
-    <ContextMenu
-      open
-      onOpenChange={(open) => {
-        if (!open)
-          handleSelectionContextmenuCancel()
-      }}
-    >
-      <ContextMenuContent
-        popupClassName="w-[240px]"
-        positionerProps={anchor ? { anchor } : undefined}
+    <div data-testid="selection-contextmenu">
+      <ContextMenu
+        open
+        onOpenChange={(open) => {
+          if (!open)
+            handleSelectionContextmenuCancel()
+        }}
       >
-        <ContextMenuGroup>
-          <ContextMenuItem
-            className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-copy"
-            onClick={handleCopyNodes}
-          >
-            <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'c']} />
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-duplicate"
-            onClick={handleDuplicateNodes}
-          >
-            <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'd']} />
-          </ContextMenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
-          <ContextMenuItem
-            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-            data-testid="selection-contextmenu-item-delete"
-            onClick={handleDeleteNodes}
-          >
-            <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-            <ShortcutsName keys={['del']} />
-          </ContextMenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        {menuSections.map((section, sectionIndex) => (
-          <ContextMenuGroup key={section.titleKey}>
-            {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
-              {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
-            {section.items.map((item) => {
-              return (
-                <ContextMenuItem
-                  key={item.alignType}
-                  data-testid={`selection-contextmenu-item-${item.alignType}`}
-                  onClick={() => handleAlignNodes(item.alignType)}
-                >
-                  <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                  {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                </ContextMenuItem>
-              )
-            })}
-          </ContextMenuGroup>
-        ))}
-      </ContextMenuContent>
-    </ContextMenu>
+        <ContextMenuContent
+          positionerProps={anchor ? { anchor } : undefined}
+          popupClassName="w-[240px] py-0"
+        >
+          <div className="p-1">
+            {menuActions.map(item => (
+              <ContextMenuItem
+                key={item.action}
+                data-testid={`selection-contextmenu-item-${item.action}`}
+                disabled={item.disabled}
+                className={cn(
+                  'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
+                  item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+                )}
+                onClick={() => handleMenuAction(item.action)}
+              >
+                <span>{getActionLabel(item.translationKey)}</span>
+                {item.shortcutKeys && (
+                  <ShortcutsName
+                    keys={item.shortcutKeys}
+                    textColor="secondary"
+                  />
+                )}
+              </ContextMenuItem>
+            ))}
+          </div>
+          <ContextMenuSeparator className="my-0" />
+          <div className="p-1.5">
+            <div className="flex items-center">
+              {alignMenuItems.map((item) => {
+                return (
+                  <ContextMenuItem
+                    key={item.alignType}
+                    aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                    className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+                    data-testid={`selection-contextmenu-item-${item.alignType}`}
+                    onClick={() => handleAlignNodes(item.alignType)}
+                  >
+                    <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                  </ContextMenuItem>
+                )
+              })}
+            </div>
+          </div>
+        </ContextMenuContent>
+      </ContextMenu>
+      {isCreateSnippetDialogOpen && (
+        <CreateSnippetDialog
+          isOpen={isCreateSnippetDialogOpen}
+          selectedGraph={selectedGraphSnapshot}
+          isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
+          onClose={handleCloseCreateSnippetDialog}
+          onConfirm={handleCreateSnippet}
+        />
+      )}
+    </div>
   )
 }
 

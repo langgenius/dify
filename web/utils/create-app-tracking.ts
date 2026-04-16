@@ -3,6 +3,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
+const CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS = ['utm_source', 'utm_campaign', 'slug'] as const
 
 const EXTERNAL_UTM_SOURCE_MAP = {
   blog: 'blog',
@@ -26,6 +27,10 @@ type TrackCreateAppParams = {
 type ExternalCreateAppAttribution = {
   utmSource: typeof EXTERNAL_UTM_SOURCE_MAP[keyof typeof EXTERNAL_UTM_SOURCE_MAP]
   utmCampaign?: string
+}
+
+const serializeBootstrapValue = (value: unknown) => {
+  return JSON.stringify(value).replace(/</g, '\\u003c')
 }
 
 const normalizeString = (value?: string | null) => {
@@ -84,6 +89,65 @@ const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode =
   return 'chatflow'
 }
 
+export const runCreateAppAttributionBootstrap = (
+  sourceMap = EXTERNAL_UTM_SOURCE_MAP,
+  storageKey = CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY,
+  queryKeys = CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS,
+) => {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage)
+      return
+
+    const searchParams = new URLSearchParams(window.location.search)
+    const rawSource = searchParams.get('utm_source')
+
+    if (!rawSource)
+      return
+
+    const normalizedSource = rawSource.trim().toLowerCase()
+    const mappedSource = sourceMap[normalizedSource as keyof typeof sourceMap]
+
+    if (!mappedSource)
+      return
+
+    const normalizedSlug = searchParams.get('slug')?.trim()
+    const normalizedCampaign = searchParams.get('utm_campaign')?.trim()
+    const utmCampaign = normalizedSlug || normalizedCampaign
+    const attribution = utmCampaign
+      ? { utmSource: mappedSource, utmCampaign }
+      : { utmSource: mappedSource }
+
+    window.sessionStorage.setItem(storageKey, JSON.stringify(attribution))
+
+    const nextSearchParams = new URLSearchParams(window.location.search)
+    let hasChanges = false
+
+    queryKeys.forEach((key) => {
+      if (!nextSearchParams.has(key))
+        return
+
+      nextSearchParams.delete(key)
+      hasChanges = true
+    })
+
+    if (!hasChanges)
+      return
+
+    const nextSearch = nextSearchParams.toString()
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
+
+    try {
+      window.history.replaceState(window.history.state, '', nextUrl)
+    }
+    catch {}
+  }
+  catch {}
+}
+
+export const buildCreateAppAttributionBootstrapScript = () => {
+  return `(${runCreateAppAttributionBootstrap.toString()})(${serializeBootstrapValue(EXTERNAL_UTM_SOURCE_MAP)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS)});`
+}
+
 export const extractExternalCreateAppAttribution = ({
   searchParams,
   utmInfo,
@@ -109,23 +173,14 @@ export const extractExternalCreateAppAttribution = ({
 }
 
 const readRememberedExternalCreateAppAttribution = (): ExternalCreateAppAttribution | null => {
-  if (typeof window === 'undefined')
-    return null
-
   return parseJSONRecord(window.sessionStorage.getItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)) as ExternalCreateAppAttribution | null
 }
 
 const writeRememberedExternalCreateAppAttribution = (attribution: ExternalCreateAppAttribution) => {
-  if (typeof window === 'undefined')
-    return
-
   window.sessionStorage.setItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY, JSON.stringify(attribution))
 }
 
 const clearRememberedExternalCreateAppAttribution = () => {
-  if (typeof window === 'undefined')
-    return
-
   window.sessionStorage.removeItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)
 }
 
@@ -141,7 +196,7 @@ export const rememberCreateAppExternalAttribution = ({
     utmInfo: utmInfo ?? getCookieUtmInfo(),
   })
 
-  if (attribution)
+  if (attribution && typeof window !== 'undefined')
     writeRememberedExternalCreateAppAttribution(attribution)
 
   return attribution
@@ -151,9 +206,7 @@ const resolveCurrentExternalCreateAppAttribution = () => {
   if (typeof window === 'undefined')
     return null
 
-  return rememberCreateAppExternalAttribution({
-    searchParams: new URLSearchParams(window.location.search),
-  }) ?? readRememberedExternalCreateAppAttribution()
+  return readRememberedExternalCreateAppAttribution()
 }
 
 export const buildCreateAppEventPayload = (

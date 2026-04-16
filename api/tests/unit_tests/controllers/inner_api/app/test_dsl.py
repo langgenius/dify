@@ -18,6 +18,7 @@ from controllers.inner_api.app.dsl import (
     InnerAppDSLImportPayload,
     _get_active_account,
 )
+from models.account import AccountStatus
 from services.app_dsl_service import ImportStatus
 
 
@@ -63,7 +64,7 @@ class TestGetActiveAccount:
     @patch("controllers.inner_api.app.dsl.db")
     def test_returns_active_account(self, mock_db):
         mock_account = MagicMock()
-        mock_account.status = "active"
+        mock_account.status = AccountStatus.ACTIVE
         mock_db.session.scalar.return_value = mock_account
 
         result = _get_active_account("user@example.com")
@@ -74,7 +75,7 @@ class TestGetActiveAccount:
     @patch("controllers.inner_api.app.dsl.db")
     def test_returns_none_for_inactive_account(self, mock_db):
         mock_account = MagicMock()
-        mock_account.status = "banned"
+        mock_account.status = AccountStatus.BANNED
         mock_db.session.scalar.return_value = mock_account
 
         result = _get_active_account("banned@example.com")

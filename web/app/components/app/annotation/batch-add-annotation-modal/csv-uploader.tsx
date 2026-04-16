@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 
 export type Props = {
   file: File | undefined

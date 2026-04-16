@@ -23,21 +23,21 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
     <>
       {deliveryMethods.length > 0 && (
         <div className="space-y-0.5 py-1">
-          <div className="system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
           <div className="space-y-0.5 px-2.5">
             {deliveryMethods.map(method => (
-              <div key={method.type} className="flex items-center gap-1 radius-sm bg-workflow-block-parma-bg p-1">
+              <div key={method.type} className="flex items-center gap-1 rounded-md bg-workflow-block-parma-bg p-1">
                 {method.type === DeliveryMethodType.WebApp && (
-                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+                  <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
                     <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
                 {method.type === DeliveryMethodType.Email && (
-                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+                  <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
                     <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
-                <span className="system-xs-regular capitalize text-text-secondary">{method.type}</span>
+                <span className="system-xs-regular text-text-secondary capitalize">{method.type}</span>
               </div>
             ))}
           </div>
@@ -48,7 +48,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           <>
             {userActions.map(userAction => (
               <div key={userAction.id} className="relative flex flex-row-reverse items-center px-4 py-1">
-                <span className="system-xs-semibold-uppercase truncate text-text-secondary">{userAction.id}</span>
+                <span className="truncate system-xs-semibold-uppercase text-text-secondary">{userAction.id}</span>
                 <NodeSourceHandle
                   {...props}
                   handleId={userAction.id}
@@ -59,7 +59,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           </>
         )}
         <div className="relative flex flex-row-reverse items-center px-4 py-1">
-          <div className="system-xs-semibold-uppercase truncate text-text-secondary">Timeout</div>
+          <div className="truncate system-xs-semibold-uppercase text-text-secondary">Timeout</div>
           <NodeSourceHandle
             {...props}
             handleId="__timeout"

@@ -164,7 +164,7 @@ const Card = ({
       {
         !credentials_list.length && (
           <div className="p-3 pt-1">
-            <div className="flex h-10 items-center justify-center radius-lg bg-background-section system-xs-regular text-text-tertiary">
+            <div className="flex h-10 items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary">
               {t('auth.emptyAuth', { ns: 'plugin' })}
             </div>
           </div>

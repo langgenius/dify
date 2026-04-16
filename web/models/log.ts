@@ -257,6 +257,15 @@ export type EndUserInfo = {
   is_anonymous: boolean
   session_id: string
 }
+export type EvaluationLogItem = {
+  name: string
+  value: string | number | boolean
+  nodeInfo?: {
+    node_id: string
+    type: string
+    title: string
+  }
+}
 export type WorkflowAppLogDetail = {
   id: string
   workflow_run: WorkflowRunDetail
@@ -267,6 +276,7 @@ export type WorkflowAppLogDetail = {
   created_by_end_user?: EndUserInfo
   created_at: number
   read_at?: number
+  evaluation: EvaluationLogItem[]
 }
 export type WorkflowLogsResponse = {
   data: Array<WorkflowAppLogDetail>

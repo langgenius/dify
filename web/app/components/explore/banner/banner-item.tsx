@@ -1,12 +1,12 @@
 /* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { FC } from 'react'
 import type { Banner } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useCarousel } from '@/app/components/base/carousel'
-import { cn } from '@/utils/classnames'
 import { IndicatorButton } from './indicator-button'
 
 type BannerItemProps = {
@@ -130,28 +130,28 @@ export const BannerItem: FC<BannerItemProps> = ({
     >
       {/* Left content area */}
       <div className="min-w-0 flex-1">
-        <div className="flex h-full flex-col gap-3 py-6 pl-8 pr-0">
+        <div className="flex h-full flex-col gap-3 py-6 pr-0 pl-8">
           {/* Text section */}
           <div className="flex min-h-24 flex-wrap items-end gap-1 py-1">
             {/* Title area */}
             <div
               ref={textAreaRef}
-              className="flex min-w-[480px] max-w-[680px] flex-[1_0_0] flex-col pr-4"
+              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] flex-col pr-4"
               style={responsiveStyle}
             >
-              <p className="title-4xl-semi-bold line-clamp-1 text-dify-logo-blue">
+              <p className="line-clamp-1 title-4xl-semi-bold text-dify-logo-blue">
                 {category}
               </p>
-              <p className="title-4xl-semi-bold line-clamp-2 text-dify-logo-black">
+              <p className="line-clamp-2 title-4xl-semi-bold text-dify-logo-black">
                 {title}
               </p>
             </div>
             {/* Description area */}
             <div
-              className="min-w-60 max-w-[600px] flex-[1_0_0] self-end overflow-hidden py-1 pr-4"
+              className="max-w-[600px] min-w-60 flex-[1_0_0] self-end overflow-hidden py-1 pr-4"
               style={responsiveStyle}
             >
-              <p className="body-sm-regular line-clamp-4 overflow-hidden text-text-tertiary">
+              <p className="line-clamp-4 overflow-hidden body-sm-regular text-text-tertiary">
                 {description}
               </p>
             </div>
@@ -161,7 +161,7 @@ export const BannerItem: FC<BannerItemProps> = ({
           <div className="flex items-center gap-1">
             {/* View more button */}
             <div
-              className="flex min-w-[480px] max-w-[680px] flex-[1_0_0] items-center gap-[6px] py-1 pr-8"
+              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] items-center gap-[6px] py-1 pr-8"
               style={viewMoreStyle}
             >
               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
@@ -198,7 +198,7 @@ export const BannerItem: FC<BannerItemProps> = ({
       </div>
 
       {/* Right image area */}
-      <div className="absolute right-0 top-0 flex h-full items-center p-2">
+      <div className="absolute top-0 right-0 flex h-full items-center p-2">
         <img
           src={imgSrc}
           alt={title}

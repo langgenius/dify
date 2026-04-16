@@ -1,4 +1,5 @@
 import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useHover, useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -7,7 +8,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { usePathname } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import AppInfo from './app-info'
@@ -27,12 +27,16 @@ type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
+  renderHeader?: (modeState: string) => React.ReactNode
+  renderNavigation?: (modeState: string) => React.ReactNode
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
   iconType = 'app',
+  renderHeader,
+  renderNavigation,
 }: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -104,10 +108,11 @@ const AppDetailNav = ({
           expand ? 'p-2' : 'p-1',
         )}
       >
-        {iconType === 'app' && (
+        {renderHeader?.(appSidebarExpand)}
+        {!renderHeader && iconType === 'app' && (
           <AppInfo expand={expand} />
         )}
-        {iconType !== 'app' && (
+        {!renderHeader && iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
@@ -124,7 +129,7 @@ const AppDetailNav = ({
         />
         {!isMobile && isHoveringSidebar && (
           <ToggleButton
-            className="absolute -right-3 top-[-3.5px] z-20"
+            className="absolute top-[-3.5px] -right-3 z-20"
             expand={expand}
             handleToggle={handleToggle}
           />
@@ -136,7 +141,8 @@ const AppDetailNav = ({
           expand ? 'px-3 py-2' : 'p-3',
         )}
       >
-        {navigation.map((item, index) => {
+        {renderNavigation?.(appSidebarExpand)}
+        {!renderNavigation && navigation.map((item, index) => {
           return (
             <NavLink
               key={index}

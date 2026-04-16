@@ -1,6 +1,32 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { appDeleteContract } from './console/apps'
+import { accountAvatarContract } from './console/account'
+import { appDeleteContract, appWorkflowTypeConvertContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import {
+  availableEvaluationMetricsContract,
+  availableEvaluationWorkflowsContract,
+  cancelDatasetEvaluationRunContract,
+  cancelEvaluationRunContract,
+  datasetEvaluationConfigContract,
+  datasetEvaluationFileContract,
+  datasetEvaluationLogsContract,
+  datasetEvaluationMetricsContract,
+  datasetEvaluationRunDetailContract,
+  datasetEvaluationTemplateDownloadContract,
+  evaluationConfigContract,
+  evaluationFileContract,
+  evaluationLogsContract,
+  evaluationMetricsContract,
+  evaluationNodeInfoContract,
+  evaluationRunDetailContract,
+  evaluationTemplateDownloadContract,
+  evaluationVersionDetailContract,
+  evaluationWorkflowAssociatedTargetsContract,
+  saveDatasetEvaluationConfigContract,
+  saveEvaluationConfigContract,
+  startDatasetEvaluationRunContract,
+  startEvaluationRunContract,
+} from './console/evaluation'
 import {
   exploreAppDetailContract,
   exploreAppsContract,
@@ -15,6 +41,33 @@ import {
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
+import {
+  checkSnippetDependenciesContract,
+  confirmSnippetImportContract,
+  createCustomizedSnippetContract,
+  deleteCustomizedSnippetContract,
+  exportCustomizedSnippetContract,
+  getCustomizedSnippetContract,
+  getSnippetDefaultBlockConfigsContract,
+  getSnippetDraftConfigContract,
+  getSnippetDraftNodeLastRunContract,
+  getSnippetDraftWorkflowContract,
+  getSnippetPublishedWorkflowContract,
+  getSnippetWorkflowRunDetailContract,
+  importCustomizedSnippetContract,
+  incrementSnippetUseCountContract,
+  listCustomizedSnippetsContract,
+  listSnippetWorkflowRunNodeExecutionsContract,
+  listSnippetWorkflowRunsContract,
+  publishSnippetWorkflowContract,
+  runSnippetDraftIterationNodeContract,
+  runSnippetDraftLoopNodeContract,
+  runSnippetDraftNodeContract,
+  runSnippetDraftWorkflowContract,
+  stopSnippetWorkflowTaskContract,
+  syncSnippetDraftWorkflowContract,
+  updateCustomizedSnippetContract,
+} from './console/snippets'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -34,6 +87,13 @@ import {
   triggerSubscriptionVerifyContract,
 } from './console/trigger'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
+import {
+  workflowDraftEnvironmentVariablesContract,
+  workflowDraftUpdateConversationVariablesContract,
+  workflowDraftUpdateEnvironmentVariablesContract,
+  workflowDraftUpdateFeaturesContract,
+} from './console/workflow'
+import { workflowCommentContracts } from './console/workflow-comment'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -45,9 +105,14 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  account: {
+    avatar: accountAvatarContract,
+  },
   systemFeatures: systemFeaturesContract,
   apps: {
     deleteApp: appDeleteContract,
+    convertWorkflowType: appWorkflowTypeConvertContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
     apps: exploreAppsContract,
@@ -70,14 +135,75 @@ export const consoleRouterContract = {
     models: modelProvidersModelsContract,
     changePreferredProviderType: changePreferredProviderTypeContract,
   },
+  evaluation: {
+    templateDownload: evaluationTemplateDownloadContract,
+    config: evaluationConfigContract,
+    saveConfig: saveEvaluationConfigContract,
+    logs: evaluationLogsContract,
+    startRun: startEvaluationRunContract,
+    runDetail: evaluationRunDetailContract,
+    cancelRun: cancelEvaluationRunContract,
+    metrics: evaluationMetricsContract,
+    nodeInfo: evaluationNodeInfoContract,
+    availableMetrics: availableEvaluationMetricsContract,
+    availableWorkflows: availableEvaluationWorkflowsContract,
+    associatedTargets: evaluationWorkflowAssociatedTargetsContract,
+    file: evaluationFileContract,
+    versionDetail: evaluationVersionDetailContract,
+  },
+  datasetEvaluation: {
+    templateDownload: datasetEvaluationTemplateDownloadContract,
+    config: datasetEvaluationConfigContract,
+    saveConfig: saveDatasetEvaluationConfigContract,
+    startRun: startDatasetEvaluationRunContract,
+    logs: datasetEvaluationLogsContract,
+    runDetail: datasetEvaluationRunDetailContract,
+    cancelRun: cancelDatasetEvaluationRunContract,
+    metrics: datasetEvaluationMetricsContract,
+    file: datasetEvaluationFileContract,
+  },
   plugins: {
     checkInstalled: pluginCheckInstalledContract,
     latestVersions: pluginLatestVersionsContract,
+  },
+  snippets: {
+    list: listCustomizedSnippetsContract,
+    create: createCustomizedSnippetContract,
+    detail: getCustomizedSnippetContract,
+    update: updateCustomizedSnippetContract,
+    delete: deleteCustomizedSnippetContract,
+    export: exportCustomizedSnippetContract,
+    import: importCustomizedSnippetContract,
+    confirmImport: confirmSnippetImportContract,
+    checkDependencies: checkSnippetDependenciesContract,
+    incrementUseCount: incrementSnippetUseCountContract,
+    draftWorkflow: getSnippetDraftWorkflowContract,
+    syncDraftWorkflow: syncSnippetDraftWorkflowContract,
+    draftConfig: getSnippetDraftConfigContract,
+    publishedWorkflow: getSnippetPublishedWorkflowContract,
+    publishWorkflow: publishSnippetWorkflowContract,
+    defaultBlockConfigs: getSnippetDefaultBlockConfigsContract,
+    workflowRuns: listSnippetWorkflowRunsContract,
+    workflowRunDetail: getSnippetWorkflowRunDetailContract,
+    workflowRunNodeExecutions: listSnippetWorkflowRunNodeExecutionsContract,
+    runDraftNode: runSnippetDraftNodeContract,
+    lastDraftNodeRun: getSnippetDraftNodeLastRunContract,
+    runDraftIterationNode: runSnippetDraftIterationNodeContract,
+    runDraftLoopNode: runSnippetDraftLoopNodeContract,
+    runDraftWorkflow: runSnippetDraftWorkflowContract,
+    stopWorkflowTask: stopSnippetWorkflowTaskContract,
   },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  workflowDraft: {
+    environmentVariables: workflowDraftEnvironmentVariablesContract,
+    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+    updateFeatures: workflowDraftUpdateFeaturesContract,
+  },
+  workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
   triggers: {

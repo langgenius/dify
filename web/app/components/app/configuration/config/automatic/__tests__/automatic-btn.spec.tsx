@@ -58,20 +58,4 @@ describe('AutomaticBtn', () => {
       expect(mockOnClick).toHaveBeenCalledTimes(3)
     })
   })
-
-  describe('Styling', () => {
-    it('should have secondary-accent variant', () => {
-      render(<AutomaticBtn onClick={mockOnClick} />)
-
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('secondary-accent')
-    })
-
-    it('should have small size', () => {
-      render(<AutomaticBtn onClick={mockOnClick} />)
-
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('small')
-    })
-  })
 })

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { Avatar } from '..'
+import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '..'
 
 describe('Avatar', () => {
   describe('Rendering', () => {
@@ -57,6 +57,23 @@ describe('Avatar', () => {
       const root = container.firstElementChild as HTMLElement
       expect(root).toHaveClass('custom-class')
       expect(root).toHaveClass('rounded-full', 'bg-primary-600')
+    })
+  })
+
+  describe('Primitives', () => {
+    it('should support composed avatar usage through exported primitives', () => {
+      render(
+        <AvatarRoot size="sm" data-testid="avatar-root">
+          <AvatarImage src="https://example.com/avatar.jpg" alt="Jane Doe" />
+          <AvatarFallback size="sm" style={{ backgroundColor: 'rgb(1, 2, 3)' }}>
+            J
+          </AvatarFallback>
+        </AvatarRoot>,
+      )
+
+      expect(screen.getByTestId('avatar-root')).toHaveClass('size-6')
+      expect(screen.getByText('J')).toBeInTheDocument()
+      expect(screen.getByText('J')).toHaveStyle({ backgroundColor: 'rgb(1, 2, 3)' })
     })
   })
 

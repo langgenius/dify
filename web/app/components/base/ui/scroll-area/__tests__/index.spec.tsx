@@ -9,7 +9,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '../index'
-import styles from '../index.module.css'
 
 const renderScrollArea = (options: {
   rootClassName?: string
@@ -106,7 +105,7 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-vertical-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'vertical')
-        expect(scrollbar).toHaveClass(styles.scrollbar)
+        expect(scrollbar).toHaveAttribute('data-dify-scrollbar')
         expect(scrollbar).toHaveClass(
           'flex',
           'overflow-clip',
@@ -127,7 +126,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'vertical')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'radius-xs',
+          'rounded-sm',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',
@@ -144,7 +143,7 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-horizontal-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'horizontal')
-        expect(scrollbar).toHaveClass(styles.scrollbar)
+        expect(scrollbar).toHaveAttribute('data-dify-scrollbar')
         expect(scrollbar).toHaveClass(
           'flex',
           'overflow-clip',
@@ -165,7 +164,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'radius-xs',
+          'rounded-sm',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',

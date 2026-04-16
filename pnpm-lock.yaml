@@ -384,6 +384,9 @@ catalogs:
     lexical:
       specifier: 0.43.0
       version: 0.43.0
+    loro-crdt:
+      specifier: 1.10.8
+      version: 1.10.8
     mermaid:
       specifier: 11.14.0
       version: 11.14.0
@@ -471,6 +474,9 @@ catalogs:
     shiki:
       specifier: 4.0.2
       version: 4.0.2
+    socket.io-client:
+      specifier: 4.8.3
+      version: 4.8.3
     sortablejs:
       specifier: 1.15.7
       version: 1.15.7
@@ -598,6 +604,19 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.1.16(@types/node@25.6.0)(@voidzero-dev/vite-plus-core@0.1.16(@types/node@25.6.0)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3))(happy-dom@20.9.0)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3)
+
+  packages/dify-ui:
+    dependencies:
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
+      tailwind-merge:
+        specifier: 'catalog:'
+        version: 3.5.0
+    devDependencies:
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.2.2
 
   packages/iconify-collections:
     devDependencies:
@@ -739,9 +758,6 @@ importers:
       client-only:
         specifier: 'catalog:'
         version: 0.0.1
-      clsx:
-        specifier: 'catalog:'
-        version: 2.1.1
       cmdk:
         specifier: 'catalog:'
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -829,6 +845,9 @@ importers:
       lexical:
         specifier: 'catalog:'
         version: 0.43.0
+      loro-crdt:
+        specifier: 'catalog:'
+        version: 1.10.8
       mermaid:
         specifier: 'catalog:'
         version: 11.14.0
@@ -910,6 +929,9 @@ importers:
       shiki:
         specifier: 'catalog:'
         version: 4.0.2
+      socket.io-client:
+        specifier: 'catalog:'
+        version: 4.8.3
       sortablejs:
         specifier: 'catalog:'
         version: 1.15.7
@@ -922,9 +944,6 @@ importers:
       string-ts:
         specifier: 'catalog:'
         version: 2.3.1
-      tailwind-merge:
-        specifier: 'catalog:'
-        version: 3.5.0
       tldts:
         specifier: 'catalog:'
         version: 7.0.28
@@ -971,6 +990,9 @@ importers:
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
+      '@langgenius/dify-ui':
+        specifier: workspace:*
+        version: link:../packages/dify-ui
       '@mdx-js/loader':
         specifier: 'catalog:'
         version: 3.1.1(webpack@5.105.4(uglify-js@3.19.3))
@@ -1126,7 +1148,7 @@ importers:
         version: 4.12.12
       knip:
         specifier: 'catalog:'
-        version: 6.4.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+        version: 6.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       postcss:
         specifier: 'catalog:'
         version: 8.5.9
@@ -1553,14 +1575,17 @@ packages:
     peerDependencies:
       tailwindcss: '*'
 
-  '@emnapi/core@1.9.1':
-    resolution: {integrity: sha512-mukuNALVsoix/w1BJwFzwXBN/dHeejQtuVzcDsfOEsdpCumXb/E9j8w11h5S54tT1xhifGfbbSm/ICrObRb3KA==}
+  '@emnapi/core@1.9.2':
+    resolution: {integrity: sha512-UC+ZhH3XtczQYfOlu3lNEkdW/p4dsJ1r/bP7H8+rhao3TTTMO1ATq/4DdIi23XuGoFY+Cz0JmCbdVl0hz9jZcA==}
 
   '@emnapi/runtime@1.9.1':
     resolution: {integrity: sha512-VYi5+ZVLhpgK4hQ0TAjiQiZ6ol0oe4mBx7mVv7IflsiEp0OWoVsp/+f9Vc1hOhE0TtkORVrI1GvzyreqpgWtkA==}
 
-  '@emnapi/wasi-threads@1.2.0':
-    resolution: {integrity: sha512-N10dEJNSsUx41Z6pZsXU8FjPjpBEplgH24sfkmITrBED1/U2Esum9F3lfLrMjKHHjmi557zQn7kR9R+XWXu5Rg==}
+  '@emnapi/runtime@1.9.2':
+    resolution: {integrity: sha512-3U4+MIWHImeyu1wnmVygh5WlgfYDtyf0k8AbLhMFxOipihf6nrWC4syIm/SwEeec0mNSafiiNnMJwbza/Is6Lw==}
+
+  '@emnapi/wasi-threads@1.2.1':
+    resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
 
   '@emoji-mart/data@1.2.1':
     resolution: {integrity: sha512-no2pQMWiBy6gpBEiqGeU77/bFejDqUTRY7KX+0+iur13op3bqUsXdnwoZs6Xb1zbv0gAj5VvS1PWoUUckSr5Dw==}
@@ -3531,6 +3556,9 @@ packages:
     resolution: {integrity: sha512-TeheYy0ILzBEI/CO55CP6zJCSdSWeRtGnHy8U8dWSUH4I68iqTsy7HkMktR4xakThc9jotkPQUXT4ITdbV7cHA==}
     engines: {node: '>=18'}
 
+  '@socket.io/component-emitter@3.1.2':
+    resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
+
   '@solid-primitives/event-listener@2.4.5':
     resolution: {integrity: sha512-nwRV558mIabl4yVAhZKY8cb6G+O1F0M6Z75ttTu5hk+SxdOnKSGj+eetDIu7Oax1P138ZdUU01qnBPR8rnxaEA==}
     peerDependencies:
@@ -5487,6 +5515,13 @@ packages:
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
 
+  engine.io-client@6.6.4:
+    resolution: {integrity: sha512-+kjUJnZGwzewFDw951CDWcwj35vMNf2fcj7xQWOctq1F2i1jkDdVvdFG9kM/BEChymCH36KgjnW0NsL58JYRxw==}
+
+  engine.io-parser@5.2.3:
+    resolution: {integrity: sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q==}
+    engines: {node: '>=10.0.0'}
+
   enhanced-resolve@5.20.1:
     resolution: {integrity: sha512-Qohcme7V1inbAfvjItgw0EaxVX5q2rdVEZHRBrEQdRZTssLDGsL8Lwrznl8oQ/6kuTJONLaDcGjkNP247XEhcA==}
     engines: {node: '>=10.13.0'}
@@ -6610,6 +6645,9 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
+
+  loro-crdt@1.10.8:
+    resolution: {integrity: sha512-GvH8fSJST1VDHRGzlQml80pBYoFbIP4ULeV1S8fD4ffmA8m+icoPORyVUW2AkJBY3dxKIcMMn0WqaJmpCmnbkQ==}
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
@@ -7750,6 +7788,14 @@ packages:
     resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
     engines: {node: '>= 18'}
 
+  socket.io-client@4.8.3:
+    resolution: {integrity: sha512-uP0bpjWrjQmUt5DTHq9RuoCBdFJF10cdX9X+a368j/Ft0wmaVgxlrjvK3kjvgCODOMMOz9lcaRzxmso0bTWZ/g==}
+    engines: {node: '>=10.0.0'}
+
+  socket.io-parser@4.2.6:
+    resolution: {integrity: sha512-asJqbVBDsBCJx0pTqw3WfesSY0iRX+2xzWEWzrpcH7L6fLzrhyF8WPI8UaeM4YCuDfpwA/cgsdugMsmtz8EJeg==}
+    engines: {node: '>=10.0.0'}
+
   solid-js@1.9.11:
     resolution: {integrity: sha512-WEJtcc5mkh/BnHA6Yrg4whlF8g6QwpmXXRg4P2ztPmcKeHHlH4+djYecBLhSpecZY2RRECXYUwIc/C2r3yzQ4Q==}
 
@@ -8005,6 +8051,10 @@ packages:
 
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
+    engines: {node: '>=12.0.0'}
+
+  tinyglobby@0.2.16:
+    resolution: {integrity: sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==}
     engines: {node: '>=12.0.0'}
 
   tinypool@2.1.0:
@@ -8473,6 +8523,18 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   ws@8.20.0:
     resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
     engines: {node: '>=10.0.0'}
@@ -8500,6 +8562,10 @@ packages:
   xmlbuilder@15.1.1:
     resolution: {integrity: sha512-yMqGBqtXyeN1e3TGYvgNgDVZ3j84W4cwkOXQswghol6APgZWaff9lnbvN7MHYJOiXsvGPXtjTYJEiC9J2wv9Eg==}
     engines: {node: '>=8.0'}
+
+  xmlhttprequest-ssl@2.1.2:
+    resolution: {integrity: sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==}
+    engines: {node: '>=0.4.0'}
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -9153,9 +9219,9 @@ snapshots:
       '@iconify/utils': 3.1.0
       tailwindcss: 4.2.2
 
-  '@emnapi/core@1.9.1':
+  '@emnapi/core@1.9.2':
     dependencies:
-      '@emnapi/wasi-threads': 1.2.0
+      '@emnapi/wasi-threads': 1.2.1
       tslib: 2.8.1
     optional: true
 
@@ -9164,7 +9230,12 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/wasi-threads@1.2.0':
+  '@emnapi/runtime@1.9.2':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
+  '@emnapi/wasi-threads@1.2.1':
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -9944,10 +10015,10 @@ snapshots:
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  '@napi-rs/wasm-runtime@1.1.2(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
+  '@napi-rs/wasm-runtime@1.1.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)':
     dependencies:
-      '@emnapi/core': 1.9.1
-      '@emnapi/runtime': 1.9.1
+      '@emnapi/core': 1.9.2
+      '@emnapi/runtime': 1.9.2
       '@tybys/wasm-util': 0.10.1
     optional: true
 
@@ -10120,9 +10191,9 @@ snapshots:
   '@oxc-parser/binding-openharmony-arm64@0.121.0':
     optional: true
 
-  '@oxc-parser/binding-wasm32-wasi@0.121.0(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
+  '@oxc-parser/binding-wasm32-wasi@0.121.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.1.2(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      '@napi-rs/wasm-runtime': 1.1.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -10191,9 +10262,9 @@ snapshots:
   '@oxc-resolver/binding-openharmony-arm64@11.19.1':
     optional: true
 
-  '@oxc-resolver/binding-wasm32-wasi@11.19.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
+  '@oxc-resolver/binding-wasm32-wasi@11.19.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.1.2(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      '@napi-rs/wasm-runtime': 1.1.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -10879,6 +10950,8 @@ snapshots:
       string.prototype.codepointat: 0.2.1
 
   '@sindresorhus/base62@1.0.0': {}
+
+  '@socket.io/component-emitter@3.1.2': {}
 
   '@solid-primitives/event-listener@2.4.5(solid-js@1.9.11)':
     dependencies:
@@ -11758,7 +11831,7 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       minimatch: 10.2.4
       semver: 7.7.4
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@6.0.2)
       typescript: 6.0.2
     transitivePeerDependencies:
@@ -12943,6 +13016,20 @@ snapshots:
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
+
+  engine.io-client@6.6.4:
+    dependencies:
+      '@socket.io/component-emitter': 3.1.2
+      debug: 4.4.3(supports-color@8.1.1)
+      engine.io-parser: 5.2.3
+      ws: 8.18.3
+      xmlhttprequest-ssl: 2.1.2
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  engine.io-parser@5.2.3: {}
 
   enhanced-resolve@5.20.1:
     dependencies:
@@ -14140,7 +14227,7 @@ snapshots:
 
   khroma@2.1.0: {}
 
-  knip@6.4.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1):
+  knip@6.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       fast-glob: 3.3.3
@@ -14148,8 +14235,8 @@ snapshots:
       get-tsconfig: 4.13.7
       jiti: 2.6.1
       minimist: 1.2.8
-      oxc-parser: 0.121.0(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
-      oxc-resolver: 11.19.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      oxc-parser: 0.121.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
+      oxc-resolver: 11.19.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       picocolors: 1.1.1
       picomatch: 4.0.4
       smol-toml: 1.6.1
@@ -14287,6 +14374,8 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  loro-crdt@1.10.8: {}
 
   loupe@3.2.1: {}
 
@@ -15056,7 +15145,7 @@ snapshots:
       type-check: 0.4.0
       word-wrap: 1.2.5
 
-  oxc-parser@0.121.0(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1):
+  oxc-parser@0.121.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2):
     dependencies:
       '@oxc-project/types': 0.121.0
     optionalDependencies:
@@ -15076,7 +15165,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.121.0
       '@oxc-parser/binding-linux-x64-musl': 0.121.0
       '@oxc-parser/binding-openharmony-arm64': 0.121.0
-      '@oxc-parser/binding-wasm32-wasi': 0.121.0(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      '@oxc-parser/binding-wasm32-wasi': 0.121.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       '@oxc-parser/binding-win32-arm64-msvc': 0.121.0
       '@oxc-parser/binding-win32-ia32-msvc': 0.121.0
       '@oxc-parser/binding-win32-x64-msvc': 0.121.0
@@ -15084,7 +15173,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  oxc-resolver@11.19.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1):
+  oxc-resolver@11.19.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2):
     optionalDependencies:
       '@oxc-resolver/binding-android-arm-eabi': 11.19.1
       '@oxc-resolver/binding-android-arm64': 11.19.1
@@ -15102,7 +15191,7 @@ snapshots:
       '@oxc-resolver/binding-linux-x64-gnu': 11.19.1
       '@oxc-resolver/binding-linux-x64-musl': 11.19.1
       '@oxc-resolver/binding-openharmony-arm64': 11.19.1
-      '@oxc-resolver/binding-wasm32-wasi': 11.19.1(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      '@oxc-resolver/binding-wasm32-wasi': 11.19.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       '@oxc-resolver/binding-win32-arm64-msvc': 11.19.1
       '@oxc-resolver/binding-win32-ia32-msvc': 11.19.1
       '@oxc-resolver/binding-win32-x64-msvc': 11.19.1
@@ -15980,6 +16069,24 @@ snapshots:
 
   smol-toml@1.6.1: {}
 
+  socket.io-client@4.8.3:
+    dependencies:
+      '@socket.io/component-emitter': 3.1.2
+      debug: 4.4.3(supports-color@8.1.1)
+      engine.io-client: 6.6.4
+      socket.io-parser: 4.2.6
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  socket.io-parser@4.2.6:
+    dependencies:
+      '@socket.io/component-emitter': 3.1.2
+      debug: 4.4.3(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - supports-color
+
   solid-js@1.9.11:
     dependencies:
       csstype: 3.2.3
@@ -16237,6 +16344,11 @@ snapshots:
   tinyexec@1.0.4: {}
 
   tinyglobby@0.2.15:
+    dependencies:
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
+
+  tinyglobby@0.2.16:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
@@ -16749,6 +16861,8 @@ snapshots:
 
   wrappy@1.0.2: {}
 
+  ws@8.18.3: {}
+
   ws@8.20.0: {}
 
   wsl-utils@0.1.0:
@@ -16763,6 +16877,8 @@ snapshots:
   xml-name-validator@4.0.0: {}
 
   xmlbuilder@15.1.1: {}
+
+  xmlhttprequest-ssl@2.1.2: {}
 
   yallist@3.1.1: {}
 

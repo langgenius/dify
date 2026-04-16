@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiInformation2Line,
 } from '@remixicon/react'
@@ -13,7 +14,6 @@ import {
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
-import { cn } from '@/utils/classnames'
 
 const PARAM_MAP = {
   temperature: 'Temperature',
@@ -57,7 +57,7 @@ const ModelInfo: FC<Props> = ({
 
   return (
     <div className={cn('flex items-center rounded-lg')}>
-      <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pl-1.5 pr-2">
+      <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pr-2 pl-1.5">
         <ModelIcon
           className="h-5! w-5!"
           provider={currentProvider}
@@ -88,8 +88,8 @@ const ModelInfo: FC<Props> = ({
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-1002">
-            <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pb-2 pt-3 shadow-xl">
-              <div className="system-sm-semibold-uppercase mb-1 h-6 text-text-secondary">{t('detail.modelParams', { ns: 'appLog' })}</div>
+            <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-2 shadow-xl">
+              <div className="mb-1 h-6 system-sm-semibold-uppercase text-text-secondary">{t('detail.modelParams', { ns: 'appLog' })}</div>
               <div className="py-1">
                 {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
                   return (

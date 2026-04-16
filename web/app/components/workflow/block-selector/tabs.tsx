@@ -5,13 +5,13 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
@@ -34,12 +34,14 @@ type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: string
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  snippetsElem?: React.ReactNode
 }
 
 const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
@@ -173,6 +175,7 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  snippetsElem,
 }) => {
   const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -215,7 +218,7 @@ const Tabs: FC<TabsProps> = ({
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pl-1 pt-1">
+          <div className="relative flex bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem
@@ -223,7 +226,7 @@ const Tabs: FC<TabsProps> = ({
                   tab={tab}
                   activeTab={activeTab}
                   onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
+                  disabledTip={tab.disabledTip || disabledTip}
                 />
               ))
             }
@@ -287,6 +290,13 @@ const Tabs: FC<TabsProps> = ({
               invalidateBuiltInTools()
             }}
           />
+        )
+      }
+      {
+        activeTab === TabsEnum.Snippets && snippetsElem && (
+          <div className="border-t border-divider-subtle">
+            {snippetsElem}
+          </div>
         )
       }
     </div>
