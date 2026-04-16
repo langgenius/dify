@@ -41,7 +41,7 @@ const Options = ({ initialData, configurations, schema, CustomActions, onSubmit 
         form.handleSubmit()
       }}
     >
-      <div className="flex flex-col gap-3 px-4 pb-6 pt-3">
+      <div className="flex flex-col gap-3 px-4 pt-3 pb-6">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

@@ -56,7 +56,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
   return (
     <div className="p-2">
       {isRunning && (
-        <div className="pl-[26px] pt-4">
+        <div className="pt-4 pl-[26px]">
           <LoadingAnim type="text" />
         </div>
       )}

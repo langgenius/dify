@@ -42,7 +42,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="text-base font-semibold text-text-primary">PROMPT LOG</div>
         <div className="flex items-center">
           {

@@ -15,7 +15,7 @@ const RunningTitle = () => {
       <ClockPlay className="mr-1 h-3 w-3 text-gray-500" />
       <span>{isChatMode ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}` : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}</span>
       <span className="mx-1">·</span>
-      <span className="ml-1 flex h-[18px] items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-[10px] font-semibold uppercase text-indigo-600">
+      <span className="ml-1 flex h-[18px] items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-[10px] font-semibold text-indigo-600 uppercase">
         {t('common.viewOnly', { ns: 'workflow' })}
       </span>
     </div>

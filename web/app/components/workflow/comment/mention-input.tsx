@@ -511,7 +511,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <div
           aria-hidden
           className={cn(
-            'inset-0 pointer-events-none absolute z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
             'body-lg-regular text-text-primary',
           )}
           style={{ paddingRight, paddingBottom }}

@@ -1,7 +1,7 @@
 // @ts-check
 
 import path from 'node:path'
-import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
@@ -18,12 +18,6 @@ import {
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
-
-// Enable Tailwind CSS IntelliSense mode for ESLint runs
-// See: tailwind-css-plugin.ts
-process.env.TAILWIND_MODE ??= 'ESLINT'
-
-const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
 export default antfu(
   {
@@ -203,10 +197,3 @@ export default antfu(
     },
   },
 )
-  .disableRulesFix(disableRuleAutoFix
-    ? [
-        'tailwindcss/enforce-consistent-class-order',
-        'tailwindcss/no-duplicate-classes',
-        'tailwindcss/no-unnecessary-whitespace',
-      ]
-    : [])
