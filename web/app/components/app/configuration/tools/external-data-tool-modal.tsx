@@ -11,7 +11,7 @@ import FormGeneration from '@/app/components/base/features/new-feature-panel/mod
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 import { toast } from '@/app/components/base/ui/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
@@ -129,7 +129,8 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <SelectContent popupClassName="w-[354px]">
               {providers.map(option => (
                 <SelectItem key={option.key} value={option.key}>
-                  {option.name}
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
                 </SelectItem>
               ))}
             </SelectContent>
