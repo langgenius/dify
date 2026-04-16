@@ -339,11 +339,6 @@
       "count": 1
     }
   },
-  "app/components/app/app-access-control/add-member-or-group-pop.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/app/app-access-control/specific-groups-or-members.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -358,9 +353,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -452,11 +444,6 @@
       "count": 3
     },
     "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/config-vision/param-config.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -755,9 +742,6 @@
     }
   },
   "app/components/app/log/model-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3414,16 +3398,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/extra-info/api-access/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/extra-info/service-api/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/extra-info/statistics.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3531,9 +3505,6 @@
     }
   },
   "app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3550,9 +3521,6 @@
   },
   "app/components/datasets/metadata/metadata-dataset/select-metadata-modal.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6687,9 +6655,6 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -7215,11 +7180,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/variable-assigner/components/add-variable/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -7357,11 +7317,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7416,11 +7371,6 @@
       "count": 4
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/env-panel/variable-trigger.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
