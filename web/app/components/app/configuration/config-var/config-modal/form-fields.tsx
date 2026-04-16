@@ -3,6 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -219,7 +221,19 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       <div className="mt-5! flex h-6 items-center space-x-2">
         <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-        <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
+        <div className="flex items-center gap-1">
+          <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+          <Tooltip>
+            <TooltipTrigger>
+              <div className="flex h-4 w-4 items-center justify-center">
+                <RiQuestionLine className="h-3.5 w-3.5 text-text-tertiary" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t('variableConfig.hiddenDescription', { ns: 'appDebug' })}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </div>
   )

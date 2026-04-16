@@ -57,6 +57,12 @@ vi.mock('@/app/components/base/ui/select', () => ({
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock('@/app/components/base/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
+
 vi.mock('../field', () => ({
   default: ({ children, title }: { children: ReactNode, title: string }) => (
     <div>
@@ -169,6 +175,8 @@ describe('ConfigModalFormFields', () => {
       allowed_file_upload_methods: ['remote_url'],
     }
     render(<ConfigModalFormFields {...singleFileProps} />)
+    expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
+    expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
     fireEvent.click(screen.getAllByText('unchecked')[0])
