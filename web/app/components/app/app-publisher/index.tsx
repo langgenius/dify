@@ -13,12 +13,8 @@ import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { Button } from '@/app/components/base/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -150,20 +146,18 @@ const AppPublisher = ({
     catch { }
   }, [onRestore])
 
-  const handleTrigger = useCallback(() => {
-    const state = !open
-
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (disabled) {
       setOpen(false)
       return
     }
 
-    onToggle?.(state)
-    setOpen(state)
+    onToggle?.(nextOpen)
+    setOpen(nextOpen)
 
-    if (state)
+    if (nextOpen)
       setPublished(false)
-  }, [disabled, onToggle, open])
+  }, [disabled, onToggle])
 
   const handleOpenInExplore = useCallback(async () => {
     await openAsyncWindow(async () => {
@@ -212,26 +206,28 @@ const AppPublisher = ({
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={open}
-        onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: crossAxisOffset,
-        }}
+        onOpenChange={handleOpenChange}
       >
-        <PortalToFollowElemTrigger onClick={handleTrigger}>
-          <Button
-            variant="primary"
-            className="py-2 pr-2 pl-3"
-            disabled={disabled}
-          >
-            {t('common.publish', { ns: 'workflow' })}
-            <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-11">
+        <PopoverTrigger
+          render={(
+            <Button
+              variant="primary"
+              className="py-2 pr-2 pl-3"
+              disabled={disabled}
+            >
+              {t('common.publish', { ns: 'workflow' })}
+              <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
+            </Button>
+          )}
+        />
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={4}
+          alignOffset={crossAxisOffset}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <PublisherSummarySection
               debugWithMultipleModel={debugWithMultipleModel}
@@ -253,7 +249,10 @@ const AppPublisher = ({
               isAppAccessSet={isAppAccessSet}
               isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
               accessMode={appDetail?.access_mode}
-              onClick={() => setShowAppAccessControl(true)}
+              onClick={() => {
+                handleOpenChange(false)
+                setShowAppAccessControl(true)
+              }}
             />
             <PublisherActionsSection
               appDetail={appDetail}
@@ -262,9 +261,12 @@ const AppPublisher = ({
               disabledFunctionTooltip={disabledFunctionTooltip}
               handleEmbed={() => {
                 setEmbeddingModalOpen(true)
-                handleTrigger()
+                handleOpenChange(false)
               }}
-              handleOpenInExplore={handleOpenInExplore}
+              handleOpenInExplore={() => {
+                handleOpenChange(false)
+                handleOpenInExplore()
+              }}
               handlePublish={handlePublish}
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
@@ -279,7 +281,7 @@ const AppPublisher = ({
               workflowToolMessage={workflowToolMessage}
             />
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
         <EmbeddedModal
           siteInfo={appDetail?.site}
           isShow={embeddingModalOpen}
@@ -288,7 +290,7 @@ const AppPublisher = ({
           accessToken={accessToken}
         />
         {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
-      </PortalToFollowElem>
+      </Popover>
     </>
   )
 }
