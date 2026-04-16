@@ -116,9 +116,13 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+  }
+})
 
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
@@ -386,10 +390,11 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = renderWithNuqs(<List />)
+      const { unmount } = renderWithNuqs(<List />)
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
-      rerender(<List />)
+      unmount()
+      renderList()
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
