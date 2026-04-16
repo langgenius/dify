@@ -2,21 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Flask API",
+            "name": "Python: API (gevent)",
             "type": "debugpy",
             "request": "launch",
-            "module": "flask",
-            "env": {
-                "FLASK_APP": "app.py",
-                "FLASK_ENV": "development"
-            },
-            "args": [
-                "run",
-                "--host=0.0.0.0",
-                "--port=5001",
-                "--no-debugger",
-                "--no-reload"
-            ],
+            "program": "${workspaceFolder}/api/app.py",
             "jinja": true,
             "justMyCode": true,
             "cwd": "${workspaceFolder}/api",

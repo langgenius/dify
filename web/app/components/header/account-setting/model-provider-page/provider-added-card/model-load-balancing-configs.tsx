@@ -8,6 +8,7 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
@@ -19,7 +20,6 @@ import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
@@ -145,7 +145,7 @@ const ModelLoadBalancingConfigs = ({
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
         data-testid="load-balancing-main-panel"
       >
-        <div className="flex select-none items-center gap-2 px-[15px] py-3">
+        <div className="flex items-center gap-2 px-[15px] py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
             <div className="i-custom-vender-line-financeandecommerce-balance h-4 w-4" />
           </div>
@@ -163,11 +163,11 @@ const ModelLoadBalancingConfigs = ({
           {
             withSwitch && (
               <Switch
-                value={Boolean(draftConfig.enabled)}
+                checked={Boolean(draftConfig.enabled)}
                 size="lg"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
-                onChange={value => toggleModalBalancing(value)}
+                onCheckedChange={value => toggleModalBalancing(value)}
                 data-testid="load-balancing-switch-main"
               />
             )
@@ -225,10 +225,10 @@ const ModelLoadBalancingConfigs = ({
                         <>
                           <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                           <Switch
-                            value={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
+                            checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                             size="md"
                             className="justify-self-end"
-                            onChange={value => toggleConfigEntryEnabled(index, value)}
+                            onCheckedChange={value => toggleConfigEntryEnabled(index, value)}
                             disabled={credential?.not_allowed_to_use}
                             data-testid={`load-balancing-switch-${config.id || index}`}
                           />
@@ -264,7 +264,7 @@ const ModelLoadBalancingConfigs = ({
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div
-              className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
+              className={cn('text-gradient text-sm leading-tight font-semibold', s.textGradient)}
             >
               {t('modelProvider.upgradeForLoadBalancing', { ns: 'common' })}
             </div>

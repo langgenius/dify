@@ -1,8 +1,8 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
 } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { cn } from '@/utils/classnames'
 import Placeholder from './placeholder'
 
 type MixedVariableTextInputProps = {

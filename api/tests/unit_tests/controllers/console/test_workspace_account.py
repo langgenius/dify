@@ -11,7 +11,7 @@ from controllers.console.workspace.account import (
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
 )
-from models import Account
+from models import Account, AccountStatus
 from services.account_service import AccountService
 
 
@@ -33,7 +33,7 @@ def _build_account(email: str, account_id: str = "acc", tenant: object | None = 
     account = Account(name=account_id, email=email)
     account.email = email
     account.id = account_id
-    account.status = "active"
+    account.status = AccountStatus.ACTIVE
     account._current_tenant = tenant_obj
     return account
 

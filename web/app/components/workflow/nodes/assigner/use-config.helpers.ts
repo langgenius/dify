@@ -3,6 +3,7 @@ import type { AssignerNodeOperation, AssignerNodeType } from './types'
 import { produce } from 'immer'
 import { VarType } from '../../types'
 import { WriteMode } from './types'
+import { normalizeOperationItems } from './utils'
 
 export const filterVarByType = (varType: VarType) => {
   return (variable: Var) => {
@@ -86,5 +87,5 @@ export const updateOperationItems = (
   inputs: AssignerNodeType,
   items: AssignerNodeOperation[],
 ) => produce(inputs, (draft) => {
-  draft.items = [...items]
+  draft.items = normalizeOperationItems(items)
 })

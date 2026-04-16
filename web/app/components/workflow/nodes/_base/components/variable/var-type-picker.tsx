@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -10,7 +11,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -57,7 +57,7 @@ const VarReferencePicker: FC<Props> = ({
             {TYPES.map(type => (
               <div
                 key={type}
-                className="flex h-[30px] cursor-pointer items-center justify-between rounded-lg pl-3 pr-2 text-[13px] text-text-primary hover:bg-state-base-hover"
+                className="flex h-[30px] cursor-pointer items-center justify-between rounded-lg pr-2 pl-3 text-[13px] text-text-primary hover:bg-state-base-hover"
                 onClick={handleChange(type)}
               >
                 <div className="w-0 grow truncate capitalize">{type}</div>

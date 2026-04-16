@@ -1,10 +1,10 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceType } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import s from '../index.module.css'
 
 type DataSourceTypeSelectorProps = {
