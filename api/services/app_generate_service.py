@@ -304,9 +304,9 @@ class AppGenerateService:
         """
         workflow = cls._get_workflow(app_model, invoke_from)
 
-        # Idempotency check
+        # Idempotency check — acquire lock atomically to prevent duplicate dispatch
         if idempotency_key:
-            existing = cls._check_idempotency_key(
+            existing = cls._try_acquire_idempotency_key(
                 tenant_id=app_model.tenant_id,
                 idempotency_key=idempotency_key,
             )
@@ -365,9 +365,9 @@ class AppGenerateService:
                 },
             }
 
-            # Store idempotency mapping
+            # Finalize idempotency key with the real response
             if idempotency_key:
-                cls._store_idempotency_key(
+                cls._finalize_idempotency_key(
                     tenant_id=app_model.tenant_id,
                     idempotency_key=idempotency_key,
                     response=response,
@@ -419,27 +419,62 @@ class AppGenerateService:
             db.session.commit()
 
     @staticmethod
-    def _check_idempotency_key(tenant_id: str, idempotency_key: str) -> dict | None:
-        """Check if this idempotency key was already used. Returns cached response if so."""
+    def _idempotency_redis_key(tenant_id: str, idempotency_key: str) -> str:
         if len(idempotency_key) > 64:
             raise ValueError("Idempotency-Key must be 64 characters or fewer")
+        return f"dify:async_workflow:idempotency:{tenant_id}:{idempotency_key}"
 
-        redis_key = f"dify:async_workflow:idempotency:{tenant_id}:{idempotency_key}"
+    @staticmethod
+    def _try_acquire_idempotency_key(
+        tenant_id: str,
+        idempotency_key: str,
+        ttl: int = 86400,
+    ) -> dict | None:
+        """Atomically try to claim an idempotency key.
+
+        Uses SET NX to prevent the TOCTOU race where two concurrent requests
+        with the same key both pass a GET check and both dispatch work.
+
+        Returns None if we acquired the lock (caller should proceed).
+        Returns the cached response dict if another request already owns the key.
+        """
+        import time
+
+        redis_key = AppGenerateService._idempotency_redis_key(tenant_id, idempotency_key)
+
+        # Atomic set-if-not-exists
+        acquired = redis_client.set(redis_key, "pending", nx=True, ex=ttl)
+        if acquired:
+            return None  # We own the key — caller proceeds
+
+        # Another request owns the key. Read the stored response, retrying briefly
+        # in case the winner hasn't finalized yet (still "pending").
+        for _ in range(5):
+            cached = redis_client.get(redis_key)
+            if cached and cached != b"pending":
+                return json.loads(cached)
+            time.sleep(0.2)
+
+        # Winner never finalized — return whatever is stored (may still be pending).
+        # The caller treats any non-None return as a duplicate.
         cached = redis_client.get(redis_key)
-        if cached:
+        if cached and cached != b"pending":
             return json.loads(cached)
+
+        # Key expired or winner crashed — delete stale lock so a retry can proceed
+        redis_client.delete(redis_key)
         return None
 
     @staticmethod
-    def _store_idempotency_key(
+    def _finalize_idempotency_key(
         tenant_id: str,
         idempotency_key: str,
         response: dict,
         ttl: int = 86400,
     ) -> None:
-        """Store the response for this idempotency key with TTL."""
-        redis_key = f"dify:async_workflow:idempotency:{tenant_id}:{idempotency_key}"
-        redis_client.setex(redis_key, ttl, json.dumps(response))
+        """Overwrite the pending placeholder with the real response."""
+        redis_key = AppGenerateService._idempotency_redis_key(tenant_id, idempotency_key)
+        redis_client.set(redis_key, json.dumps(response), ex=ttl)
 
     @staticmethod
     def _check_async_concurrency_limit(tenant_id: str) -> None:

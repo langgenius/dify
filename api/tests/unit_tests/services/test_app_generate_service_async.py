@@ -2,9 +2,9 @@
 Unit tests for AppGenerateService.generate_async and related async workflow helpers.
 
 Covers:
-  - generate_async          (happy path, Celery dispatch, idempotency dedup, dispatch failure)
-  - _check_idempotency_key  (cache hit, cache miss, key too long)
-  - _store_idempotency_key  (stores in Redis with TTL)
+  - generate_async              (happy path, Celery dispatch, idempotency dedup, dispatch failure)
+  - _try_acquire_idempotency_key (atomic acquire, duplicate detection, pending retry, stale cleanup)
+  - _finalize_idempotency_key   (overwrites pending with real response)
   - _check_async_concurrency_limit (under limit, at limit, unlimited)
 """
 
@@ -122,7 +122,7 @@ class TestGenerateAsync:
 
     def test_idempotency_returns_cached_response(self, mocker):
         cached = {"task_id": "old-id", "workflow_run_id": "old-id", "data": {"status": "scheduled"}}
-        mocker.patch.object(AppGenerateService, "_check_idempotency_key", return_value=cached)
+        mocker.patch.object(AppGenerateService, "_try_acquire_idempotency_key", return_value=cached)
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
 
         response, is_duplicate = AppGenerateService.generate_async(
@@ -137,10 +137,10 @@ class TestGenerateAsync:
         assert response == cached
         delay_spy.assert_not_called()
 
-    def test_idempotency_key_stored_after_dispatch(self, mocker):
+    def test_idempotency_key_finalized_after_dispatch(self, mocker):
         mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        mocker.patch.object(AppGenerateService, "_check_idempotency_key", return_value=None)
-        store_spy = mocker.patch.object(AppGenerateService, "_store_idempotency_key")
+        mocker.patch.object(AppGenerateService, "_try_acquire_idempotency_key", return_value=None)
+        finalize_spy = mocker.patch.object(AppGenerateService, "_finalize_idempotency_key")
 
         AppGenerateService.generate_async(
             app_model=_make_app(),
@@ -150,13 +150,13 @@ class TestGenerateAsync:
             idempotency_key="new-key",
         )
 
-        store_spy.assert_called_once()
-        assert store_spy.call_args.kwargs["idempotency_key"] == "new-key"
+        finalize_spy.assert_called_once()
+        assert finalize_spy.call_args.kwargs["idempotency_key"] == "new-key"
 
-    def test_no_idempotency_key_skips_check_and_store(self, mocker):
+    def test_no_idempotency_key_skips_acquire_and_finalize(self, mocker):
         mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        check_spy = mocker.patch.object(AppGenerateService, "_check_idempotency_key")
-        store_spy = mocker.patch.object(AppGenerateService, "_store_idempotency_key")
+        acquire_spy = mocker.patch.object(AppGenerateService, "_try_acquire_idempotency_key")
+        finalize_spy = mocker.patch.object(AppGenerateService, "_finalize_idempotency_key")
 
         AppGenerateService.generate_async(
             app_model=_make_app(),
@@ -166,8 +166,8 @@ class TestGenerateAsync:
             idempotency_key=None,
         )
 
-        check_spy.assert_not_called()
-        store_spy.assert_not_called()
+        acquire_spy.assert_not_called()
+        finalize_spy.assert_not_called()
 
     def test_dispatch_failure_marks_run_failed(self, mocker):
         mocker.patch(
@@ -202,34 +202,62 @@ class TestGenerateAsync:
 
 
 # ---------------------------------------------------------------------------
-# _check_idempotency_key / _store_idempotency_key
+# _try_acquire_idempotency_key / _finalize_idempotency_key
 # ---------------------------------------------------------------------------
 class TestIdempotencyKey:
-    def test_cache_miss_returns_none(self):
-        with patch.object(ags_module.redis_client, "get", return_value=None):
-            result = AppGenerateService._check_idempotency_key("tenant-1", "key-1")
-        assert result is None
+    def test_acquire_succeeds_when_key_not_exists(self):
+        with patch.object(ags_module.redis_client, "set", return_value=True):
+            result = AppGenerateService._try_acquire_idempotency_key("tenant-1", "key-1")
+        assert result is None  # None means "acquired, proceed"
 
-    def test_cache_hit_returns_parsed_response(self):
+    def test_acquire_returns_cached_response_when_key_exists(self):
         cached = {"task_id": "abc", "workflow_run_id": "abc"}
-        with patch.object(ags_module.redis_client, "get", return_value=json.dumps(cached).encode()):
-            result = AppGenerateService._check_idempotency_key("tenant-1", "key-1")
+        with (
+            patch.object(ags_module.redis_client, "set", return_value=False),
+            patch.object(ags_module.redis_client, "get", return_value=json.dumps(cached).encode()),
+        ):
+            result = AppGenerateService._try_acquire_idempotency_key("tenant-1", "key-1")
         assert result == cached
+
+    def test_acquire_retries_while_pending_then_returns_response(self, mocker):
+        cached = {"task_id": "abc", "workflow_run_id": "abc"}
+        mocker.patch("time.sleep")  # skip actual sleep
+        with (
+            patch.object(ags_module.redis_client, "set", return_value=False),
+            patch.object(
+                ags_module.redis_client,
+                "get",
+                side_effect=[b"pending", b"pending", json.dumps(cached).encode()],
+            ),
+        ):
+            result = AppGenerateService._try_acquire_idempotency_key("tenant-1", "key-1")
+        assert result == cached
+
+    def test_acquire_cleans_stale_lock_when_winner_never_finalizes(self, mocker):
+        mocker.patch("time.sleep")
+        with (
+            patch.object(ags_module.redis_client, "set", return_value=False),
+            patch.object(ags_module.redis_client, "get", return_value=b"pending"),
+            patch.object(ags_module.redis_client, "delete") as delete_spy,
+        ):
+            result = AppGenerateService._try_acquire_idempotency_key("tenant-1", "key-1")
+        assert result is None  # Caller can retry
+        delete_spy.assert_called_once()
 
     def test_key_too_long_raises(self):
         with pytest.raises(ValueError, match="64 characters"):
-            AppGenerateService._check_idempotency_key("tenant-1", "x" * 65)
+            AppGenerateService._try_acquire_idempotency_key("tenant-1", "x" * 65)
 
-    def test_store_calls_setex_with_correct_key_and_ttl(self):
+    def test_finalize_stores_response_with_ttl(self):
         response = {"task_id": "abc"}
-        with patch.object(ags_module.redis_client, "setex") as setex_spy:
-            AppGenerateService._store_idempotency_key("tenant-1", "key-1", response)
+        with patch.object(ags_module.redis_client, "set") as set_spy:
+            AppGenerateService._finalize_idempotency_key("tenant-1", "key-1", response)
 
-        setex_spy.assert_called_once()
-        args = setex_spy.call_args[0]
+        set_spy.assert_called_once()
+        args, kwargs = set_spy.call_args
         assert args[0] == "dify:async_workflow:idempotency:tenant-1:key-1"
-        assert args[1] == 86400
-        assert json.loads(args[2]) == response
+        assert json.loads(args[1]) == response
+        assert kwargs["ex"] == 86400
 
 
 # ---------------------------------------------------------------------------
