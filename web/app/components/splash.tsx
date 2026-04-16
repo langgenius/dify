@@ -5,9 +5,9 @@ import { useUserProfile } from '@/service/use-common'
 import Loading from './base/loading'
 
 const Splash: FC<PropsWithChildren> = () => {
-  const { isPending, data } = useUserProfile()
+  const { isPending, data, isError } = useUserProfile()
 
-  if (isPending || !data?.profile) {
+  if ((isPending || !data?.profile) && !isError) {
     return (
       <div className="fixed inset-0 z-9999999 flex h-full items-center justify-center bg-background-body">
         <Loading />
