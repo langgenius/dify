@@ -134,6 +134,8 @@
   "mcp.modal.noHeaders": "未配置自定义请求头",
   "mcp.modal.redirectUrlWarning": "请将您的 OAuth 重定向 URL 配置为：",
   "mcp.modal.save": "保存",
+  "mcp.modal.scope": "Scope",
+  "mcp.modal.scopePlaceholder": "例如 gateway:invoke openid",
   "mcp.modal.serverIdentifier": "服务器标识符",
   "mcp.modal.serverIdentifierPlaceholder": "服务器唯一标识，例如 my-mcp-server",
   "mcp.modal.serverIdentifierTip": "工作空间内服务器的唯一标识。支持小写字母、数字、下划线和连字符，最多 24 个字符。",

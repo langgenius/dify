@@ -153,7 +153,7 @@ class MCPToolManageService:
         encrypted_credentials = None
         if authentication is not None and authentication.client_id:
             encrypted_credentials = self._build_and_encrypt_credentials(
-                authentication.client_id, authentication.client_secret, tenant_id
+                authentication.client_id, authentication.client_secret, tenant_id, authentication.scope
             )
 
         # Create provider
@@ -744,7 +744,9 @@ class MCPToolManageService:
         )
 
         # Build and encrypt
-        return self._build_and_encrypt_credentials(final_client_id, final_client_secret, tenant_id)
+        return self._build_and_encrypt_credentials(
+            final_client_id, final_client_secret, tenant_id, authentication.scope
+        )
 
     def _merge_headers_with_masked(
         self, incoming_headers: dict[str, str], mcp_provider: MCPToolProvider
@@ -805,8 +807,17 @@ class MCPToolManageService:
 
         return final_client_id, final_client_secret
 
-    def _build_and_encrypt_credentials(self, client_id: str, client_secret: str | None, tenant_id: str) -> str:
-        """Build credentials and encrypt sensitive fields."""
+    def _build_and_encrypt_credentials(
+        self, client_id: str, client_secret: str | None, tenant_id: str, scope: str | None = None
+    ) -> str:
+        """Build credentials and encrypt sensitive fields.
+
+        Args:
+            client_id: OAuth client ID
+            client_secret: OAuth client secret (will be encrypted)
+            tenant_id: Tenant ID for encryption
+            scope: Optional OAuth scope (e.g., custom scopes required by IdPs like AWS Cognito)
+        """
         # Create a flat structure with all credential data
         credentials_data = {
             "client_id": client_id,
@@ -818,4 +829,7 @@ class MCPToolManageService:
             credentials_data["encrypted_client_secret"] = client_secret
             secret_fields = ["encrypted_client_secret"]
         client_info = self._encrypt_dict_fields(credentials_data, secret_fields, tenant_id)
-        return json.dumps({"client_information": client_info})
+        result: dict[str, Any] = {"client_information": client_info}
+        if scope:
+            result["scope"] = scope
+        return json.dumps(result)

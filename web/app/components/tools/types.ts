@@ -73,6 +73,7 @@ export type Collection = {
   authentication?: {
     client_id?: string
     client_secret?: string
+    scope?: string
   }
   configuration?: {
     timeout?: number

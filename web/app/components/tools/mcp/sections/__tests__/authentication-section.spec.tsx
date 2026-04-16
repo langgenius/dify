@@ -10,6 +10,8 @@ describe('AuthenticationSection', () => {
     onClientIDChange: vi.fn(),
     credentials: '',
     onCredentialsChange: vi.fn(),
+    scope: '',
+    onScopeChange: vi.fn(),
   }
 
   describe('Rendering', () => {
@@ -33,11 +35,25 @@ describe('AuthenticationSection', () => {
       expect(screen.getByDisplayValue('test-secret')).toBeInTheDocument()
     })
 
-    it('should render labels for all fields', () => {
-      render(<AuthenticationSection {...defaultProps} />)
+    it('should render scope input only when dynamic registration is off', () => {
+      const { rerender } = render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} scope="gateway:invoke" />)
+      expect(screen.getByDisplayValue('gateway:invoke')).toBeInTheDocument()
+
+      rerender(<AuthenticationSection {...defaultProps} isDynamicRegistration={true} scope="gateway:invoke" />)
+      expect(screen.queryByDisplayValue('gateway:invoke')).not.toBeInTheDocument()
+    })
+
+    it('should render labels for all fields when dynamic registration is off', () => {
+      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} />)
       expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration')).toBeInTheDocument()
       expect(screen.getByText('tools.mcp.modal.clientID')).toBeInTheDocument()
       expect(screen.getByText('tools.mcp.modal.clientSecret')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.scope')).toBeInTheDocument()
+    })
+
+    it('should not render scope label when dynamic registration is on', () => {
+      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={true} />)
+      expect(screen.queryByText('tools.mcp.modal.scope')).not.toBeInTheDocument()
     })
   })
 
@@ -123,6 +139,23 @@ describe('AuthenticationSection', () => {
 
       expect(onCredentialsChange).toHaveBeenCalledWith('new-secret')
     })
+
+    it('should call onScopeChange when scope input changes', () => {
+      const onScopeChange = vi.fn()
+      render(
+        <AuthenticationSection
+          {...defaultProps}
+          isDynamicRegistration={false}
+          onScopeChange={onScopeChange}
+        />,
+      )
+
+      const inputs = screen.getAllByRole('textbox')
+      const scopeInput = inputs[2]
+      fireEvent.change(scopeInput, { target: { value: 'gateway:invoke' } })
+
+      expect(onScopeChange).toHaveBeenCalledWith('gateway:invoke')
+    })
   })
 
   describe('Props', () => {
@@ -139,9 +172,9 @@ describe('AuthenticationSection', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty string values', () => {
-      render(<AuthenticationSection {...defaultProps} clientID="" credentials="" />)
+      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} clientID="" credentials="" scope="" />)
       const inputs = screen.getAllByRole('textbox')
-      expect(inputs).toHaveLength(2)
+      expect(inputs).toHaveLength(3)
       inputs.forEach((input) => {
         expect(input).toHaveValue('')
       })

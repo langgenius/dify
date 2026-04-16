@@ -8,6 +8,7 @@ from core.entities import mcp_provider as mcp_provider_module
 from core.entities.mcp_provider import (
     DEFAULT_EXPIRES_IN,
     DEFAULT_TOKEN_TYPE,
+    MCPAuthentication,
     MCPProviderEntity,
 )
 from core.mcp.types import OAuthTokens
@@ -404,6 +405,55 @@ def test_decrypt_dict_returns_original_data_when_no_encrypted_fields() -> None:
 
     # Assert
     assert result is input_data
+
+
+def test_mcp_authentication_accepts_scope() -> None:
+    # Arrange & Act
+    auth_with_scope = MCPAuthentication(client_id="client-1", client_secret="secret", scope="gateway:invoke")
+    auth_without_scope = MCPAuthentication(client_id="client-1")
+
+    # Assert
+    assert auth_with_scope.scope == "gateway:invoke"
+    assert auth_without_scope.scope is None
+
+
+def test_masked_credentials_includes_scope_unmasked() -> None:
+    """Scope is not secret and should be returned as-is for the edit form."""
+    # Arrange
+    entity = _build_mcp_provider_entity()
+    credentials = {
+        "client_information": {
+            "client_id": "client-id",
+            "client_secret": "plain-secret",
+        },
+        "scope": "gateway:invoke openid",
+    }
+
+    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials):
+        # Act
+        masked = entity.masked_credentials()
+
+    # Assert
+    assert masked["scope"] == "gateway:invoke openid"
+    assert masked["client_id"] == "cl*****id"
+
+
+def test_masked_credentials_omits_scope_when_absent() -> None:
+    """When no scope is stored, it should not appear in the masked output."""
+    # Arrange
+    entity = _build_mcp_provider_entity()
+    credentials = {
+        "client_information": {
+            "client_id": "client-id",
+        },
+    }
+
+    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials):
+        # Act
+        masked = entity.masked_credentials()
+
+    # Assert
+    assert "scope" not in masked
 
 
 def test_decrypt_dict_only_decrypts_top_level_string_values() -> None:
