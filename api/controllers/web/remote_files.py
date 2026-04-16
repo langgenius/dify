@@ -1,7 +1,6 @@
 import urllib.parse
 
 import httpx
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field, HttpUrl
 
 import services
@@ -14,6 +13,7 @@ from controllers.common.errors import (
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from graphon.file import helpers as file_helpers
 from services.file_service import FileService
 
 from ..common.schema import register_schema_models

@@ -3,10 +3,10 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType

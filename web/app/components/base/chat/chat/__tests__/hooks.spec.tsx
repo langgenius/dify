@@ -932,7 +932,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true',
+        '/workflow/wr-1/events?include_state_snapshot=true&replay=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1264,6 +1264,102 @@ describe('useChat', () => {
     })
   })
 
+  describe('handleReconnect', () => {
+    it('should call sseGet with include_state_snapshot and rebuild from snapshot events', () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-reconnect',
+          content: 'stale partial content',
+          isAnswer: true,
+          siblingIndex: 0,
+          workflowProcess: { status: 'running', tracing: [{ node_id: 'old-node' }] },
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleReconnect('m-reconnect', 'wr-reconnect', { isPublicAPI: true })
+      })
+
+      expect(sseGet).toHaveBeenCalledWith(
+        '/workflow/wr-reconnect/events?include_state_snapshot=true',
+        expect.any(Object),
+        expect.any(Object),
+      )
+
+      // Content is not reset until onWorkflowStarted fires
+      const beforeStart = result.current.chatList[1]
+      expect(beforeStart.content).toBe('stale partial content')
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-reconnect', task_id: 't-1' })
+      })
+
+      // After onWorkflowStarted, content is reset and workflowProcess is fresh
+      const afterStart = result.current.chatList[1]
+      expect(afterStart.content).toBe('')
+      expect(afterStart.workflowProcess).toEqual({ status: WorkflowRunningStatus.Running, tracing: [] })
+
+      act(() => {
+        callbacks.onMessageReplace({ answer: 'full snapshot text' })
+        callbacks.onNodeStarted({ data: { node_id: 'n-1', id: 'n-1', title: 'Node 1' } })
+        callbacks.onNodeFinished({ data: { node_id: 'n-1', id: 'n-1', title: 'Node 1', status: 'succeeded' } })
+        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+        callbacks.onCompleted()
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse.content).toBe('full snapshot text')
+      expect(lastResponse.workflowProcess?.status).toBe('succeeded')
+      expect(lastResponse.workflowProcess?.tracing).toHaveLength(1)
+      expect(result.current.isResponding).toBe(false)
+    })
+
+    it('should abort previous stream when reconnecting again', () => {
+      const callbacksList: HookCallbacks[] = []
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-rc',
+          content: 'partial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+      const previousAbort = createAbortControllerMock()
+
+      act(() => {
+        result.current.handleReconnect('m-rc', 'wr-1', { isPublicAPI: true })
+      })
+      act(() => {
+        callbacksList[0].getAbortController(previousAbort)
+      })
+      act(() => {
+        result.current.handleReconnect('m-rc', 'wr-2', { isPublicAPI: true })
+      })
+
+      expect(previousAbort.abort).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('createAudioPlayerManager branch cases', () => {
     it('should handle ttsUrl generation for appId with installed apps', async () => {
       vi.mocked(usePathname).mockReturnValue('/explore/installed/app')
@@ -1331,7 +1427,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-tts-app/events?include_state_snapshot=true',
+        '/workflow/wr-tts-app/events?include_state_snapshot=true&replay=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1493,7 +1589,7 @@ describe('useChat', () => {
 
       // Should automatically call handleResume -> sseGet for human input
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true',
+        '/workflow/wr-1/events?include_state_snapshot=true&replay=true',
         expect.any(Object),
         expect.any(Object),
       )

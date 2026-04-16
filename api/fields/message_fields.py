@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from graphon.file import File
 from pydantic import Field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
+from graphon.file import File
 
 type JSONValueType = JSONValue
 
@@ -58,6 +58,7 @@ class MessageListItem(ResponseModel):
     message_files: list[MessageFile]
     status: str
     error: str | None = None
+    workflow_run_id: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
 
     @field_validator("inputs", mode="before")

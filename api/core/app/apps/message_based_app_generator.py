@@ -311,12 +311,14 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         cls,
         app_mode: AppMode,
         workflow_run_id: str,
-        idle_timeout=300,
+        idle_timeout: float = 300,
         on_subscribe: Callable[[], None] | None = None,
+        replay: bool = False,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         return stream_topic_events(
             topic=topic,
             idle_timeout=idle_timeout,
             on_subscribe=on_subscribe,
+            replay=replay,
         )

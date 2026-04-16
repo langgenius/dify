@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -22,6 +21,7 @@ from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     SimpleConversation,
 )
+from graphon.variables.types import SegmentType
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService

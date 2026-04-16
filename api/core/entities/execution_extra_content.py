@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias
 
-from graphon.nodes.human_input.entities import FormInput, UserAction
 from pydantic import BaseModel, ConfigDict, Field
 
+from graphon.nodes.human_input.entities import FormInput, UserAction
 from models.execution_extra_content import ExecutionContentType
 
 

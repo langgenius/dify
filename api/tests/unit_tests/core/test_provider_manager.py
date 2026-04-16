@@ -2,12 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
 from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
 from models.provider_ids import ModelProviderID
 

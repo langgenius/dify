@@ -2,12 +2,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
-from graphon.model_runtime.entities.model_entities import ModelType
 from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 @pytest.fixture

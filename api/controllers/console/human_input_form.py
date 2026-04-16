@@ -180,6 +180,7 @@ class ConsoleWorkflowEventsApi(Resource):
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+            replay = request.args.get("replay", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot:
@@ -190,10 +191,11 @@ class ConsoleWorkflowEventsApi(Resource):
                             tenant_id=workflow_run.tenant_id,
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
+                            replay=replay,
                         )
                     )
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
+                    msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id, replay=replay),
                 )
 
             event_generator = _generate_stream_events
