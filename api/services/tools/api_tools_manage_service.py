@@ -308,7 +308,7 @@ class ApiToolManageService:
             )
 
             if provider is None:
-                raise ValueError(f"api provider {provider_name} does not exists")
+                raise ValueError(f"api provider {provider_name} does not exist")
 
             # parse openapi to tool bundle
             extra_info: dict[str, str] = {}
