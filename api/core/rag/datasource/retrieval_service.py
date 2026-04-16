@@ -174,8 +174,8 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: dict | None = None,
-        metadata_filtering_conditions: dict | None = None,
+        external_retrieval_model: dict[str, Any] | None = None,
+        metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)

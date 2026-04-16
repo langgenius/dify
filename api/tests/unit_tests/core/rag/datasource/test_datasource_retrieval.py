@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, call, patch
 from uuid import uuid4
 
@@ -20,7 +21,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.

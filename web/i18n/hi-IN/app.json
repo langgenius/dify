@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "आदेश",
   "gotoAnything.groups.knowledgeBases": "ज्ञान आधार",
   "gotoAnything.groups.plugins": "प्लगइन्स",
+  "gotoAnything.groups.recent": "हाल ही में",
   "gotoAnything.groups.workflowNodes": "कार्यप्रवाह नोड्स",
   "gotoAnything.inScope": "{{scope}}s में",
   "gotoAnything.noMatchingCommands": "कोई मिलती-जुलती कमांड्स नहीं मिलीं",

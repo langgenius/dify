@@ -1,6 +1,6 @@
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 export type IItem = {
   key: string
@@ -26,7 +26,7 @@ const Collapse = ({
 
   return (
     <div className={cn('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
-      <div className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary" onClick={toggle}>
+      <div className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs leading-[18px] font-medium text-text-secondary" onClick={toggle}>
         {title}
         {
           open

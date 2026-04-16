@@ -8,13 +8,12 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Button from '@/app/components/base/button'
-import AddButton from '@/app/components/base/button/add-button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Select from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
@@ -120,7 +119,9 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <AddButton className="mx-1" onClick={showAddModal} />
+        <div className="mx-1 cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={showAddModal} data-testid="add-button">
+          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+        </div>
       )}
       {isShowModal && (
         <Modal
@@ -167,8 +168,8 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}>
                 <>
-                  <div className="mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
-                  <Switch size="lg" value={param.required ?? false} onChange={handleParamChange('required')} />
+                  <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
+                  <Switch size="lg" checked={param.required ?? false} onCheckedChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Editor } from '@monaco-editor/react'
 import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
@@ -8,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type CodeEditorProps = {
   value: string
@@ -116,8 +116,8 @@ const CodeEditor: FC<CodeEditorProps> = ({
   return (
     <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
       {!hideTopMenu && (
-        <div className="flex items-center justify-between pl-2 pr-1 pt-1">
-          <div className="system-xs-semibold-uppercase py-0.5 text-text-secondary">
+        <div className="flex items-center justify-between pt-1 pr-1 pl-2">
+          <div className="py-0.5 system-xs-semibold-uppercase text-text-secondary">
             <span className="px-1 py-0.5">JSON</span>
           </div>
           <div className="flex items-center gap-x-0.5">

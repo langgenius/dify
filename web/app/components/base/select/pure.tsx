@@ -1,6 +1,7 @@
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -16,7 +17,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type Option = {
   label: string
@@ -118,7 +118,7 @@ const PureSelect = (props: PureSelectProps) => {
       >
         <div
           className={cn(
-            'system-sm-regular group flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled',
+            'group flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 system-sm-regular text-components-input-text-filled',
             !disabled && 'cursor-pointer hover:bg-state-base-hover-alt',
             disabled && 'cursor-not-allowed opacity-50',
             mergedOpen && !disabled && 'bg-state-base-hover-alt',
@@ -153,7 +153,7 @@ const PureSelect = (props: PureSelectProps) => {
           {
             popupTitle && (
               <div className={cn(
-                'system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary',
+                'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                 popupTitleClassName,
               )}
               >
@@ -166,7 +166,7 @@ const PureSelect = (props: PureSelectProps) => {
               <div
                 key={option.value}
                 className={cn(
-                  'system-sm-medium flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover',
+                  'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary hover:bg-state-base-hover',
                   popupItemClassName,
                 )}
                 title={option.label}

@@ -1,16 +1,15 @@
 'use client'
 
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 
 export const AlertDialog = BaseAlertDialog.Root
 export const AlertDialogTrigger = BaseAlertDialog.Trigger
 export const AlertDialogTitle = BaseAlertDialog.Title
 export const AlertDialogDescription = BaseAlertDialog.Description
-export const AlertDialogClose = BaseAlertDialog.Close
 
 type AlertDialogContentProps = {
   children: React.ReactNode
@@ -32,7 +31,7 @@ export function AlertDialogContent({
       <BaseAlertDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'inset-0 fixed z-1002 bg-background-overlay',
+          'fixed inset-0 z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           overlayClassName,
         )}
@@ -86,13 +85,13 @@ type AlertDialogConfirmButtonProps = ButtonProps
 
 export function AlertDialogConfirmButton({
   variant = 'primary',
-  destructive = true,
+  tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
   return (
     <Button
       variant={variant}
-      destructive={destructive}
+      tone={tone}
       {...props}
     />
   )

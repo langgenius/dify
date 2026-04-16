@@ -6,7 +6,6 @@ import type {
   NumberFieldInputProps,
   NumberFieldUnitProps,
 } from '../index'
-import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { render, screen } from '@testing-library/react'
 import {
   NumberField,
@@ -67,17 +66,6 @@ const renderNumberField = ({
 }
 
 describe('NumberField wrapper', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Export mapping should stay aligned with the Base UI primitive.
-  describe('Exports', () => {
-    it('should map NumberField to the matching base primitive root', () => {
-      expect(NumberField).toBe(BaseNumberField.Root)
-    })
-  })
-
   // Group and input wrappers should preserve the design-system variants and DOM defaults.
   describe('Group and input', () => {
     it('should apply regular group classes by default and merge custom className', () => {
@@ -89,7 +77,7 @@ describe('NumberField wrapper', () => {
 
       const group = screen.getByTestId('group')
 
-      expect(group).toHaveClass('radius-md')
+      expect(group).toHaveClass('rounded-lg')
       expect(group).toHaveClass('custom-group')
     })
 
@@ -106,7 +94,7 @@ describe('NumberField wrapper', () => {
       const group = screen.getByTestId('group')
       const input = screen.getByTestId('input')
 
-      expect(group).toHaveClass('radius-lg')
+      expect(group).toHaveClass('rounded-[10px]')
       expect(input).toHaveClass('px-4')
       expect(input).toHaveClass('py-2')
     })
@@ -172,13 +160,13 @@ describe('NumberField wrapper', () => {
 
   // Increment and decrement buttons should preserve accessible naming, icon fallbacks, and spacing variants.
   describe('Control buttons', () => {
-    it('should provide localized aria labels and default icons when labels are not provided', () => {
+    it('should provide english fallback aria labels and default icons when labels are not provided', () => {
       renderNumberField({
         controlsProps: {},
       })
 
-      const increment = screen.getByRole('button', { name: 'common.operation.increment' })
-      const decrement = screen.getByRole('button', { name: 'common.operation.decrement' })
+      const increment = screen.getByRole('button', { name: 'Increment value' })
+      const decrement = screen.getByRole('button', { name: 'Decrement value' })
 
       expect(increment.querySelector('.i-ri-arrow-up-s-line')).toBeInTheDocument()
       expect(decrement.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
@@ -217,11 +205,11 @@ describe('NumberField wrapper', () => {
         },
       })
 
-      expect(screen.getByRole('button', { name: 'common.operation.increment' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.decrement' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Increment value' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Decrement value' })).toBeInTheDocument()
     })
 
-    it('should rely on aria-labelledby when provided instead of injecting a translated aria-label', () => {
+    it('should rely on aria-labelledby when provided instead of injecting a fallback aria-label', () => {
       render(
         <>
           <span id="increment-label">Increment from label</span>

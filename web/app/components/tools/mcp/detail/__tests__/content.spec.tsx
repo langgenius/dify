@@ -84,20 +84,6 @@ vi.mock('../../modal', () => ({
   },
 }))
 
-// Mock Confirm dialog
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: { isShow: boolean, onConfirm: () => void, onCancel: () => void, title: string }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog" data-title={title}>
-        <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-        <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-      </div>
-    )
-  },
-}))
-
 // Mock OperationDropdown
 vi.mock('../operation-dropdown', () => ({
   default: ({ onEdit, onRemove }: { onEdit: () => void, onRemove: () => void }) => (
@@ -164,6 +150,9 @@ describe('MCPDetailContent', () => {
     return ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
+
+  const getConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+  const getCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
 
   const createMockDetail = (overrides = {}): ToolWithProvider => ({
     id: 'mcp-1',
@@ -494,7 +483,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
       })
     })
 
@@ -514,12 +503,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
       })
 
       // Confirm the update
-      const confirmBtn = screen.getByTestId('confirm-btn')
-      fireEvent.click(confirmBtn)
+      fireEvent.click(getConfirmButton())
 
       await waitFor(() => {
         expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
@@ -636,7 +624,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
       })
     })
 
@@ -648,15 +636,14 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
       })
 
       // Cancel
-      const cancelBtn = screen.getByTestId('cancel-btn')
-      fireEvent.click(cancelBtn)
+      fireEvent.click(getCancelButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('tools.mcp.delete')).not.toBeInTheDocument()
       })
     })
 
@@ -669,12 +656,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
       })
 
       // Confirm delete
-      const confirmBtn = screen.getByTestId('confirm-btn')
-      fireEvent.click(confirmBtn)
+      fireEvent.click(getConfirmButton())
 
       await waitFor(() => {
         expect(mockDeleteMCP).toHaveBeenCalledWith('mcp-1')
@@ -692,12 +678,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
       })
 
       // Confirm delete
-      const confirmBtn = screen.getByTestId('confirm-btn')
-      fireEvent.click(confirmBtn)
+      fireEvent.click(getConfirmButton())
 
       await waitFor(() => {
         expect(mockDeleteMCP).toHaveBeenCalled()
@@ -840,15 +825,14 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
       })
 
       // Cancel the update
-      const cancelBtn = screen.getByTestId('cancel-btn')
-      fireEvent.click(cancelBtn)
+      fireEvent.click(getCancelButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('tools.mcp.toolUpdateConfirmTitle')).not.toBeInTheDocument()
       })
     })
   })

@@ -25,10 +25,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,
@@ -394,8 +394,8 @@ const Debug: FC<IDebug> = ({
   return (
     <>
       <div className="shrink-0">
-        <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="text-text-primary system-xl-semibold">{t('inputs.title', { ns: 'appDebug' })}</div>
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -432,14 +432,14 @@ const Debug: FC<IDebug> = ({
 
                 {
                   varList.length > 0 && (
-                    <div className="relative ml-1 mr-2">
+                    <div className="relative mr-2 ml-1">
                       <Tooltip>
                         <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}><RiEqualizer2Line className="h-4 w-4" /></ActionButton>} />
                         <TooltipContent>
                           {t('panel.userInputField', { ns: 'workflow' })}
                         </TooltipContent>
                       </Tooltip>
-                      {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                      {expanded && <div className="absolute right-[5px] bottom-[-14px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
                     </div>
                   )
                 }
@@ -511,14 +511,14 @@ const Debug: FC<IDebug> = ({
             {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
               <div className="flex grow flex-col items-center justify-center pb-[120px]">
                 <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
-                  <div className="flex h-10 w-10 items-center justify-center radius-lg">
-                    <div className="flex h-full w-full items-center justify-center overflow-hidden radius-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
+                    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
                       <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="text-text-secondary system-md-semibold">{t('noModelSelected', { ns: 'appDebug' })}</div>
-                    <div className="text-text-tertiary system-xs-regular">{t('noModelSelectedTip', { ns: 'appDebug' })}</div>
+                    <div className="system-md-semibold text-text-secondary">{t('noModelSelected', { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-tertiary">{t('noModelSelectedTip', { ns: 'appDebug' })}</div>
                   </div>
                 </div>
               </div>
@@ -557,7 +557,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="text-text-quaternary system-sm-regular">{t('noResult', { ns: 'appDebug' })}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

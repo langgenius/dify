@@ -6,10 +6,10 @@ import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
+import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 import { toast } from '@/app/components/base/ui/toast'
@@ -116,7 +116,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('apiBasedExtension.type', { ns: 'common' })}
           </div>
           <Select
@@ -136,7 +136,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </Select>
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
           </div>
           <div className="flex items-center">
@@ -156,7 +156,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
           </div>
           <input

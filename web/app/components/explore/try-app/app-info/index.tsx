@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 import useGetRequirements from './use-get-requirements'
 
 type Props = {
@@ -30,7 +30,7 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 
   if (hasLoadError) {
     return (
-      <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+      <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
       </div>
     )
@@ -78,10 +78,10 @@ const AppInfo: FC<Props> = ({
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
+          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
-          <div className="flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary">
+          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
             {mode === 'advanced-chat' && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
             {mode === 'chat' && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
             {mode === 'agent-chat' && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
@@ -91,17 +91,17 @@ const AppInfo: FC<Props> = ({
         </div>
       </div>
       {appDetail.description && (
-        <div className="mt-[14px] shrink-0 text-text-secondary system-sm-regular">{appDetail.description}</div>
+        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">{appDetail.description}</div>
       )}
       <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <span className="i-ri-add-line mr-1 size-4 shrink-0" />
+        <span className="mr-1 i-ri-add-line size-4 shrink-0" />
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 
       {category && (
         <div className="mt-6 shrink-0">
           <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
-          <div className="text-text-secondary system-md-regular">{category}</div>
+          <div className="system-md-regular text-text-secondary">{category}</div>
         </div>
       )}
       {requirements.length > 0 && (
@@ -111,7 +111,7 @@ const AppInfo: FC<Props> = ({
             {requirements.map(item => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
-                <div className="w-0 grow truncate text-text-secondary system-md-regular">{item.name}</div>
+                <div className="w-0 grow truncate system-md-regular text-text-secondary">{item.name}</div>
               </div>
             ))}
           </div>

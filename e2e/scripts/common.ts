@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { access, copyFile, readFile, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
@@ -38,6 +39,10 @@ export const middlewareEnvExampleFile = path.join(dockerDir, 'middleware.env.exa
 export const webEnvLocalFile = path.join(webDir, '.env.local')
 export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
+export const e2eWebEnvOverrides = {
+  NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
+} satisfies Record<string, string>
 
 const formatCommand = (command: string, args: string[]) => [command, ...args].join(' ')
 
@@ -166,13 +171,16 @@ export const ensureLineInFile = async (filePath: string, line: string) => {
   await writeFile(filePath, `${normalizedContent}${line}\n`, 'utf8')
 }
 
-export const ensureWebEnvLocal = async () => {
-  await ensureFileExists(webEnvLocalFile, webEnvExampleFile)
-
-  const fileContent = await readFile(webEnvLocalFile, 'utf8')
-  const nextContent = fileContent.replaceAll('http://localhost:5001', 'http://127.0.0.1:5001')
-
-  if (nextContent !== fileContent) await writeFile(webEnvLocalFile, nextContent, 'utf8')
+export const getWebEnvLocalHash = async () => {
+  const fileContent = await readFile(webEnvLocalFile, 'utf8').catch(() => '')
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        envLocal: fileContent,
+        overrides: e2eWebEnvOverrides,
+      }),
+    )
+    .digest('hex')
 }
 
 export const readSimpleDotenv = async (filePath: string) => {

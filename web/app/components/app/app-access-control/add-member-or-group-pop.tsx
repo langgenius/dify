@@ -1,17 +1,17 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { FloatingOverlay } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/ui/avatar'
+import { Button } from '@/app/components/base/ui/button'
 import { useSelector } from '@/context/app-context'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
-import { cn } from '@/utils/classnames'
 import useAccessControlStore from '../../../../context/access-control-store'
-import Button from '../../base/button'
 import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
 import Loading from '../../base/loading'
@@ -118,7 +118,7 @@ function SelectedGroupsBreadCrumb() {
       <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
       {selectedGroupsForBreadcrumb.map((group, index) => {
         return (
-          <div key={index} className="system-xs-regular flex items-center gap-x-0.5 text-text-tertiary">
+          <div key={index} className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary">
             <span>/</span>
             <span className={index === selectedGroupsForBreadcrumb.length - 1 ? '' : 'cursor-pointer text-text-accent'} onClick={() => handleBreadCrumbClick(index)}>{group.name}</span>
           </div>
@@ -161,7 +161,7 @@ function GroupItem({ group }: GroupItemProps) {
             <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
           </div>
         </div>
-        <p className="system-sm-medium mr-1 text-text-secondary">{group.name}</p>
+        <p className="mr-1 system-sm-medium text-text-secondary">{group.name}</p>
         <p className="system-xs-regular text-text-tertiary">{group.groupSize}</p>
       </div>
       <Button
@@ -206,7 +206,7 @@ function MemberItem({ member }: MemberItemProps) {
             <Avatar size="xxs" avatar={null} name={member.name} />
           </div>
         </div>
-        <p className="system-sm-medium mr-1 text-text-secondary">{member.name}</p>
+        <p className="mr-1 system-sm-medium text-text-secondary">{member.name}</p>
         {currentUser.email === member.email && (
           <p className="system-xs-regular text-text-tertiary">
             (

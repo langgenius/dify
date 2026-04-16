@@ -7,8 +7,7 @@ import type {
 } from '@base-ui/react/toast'
 import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {
@@ -34,6 +33,9 @@ const TOAST_TONE_STYLES = {
     gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
   },
 } satisfies Record<string, ToastToneStyle>
+
+const toastCloseLabel = 'Close notification'
+const toastViewportLabel = 'Notifications'
 
 type ToastType = keyof typeof TOAST_TONE_STYLES
 
@@ -145,7 +147,6 @@ function ToastCard({
 }: {
   toast: ToastObject<ToastData>
 }) {
-  const { t } = useTranslation('common')
   const toastType = getToastType(toastItem.type)
 
   return (
@@ -200,7 +201,7 @@ function ToastCard({
           </div>
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
             <BaseToast.Close
-              aria-label={t('toast.close')}
+              aria-label={toastCloseLabel}
               className={cn(
                 'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
               )}
@@ -215,15 +216,13 @@ function ToastCard({
 }
 
 function ToastViewport() {
-  const { t } = useTranslation('common')
   const { toasts } = BaseToast.useToastManager<ToastData>()
 
   return (
     <BaseToast.Viewport
-      aria-label={t('toast.notifications')}
+      aria-label={toastViewportLabel}
       className={cn(
-        // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
-        'inset-0 group/toast-viewport pointer-events-none fixed z-1101 overflow-visible',
+        'group/toast-viewport pointer-events-none fixed inset-0 z-1003 overflow-visible',
       )}
     >
       <div

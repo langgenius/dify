@@ -86,7 +86,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         )}
       </div>
       {!value.length && (
-        <div className="system-xs-regular flex items-center justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
+        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">

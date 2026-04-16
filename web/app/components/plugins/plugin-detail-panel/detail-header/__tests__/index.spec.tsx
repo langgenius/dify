@@ -45,8 +45,8 @@ vi.mock('@/app/components/base/action-button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),
 }))

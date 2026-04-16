@@ -1,5 +1,5 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointCard from '../endpoint-card'
 
@@ -136,7 +136,6 @@ const mockPluginDetail: PluginDetail = {
 describe('EndpointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
     // Reset failure flags
     failureFlags.enable = false
     failureFlags.disable = false
@@ -151,6 +150,12 @@ describe('EndpointCard', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
+
+  const waitForAlertDialogToClose = async () => {
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  }
 
   describe('Rendering', () => {
     it('should render endpoint name', () => {
@@ -243,6 +248,7 @@ describe('EndpointCard', () => {
 
   describe('Copy Functionality', () => {
     it('should reset copy state after timeout', async () => {
+      vi.useFakeTimers()
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
@@ -276,19 +282,19 @@ describe('EndpointCard', () => {
       expect(mockHandleChange).toHaveBeenCalled()
     })
 
-    it('should hide disable confirm and revert state when cancel clicked', () => {
+    it('should hide disable confirm and revert state when cancel clicked', async () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       fireEvent.click(screen.getByRole('switch'))
       expect(screen.getByText('plugin.detailPanel.endpointDisableTip')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await waitForAlertDialogToClose()
 
-      // Confirm should be hidden
-      expect(screen.queryByText('plugin.detailPanel.endpointDisableTip')).not.toBeInTheDocument()
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
     })
 
-    it('should hide delete confirm when cancel clicked', () => {
+    it('should hide delete confirm when cancel clicked', async () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
@@ -296,8 +302,7 @@ describe('EndpointCard', () => {
       expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-      expect(screen.queryByText('plugin.detailPanel.endpointDeleteTip')).not.toBeInTheDocument()
+      await waitForAlertDialogToClose()
     })
 
     it('should hide edit modal when cancel clicked', () => {

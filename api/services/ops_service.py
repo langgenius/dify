@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import select
 
 from core.ops.entities.config_entity import BaseTracingConfig
@@ -135,7 +137,7 @@ class OpsService:
         return trace_config_data.to_dict()
 
     @classmethod
-    def create_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict):
+    def create_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict[str, Any]):
         """
         Create tracing app config
         :param app_id: app id
@@ -210,7 +212,7 @@ class OpsService:
         return {"result": "success"}
 
     @classmethod
-    def update_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict):
+    def update_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict[str, Any]):
         """
         Update tracing app config
         :param app_id: app id

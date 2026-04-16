@@ -17,13 +17,13 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,

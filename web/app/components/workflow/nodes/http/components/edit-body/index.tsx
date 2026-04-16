@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { Body, BodyPayload, KeyValue as KeyValueType } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { uniqueId } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
 import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
 import { BodyPayloadValueType, BodyType } from '../../types'
@@ -146,7 +146,7 @@ const EditBody: FC<Props> = ({
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className="text-[13px] font-normal leading-[18px] text-text-secondary">{bodyTextMap[t]}</div>
+            <div className="text-[13px] leading-[18px] font-normal text-text-secondary">{bodyTextMap[t]}</div>
           </label>
         ))}
       </div>

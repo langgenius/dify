@@ -1,7 +1,6 @@
-import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../index'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../index'
 
 describe('TooltipContent', () => {
   describe('Placement and offsets', () => {
@@ -83,13 +82,25 @@ describe('TooltipContent', () => {
       expect(popup).toHaveAttribute('data-track-id', 'tooltip-track')
       expect(onMouseEnter).toHaveBeenCalledTimes(1)
     })
-  })
-})
 
-describe('Tooltip aliases', () => {
-  it('should map alias exports to BaseTooltip components when wrapper exports are imported', () => {
-    expect(TooltipProvider).toBe(BaseTooltip.Provider)
-    expect(Tooltip).toBe(BaseTooltip.Root)
-    expect(TooltipTrigger).toBe(BaseTooltip.Trigger)
+    it('should apply className to the popup and positionerClassName to the positioner', () => {
+      render(
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent
+            className="popup-class"
+            positionerClassName="positioner-class"
+            role="tooltip"
+            aria-label="styled tooltip"
+          >
+            Tooltip body
+          </TooltipContent>
+        </Tooltip>,
+      )
+
+      const popup = screen.getByRole('tooltip', { name: 'styled tooltip' })
+      expect(popup).toHaveClass('popup-class')
+      expect(popup.parentElement).toHaveClass('positioner-class')
+    })
   })
 })

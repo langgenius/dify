@@ -54,13 +54,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   },
   {
     group: [
-      '**/base/confirm',
-      '**/base/confirm/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/popover',
       '**/base/popover/index',
     ],
