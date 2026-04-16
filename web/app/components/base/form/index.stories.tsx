@@ -106,7 +106,7 @@ const FormPlayground = () => {
           onSubmit: ({ value: formValue }) => {
             const result = UserSchema.safeParse(formValue as typeof demoFormOpts.defaultValues)
             if (!result.success)
-              return result.error.issues[0].message
+              return result.error.issues[0]!.message
             return undefined
           },
         },

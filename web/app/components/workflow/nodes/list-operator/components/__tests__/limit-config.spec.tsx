@@ -79,7 +79,7 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.listFilter.limit')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.listFilter.limit'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'slider:10:false' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'switch:false' }))
@@ -102,8 +102,8 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'slider:6:true' })).toBeInTheDocument()
-    expect(mockSlider.mock.calls[0][0]).toMatchObject({
+    expect(screen.getByRole('button', { name: 'slider:6:true' }))!.toBeInTheDocument()
+    expect(mockSlider.mock.calls[0]![0]).toMatchObject({
       value: 6,
       min: 1,
       max: 20,

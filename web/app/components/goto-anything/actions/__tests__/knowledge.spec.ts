@@ -59,7 +59,7 @@ describe('knowledgeAction', () => {
 
     const results = await knowledgeAction.search('@knowledge', '', 'en')
 
-    expect(results[0].path).toBe('/datasets/ds-ext/hitTesting')
+    expect(results[0]!.path).toBe('/datasets/ds-ext/hitTesting')
   })
 
   it('generates correct path for non-external provider', async () => {
@@ -76,7 +76,7 @@ describe('knowledgeAction', () => {
 
     const results = await knowledgeAction.search('@knowledge', '', 'en')
 
-    expect(results[0].path).toBe('/datasets/ds-2/documents')
+    expect(results[0]!.path).toBe('/datasets/ds-2/documents')
   })
 
   it('returns empty array on API failure', async () => {

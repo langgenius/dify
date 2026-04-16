@@ -73,7 +73,7 @@ export const getValueSelector = ({
 }
 
 const getVisibleChildren = (vars: Var[]) => {
-  return vars.filter(variable => checkKeys([variable.variable], false).isValid || isSpecialVar(variable.variable.split('.')[0]))
+  return vars.filter(variable => checkKeys([variable.variable], false).isValid || isSpecialVar(variable.variable.split('.')[0]!))
 }
 
 export const filterReferenceVars = (vars: NodeOutPutVar[], searchText: string) => {

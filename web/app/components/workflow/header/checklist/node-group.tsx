@@ -26,7 +26,7 @@ export const ChecklistNodeGroup = memo(({
   const subItems = useMemo(() => {
     const items: ChecklistSubItem[] = []
     for (let i = 0; i < item.errorMessages.length; i++)
-      items.push({ key: `error-${i}`, message: item.errorMessages[i] })
+      items.push({ key: `error-${i}`, message: item.errorMessages[i]! })
     if (item.unConnected)
       items.push({ key: 'unconnected', message: t('common.needConnectTip', { ns: 'workflow' }) })
     return items

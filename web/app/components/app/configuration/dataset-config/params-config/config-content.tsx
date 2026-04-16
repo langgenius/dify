@@ -121,10 +121,10 @@ const ConfigContent: FC<Props> = ({
         ...datasetConfigs.weights!,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
-          vector_weight: value.value[0],
+          vector_weight: value.value[0]!,
         },
         keyword_setting: {
-          keyword_weight: value.value[1],
+          keyword_weight: value.value[1]!,
         },
       },
     }

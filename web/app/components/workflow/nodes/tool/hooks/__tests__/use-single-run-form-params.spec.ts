@@ -121,12 +121,12 @@ describe('useSingleRunFormParams', () => {
         'prefix {{#tool.result#}}',
       ])
       expect(result.current.forms).toHaveLength(1)
-      expect(result.current.forms[0].inputs).toEqual([
+      expect(result.current.forms[0]!.inputs).toEqual([
         createInputVar('#start.query#'),
         createInputVar(undefined as unknown as string),
         createInputVar('#legacy.answer#'),
       ])
-      expect(result.current.forms[0].values).toEqual({})
+      expect(result.current.forms[0]!.values).toEqual({})
       expect(result.current.toolIcon).toBe('tool-icon')
       expect(result.current.getDependentVars()).toEqual([
         ['start', 'query'],
@@ -159,7 +159,7 @@ describe('useSingleRunFormParams', () => {
       }))
 
       act(() => {
-        result.current.forms[0].onChange({
+        result.current.forms[0]!.onChange({
           query: 'weather',
           tool_parameters: {
             nullable_constant: 'temp-value',
@@ -173,7 +173,7 @@ describe('useSingleRunFormParams', () => {
           nullable_constant: 'temp-value',
         },
       })
-      expect(result.current.forms[0].values).toEqual({
+      expect(result.current.forms[0]!.values).toEqual({
         query: 'weather',
         tool_parameters: {
           nullable_constant: 'temp-value',

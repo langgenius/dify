@@ -48,7 +48,7 @@ describe('DatasetsDetailStore', () => {
       store.getState().updateDatasetsDetail([ds1v1])
       store.getState().updateDatasetsDetail([ds1v2])
 
-      expect(store.getState().datasetsDetail['ds-1'].name).toBe('Version 2')
+      expect(store.getState().datasetsDetail['ds-1']!.name).toBe('Version 2')
     })
 
     it('should handle empty array without errors', () => {
@@ -56,7 +56,7 @@ describe('DatasetsDetailStore', () => {
       store.getState().updateDatasetsDetail([makeDataset('ds-1', 'Test')])
       store.getState().updateDatasetsDetail([])
 
-      expect(store.getState().datasetsDetail['ds-1'].name).toBe('Test')
+      expect(store.getState().datasetsDetail['ds-1']!.name).toBe('Test')
     })
   })
 })

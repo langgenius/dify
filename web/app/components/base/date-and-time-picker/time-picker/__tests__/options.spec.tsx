@@ -43,8 +43,8 @@ describe('TimePickerOptions', () => {
 
       render(<Options {...props} />)
 
-      expect(screen.getByText('AM')).toBeInTheDocument()
-      expect(screen.getByText('PM')).toBeInTheDocument()
+      expect(screen.getByText('AM'))!.toBeInTheDocument()
+      expect(screen.getByText('PM'))!.toBeInTheDocument()
     })
   })
 
@@ -65,13 +65,13 @@ describe('TimePickerOptions', () => {
       const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
       const selectedHour = screen.getAllByRole('listitem').find(item => item.textContent === '05')
-      expect(selectedHour).toHaveClass('bg-components-button-ghost-bg-hover')
+      expect(selectedHour)!.toHaveClass('bg-components-button-ghost-bg-hover')
     })
     it('should render selected minute in the list', () => {
       const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
       const selectedMinute = screen.getAllByRole('listitem').find(item => item.textContent === '30')
-      expect(selectedMinute).toHaveClass('bg-components-button-ghost-bg-hover')
+      expect(selectedMinute)!.toHaveClass('bg-components-button-ghost-bg-hover')
     })
 
     it('should call handleSelectPeriod when AM is clicked', () => {
@@ -79,7 +79,7 @@ describe('TimePickerOptions', () => {
       const props = createOptionsProps({ handleSelectPeriod })
 
       render(<Options {...props} />)
-      fireEvent.click(screen.getAllByText('AM')[0])
+      fireEvent.click(screen.getAllByText('AM')[0]!)
 
       expect(handleSelectPeriod).toHaveBeenCalledWith('AM')
     })
@@ -89,7 +89,7 @@ describe('TimePickerOptions', () => {
       const props = createOptionsProps({ handleSelectPeriod })
 
       render(<Options {...props} />)
-      fireEvent.click(screen.getAllByText('PM')[0])
+      fireEvent.click(screen.getAllByText('PM')[0]!)
 
       expect(handleSelectPeriod).toHaveBeenCalledWith('PM')
     })

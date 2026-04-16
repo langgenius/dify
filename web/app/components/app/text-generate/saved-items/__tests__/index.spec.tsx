@@ -37,8 +37,8 @@ describe('SavedItems', () => {
     const { container } = render(<SavedItems {...baseProps} />)
 
     const markdownElement = container.querySelector('.markdown-body')
-    expect(markdownElement).toBeInTheDocument()
-    expect(screen.getByText('11 common.unit.char')).toBeInTheDocument()
+    expect(markdownElement)!.toBeInTheDocument()
+    expect(screen.getByText('11 common.unit.char'))!.toBeInTheDocument()
 
     const actionArea = container.querySelector('[class*="bg-components-actionbar-bg"]')
     const actionButtons = actionArea?.querySelectorAll('button') ?? []
@@ -56,11 +56,11 @@ describe('SavedItems', () => {
     const copyButton = actionButtons[1]
     const deleteButton = actionButtons[2]
 
-    fireEvent.click(copyButton)
+    fireEvent.click(copyButton!)
     expect(mockCopy).toHaveBeenCalledWith('hello world')
     expect(toastSuccessSpy).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 
-    fireEvent.click(deleteButton)
+    fireEvent.click(deleteButton!)
     expect(handleRemove).toHaveBeenCalledWith('1')
   })
 })

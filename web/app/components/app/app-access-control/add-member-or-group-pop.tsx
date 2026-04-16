@@ -36,7 +36,7 @@ export default function AddMemberOrGroupDialog() {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && hasMore)
           fetchNextPage()
       }, { rootMargin: '20px' })
       observer.observe(anchorRef.current)

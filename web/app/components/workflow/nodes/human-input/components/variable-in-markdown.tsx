@@ -61,8 +61,8 @@ const visitTextNodes = (
   let index = 0
   while (index < node.children.length) {
     const child = node.children[index]
-    if (child.type === 'text' && typeof child.value === 'string') {
-      const nextNodes = transform(child.value, node)
+    if (child!.type === 'text' && typeof child!.value === 'string') {
+      const nextNodes = transform(child!.value, node)
       if (nextNodes) {
         node.children.splice(index, 1, ...nextNodes)
         index += nextNodes.length
@@ -70,7 +70,7 @@ const visitTextNodes = (
       }
     }
 
-    visitTextNodes(child, transform)
+    visitTextNodes(child!, transform)
     index++
   }
 }
@@ -114,7 +114,7 @@ export function rehypeNotes() {
       noteRegex.lastIndex = 0
       parent.tagName = 'div'
       return splitTextNode(value, noteRegex, (match) => {
-        const name = match[0].split('.').slice(-1)[0].replace('#}}', '')
+        const name = match[0].split('.').slice(-1)[0]!.replace('#}}', '')
         return {
           tagName: 'section',
           properties: { dataName: name },

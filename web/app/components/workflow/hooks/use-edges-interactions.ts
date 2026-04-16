@@ -38,14 +38,14 @@ export const useEdgesInteractions = () => {
 
     if (currentEdgeIndex < 0)
       return
-    const currentEdge = edges[currentEdgeIndex]
+    const currentEdge = edges[currentEdgeIndex]!
     const newNodes = applyConnectedHandleNodeData(nodes, [{ type: 'remove', edge: currentEdge }])
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.splice(currentEdgeIndex, 1)
     })
     setEdges(newEdges)
-    if (clearEdgeMenuIfNeeded({ edgeMenu: workflowStore.getState().edgeMenu, edgeIds: [currentEdge.id] }))
+    if (clearEdgeMenuIfNeeded({ edgeMenu: workflowStore.getState().edgeMenu, edgeIds: [currentEdge!.id] }))
       workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)

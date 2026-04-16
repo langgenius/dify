@@ -32,7 +32,7 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<ToolNodeType>(id, payload)
 
   const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
+    .filter(key => inputs.tool_parameters[key]!.type !== VarType.constant)
     .map(k => inputs.tool_parameters[k])
 
   const hadVarSettings = Object.keys(inputs.tool_configurations)
@@ -59,7 +59,7 @@ const useSingleRunFormParams = ({
   const inputVarValuesWithConstantValue = useCallback(() => {
     const res = produce(inputVarValues, (draft) => {
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
-        const { type, value } = inputs.tool_parameters[key]
+        const { type, value } = inputs.tool_parameters[key]!
         if (type === VarType.constant && (value === undefined || value === null)) {
           if (!draft.tool_parameters || !draft.tool_parameters[key])
             return

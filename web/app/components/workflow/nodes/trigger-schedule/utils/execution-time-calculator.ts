@@ -25,9 +25,9 @@ const getUserTimezoneCurrentTime = (timezone?: string): Date => {
     hour12: false,
   })
   const [dateStr, timeStr] = userTimeStr.split(', ')
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const [hour, minute, second] = timeStr.split(':').map(Number)
-  return new Date(year, month - 1, day, hour, minute, second)
+  const [year, month, day] = dateStr!.split('-').map(Number)
+  const [hour, minute, second] = timeStr!.split(':').map(Number)
+  return new Date(year!, month! - 1, day, hour, minute, second)
 }
 
 // Format date that is already in user timezone, no timezone conversion
@@ -74,7 +74,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   const now = new Date()
   const userTodayStr = now.toLocaleDateString('en-CA', { timeZone: timezone })
   const [year, month, day] = userTodayStr.split('-').map(Number)
-  const userToday = new Date(year, month - 1, day, 0, 0, 0, 0)
+  const userToday = new Date(year!, month! - 1, day, 0, 0, 0, 0)
 
   if (data.frequency === 'hourly') {
     const onMinute = data.visual_config?.on_minute ?? 0
@@ -99,8 +99,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   }
   else if (data.frequency === 'daily') {
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
     if (period === 'PM' && displayHour !== 12)
       displayHour += 12
     if (period === 'AM' && displayHour === 12)
@@ -108,7 +108,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     // Check if today's configured time has already passed
     const todayExecution = new Date(userToday)
-    todayExecution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+    todayExecution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
 
@@ -117,7 +117,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
       execution.setDate(userToday.getDate() + startOffset + i)
-      execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+      execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
       times.push(execution)
     }
   }
@@ -126,8 +126,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
     if (period === 'PM' && displayHour !== 12)
       displayHour += 12
     if (period === 'AM' && displayHour === 12)
@@ -157,7 +157,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         // Check if today's configured time has already passed
         const todayAtTargetTime = new Date(userToday)
-        todayAtTargetTime.setHours(displayHour, Number.parseInt(minute), 0, 0)
+        todayAtTargetTime.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
         let adjustedDays = daysUntilTarget
         if (daysUntilTarget === 0 && todayAtTargetTime <= userCurrentTime)
@@ -165,7 +165,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         const execution = new Date(userToday)
         execution.setDate(userToday.getDate() + adjustedDays + (weekOffset * 7))
-        execution.setHours(displayHour, Number.parseInt(minute), 0, 0)
+        execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
         // Only add if execution time is in the future
         if (execution > userCurrentTime) {
@@ -191,8 +191,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     const selectedDays = [...new Set(getSelectedDays())]
     const [time, period] = defaultTime.split(' ')
-    const [hour, minute] = time.split(':')
-    let displayHour = Number.parseInt(hour)
+    const [hour, minute] = time!.split(':')
+    let displayHour = Number.parseInt(hour!)
     if (period === 'PM' && displayHour !== 12)
       displayHour += 12
     if (period === 'AM' && displayHour === 12)
@@ -230,7 +230,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
         processedDays.add(targetDay)
 
-        const execution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute), 0, 0)
+        const execution = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), targetDay, displayHour, Number.parseInt(minute!), 0, 0)
 
         // Only add if execution time is in the future
         if (execution > userCurrentTime)
@@ -295,5 +295,5 @@ export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
 
   // Format the first execution time without timezone for node display
   const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
-  return formatExecutionTime(times[0], timezone, includeWeekday, false) // Node doesn't show timezone
+  return formatExecutionTime(times[0]!, timezone, includeWeekday, false) // Node doesn't show timezone
 }

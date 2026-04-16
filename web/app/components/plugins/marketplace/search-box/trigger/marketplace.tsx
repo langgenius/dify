@@ -39,7 +39,7 @@ const MarketplaceTrigger = ({
         {
           !!selectedTagsLength && (
             <span className="text-text-secondary">
-              {tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')}
+              {tags.map(tag => tagsMap[tag]!.label).slice(0, 2).join(',')}
             </span>
           )
         }

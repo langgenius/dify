@@ -39,7 +39,7 @@ const List = ({
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
         const { setNextPageParameters, currentNextPageParametersRef, isTruncated } = dataSourceStore.getState()
-        if (entries[0].isIntersecting && isTruncated.current && !isLoading)
+        if (entries[0]!.isIntersecting && isTruncated.current && !isLoading)
           setNextPageParameters(currentNextPageParametersRef.current)
       }, {
         rootMargin: '100px',

@@ -103,12 +103,12 @@ describe('tool/tool-form/item', () => {
       />,
     )
 
-    expect(screen.getByText('API Key')).toBeInTheDocument()
-    expect(screen.getByText('*')).toBeInTheDocument()
-    expect(screen.getByText('Enter API key')).toBeInTheDocument()
+    expect(screen.getByText('API Key'))!.toBeInTheDocument()
+    expect(screen.getByText('*'))!.toBeInTheDocument()
+    expect(screen.getByText('Enter API key'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'JSON Schema' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('form-input-item')).toHaveAttribute('data-provider-type', 'tool')
-    expect(mockFormInputItem.mock.calls[0][0]).toMatchObject({
+    expect(screen.getByTestId('form-input-item'))!.toHaveAttribute('data-provider-type', 'tool')
+    expect(mockFormInputItem.mock.calls[0]![0]).toMatchObject({
       readOnly: true,
       nodeId: 'tool-node',
       schema: expect.objectContaining({ variable: 'api_key' }),
@@ -140,10 +140,10 @@ describe('tool/tool-form/item', () => {
     )
 
     const link = screen.getByRole('link', { name: 'https://docs.dify.ai/tools' })
-    expect(link).toHaveAttribute('href', 'https://docs.dify.ai/tools')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(link.parentElement).toHaveTextContent('Visit https://docs.dify.ai/tools for docs')
+    expect(link)!.toHaveAttribute('href', 'https://docs.dify.ai/tools')
+    expect(link)!.toHaveAttribute('target', '_blank')
+    expect(link)!.toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link.parentElement)!.toHaveTextContent('Visit https://docs.dify.ai/tools for docs')
   })
 
   // Non-text fields keep their descriptions inside the tooltip and support JSON schema preview.
@@ -183,13 +183,13 @@ describe('tool/tool-form/item', () => {
     )
 
     fireEvent.mouseEnter(container.querySelector('svg')?.parentElement as HTMLElement)
-    expect(screen.getByText('Select from tools')).toBeInTheDocument()
+    expect(screen.getByText('Select from tools'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'JSON Schema' }))
     const schemaModal = screen.getByTestId('schema-modal')
-    expect(schemaModal).toBeInTheDocument()
-    expect(within(schemaModal).getByText('tool_config')).toBeInTheDocument()
-    expect(mockFormInputItem.mock.calls[0][0].providerType).toBe('trigger')
+    expect(schemaModal)!.toBeInTheDocument()
+    expect(within(schemaModal).getByText('tool_config'))!.toBeInTheDocument()
+    expect(mockFormInputItem.mock.calls[0]![0].providerType).toBe('trigger')
 
     fireEvent.click(screen.getByRole('button', { name: 'close-schema' }))
     expect(screen.queryByTestId('schema-modal')).not.toBeInTheDocument()

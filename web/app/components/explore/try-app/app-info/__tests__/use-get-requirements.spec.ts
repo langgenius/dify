@@ -59,8 +59,8 @@ describe('useGetRequirements', () => {
       )
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('openai')
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/langgenius/openai/icon')
+      expect(result.current.requirements[0]!.name).toBe('openai')
+      expect(result.current.requirements[0]!.iconUrl).toBe('https://marketplace.api/plugins/langgenius/openai/icon')
     })
 
     it('returns model provider for completion mode', () => {
@@ -84,7 +84,7 @@ describe('useGetRequirements', () => {
       )
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('claude')
+      expect(result.current.requirements[0]!.name).toBe('claude')
     })
 
     it('returns model provider and tools for agent-chat mode', () => {
@@ -166,7 +166,7 @@ describe('useGetRequirements', () => {
       )
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('openai')
+      expect(result.current.requirements[0]!.name).toBe('openai')
     })
   })
 
@@ -232,7 +232,7 @@ describe('useGetRequirements', () => {
       )
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('claude-3-opus')
+      expect(result.current.requirements[0]!.name).toBe('claude-3-opus')
     })
 
     it('returns empty requirements when flow data has no nodes', () => {
@@ -373,7 +373,7 @@ describe('useGetRequirements', () => {
       )
 
       expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0].name).toBe('gpt-4')
+      expect(result.current.requirements[0]!.name).toBe('gpt-4')
     })
   })
 
@@ -398,7 +398,7 @@ describe('useGetRequirements', () => {
         useGetRequirements({ appDetail, appId: 'test-app-id' }),
       )
 
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/org/plugin/icon')
+      expect(result.current.requirements[0]!.iconUrl).toBe('https://marketplace.api/plugins/org/plugin/icon')
     })
 
     it('maps google model provider to gemini plugin icon URL', () => {
@@ -421,7 +421,7 @@ describe('useGetRequirements', () => {
         useGetRequirements({ appDetail, appId: 'test-app-id' }),
       )
 
-      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/langgenius/gemini/icon')
+      expect(result.current.requirements[0]!.iconUrl).toBe('https://marketplace.api/plugins/langgenius/gemini/icon')
     })
 
     it('maps special builtin tool providers to *_tool plugin icon URL', () => {

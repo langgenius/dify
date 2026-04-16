@@ -105,7 +105,7 @@ describe('NavSelector Component', () => {
     },
   ]
 
-  const { link: _link, ...curNavWithoutLink } = navigationItems[0]
+  const { link: _link, ...curNavWithoutLink } = navigationItems[0]!
 
   const defaultProps: INavSelectorProps = {
     curNav: curNavWithoutLink,
@@ -131,7 +131,7 @@ describe('NavSelector Component', () => {
   describe('Rendering', () => {
     it('should render current nav name', () => {
       render(<NavSelector {...defaultProps} />)
-      expect(screen.getByText('Item 1')).toBeInTheDocument()
+      expect(screen.getByText('Item 1'))!.toBeInTheDocument()
     })
 
     it('should show loading indicator when isLoadingMore is true', async () => {
@@ -140,7 +140,7 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
     })
   })
 
@@ -151,7 +151,7 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByText('Item 2')).toBeInTheDocument()
+      expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
     it('should navigate and call setAppDetail when an item is clicked', async () => {

@@ -110,14 +110,14 @@ describe('agent/use-single-run-form-params', () => {
 
     expect(getInputVars).toHaveBeenCalledWith(['#start.topic#', '#node-2.answer#'])
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].inputs).toHaveLength(2)
-    expect(result.current.forms[0].values).toEqual({ topic: 'finance' })
+    expect(result.current.forms[0]!.inputs).toHaveLength(2)
+    expect(result.current.forms[0]!.values).toEqual({ topic: 'finance' })
     expect(result.current.nodeInfo).toEqual({
       id: 'agent-node',
       status: 'succeeded',
     })
 
-    result.current.forms[0].onChange({ topic: 'updated' })
+    result.current.forms[0]!.onChange({ topic: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ topic: 'updated' })
     expect(result.current.getDependentVars()).toEqual([

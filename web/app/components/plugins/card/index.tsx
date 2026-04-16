@@ -77,7 +77,7 @@ const Card = ({
   return (
     <div className={wrapClassName}>
       <div className={cn('p-4 pb-3', limitedInstall && 'pb-1')}>
-        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label} />}
+        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label!} />}
         {/* Header */}
         <div className="flex">
           <Icon src={iconSrc} installed={installed} installFailed={installFailed} />

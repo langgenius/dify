@@ -311,7 +311,7 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         await result.current.handleSave()
       })
 
-      const savedBody = mockUpdateDatasetSetting.mock.calls[0][0].body as Record<string, unknown>
+      const savedBody = mockUpdateDatasetSetting.mock.calls[0]![0].body as Record<string, unknown>
       expect(savedBody).not.toHaveProperty('partial_member_list')
     })
   })

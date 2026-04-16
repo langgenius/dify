@@ -32,7 +32,7 @@ const SupportVarInput: FC<Props> = ({
         return (
           <VarHighlight
             key={`var-${index}`}
-            name={variableMatch[1]}
+            name={variableMatch[1]!}
           />
         )
       }

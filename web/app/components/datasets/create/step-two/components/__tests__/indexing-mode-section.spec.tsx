@@ -81,28 +81,28 @@ describe('IndexingModeSection', () => {
   describe('Rendering', () => {
     it('should render index mode title', () => {
       render(<IndexingModeSection {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.indexMode`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.indexMode`))!.toBeInTheDocument()
     })
 
     it('should render qualified option when not locked to economical', () => {
       render(<IndexingModeSection {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.qualified`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.qualified`))!.toBeInTheDocument()
     })
 
     it('should render economical option when not locked to qualified', () => {
       render(<IndexingModeSection {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.economical`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.economical`))!.toBeInTheDocument()
     })
 
     it('should only show qualified option when hasSetIndexType and type is qualified', () => {
       render(<IndexingModeSection {...defaultProps} hasSetIndexType indexType={IndexingType.QUALIFIED} />)
-      expect(screen.getByText(`${ns}.stepTwo.qualified`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.qualified`))!.toBeInTheDocument()
       expect(screen.queryByText(`${ns}.stepTwo.economical`)).not.toBeInTheDocument()
     })
 
     it('should only show economical option when hasSetIndexType and type is economical', () => {
       render(<IndexingModeSection {...defaultProps} hasSetIndexType indexType={IndexingType.ECONOMICAL} />)
-      expect(screen.getByText(`${ns}.stepTwo.economical`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.economical`))!.toBeInTheDocument()
       expect(screen.queryByText(`${ns}.stepTwo.qualified`)).not.toBeInTheDocument()
     })
   })
@@ -110,7 +110,7 @@ describe('IndexingModeSection', () => {
   describe('Embedding Model', () => {
     it('should show model selector when indexType is qualified', () => {
       render(<IndexingModeSection {...defaultProps} indexType={IndexingType.QUALIFIED} />)
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
     })
 
     it('should not show model selector when indexType is economical', () => {
@@ -120,7 +120,7 @@ describe('IndexingModeSection', () => {
 
     it('should mark model selector as readonly when disabled', () => {
       render(<IndexingModeSection {...defaultProps} isModelAndRetrievalConfigDisabled />)
-      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-readonly', 'true')
+      expect(screen.getByTestId('model-selector'))!.toHaveAttribute('data-readonly', 'true')
     })
 
     it('should call onEmbeddingModelChange when model selected', () => {
@@ -134,12 +134,12 @@ describe('IndexingModeSection', () => {
   describe('Retrieval Config', () => {
     it('should show RetrievalMethodConfig when qualified', () => {
       render(<IndexingModeSection {...defaultProps} indexType={IndexingType.QUALIFIED} />)
-      expect(screen.getByTestId('retrieval-method-config')).toBeInTheDocument()
+      expect(screen.getByTestId('retrieval-method-config'))!.toBeInTheDocument()
     })
 
     it('should show EconomicalRetrievalMethodConfig when economical', () => {
       render(<IndexingModeSection {...defaultProps} indexType={IndexingType.ECONOMICAL} />)
-      expect(screen.getByTestId('economical-retrieval-config')).toBeInTheDocument()
+      expect(screen.getByTestId('economical-retrieval-config'))!.toBeInTheDocument()
     })
 
     it('should call onRetrievalConfigChange from qualified config', () => {
@@ -164,14 +164,14 @@ describe('IndexingModeSection', () => {
       // The economical option card should have disabled styling
       const economicalText = screen.getByText(`${ns}.stepTwo.economical`)
       const card = economicalText.closest('[class*="rounded-xl"]')
-      expect(card).toHaveClass('pointer-events-none')
+      expect(card)!.toHaveClass('pointer-events-none')
     })
   })
 
   describe('High Quality Tip', () => {
     it('should show high quality tip when qualified is selected and not locked', () => {
       render(<IndexingModeSection {...defaultProps} indexType={IndexingType.QUALIFIED} hasSetIndexType={false} />)
-      expect(screen.getByText(`${ns}.stepTwo.highQualityTip`)).toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.highQualityTip`))!.toBeInTheDocument()
     })
 
     it('should not show high quality tip when index type is locked', () => {
@@ -185,7 +185,7 @@ describe('IndexingModeSection', () => {
       const onClose = vi.fn()
       render(<IndexingModeSection {...defaultProps} isQAConfirmDialogOpen onQAConfirmDialogClose={onClose} />)
       const cancelBtns = screen.getAllByText(`${ns}.stepTwo.cancel`)
-      fireEvent.click(cancelBtns[0])
+      fireEvent.click(cancelBtns[0]!)
       expect(onClose).toHaveBeenCalled()
     })
 
@@ -200,8 +200,8 @@ describe('IndexingModeSection', () => {
   describe('Dataset Settings Link', () => {
     it('should show settings link when economical and hasSetIndexType', () => {
       render(<IndexingModeSection {...defaultProps} hasSetIndexType indexType={IndexingType.ECONOMICAL} datasetId="ds-123" />)
-      expect(screen.getByText(`${ns}.stepTwo.datasetSettingLink`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.datasetSettingLink`).closest('a')).toHaveAttribute('href', '/datasets/ds-123/settings')
+      expect(screen.getByText(`${ns}.stepTwo.datasetSettingLink`))!.toBeInTheDocument()
+      expect(screen.getByText(`${ns}.stepTwo.datasetSettingLink`).closest('a'))!.toHaveAttribute('href', '/datasets/ds-123/settings')
     })
 
     it('should show settings link under model selector when disabled', () => {

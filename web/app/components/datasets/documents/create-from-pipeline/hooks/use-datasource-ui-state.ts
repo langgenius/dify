@@ -122,7 +122,7 @@ export const useDatasourceUIState = ({
 
   return {
     datasourceType,
-    isShowVectorSpaceFull,
+    isShowVectorSpaceFull: isShowVectorSpaceFull!,
     nextBtnDisabled,
     showSelect,
     totalOptions,

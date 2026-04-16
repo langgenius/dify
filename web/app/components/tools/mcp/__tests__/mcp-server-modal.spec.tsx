@@ -41,12 +41,12 @@ describe('MCPServerModal', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
     })
 
     it('should render add title when no data is provided', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
     })
 
     it('should render edit title when data is provided', () => {
@@ -57,33 +57,33 @@ describe('MCPServerModal', () => {
       } as unknown as MCPServerDetail
 
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.editTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.editTitle'))!.toBeInTheDocument()
     })
 
     it('should render description label', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.description')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.description'))!.toBeInTheDocument()
     })
 
     it('should render required indicator', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('*')).toBeInTheDocument()
+      expect(screen.getByText('*'))!.toBeInTheDocument()
     })
 
     it('should render description textarea', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
       const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea).toBeInTheDocument()
+      expect(textarea)!.toBeInTheDocument()
     })
 
     it('should render cancel button', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.cancel')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
     })
 
     it('should render confirm button in add mode', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.confirm')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.confirm'))!.toBeInTheDocument()
     })
 
     it('should render save button in edit mode', () => {
@@ -94,13 +94,13 @@ describe('MCPServerModal', () => {
       } as unknown as MCPServerDetail
 
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.save')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.save'))!.toBeInTheDocument()
     })
 
     it('should render close icon', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
       const closeButton = document.querySelector('.cursor-pointer svg')
-      expect(closeButton).toBeInTheDocument()
+      expect(closeButton)!.toBeInTheDocument()
     })
   })
 
@@ -115,7 +115,7 @@ describe('MCPServerModal', () => {
         { variable: 'param1', label: 'Parameter 1', type: 'string' },
       ]
       render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.parameters')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.parameters'))!.toBeInTheDocument()
     })
 
     it('should render parameters tip', () => {
@@ -123,7 +123,7 @@ describe('MCPServerModal', () => {
         { variable: 'param1', label: 'Parameter 1', type: 'string' },
       ]
       render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.parametersTip')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.server.modal.parametersTip'))!.toBeInTheDocument()
     })
 
     it('should render parameter items', () => {
@@ -132,8 +132,8 @@ describe('MCPServerModal', () => {
         { variable: 'param2', label: 'Parameter 2', type: 'number' },
       ]
       render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Parameter 1')).toBeInTheDocument()
-      expect(screen.getByText('Parameter 2')).toBeInTheDocument()
+      expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Parameter 2'))!.toBeInTheDocument()
     })
   })
 
@@ -144,7 +144,7 @@ describe('MCPServerModal', () => {
       const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
       fireEvent.change(textarea, { target: { value: 'New description' } })
 
-      expect(textarea).toHaveValue('New description')
+      expect(textarea)!.toHaveValue('New description')
     })
 
     it('should call onHide when cancel button is clicked', () => {
@@ -172,7 +172,7 @@ describe('MCPServerModal', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
 
       const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      expect(confirmButton).toBeDisabled()
+      expect(confirmButton)!.toBeDisabled()
     })
 
     it('should enable confirm button when description is filled', () => {
@@ -197,7 +197,7 @@ describe('MCPServerModal', () => {
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea).toHaveValue('Existing description')
+      expect(textarea)!.toHaveValue('Existing description')
     })
 
     it('should populate parameters with existing values', () => {
@@ -210,7 +210,7 @@ describe('MCPServerModal', () => {
       )
 
       const paramInput = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
-      expect(paramInput).toHaveValue('existing value')
+      expect(paramInput)!.toHaveValue('existing value')
     })
   })
 
@@ -237,7 +237,7 @@ describe('MCPServerModal', () => {
       render(<MCPServerModal {...defaultProps} appInfo={appInfo} />, { wrapper: createWrapper() })
 
       const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea).toHaveValue('App default description')
+      expect(textarea)!.toHaveValue('App default description')
     })
 
     it('should prefer data description over appInfo description', () => {
@@ -254,7 +254,7 @@ describe('MCPServerModal', () => {
       )
 
       const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea).toHaveValue('Data description')
+      expect(textarea)!.toHaveValue('Data description')
     })
   })
 
@@ -313,9 +313,9 @@ describe('MCPServerModal', () => {
       const paramInputs = screen.getAllByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
 
       // Change the first parameter value
-      fireEvent.change(paramInputs[0], { target: { value: 'new param value' } })
+      fireEvent.change(paramInputs[0]!, { target: { value: 'new param value' } })
 
-      expect(paramInputs[0]).toHaveValue('new param value')
+      expect(paramInputs[0])!.toHaveValue('new param value')
     })
 
     it('should submit with parameter values', async () => {
@@ -355,7 +355,7 @@ describe('MCPServerModal', () => {
 
       // Button should be disabled
       const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      expect(confirmButton).toBeDisabled()
+      expect(confirmButton)!.toBeDisabled()
     })
   })
 })

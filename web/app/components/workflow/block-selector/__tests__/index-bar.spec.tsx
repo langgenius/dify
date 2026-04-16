@@ -64,10 +64,10 @@ describe('IndexBar', () => {
       const result = groupItems(items, item => item.label.zh_Hans[0] || item.label.en_US[0] || '')
 
       expect(result.letters).toEqual(['J', 'S', 'Z', '#'])
-      expect(result.groups.J.Builtin).toHaveLength(1)
-      expect(result.groups.Z[WORKFLOW_GROUP_NAME]).toHaveLength(1)
-      expect(result.groups.S[DATA_SOURCE_GROUP_NAME]).toHaveLength(1)
-      expect(result.groups['#'][CUSTOM_GROUP_NAME]).toHaveLength(1)
+      expect(result.groups.J!.Builtin).toHaveLength(1)
+      expect(result.groups.Z![WORKFLOW_GROUP_NAME]).toHaveLength(1)
+      expect(result.groups.S![DATA_SOURCE_GROUP_NAME]).toHaveLength(1)
+      expect(result.groups['#']![CUSTOM_GROUP_NAME]).toHaveLength(1)
     })
   })
 

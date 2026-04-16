@@ -36,10 +36,10 @@ const Installed: FC<Props> = ({
                 className="w-full"
                 payload={{
                   ...plugin,
-                  icon: installStatus[index].isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon` : getIconUrl(plugin.icon),
+                  icon: installStatus[index]!.isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon` : getIconUrl(plugin.icon),
                 }}
-                installed={installStatus[index].success}
-                installFailed={!installStatus[index].success}
+                installed={installStatus[index]!.success}
+                installFailed={!installStatus[index]!.success}
                 titleLeft={plugin.version ? <Badge className="mx-1" size="s" state={BadgeState.Default}>{plugin.version}</Badge> : null}
               />
             )
