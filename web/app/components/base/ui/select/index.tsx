@@ -1,9 +1,9 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import {
   overlayGroupLabelClassName,
   overlaySeparatorClassName,
@@ -21,7 +21,7 @@ const selectSizeClassName: Record<string, string> = {
   large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
 }
 
-type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
+type SelectTriggerProps = BaseSelect.Trigger.Props & {
   size?: 'small' | 'regular' | 'large'
 }
 
@@ -58,7 +58,7 @@ export function SelectTrigger({
 export function SelectGroupLabel({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.GroupLabel>) {
+}: BaseSelect.GroupLabel.Props) {
   return (
     <BaseSelect.GroupLabel
       className={cn(overlayGroupLabelClassName, className)}
@@ -71,7 +71,7 @@ export function SelectGroupLabel({
 export function SelectSeparator({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Separator>) {
+}: BaseSelect.Separator.Props) {
   return (
     <BaseSelect.Separator
       className={cn(overlaySeparatorClassName, className)}
@@ -81,7 +81,7 @@ export function SelectSeparator({
 }
 
 type SelectContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -89,15 +89,15 @@ type SelectContentProps = {
   popupClassName?: string
   listClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Positioner>,
+    BaseSelect.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Popup>,
+    BaseSelect.Popup.Props,
     'children' | 'className'
   >
   listProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.List>,
+    BaseSelect.List.Props,
     'children' | 'className'
   >
 }
@@ -150,7 +150,7 @@ export function SelectContent({
 export function SelectItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Item>) {
+}: BaseSelect.Item.Props) {
   return (
     <BaseSelect.Item
       className={cn(
@@ -166,7 +166,7 @@ export function SelectItem({
 export function SelectItemText({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.ItemText>) {
+}: BaseSelect.ItemText.Props) {
   return (
     <BaseSelect.ItemText
       className={cn('mr-1 min-w-0 grow truncate px-1', className)}
@@ -178,7 +178,7 @@ export function SelectItemText({
 export function SelectItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof BaseSelect.ItemIndicator>, 'children'>) {
+}: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
     <BaseSelect.ItemIndicator
       className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}
