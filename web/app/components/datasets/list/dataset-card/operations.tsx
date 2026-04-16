@@ -1,7 +1,9 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import OperationItem from './operation-item'
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/app/components/base/ui/dropdown-menu'
 
 type OperationsProps = {
   showDelete: boolean
@@ -38,34 +40,27 @@ const Operations = ({
   }
 
   return (
-    <div className="relative flex w-full flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
-      <div className="flex flex-col p-1">
-        <OperationItem
-          iconClassName="i-ri-edit-line"
-          name={t('operation.edit', { ns: 'common' })}
-          handleClick={handleRename}
-        />
-        {showExportPipeline && (
-          <OperationItem
-            iconClassName="i-ri-file-download-line"
-            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
-            handleClick={handleExport}
-          />
-        )}
-      </div>
+    <>
+      <DropdownMenuItem onClick={handleRename}>
+        <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+        {t('operation.edit', { ns: 'common' })}
+      </DropdownMenuItem>
+      {showExportPipeline && (
+        <DropdownMenuItem onClick={handleExport}>
+          <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+          {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+        </DropdownMenuItem>
+      )}
       {showDelete && (
         <>
-          <Divider type="horizontal" className="my-0 bg-divider-subtle" />
-          <div className="flex flex-col p-1">
-            <OperationItem
-              iconClassName="i-ri-delete-bin-line"
-              name={t('operation.delete', { ns: 'common' })}
-              handleClick={handleDelete}
-            />
-          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem destructive onClick={handleDelete}>
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            {t('operation.delete', { ns: 'common' })}
+          </DropdownMenuItem>
         </>
       )}
-    </div>
+    </>
   )
 }
 

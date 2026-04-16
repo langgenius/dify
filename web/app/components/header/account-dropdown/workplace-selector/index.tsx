@@ -1,5 +1,6 @@
 import type { Plan } from '@/app/components/billing/type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,6 @@ import { toast } from '@/app/components/base/ui/toast'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 
 const WorkplaceSelector = () => {
@@ -36,10 +36,10 @@ const WorkplaceSelector = () => {
               `)}
           >
             <div className="mr-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px] max-[800px]:mr-0">
-              <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+              <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle leading-6 font-semibold text-shadow-shadow-1 uppercase opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
             </div>
             <div className="flex min-w-0 items-center">
-              <div className="min-w-0 max-w-[149px] truncate text-text-secondary system-sm-medium max-[800px]:hidden">{currentWorkspace?.name}</div>
+              <div className="max-w-[149px] min-w-0 truncate system-sm-medium text-text-secondary max-[800px]:hidden">{currentWorkspace?.name}</div>
               <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
             </div>
           </MenuButton>
@@ -52,15 +52,15 @@ const WorkplaceSelector = () => {
                   `)}
             >
               <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border p-1 pb-2 shadow-lg">
-                <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-                  <span className="flex-1 text-text-tertiary system-xs-medium-uppercase">{t('userProfile.workspace', { ns: 'common' })}</span>
+                <div className="flex items-start self-stretch px-3 pt-1 pb-0.5">
+                  <span className="flex-1 system-xs-medium-uppercase text-text-tertiary">{t('userProfile.workspace', { ns: 'common' })}</span>
                 </div>
                 {workspaces.map(workspace => (
-                  <div className="flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover" key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
+                  <div className="flex items-center gap-2 self-stretch rounded-lg py-1 pr-2 pl-3 hover:bg-state-base-hover" key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">
-                      <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{workspace?.name[0]?.toLocaleUpperCase()}</span>
+                      <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle leading-6 font-semibold text-shadow-shadow-1 uppercase opacity-90">{workspace?.name[0]?.toLocaleUpperCase()}</span>
                     </div>
-                    <div className="line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary system-md-regular">{workspace.name}</div>
+                    <div className="line-clamp-1 grow cursor-pointer overflow-hidden system-md-regular text-ellipsis text-text-secondary">{workspace.name}</div>
                     <PlanBadge plan={workspace.plan as Plan} />
                   </div>
                 ))}

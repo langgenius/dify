@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -13,7 +14,6 @@ import {
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 
 type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined

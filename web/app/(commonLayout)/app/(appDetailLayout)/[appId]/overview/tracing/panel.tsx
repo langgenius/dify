@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import type { TracingStatus } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownDoubleLine,
   RiEqualizer2Line,
@@ -18,7 +19,6 @@ import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { cn } from '@/utils/classnames'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -247,11 +247,11 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
             )}
           >
             <TracingIcon size="md" />
-            <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
               <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
@@ -286,12 +286,12 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
             )}
           >
-            <div className="ml-4 mr-1 flex items-center">
+            <div className="mr-1 ml-4 flex items-center">
               <Indicator color={enabled ? 'green' : 'gray'} />
-              <div className="system-xs-semibold-uppercase ml-1.5 text-text-tertiary">
+              <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>
             </div>

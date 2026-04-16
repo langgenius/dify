@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +11,6 @@ import { toast } from '@/app/components/base/ui/toast'
 import { useRouter } from '@/next/navigation'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 
 type IProps = {

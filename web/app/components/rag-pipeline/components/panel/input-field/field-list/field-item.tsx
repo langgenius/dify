@@ -1,6 +1,7 @@
 'use client'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiDraggable,
@@ -14,7 +15,6 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-import { cn } from '@/utils/classnames'
 
 type FieldItemProps = {
   readonly?: boolean
@@ -68,16 +68,16 @@ const FieldItem = ({
         }
         <div
           title={payload.variable}
-          className="system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary"
+          className="max-w-[130px] shrink-0 truncate system-sm-medium text-text-secondary"
         >
           {payload.variable}
         </div>
         {payload.label && (
           <>
-            <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
+            <div className="shrink-0 system-xs-regular text-text-quaternary">·</div>
             <div
               title={payload.label}
-              className="system-xs-medium grow truncate text-text-tertiary"
+              className="grow truncate system-xs-medium text-text-tertiary"
             >
               {payload.label}
             </div>

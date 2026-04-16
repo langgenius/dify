@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +9,6 @@ import {
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
 import { fetchTagList } from '@/service/tag'
-import { cn } from '@/utils/classnames'
 import Panel from './panel'
 import { useStore as useTagStore } from './store'
 import Trigger from './trigger'

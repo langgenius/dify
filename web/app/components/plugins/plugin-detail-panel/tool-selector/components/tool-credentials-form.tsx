@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolCredentialFormSchema } from '@/app/components/tools/utils/to-form-schema'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
@@ -15,7 +16,6 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   collection: Collection

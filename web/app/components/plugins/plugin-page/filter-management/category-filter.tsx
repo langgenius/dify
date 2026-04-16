@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
@@ -13,7 +14,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { useCategories } from '../../hooks'
 
 type CategoriesFilterProps = {
@@ -54,7 +54,7 @@ const CategoriesFilter = ({
         )}
         >
           <div className={cn(
-            'system-sm-medium flex items-center p-1',
+            'flex items-center p-1 system-sm-medium',
           )}
           >
             {
@@ -65,7 +65,7 @@ const CategoriesFilter = ({
             }
             {
               selectedTagsLength > 2 && (
-                <div className="system-xs-medium ml-1 text-text-tertiary">
+                <div className="ml-1 system-xs-medium text-text-tertiary">
                   +
                   {selectedTagsLength - 2}
                 </div>
@@ -114,7 +114,7 @@ const CategoriesFilter = ({
                     className="mr-1"
                     checked={value.includes(option.name)}
                   />
-                  <div className="system-sm-medium px-1 text-text-secondary">
+                  <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
                 </div>

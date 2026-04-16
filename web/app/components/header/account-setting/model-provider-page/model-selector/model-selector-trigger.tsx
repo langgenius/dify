@@ -4,10 +4,10 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import {
   DERIVED_MODEL_STATUS_BADGE_I18N,
   DERIVED_MODEL_STATUS_TOOLTIP_I18N,
@@ -110,7 +110,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
           />
         )}
         {isDeprecated && (
-          <div className="grow truncate text-components-input-text-filled system-sm-regular">
+          <div className="grow truncate system-sm-regular text-components-input-text-filled">
             {defaultModel.model}
           </div>
         )}
@@ -132,7 +132,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
                   )}
                 >
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
-                  <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                  <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {statusLabel}
                   </span>
                 </div>
@@ -152,7 +152,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
               render={(
                 <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
-                  <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                  <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {deprecatedStatusLabel}
                   </span>
                 </div>

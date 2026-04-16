@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 type AutoWidthInputProps = {
   value: string
@@ -48,7 +48,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       {/* Hidden measurement span */}
       <span
         ref={textRef}
-        className="system-sm-semibold invisible absolute left-0 top-0 -z-10 whitespace-pre px-1"
+        className="invisible absolute top-0 left-0 -z-10 px-1 system-sm-semibold whitespace-pre"
         aria-hidden="true"
       >
         {value || placeholder}
@@ -58,7 +58,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       <input
         value={value}
         className={cn(
-          'system-sm-semibold placeholder:system-sm-semibold h-5 rounded-[5px] border border-transparent px-1',
+          'h-5 rounded-[5px] border border-transparent px-1 system-sm-semibold placeholder:system-sm-semibold',
           'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-hidden',
           'placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           className,

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,10 +16,9 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
 import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
 
+import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'

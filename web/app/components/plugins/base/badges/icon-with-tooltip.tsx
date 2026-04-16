@@ -1,8 +1,8 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type IconWithTooltipProps = {
   className?: string

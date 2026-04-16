@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string
@@ -43,7 +43,7 @@ const Item: FC<ItemProps> = ({
       {isActive && (
         <div
           data-testid="tab-active-indicator"
-          className="absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
+          className="absolute right-0 bottom-0 left-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
         >
         </div>
       )}

@@ -284,12 +284,7 @@ describe('DatasetMetadataDrawer', () => {
       fireEvent.change(inputs[0], { target: { value: 'renamed_field' } })
 
       // Find and click save button
-      const saveBtns = screen.getAllByText(/save/i)
-      const primaryBtn = saveBtns.find(btn =>
-        btn.closest('button')?.classList.contains('btn-primary'),
-      )
-      if (primaryBtn)
-        fireEvent.click(primaryBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()

@@ -178,7 +178,7 @@ export const ValueSection = ({
         />
       )}
       {editInJSON && (
-        <div className="w-full radius-lg bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
+        <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
           <CodeEditor
             isExpand
             noWrapper

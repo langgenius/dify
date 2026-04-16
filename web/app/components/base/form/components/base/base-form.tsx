@@ -6,6 +6,7 @@ import type {
   BaseFieldProps,
 } from '.'
 import type { FieldState, FormRef, FormSchema, SetFieldsParam } from '@/app/components/base/form/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useForm,
   useStore,
@@ -26,7 +27,6 @@ import {
   FormItemValidateStatusEnum,
 
 } from '@/app/components/base/form/types'
-import { cn } from '@/utils/classnames'
 import {
   BaseField,
 } from '.'

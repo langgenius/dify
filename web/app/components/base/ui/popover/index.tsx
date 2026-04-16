@@ -2,14 +2,16 @@
 
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const Popover = BasePopover.Root
 export const PopoverTrigger = BasePopover.Trigger
 export const PopoverClose = BasePopover.Close
+/** @public */
 export const PopoverTitle = BasePopover.Title
+/** @public */
 export const PopoverDescription = BasePopover.Description
 
 type PopoverContentProps = {
