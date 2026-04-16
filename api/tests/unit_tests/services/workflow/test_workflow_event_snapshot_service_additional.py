@@ -11,13 +11,13 @@ from unittest.mock import MagicMock
 
 import pytest
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun

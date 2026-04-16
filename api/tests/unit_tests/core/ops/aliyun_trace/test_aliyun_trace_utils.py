@@ -1,7 +1,6 @@
 import json
 from unittest.mock import MagicMock
 
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, StatusCode
 
@@ -26,6 +25,7 @@ from core.ops.aliyun_trace.utils import (
     serialize_json_data,
 )
 from core.rag.models.document import Document
+from graphon.entities import WorkflowNodeExecution
 from models import EndUser
 
 

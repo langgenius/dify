@@ -4,9 +4,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from graphon.enums import WorkflowType
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import Variable
 from sqlalchemy import select
@@ -43,6 +40,9 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable

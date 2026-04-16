@@ -1,8 +1,8 @@
 from flask_restx import fields
-from graphon.variables import SecretVariable, SegmentType, VariableBase
 
 from core.helper import encrypter
 from fields.member_fields import simple_account_fields
+from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type

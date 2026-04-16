@@ -18,9 +18,7 @@ from constants import UUID_NIL
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
-from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -48,6 +46,8 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom

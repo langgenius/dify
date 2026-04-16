@@ -2,7 +2,6 @@ import json
 from collections.abc import Mapping
 from typing import Any, TypedDict
 
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, Status, StatusCode
 
@@ -17,6 +16,7 @@ from core.ops.aliyun_trace.entities.semconv import (
 )
 from core.rag.models.document import Document
 from extensions.ext_database import db
+from graphon.entities import WorkflowNodeExecution
 from models import EndUser
 
 # Constants

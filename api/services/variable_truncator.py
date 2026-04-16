@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, overload
 
-from graphon.file import File
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
 from graphon.variables.segments import (
     ArrayFileSegment,
@@ -22,6 +21,7 @@ from graphon.variables.segments import (
 from graphon.variables.utils import dumps_with_segments
 
 from configs import dify_config
+from graphon.file import File
 
 _MAX_DEPTH = 100
 

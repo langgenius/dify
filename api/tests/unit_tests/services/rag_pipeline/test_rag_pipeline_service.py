@@ -556,8 +556,9 @@ def test_run_datasource_node_preview_online_document(mocker, rag_pipeline_servic
 
 def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
     from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
+
+    from graphon.graph_events import NodeRunSucceededEvent
 
     # 1. Setup mock node and result
     node_instance = mocker.Mock()
@@ -1096,8 +1097,9 @@ def test_handle_node_run_result_default_value_strategy(mocker, rag_pipeline_serv
     from datetime import datetime
 
     from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
+
+    from graphon.graph_events import NodeRunFailedEvent
 
     node_instance = SimpleNamespace(
         workflow_id="wf-1",
@@ -1484,10 +1486,10 @@ def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeli
 
 def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
     from graphon.enums import WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
     from core.app.entities.app_invoke_entities import InvokeFrom
+    from graphon.graph_events import NodeRunFailedEvent
 
     class FakeVariablePool:
         def __init__(self):

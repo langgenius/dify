@@ -1,7 +1,6 @@
 import json
 
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
-
 from models.workflow import Workflow
 
 

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -29,6 +28,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
+from graphon.entities import WorkflowNodeExecution
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom

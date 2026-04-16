@@ -7,7 +7,6 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -19,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig
+from graphon.entities import WorkflowNodeExecution
 from models.account import Account, Tenant
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom

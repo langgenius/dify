@@ -6,8 +6,6 @@ from typing import Any
 from flask import abort, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from graphon.enums import NodeType
-from graphon.file import File
-from graphon.file import helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -42,6 +40,8 @@ from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from graphon.file import File
+from graphon.file import helpers as file_helpers
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
