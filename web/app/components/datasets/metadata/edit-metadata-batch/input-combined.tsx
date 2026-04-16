@@ -49,14 +49,13 @@ const InputCombined: FC<Props> = ({
           readOnly={readOnly}
           onValueChange={value => onChange(value ?? 0)}
         >
-          <NumberFieldGroup size="regular">
+          <NumberFieldGroup>
             <NumberFieldInput
-              size="regular"
               className={cn(className, 'rounded-l-md')}
             />
             <NumberFieldControls className="overflow-hidden">
-              <NumberFieldIncrement size="regular" className="pt-0 pb-0" />
-              <NumberFieldDecrement size="regular" className="pt-0 pb-0" />
+              <NumberFieldIncrement className="pt-0 pb-0" />
+              <NumberFieldDecrement className="pt-0 pb-0" />
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>

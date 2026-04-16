@@ -12,8 +12,8 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuGroup,
-  ContextMenuGroupLabel,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
@@ -413,9 +413,9 @@ const SelectionContextmenu = () => {
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
+            <ContextMenuLabel>
               {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
+            </ContextMenuLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem

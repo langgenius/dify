@@ -6,8 +6,8 @@ import {
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
-  ContextMenuGroupLabel,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuLinkItem,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
@@ -85,14 +85,14 @@ export const WithGroupLabel: Story = {
       <TriggerArea />
       <ContextMenuContent>
         <ContextMenuGroup>
-          <ContextMenuGroupLabel>Actions</ContextMenuGroupLabel>
+          <ContextMenuLabel>Actions</ContextMenuLabel>
           <ContextMenuItem>Rename</ContextMenuItem>
           <ContextMenuItem>Duplicate</ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuGroupLabel>Danger Zone</ContextMenuGroupLabel>
-          <ContextMenuItem destructive>Delete</ContextMenuItem>
+          <ContextMenuLabel>Danger Zone</ContextMenuLabel>
+          <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
         </ContextMenuGroup>
       </ContextMenuContent>
     </ContextMenu>
@@ -171,7 +171,7 @@ export const WithLinkItems: Story = {
           Product Roadmap
         </ContextMenuLinkItem>
         <ContextMenuSeparator />
-        <ContextMenuLinkItem destructive href="https://example.com/delete" rel="noopener noreferrer" target="_blank">
+        <ContextMenuLinkItem variant="destructive" href="https://example.com/delete" rel="noopener noreferrer" target="_blank">
           Dangerous External Action
         </ContextMenuLinkItem>
       </ContextMenuContent>
@@ -205,7 +205,7 @@ export const Complex: Story = {
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuSeparator />
-        <ContextMenuItem destructive>
+        <ContextMenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
         </ContextMenuItem>

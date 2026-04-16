@@ -30,7 +30,7 @@ const NumberInputField = ({
   className,
   inputClassName,
   unit,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberInputFieldProps) => {
   const field = useFieldContext<number>()
