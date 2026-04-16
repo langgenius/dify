@@ -12,6 +12,7 @@ This test suite covers:
 import base64
 import secrets
 from datetime import UTC, datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
