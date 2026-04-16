@@ -1735,7 +1735,7 @@ def _setup_variable_pool(
         }
 
         # Only add chatflow-specific variables for chat-like workflow types.
-        if workflow.type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION}:
+        if workflow.type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION, WorkflowType.SNIPPET}:
             system_variable_values.update(
                 {
                     "query": query,
