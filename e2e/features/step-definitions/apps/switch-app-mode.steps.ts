@@ -1,7 +1,7 @@
+import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api'
-import type { DifyWorld } from '../../support/world'
 
 Given('there is an existing E2E chat app available for testing', async function (this: DifyWorld) {
   const name = `E2E Test App ${Date.now()}`
@@ -22,5 +22,6 @@ Then('I should land on the switched app', async function (this: DifyWorld) {
 
   // Capture the new app's ID so the After hook can clean it up
   const match = page.url().match(/\/app\/([^/]+)\/workflow/)
-  if (match) this.createdAppIds.push(match[1])
+  if (match)
+    this.createdAppIds.push(match[1])
 })
