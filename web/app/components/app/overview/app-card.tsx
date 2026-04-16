@@ -361,6 +361,7 @@ function AppCard({
         onCloseAccessControl={() => setShowAccessControl(false)}
         onSaveSiteConfig={onSaveSiteConfig}
         onConfirmAccessControl={handleAccessControlUpdate}
+        hiddenInputs={hiddenLaunchVariables}
       />
       <WorkflowLaunchDialog
         t={t}

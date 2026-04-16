@@ -344,6 +344,7 @@ const AppPublisher = ({
           onClose={() => setEmbeddingModalOpen(false)}
           appBaseUrl={appBaseURL}
           accessToken={accessToken}
+          hiddenInputs={hiddenLaunchVariables}
         />
         {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
         <WorkflowLaunchDialog

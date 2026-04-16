@@ -2,6 +2,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { IS_CE_EDITION } from '@/config'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -125,6 +126,95 @@ export const buildWorkflowLaunchUrl = async ({
   })
 
   return targetUrl.toString()
+}
+
+export const getEmbeddedIframeSnippet = (iframeUrl: string) =>
+  `<iframe
+ src="${iframeUrl}"
+ style="width: 100%; height: 100%; min-height: 700px"
+ frameborder="0"
+ allow="microphone">
+</iframe>`
+
+const getScriptInputsContent = (values: Record<string, WorkflowLaunchInputValue>) => {
+  const entries = Object.entries(values)
+
+  if (!entries.length) {
+    return `{
+    // You can define the inputs from the Start node here
+    // key is the variable name
+    // e.g.
+    // name: "NAME"
+  }`
+  }
+
+  return `{
+${entries.map(([key, value]) => `    ${key}: ${JSON.stringify(value)},`).join('\n')}
+  }`
+}
+
+export const getEmbeddedScriptSnippet = ({
+  url,
+  token,
+  primaryColor,
+  isTestEnv,
+  inputValues,
+}: {
+  url: string
+  token: string
+  primaryColor: string
+  isTestEnv?: boolean
+  inputValues: Record<string, WorkflowLaunchInputValue>
+}) =>
+  `<script>
+ window.difyChatbotConfig = {
+  token: '${token}'${isTestEnv
+    ? `,
+  isDev: true`
+    : ''}${IS_CE_EDITION
+    ? `,
+  baseUrl: '${url}${basePath}'`
+    : ''},
+  inputs: ${getScriptInputsContent(inputValues)},
+  systemVariables: {
+    // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+  },
+  userVariables: {
+    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
+    // name: 'YOU CAN DEFINE USER NAME HERE',
+  },
+ }
+</script>
+<script
+ src="${url}${basePath}/embed.min.js"
+ id="${token}"
+ defer>
+</script>
+<style>
+  #dify-chatbot-bubble-button {
+    background-color: ${primaryColor} !important;
+  }
+  #dify-chatbot-bubble-window {
+    width: 24rem !important;
+    height: 40rem !important;
+  }
+</style>`
+
+export const getChromePluginContent = (iframeUrl: string) => `ChatBot URL: ${iframeUrl}`
+
+export const compressAndEncodeBase64 = async (input: string) => {
+  const uint8Array = new TextEncoder().encode(input)
+  if (typeof CompressionStream === 'undefined')
+    return btoa(String.fromCharCode(...uint8Array))
+
+  const compressedStream = new Response(
+    new Blob([uint8Array])
+      .stream()
+      .pipeThrough(new CompressionStream('gzip')),
+  ).arrayBuffer()
+  const compressedUint8Array = new Uint8Array(await compressedStream)
+  return btoa(String.fromCharCode(...compressedUint8Array))
 }
 
 export const getAppCardDisplayState = ({

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { TFunction } from 'i18next'
-import type { ChangeEvent, ComponentType, FormEvent, ReactNode } from 'react'
+import type { ComponentType, FormEvent, ReactNode } from 'react'
 import type {
   OverviewOperationKey,
   WorkflowHiddenStartVariable,
@@ -12,9 +12,7 @@ import type { AppSSO } from '@/types/app'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
 import ShareQRCode from '@/app/components/base/qrcode'
-import Textarea from '@/app/components/base/textarea'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -32,18 +30,10 @@ import {
   DialogTitle,
 } from '@/app/components/base/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/base/ui/select'
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/app/components/base/ui/tooltip'
-import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
@@ -51,6 +41,7 @@ import CustomizeModal from './customize'
 import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
 import style from './style.module.css'
+import WorkflowHiddenInputFields from './workflow-hidden-input-fields'
 
 type AppInfo = AppDetailResponse & Partial<AppSSO>
 
@@ -141,75 +132,6 @@ export const WorkflowLaunchDialog = ({
   onValueChange: (variable: string, value: WorkflowLaunchInputValue) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) => {
-  const renderField = (variable: WorkflowHiddenStartVariable) => {
-    const fieldId = `workflow-launch-hidden-input-${variable.variable}`
-    const fieldValue = values[variable.variable]
-    const label = typeof variable.label === 'string' ? variable.label : variable.variable
-
-    if (variable.type === InputVarType.select) {
-      return (
-        <Select
-          value={typeof fieldValue === 'string' ? fieldValue : ''}
-          onValueChange={value => onValueChange(variable.variable, value ?? '')}
-        >
-          <SelectTrigger className="w-full" aria-label={label}>
-            <SelectValue placeholder={label} />
-          </SelectTrigger>
-          <SelectContent>
-            {(variable.options ?? []).map(option => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )
-    }
-
-    if (variable.type === InputVarType.checkbox) {
-      return (
-        <label className="flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg bg-components-input-bg-normal px-3 py-2">
-          <input
-            id={fieldId}
-            type="checkbox"
-            checked={Boolean(fieldValue)}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.checked)}
-            className="h-4 w-4 rounded border-divider-subtle"
-          />
-          <span className="system-sm-regular text-text-secondary">{label}</span>
-        </label>
-      )
-    }
-
-    if (
-      variable.type === InputVarType.paragraph
-      || variable.type === InputVarType.json
-      || variable.type === InputVarType.jsonObject
-    ) {
-      return (
-        <Textarea
-          id={fieldId}
-          value={typeof fieldValue === 'string' ? fieldValue : ''}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onValueChange(variable.variable, event.target.value)}
-          placeholder={label}
-          maxLength={variable.max_length}
-          className="min-h-24"
-        />
-      )
-    }
-
-    return (
-      <Input
-        id={fieldId}
-        type={variable.type === InputVarType.number ? 'number' : 'text'}
-        value={typeof fieldValue === 'string' ? fieldValue : ''}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.value)}
-        placeholder={label}
-        maxLength={variable.max_length}
-      />
-    )
-  }
-
   if (!hiddenVariables.length && !unsupportedVariables.length)
     return null
 
@@ -226,19 +148,11 @@ export const WorkflowLaunchDialog = ({
         </div>
         <form onSubmit={onSubmit}>
           <div className="space-y-4 px-6 pb-4">
-            {hiddenVariables.map(variable => (
-              <div key={variable.variable} className="space-y-1.5">
-                {variable.type !== InputVarType.checkbox && (
-                  <label
-                    htmlFor={`workflow-launch-hidden-input-${variable.variable}`}
-                    className="block system-sm-medium text-text-secondary"
-                  >
-                    {typeof variable.label === 'string' ? variable.label : variable.variable}
-                  </label>
-                )}
-                {renderField(variable)}
-              </div>
-            ))}
+            <WorkflowHiddenInputFields
+              hiddenVariables={hiddenVariables}
+              values={values}
+              onValueChange={onValueChange}
+            />
           </div>
           <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
             <Button onClick={() => onOpenChange(false)}>
@@ -512,6 +426,7 @@ export const AppCardDialogs = ({
   onCloseAccessControl,
   onSaveSiteConfig,
   onConfirmAccessControl,
+  hiddenInputs,
 }: {
   isApp: boolean
   appInfo: AppInfo
@@ -527,6 +442,7 @@ export const AppCardDialogs = ({
   onCloseAccessControl: () => void
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onConfirmAccessControl: () => Promise<void>
+  hiddenInputs?: WorkflowHiddenStartVariable[]
 }) => {
   if (!isApp)
     return null
@@ -546,6 +462,7 @@ export const AppCardDialogs = ({
         onClose={onCloseEmbedded}
         appBaseUrl={appInfo.site?.app_base_url}
         accessToken={appInfo.site?.access_token}
+        hiddenInputs={hiddenInputs}
       />
       <CustomizeModal
         isShow={showCustomizeModal}
