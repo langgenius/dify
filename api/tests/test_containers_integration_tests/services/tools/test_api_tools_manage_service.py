@@ -659,11 +659,11 @@ class TestApiToolManageService:
             .first()
         )
 
-        # Manually refresh to keep object detachment
-        db_session_with_containers.refresh(updated_provider)
-
         # Verify the provider was updated successfully
         assert updated_provider is not None
+
+        # Manually refresh to keep object detachment
+        db_session_with_containers.refresh(updated_provider)
         # Verify all the updated fields
         # - changed 1
         assert updated_provider.name == new_name
