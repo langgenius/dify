@@ -54,20 +54,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   },
   {
     group: [
-      '**/base/popover',
-      '**/base/popover/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dropdown',
-      '**/base/dropdown/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/dialog',
       '**/base/dialog/index',
     ],
@@ -87,7 +73,6 @@ export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
   'app/components/base/chip/index.tsx',
   'app/components/base/date-and-time-picker/date-picker/index.tsx',
   'app/components/base/date-and-time-picker/time-picker/index.tsx',
-  'app/components/base/dropdown/index.tsx',
   'app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx',
   'app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx',
   'app/components/base/file-uploader/file-from-link-or-local/index.tsx',

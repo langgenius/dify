@@ -5,10 +5,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import PluginTaskList from './components/plugin-task-list'
 import TaskStatusIndicator from './components/task-status-indicator'
@@ -96,16 +96,14 @@ const PluginTasks = () => {
 
   return (
     <div className="flex items-center">
-      <PortalToFollowElem
+      <DropdownMenu
         open={open}
         onOpenChange={setOpen}
-        placement="bottom-start"
-        offset={{
-          mainAxis: 4,
-          crossAxis: 79,
-        }}
       >
-        <PortalToFollowElemTrigger onClick={handleTriggerClick}>
+        <DropdownMenuTrigger
+          render={<div />}
+          onClick={handleTriggerClick}
+        >
           <TaskStatusIndicator
             tip={tip}
             isInstalling={isInstalling}
@@ -118,8 +116,12 @@ const PluginTasks = () => {
             totalPluginsLength={totalPluginsLength}
             onClick={() => {}}
           />
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-11">
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={4}
+          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none overflow-visible"
+        >
           <PluginTaskList
             runningPlugins={runningPlugins}
             successPlugins={successPlugins}
@@ -129,8 +131,8 @@ const PluginTasks = () => {
             onClearErrors={handleClearErrors}
             onClearSingle={handleClearSingle}
           />
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

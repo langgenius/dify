@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, ParamSpec, TypeVar, Union
+from typing import TYPE_CHECKING, Union
 from urllib.parse import quote
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal
+from graphon.file import helpers as file_helpers
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,7 +26,6 @@ from core.evaluation.entities.evaluation_entity import EvaluationCategory, Evalu
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from fields.member_fields import simple_account_fields
-from graphon.file import helpers as file_helpers
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import App, Dataset
@@ -44,9 +44,6 @@ if TYPE_CHECKING:
     from models.evaluation import EvaluationRun, EvaluationRunItem
 
 logger = logging.getLogger(__name__)
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 # Valid evaluation target types
 EVALUATE_TARGET_TYPES = {"app", "snippets"}
@@ -184,7 +181,7 @@ evaluation_default_metrics_response_model = console_ns.model(
 )
 
 
-def get_evaluation_target(view_func: Callable[P, R]):
+def get_evaluation_target[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """
     Decorator to resolve polymorphic evaluation target (app or snippet).
 
@@ -193,7 +190,7 @@ def get_evaluation_target(view_func: Callable[P, R]):
     """
 
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         target_type = kwargs.get("evaluate_target_type")
         target_id = kwargs.get("evaluate_target_id")
 

@@ -1,10 +1,10 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
+from graphon.graph_engine.manager import GraphEngineManager
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -36,7 +36,6 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -46,9 +45,6 @@ from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 # Register Pydantic models with Swagger
 register_schema_models(
@@ -74,7 +70,7 @@ class SnippetNotFoundError(Exception):
     pass
 
 
-def get_snippet(view_func: Callable[P, R]):
+def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """Decorator to fetch and validate snippet access."""
 
     @wraps(view_func)

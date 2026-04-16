@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.controller_schemas import DefaultBlockConfigQuery
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow_run import workflow_run_node_execution_model
@@ -169,6 +169,7 @@ class WorkflowUpdatePayload(BaseModel):
 
 class WorkflowTypeConvertQuery(BaseModel):
     target_type: Literal["workflow", "evaluation"]
+
 
 class WorkflowFeaturesPayload(BaseModel):
     features: dict[str, Any] = Field(..., description="Workflow feature configuration")

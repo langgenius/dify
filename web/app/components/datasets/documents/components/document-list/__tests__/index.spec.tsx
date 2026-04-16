@@ -380,8 +380,7 @@ describe('DocumentList', () => {
         })
       }
 
-      // After clicking rename, the modal should potentially be visible
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' })).toBeInTheDocument()
     })
 
     it('should call onUpdate when document is renamed', () => {
