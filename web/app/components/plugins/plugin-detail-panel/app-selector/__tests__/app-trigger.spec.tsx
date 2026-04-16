@@ -6,7 +6,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ size }: { size: string }) => <div data-testid="app-icon" data-size={size} />,
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 

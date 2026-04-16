@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
+import { Button } from '@/app/components/base/ui/button'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceProvider } from '@/models/common'
 import s from './index.module.css'
@@ -57,15 +57,15 @@ const NoData: FC<Props> = ({
   return (
     <>
       <div className="mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6">
-        <div className="flex h-12 w-12 items-center justify-center radius-lg border-[0.5px]
+        <div className="flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
           border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
         >
           {currentProvider.emoji}
         </div>
-        <div className="mb-1 mt-2 flex flex-col gap-y-1 pb-3 pt-1">
+        <div className="mt-2 mb-1 flex flex-col gap-y-1 pt-1 pb-3">
           <span className="system-md-semibold text-text-secondary">
             {currentProvider.title}
-            <Icon3Dots className="relative -left-1.5 -top-2.5 inline" />
+            <Icon3Dots className="relative -top-2.5 -left-1.5 inline" />
           </span>
           <div className="system-sm-regular text-text-tertiary">
             {currentProvider.description}

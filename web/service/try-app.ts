@@ -1,17 +1,19 @@
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { DataSetListResponse } from '@/models/datasets'
 import type { TryAppFlowPreview, TryAppInfo } from '@/models/try-app'
+import qs from 'qs'
 import { consoleClient } from '@/service/client'
+import { get } from './base'
 
 export const fetchTryAppInfo = (appId: string): Promise<TryAppInfo> => {
   return consoleClient.trialApps.info({ params: { appId } })
 }
 
 export const fetchTryAppDatasets = (appId: string, ids: string[]): Promise<DataSetListResponse> => {
-  return consoleClient.trialApps.datasets({
-    params: { appId },
-    query: { ids },
-  })
+  const queryString = qs.stringify({ ids }, { indices: false })
+  const url = `/trial-apps/${encodeURIComponent(appId)}/datasets${queryString ? `?${queryString}` : ''}`
+
+  return get<DataSetListResponse>(url)
 }
 
 export const fetchTryAppFlowPreview = (appId: string): Promise<TryAppFlowPreview> => {

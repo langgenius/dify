@@ -12,6 +12,10 @@
 
 - `frontend-query-mutation` is the source of truth for Dify frontend contracts, query and mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
 
+## Design Token Mapping
+
+- When translating Figma designs to code, read `../packages/dify-ui/AGENTS.md` for the Figma `--radius/*` token to Tailwind `rounded-*` class mapping. The two scales are offset by one step.
+
 ## Automated Test Generation
 
 - Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.

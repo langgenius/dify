@@ -1,4 +1,5 @@
 from json.decoder import JSONDecodeError
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -259,8 +260,8 @@ def test_parse_openapi_to_tool_bundle_server_env_and_refs(app):
         },
     }
 
-    extra_info: dict = {}
-    warning: dict = {}
+    extra_info: dict[str, Any] = {}
+    warning: dict[str, Any] = {}
     with app.test_request_context(headers={"X-Request-Env": "prod"}):
         bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
@@ -298,7 +299,7 @@ def test_parse_swagger_to_openapi_branches():
             }
         )
 
-    warning: dict = {"seed": True}
+    warning: dict[str, Any] = {"seed": True}
     converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
         {
             "servers": [{"url": "https://x"}],

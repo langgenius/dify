@@ -33,7 +33,7 @@ class PgvectoRSConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")
         if not values["port"]:
@@ -67,7 +67,7 @@ class PGVectoRS(BaseVector):
                 primary_key=True,
             )
             text: Mapped[str]
-            meta: Mapped[dict] = mapped_column(postgresql.JSONB)
+            meta: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB)
             vector: Mapped[ndarray] = mapped_column(VECTOR(dim))
 
         self._table = _Table

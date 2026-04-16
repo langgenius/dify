@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
-import { cn } from '@/utils/classnames'
 import BoolValue from './bool-value'
 
 type Props = {

@@ -2,15 +2,15 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import { SUB_VARIABLES } from './../default'
@@ -75,8 +75,8 @@ const ConditionWrap: FC<Props> = ({
       <div>
         <div
           className={cn(
-            'group relative radius-lg bg-components-panel-bg',
-            !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+            'group relative rounded-[10px] bg-components-panel-bg',
+            !isSubVariable && 'min-h-[40px] px-3 py-1',
             isSubVariable && 'px-1 py-2',
           )}
         >

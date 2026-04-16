@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot, StructuredOutput } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { cn } from '@/utils/classnames'
 import { Type } from '../types'
 import JsonSchemaConfigModal from './json-schema-config-modal'
 
@@ -39,7 +39,7 @@ const StructureOutput: FC<Props> = ({
       <div className="flex justify-between">
         <div className="flex items-center leading-[18px]">
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
-          <div className="system-xs-regular ml-2 text-text-tertiary">object</div>
+          <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
         </div>
         <Button
           size="small"
@@ -58,7 +58,7 @@ const StructureOutput: FC<Props> = ({
             />
           )
         : (
-            <div className="system-xs-regular mt-1.5 flex h-10 cursor-pointer items-center justify-center radius-lg bg-background-section text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
+            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
           )}
 
       {showConfig && (

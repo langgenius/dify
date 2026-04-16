@@ -95,4 +95,24 @@ describe('useConfig', () => {
     expect(result.current.filterToAssignedVar({ type: VarType.string } as never, VarType.arrayString, WriteMode.append)).toBe(true)
     expect(result.current.filterToAssignedVar({ type: VarType.number } as never, VarType.arrayString, WriteMode.append)).toBe(false)
   })
+
+  it('should normalize collaboration-restored null selectors before exposing inputs', () => {
+    const dirtyPayload = createPayload({
+      version: '2',
+      items: [createOperation({
+        variable_selector: null as unknown as AssignerNodeOperation['variable_selector'],
+        input_type: AssignerNodeInputType.variable,
+        value: null,
+      })],
+    })
+
+    const { result } = renderHook(() => useConfig('assigner-node', dirtyPayload))
+
+    expect(result.current.inputs.items).toEqual([expect.objectContaining({
+      variable_selector: [],
+      input_type: AssignerNodeInputType.variable,
+      operation: WriteMode.overwrite,
+      value: [],
+    })])
+  })
 })

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
@@ -41,7 +41,7 @@ const Placeholder = ({
 }: PlaceholderProps) => {
   const { t } = useTranslation()
   return (
-    <div className="system-sm-regular mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary">
+    <div className="mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
       <div className="flex flex-wrap items-center leading-5">
         <Trans
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}

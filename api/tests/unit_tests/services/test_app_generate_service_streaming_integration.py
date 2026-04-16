@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import defaultdict, deque
+from typing import Any
 
 import pytest
 
@@ -60,7 +61,7 @@ class _FakeStreams:
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
 
-    def xadd(self, key: str, fields: dict, *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
         self._seq[key] += 1
         eid = f"{self._seq[key]}-0"
@@ -71,7 +72,7 @@ class _FakeStreams:
         # no-op for tests
         return None
 
-    def xread(self, streams: dict, block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])

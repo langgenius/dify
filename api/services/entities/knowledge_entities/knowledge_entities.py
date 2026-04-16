@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -87,7 +87,7 @@ class RetrievalModel(BaseModel):
 
 class MetaDataConfig(BaseModel):
     doc_type: str
-    doc_metadata: dict
+    doc_metadata: dict[str, Any]
 
 
 class KnowledgeConfig(BaseModel):
@@ -97,7 +97,7 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
-    summary_index_setting: dict | None = None
+    summary_index_setting: dict[str, Any] | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None

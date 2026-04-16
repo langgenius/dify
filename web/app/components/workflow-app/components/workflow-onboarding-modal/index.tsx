@@ -30,10 +30,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
         <div className="pb-4">
           <div className="mb-6">
-            <DialogTitle className="mb-2 text-text-primary title-2xl-semi-bold">
+            <DialogTitle className="mb-2 title-2xl-semi-bold text-text-primary">
               {t('onboarding.title', { ns: 'workflow' })}
             </DialogTitle>
-            <DialogDescription className="leading-4 text-text-tertiary body-xs-regular">
+            <DialogDescription className="body-xs-regular leading-4 text-text-tertiary">
               {t('onboarding.description', { ns: 'workflow' })}
             </DialogDescription>
           </div>
@@ -47,7 +47,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
       {/* TODO: reduce z-1002 to match base/ui primitives after legacy overlay migration completes */}
       <DialogPortal>
-        <div className="pointer-events-none fixed left-1/2 top-1/2 z-1002 flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary body-xs-regular">
+        <div className="pointer-events-none fixed top-1/2 left-1/2 z-1002 flex -translate-x-1/2 translate-y-[165px] items-center gap-1 body-xs-regular text-text-quaternary">
           <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>
           <ShortcutsName keys={[t('onboarding.escTip.key', { ns: 'workflow' })]} textColor="secondary" />
           <span>{t('onboarding.escTip.toDismiss', { ns: 'workflow' })}</span>

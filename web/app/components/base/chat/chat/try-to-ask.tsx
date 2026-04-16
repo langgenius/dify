@@ -2,8 +2,8 @@ import type { FC } from 'react'
 import type { OnSend } from '../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
+import { Button } from '@/app/components/base/ui/button'
 
 type TryToAskProps = {
   suggestedQuestions: string[]
@@ -19,7 +19,7 @@ const TryToAsk: FC<TryToAskProps> = ({
     <div className="mb-2 py-2">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <Divider bgStyle="gradient" className="h-px w-auto! grow rotate-180" />
-        <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('feature.suggestedQuestionsAfterAnswer.tryToAsk', { ns: 'appDebug' })}</div>
+        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('feature.suggestedQuestionsAfterAnswer.tryToAsk', { ns: 'appDebug' })}</div>
         <Divider bgStyle="gradient" className="h-px w-auto! grow" />
       </div>
       <div className="flex flex-wrap justify-center">
@@ -29,7 +29,7 @@ const TryToAsk: FC<TryToAskProps> = ({
               size="small"
               key={index}
               variant="secondary-accent"
-              className="mb-1 mr-1 last:mr-0"
+              className="mr-1 mb-1 last:mr-0"
               onClick={() => onSend(suggestQuestion)}
             >
               {suggestQuestion}
