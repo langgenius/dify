@@ -26,10 +26,12 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
 When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
   const dialog = this.getPage().getByRole('dialog')
-  const appTypeTitle = dialog.getByText(appType, { exact: true })
+  // Scope to <div> to avoid matching the preview panel <h4>, which also shows the
+  // currently-selected app type name (default: ADVANCED_CHAT = "Chatflow").
+  const appTypeCard = dialog.locator('div').getByText(appType, { exact: true })
 
-  await expect(appTypeTitle).toBeVisible()
-  await appTypeTitle.click()
+  await expect(appTypeCard).toBeVisible()
+  await appTypeCard.click()
 })
 
 When('I expand the beginner app types', async function (this: DifyWorld) {
