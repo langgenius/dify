@@ -138,9 +138,8 @@ class ApiToolManageService:
 
         # check if the provider exists
         # Create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
+        with sessionmaker(db.engine).begin() as _session:
+            provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
                     ApiToolProvider.tenant_id == tenant_id,
@@ -148,55 +147,55 @@ class ApiToolManageService:
                 )
                 .limit(1)
             )
-        if provider is not None:
-            raise ValueError(f"provider {provider_name} already exists")
 
-        # parse openapi to tool bundle
-        extra_info: dict[str, str] = {}
-        # extra info like description will be set here
-        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+            if provider is not None:
+                raise ValueError(f"provider {provider_name} already exists")
 
-        if len(tool_bundles) > 100:
-            raise ValueError("the number of apis should be less than 100")
+            # parse openapi to tool bundle
+            extra_info: dict[str, str] = {}
+            # extra info like description will be set here
+            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-        # create db provider
-        db_provider = ApiToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            name=provider_name,
-            icon=json.dumps(icon),
-            schema=schema,
-            description=extra_info.get("description", ""),
-            schema_type_str=schema_type,
-            tools_str=json.dumps(jsonable_encoder(tool_bundles)),
-            credentials_str="{}",
-            privacy_policy=privacy_policy,
-            custom_disclaimer=custom_disclaimer,
-        )
+            if len(tool_bundles) > 100:
+                raise ValueError("the number of apis should be less than 100")
 
-        if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            # create API tool provider
+            api_tool_provider = ApiToolProvider(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                name=provider_name,
+                icon=json.dumps(icon),
+                schema=schema,
+                description=extra_info.get("description", ""),
+                schema_type_str=schema_type,
+                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+                credentials_str="{}",
+                privacy_policy=privacy_policy,
+                custom_disclaimer=custom_disclaimer,
+            )
 
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+            if "auth_type" not in credentials:
+                raise ValueError("auth_type is required")
 
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
-        # load tools into provider entity
-        provider_controller.load_bundled_tools(tool_bundles)
+            # get auth type, none or api key
+            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-        # encrypt credentials
-        encrypter, _ = create_tool_provider_encrypter(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-        )
-        db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
+            # create provider entity
+            provider_controller = ApiToolProviderController.from_db(api_tool_provider, auth_type)
+            # load tools into provider entity
+            provider_controller.load_bundled_tools(tool_bundles)
 
-        with sessionmaker(db.engine).begin() as _session:
-            _session.add(db_provider)
+            # encrypt credentials
+            encrypter, _ = create_tool_provider_encrypter(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+            )
+            api_tool_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
-        # update labels
-        ToolLabelManager.update_tool_labels(provider_controller, labels)
+            _session.add(api_tool_provider)
+
+            # update labels
+            ToolLabelManager.update_tool_labels(provider_controller, labels, _session)
 
         return {"result": "success"}
 
