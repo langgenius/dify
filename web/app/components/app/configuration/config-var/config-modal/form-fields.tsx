@@ -11,6 +11,7 @@ import Textarea from '@/app/components/base/textarea'
 import {
   Select,
   SelectContent,
+  SelectIcon,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -134,8 +135,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.checkbox && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Select value={checkboxDefaultSelectValue} onValueChange={value => onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)}>
-            <SelectTrigger size="large" className="w-full">
-              <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+            <SelectTrigger className="group flex h-9 w-full items-center gap-0.5 rounded-[10px] bg-components-input-bg-normal px-2.5 py-1 system-md-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder">
+              <SelectValue className="min-w-0 grow truncate px-1.5 py-1" placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+              <SelectIcon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-open:text-text-secondary">
+                <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden />
+              </SelectIcon>
             </SelectTrigger>
             <SelectContent listClassName="max-h-[140px] overflow-y-auto">
               <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItem>
@@ -157,8 +161,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 value={tempPayload.default ? String(tempPayload.default) : EMPTY_SELECT_VALUE}
                 onValueChange={value => onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)}
               >
-                <SelectTrigger size="large" className="w-full">
-                  <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+                <SelectTrigger className="group flex h-9 w-full items-center gap-0.5 rounded-[10px] bg-components-input-bg-normal px-2.5 py-1 system-md-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder">
+                  <SelectValue className="min-w-0 grow truncate px-1.5 py-1" placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+                  <SelectIcon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-open:text-text-secondary">
+                    <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden />
+                  </SelectIcon>
                 </SelectTrigger>
                 <SelectContent listClassName="max-h-[140px] overflow-y-auto">
                   <SelectItem value={EMPTY_SELECT_VALUE}>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItem>

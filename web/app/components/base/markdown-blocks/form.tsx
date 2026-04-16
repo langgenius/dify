@@ -10,7 +10,7 @@ import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-tim
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { Button } from '@/app/components/base/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Select, SelectContent, SelectIcon, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -311,8 +311,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 defaultValue={formValues[name] as string | undefined}
                 onValueChange={val => updateValue(name, val as string)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
+                <SelectTrigger className="group flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 system-sm-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder">
+                  <SelectValue className="min-w-0 grow truncate p-1" />
+                  <SelectIcon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-open:text-text-secondary">
+                    <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden />
+                  </SelectIcon>
                 </SelectTrigger>
                 <SelectContent>
                   {options.map(option => (
