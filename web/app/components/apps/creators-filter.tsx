@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -12,7 +13,6 @@ import {
 } from '@/app/components/base/ui/dropdown-menu'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 
 type CreatorsFilterProps = {
   value: string[]

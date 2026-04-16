@@ -1,7 +1,7 @@
 import type { MetricColumn } from './pipeline-results-utils'
 import type { EvaluationRunItem } from '@/types/evaluation'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import {
   formatValue,
   getIsItemPassed,
@@ -38,14 +38,14 @@ const PipelineResultsTable = ({
         <thead>
           <tr className="bg-background-section">
             <th className="h-7 rounded-l-lg" />
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.query')}</th>
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.expected')}</th>
-            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.actual')}</th>
+            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.query')}</th>
+            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.expected')}</th>
+            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.actual')}</th>
             {metricColumns.map((column, index) => (
               <th
                 key={column.id}
                 className={cn(
-                  'h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary',
+                  'system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary',
                   index === metricColumns.length - 1 && 'rounded-r-lg',
                 )}
               >
@@ -79,14 +79,14 @@ const PipelineResultsTable = ({
                     )}
                   />
                 </td>
-                <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
+                <td className="system-sm-regular h-10 px-3 py-3 align-top text-text-secondary">
                   <div className="line-clamp-2 break-words">{getQueryContent(item)}</div>
                 </td>
-                <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
+                <td className="system-sm-regular h-10 px-3 py-3 align-top text-text-secondary">
                   <div className="line-clamp-2 break-words">{formatValue(item.expected_output)}</div>
                 </td>
                 <td className={cn(
-                  'h-10 px-3 py-3 align-top system-sm-regular',
+                  'system-sm-regular h-10 px-3 py-3 align-top',
                   actualOutput ? 'text-text-secondary' : 'text-text-destructive',
                 )}
                 >
@@ -100,7 +100,7 @@ const PipelineResultsTable = ({
                   return (
                     <td
                       key={column.id}
-                      className={cn('h-10 px-3 py-3 align-top system-sm-regular', getMetricTextClassName(metricValue, column))}
+                      className={cn('system-sm-regular h-10 px-3 py-3 align-top', getMetricTextClassName(metricValue, column))}
                     >
                       {formatValue(metricValue)}
                     </td>

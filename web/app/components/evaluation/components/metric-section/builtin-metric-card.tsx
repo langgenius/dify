@@ -2,6 +2,7 @@
 
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import type { NodeInfo } from '@/types/evaluation'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
@@ -11,7 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
-import { cn } from '@/utils/classnames'
 import { useEvaluationStore } from '../../store'
 import { dedupeNodeInfoList, getMetricVisual, getNodeVisual, getToneClasses } from '../metric-selector/utils'
 
@@ -41,7 +41,7 @@ const BuiltinMetricCard = ({
 
   return (
     <div className="group overflow-hidden rounded-xl border border-components-panel-border hover:bg-background-section">
-      <div className="flex items-center justify-between gap-3 px-3 pb-1 pt-3">
+      <div className="flex items-center justify-between gap-3 px-3 pt-3 pb-1">
         <button
           type="button"
           className="flex min-w-0 flex-1 items-center gap-2 px-1 text-left"
@@ -53,7 +53,7 @@ const BuiltinMetricCard = ({
             <span aria-hidden="true" className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
           </div>
           <div className="flex min-w-0 items-center gap-0.5">
-            <div className="truncate text-text-secondary system-md-medium">{metric.label}</div>
+            <div className="system-md-medium truncate text-text-secondary">{metric.label}</div>
             <span
               aria-hidden="true"
               className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-quaternary transition-transform', !isExpanded && '-rotate-90')}
@@ -65,7 +65,7 @@ const BuiltinMetricCard = ({
           size="small"
           variant="ghost"
           aria-label={t('metrics.remove')}
-          className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 group-hover:opacity-100"
+          className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100"
           onClick={() => removeMetric(resourceType, resourceId, metric.id)}
         >
           <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
@@ -73,7 +73,7 @@ const BuiltinMetricCard = ({
       </div>
 
       {isExpanded && (
-        <div className="flex flex-wrap gap-1 px-3 pb-3 pt-1">
+        <div className="flex flex-wrap gap-1 px-3 pt-1 pb-3">
           {selectedNodeInfoList.length
             ? selectedNodeInfoList.map((nodeInfo) => {
                 const nodeVisual = getNodeVisual(nodeInfo)
@@ -87,7 +87,7 @@ const BuiltinMetricCard = ({
                     <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
                       <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                     </div>
-                    <span className="px-1 text-text-primary system-xs-regular">{nodeInfo.title}</span>
+                    <span className="system-xs-regular px-1 text-text-primary">{nodeInfo.title}</span>
                     <button
                       type="button"
                       className="flex h-4 w-4 items-center justify-center rounded-sm text-text-quaternary transition-colors hover:text-text-secondary"
@@ -105,7 +105,7 @@ const BuiltinMetricCard = ({
                 )
               })
             : (
-                <span className="px-1 text-text-tertiary system-xs-regular">{t('metrics.nodesAll')}</span>
+                <span className="system-xs-regular px-1 text-text-tertiary">{t('metrics.nodesAll')}</span>
               )}
 
           {shouldShowAddNode && (
@@ -144,7 +144,7 @@ const BuiltinMetricCard = ({
                         <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
                           <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                         </div>
-                        <span className="truncate text-text-secondary system-sm-medium">{nodeInfo.title}</span>
+                        <span className="system-sm-medium truncate text-text-secondary">{nodeInfo.title}</span>
                       </div>
                     </DropdownMenuItem>
                   )

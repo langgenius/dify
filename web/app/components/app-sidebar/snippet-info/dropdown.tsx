@@ -2,6 +2,7 @@
 
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { SnippetDetail } from '@/models/snippet'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -24,7 +25,7 @@ import { toast } from '@/app/components/base/ui/toast'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
-import { cn } from '@/utils/classnames'
+
 import { downloadBlob } from '@/utils/download'
 
 type SnippetInfoDropdownProps = {
@@ -170,10 +171,10 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-[400px]">
           <div className="space-y-2 p-6">
-            <AlertDialogTitle className="text-text-primary title-lg-semi-bold">
+            <AlertDialogTitle className="title-lg-semi-bold text-text-primary">
               {t('deleteConfirmTitle')}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-tertiary system-sm-regular">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t('deleteConfirmContent')}
             </AlertDialogDescription>
           </div>

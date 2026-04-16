@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
-import { cn } from '@/utils/classnames'
 
 type SectionHeaderProps = {
   title: string
@@ -31,8 +31,8 @@ const SectionHeader = ({
   return (
     <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
       <div>
-        <div className={cn('text-text-primary system-xl-semibold', titleClassName)}>{title}</div>
-        {description && <div className={cn('mt-1 text-text-tertiary system-sm-regular', descriptionClassName)}>{description}</div>}
+        <div className={cn('system-xl-semibold text-text-primary', titleClassName)}>{title}</div>
+        {description && <div className={cn('system-sm-regular mt-1 text-text-tertiary', descriptionClassName)}>{description}</div>}
       </div>
       {action}
     </div>
@@ -48,7 +48,7 @@ export const InlineSectionHeader = ({
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
       <div className="flex min-h-6 items-center gap-1">
-        <div className="text-text-primary system-md-semibold">{title}</div>
+        <div className="system-md-semibold text-text-primary">{title}</div>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger

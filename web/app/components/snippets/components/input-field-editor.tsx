@@ -2,11 +2,11 @@
 
 import type { FormData } from '@/app/components/rag-pipeline/components/panel/input-field/editor/form/types'
 import type { SnippetInputField } from '@/models/snippet'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { convertFormDataToINputField, convertToInputFieldFormData } from '@/app/components/rag-pipeline/components/panel/input-field/editor/utils'
 import { useFloatingRight } from '@/app/components/rag-pipeline/components/panel/input-field/hooks'
-import { cn } from '@/utils/classnames'
 import InputFieldForm from './input-field-form'
 
 type SnippetInputFieldEditorProps = {
@@ -42,7 +42,7 @@ const SnippetInputFieldEditor = ({
         width: `min(${floatingRightWidth}px, calc(100vw - 24px))`,
       }}
     >
-      <div className="flex items-center pt-3.5 pr-11 pb-1 pl-4 system-xl-semibold text-text-primary">
+      <div className="system-xl-semibold flex items-center pt-3.5 pr-11 pb-1 pl-4 text-text-primary">
         {field ? t('inputFieldPanel.editInputField', { ns: 'datasetPipeline' }) : t('inputFieldPanel.addInputField', { ns: 'datasetPipeline' })}
       </div>
       <button

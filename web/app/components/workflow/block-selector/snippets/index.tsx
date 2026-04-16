@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteScroll } from 'ahooks'
 import {
   memo,
@@ -20,7 +21,6 @@ import {
   TooltipTrigger,
 } from '@/app/components/base/ui/tooltip'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
-import { cn } from '@/utils/classnames'
 import CreateSnippetDialog from '../../create-snippet-dialog'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'

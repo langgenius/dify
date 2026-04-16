@@ -3,8 +3,8 @@ import type {
   Ref,
 } from 'react'
 import type { PublishedSnippetListItem } from './snippet-detail-card'
+import { cn } from '@langgenius/dify-ui/cn'
 import AppIcon from '@/app/components/base/app-icon'
-import { cn } from '@/utils/classnames'
 
 type SnippetListItemProps = {
   isHovered: boolean
@@ -36,11 +36,11 @@ const SnippetListItem = ({
         background={snippet.icon_info.icon_background}
         imageUrl={snippet.icon_info.icon_url}
       />
-      <div className="min-w-0 text-text-secondary system-sm-medium">
+      <div className="system-sm-medium min-w-0 text-text-secondary">
         {snippet.name}
       </div>
       {isHovered && snippet.author && (
-        <div className="ml-auto text-text-tertiary system-xs-regular">
+        <div className="system-xs-regular ml-auto text-text-tertiary">
           {snippet.author}
         </div>
       )}

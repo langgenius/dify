@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppListCategory } from './app-type-filter-shared'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { isAppListCategory } from './app-type-filter-shared'
 
 const chipClassName = 'flex h-8 items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-[13px] leading-[18px] text-text-secondary hover:bg-components-input-bg-hover'

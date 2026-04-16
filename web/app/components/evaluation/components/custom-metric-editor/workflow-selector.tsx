@@ -1,6 +1,7 @@
 'use client'
 
 import type { AvailableEvaluationWorkflow } from '@/types/evaluation'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteScroll } from 'ahooks'
 import * as React from 'react'
 import { useDeferredValue, useMemo, useRef, useState } from 'react'
@@ -20,7 +21,6 @@ import {
   ScrollAreaViewport,
 } from '@/app/components/base/ui/scroll-area'
 import { useAvailableEvaluationWorkflows } from '@/service/use-evaluation'
-import { cn } from '@/utils/classnames'
 
 type WorkflowSelectorProps = {
   value: string | null
@@ -119,9 +119,10 @@ const WorkflowSelector = ({
               </div>
               <div className="min-w-0 flex-1 px-1 py-1 text-left">
                 <div className={cn(
-                  'truncate system-sm-regular',
+                  'system-sm-regular truncate',
                   currentWorkflowName ? 'text-text-secondary' : 'text-components-input-text-placeholder',
-                )}>
+                )}
+                >
                   {currentWorkflowName ?? t('metrics.custom.workflowPlaceholder')}
                 </div>
               </div>
@@ -157,7 +158,7 @@ const WorkflowSelector = ({
               )
             : !workflows.length
                 ? (
-                    <div className="flex h-[120px] items-center justify-center text-text-tertiary system-sm-regular">
+                    <div className="system-sm-regular flex h-[120px] items-center justify-center text-text-tertiary">
                       {t('noData', { ns: 'common' })}
                     </div>
                   )
@@ -183,7 +184,7 @@ const WorkflowSelector = ({
                                   <span aria-hidden="true" className="i-ri-equalizer-2-line h-3.5 w-3.5 text-text-tertiary" />
                                 </div>
                               </div>
-                              <div className="min-w-0 flex-1 truncate px-1 py-1 text-text-secondary system-sm-medium">
+                              <div className="system-sm-medium min-w-0 flex-1 truncate px-1 py-1 text-text-secondary">
                                 {getWorkflowName(workflow)}
                               </div>
                               {workflow.id === value && (

@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 
 type RunModeProps = {
   text?: string
@@ -40,7 +40,7 @@ const RunMode = ({
       <button
         type="button"
         className={cn(
-          'flex h-7 items-center gap-x-1 rounded-md px-1.5 text-components-button-secondary-accent-text system-xs-medium hover:bg-state-accent-hover',
+          'system-xs-medium flex h-7 items-center gap-x-1 rounded-md px-1.5 text-components-button-secondary-accent-text hover:bg-state-accent-hover',
           isRunning && 'cursor-not-allowed rounded-l-md bg-state-accent-hover',
         )}
         onClick={handleWorkflowStartRunInWorkflow}
@@ -49,13 +49,13 @@ const RunMode = ({
         {isRunning
           ? (
               <>
-                <span aria-hidden className="i-ri-loader-2-line mr-1 size-4 animate-spin" />
+                <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
                 {t('common.running', { ns: 'workflow' })}
               </>
             )
           : (
               <>
-                <span aria-hidden className="i-ri-play-large-line mr-1 size-4" />
+                <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                 {text ?? t('common.run', { ns: 'workflow' })}
                 <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
               </>

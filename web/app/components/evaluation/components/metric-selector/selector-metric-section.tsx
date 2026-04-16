@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { EvaluationMetric } from '../../types'
 import type { MetricSelectorSection } from './types'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { getMetricVisual, getNodeVisual, getToneClasses } from './utils'
 
 type SelectorMetricSectionProps = {
@@ -46,7 +46,7 @@ const SelectorMetricSection = ({
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 pb-1 pt-3">
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <button
           type="button"
           className="flex min-w-0 items-center gap-2"
@@ -56,7 +56,7 @@ const SelectorMetricSection = ({
             <span aria-hidden="true" className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
           </div>
           <div className="flex items-center gap-1">
-            <span className="truncate text-text-secondary system-xs-medium-uppercase">{metric.label}</span>
+            <span className="system-xs-medium-uppercase truncate text-text-secondary">{metric.label}</span>
             <span
               aria-hidden="true"
               className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary transition-transform', !isExpanded && '-rotate-90')}
@@ -72,7 +72,7 @@ const SelectorMetricSection = ({
       {isExpanded && (
         <div className="px-1 py-1">
           {hasNoNodeInfo && (
-            <div className="px-3 pb-2 pt-0.5 text-text-tertiary system-sm-regular">
+            <div className="system-sm-regular px-3 pt-0.5 pb-2 text-text-tertiary">
               {t('metrics.noNodesInWorkflow')}
             </div>
           )}
@@ -100,12 +100,12 @@ const SelectorMetricSection = ({
                   <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
                     <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                   </div>
-                  <span className="truncate text-[13px] font-medium leading-4 text-text-secondary">
+                  <span className="truncate text-[13px] leading-4 font-medium text-text-secondary">
                     {nodeInfo.title}
                   </span>
                 </div>
                 {isAdded && (
-                  <span className="shrink-0 px-1 text-text-quaternary system-xs-regular">{t('metrics.added')}</span>
+                  <span className="system-xs-regular shrink-0 px-1 text-text-quaternary">{t('metrics.added')}</span>
                 )}
               </button>
             )
@@ -120,7 +120,7 @@ const SelectorMetricSection = ({
                 <div className="flex items-center px-1 text-text-tertiary">
                   <span aria-hidden="true" className={cn(isShowingAllNodes ? 'i-ri-subtract-line' : 'i-ri-more-line', 'h-4 w-4')} />
                 </div>
-                <span className="truncate text-text-tertiary system-xs-regular">
+                <span className="system-xs-regular truncate text-text-tertiary">
                   {isShowingAllNodes ? t('metrics.showLess') : t('metrics.showMore')}
                 </span>
               </div>

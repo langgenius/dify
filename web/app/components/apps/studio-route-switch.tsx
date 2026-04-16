@@ -1,8 +1,8 @@
 'use client'
 
 import type { StudioPageType } from '.'
+import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   pageType: StudioPageType
@@ -18,7 +18,7 @@ const StudioRouteSwitch = ({
   showSnippets = true,
 }: Props) => {
   return (
-    <div className="flex items-center rounded-lg border-[0.5px] border-divider-subtle bg-[rgba(200,206,218,0.2)] p-[1px]">
+    <div className="flex items-center rounded-lg border-[0.5px] border-divider-subtle bg-[rgba(200,206,218,0.2)] p-px">
       <Link
         href="/apps"
         className={cn(
