@@ -31,10 +31,10 @@ describe('Dropdown', () => {
 
       const { container } = render(<Dropdown {...props} />)
 
-      // Assert - Button should have RiMoreFill icon (rendered as svg)
+      // Assert - Button should have the more icon
       const button = screen.getByRole('button')
       expect(button).toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-more-fill')).toBeInTheDocument()
     })
 
     it('should render separator after dropdown', () => {

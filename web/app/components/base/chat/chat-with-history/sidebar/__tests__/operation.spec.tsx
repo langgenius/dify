@@ -1,15 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Operation from '../operation'
-
-// Mock PortalToFollowElem components to render children in place
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => <div data-open={open}>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => <div onClick={onClick}>{children}</div>,
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div data-testid="portal-content">{children}</div>,
-}))
 
 describe('Operation', () => {
   const defaultProps = {
@@ -72,7 +65,9 @@ describe('Operation', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('explore.sidebar.action.rename'))
 
-    expect(defaultProps.onRenameConversation).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(defaultProps.onRenameConversation).toHaveBeenCalled()
+    })
   })
 
   it('should call onDelete when delete is clicked', async () => {
@@ -82,7 +77,9 @@ describe('Operation', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('explore.sidebar.action.delete'))
 
-    expect(defaultProps.onDelete).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(defaultProps.onDelete).toHaveBeenCalled()
+    })
   })
 
   it('should respect visibility props', async () => {
@@ -108,8 +105,7 @@ describe('Operation', () => {
 
     await user.click(screen.getByRole('button'))
 
-    const portalContent = screen.getByTestId('portal-content')
-    expect(portalContent).toBeInTheDocument()
+    expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
   })
 
   it('should close dropdown when item hovering stops', async () => {
@@ -120,5 +116,60 @@ describe('Operation', () => {
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
 
     rerender(<Operation {...defaultProps} isItemHovering={false} />)
+
+    await waitFor(() => {
+      expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should keep the trigger mounted while visually hidden', () => {
+    render(<Operation {...defaultProps} isItemHovering={false} />)
+
+    const trigger = screen.getByRole('button')
+    expect(trigger).toHaveClass('pointer-events-none')
+    expect(trigger).toHaveClass('opacity-0')
+  })
+
+  it('should safely ignore rename clicks when callback is missing', async () => {
+    const user = userEvent.setup()
+    render(<Operation {...defaultProps} onRenameConversation={undefined} />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('explore.sidebar.action.rename'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('explore.sidebar.action.rename')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should not bubble trigger clicks to the parent container', async () => {
+    const user = userEvent.setup()
+    const parentClick = vi.fn()
+
+    render(
+      <div onClick={parentClick}>
+        <Operation {...defaultProps} />
+      </div>,
+    )
+
+    await user.click(screen.getByRole('button'))
+
+    expect(parentClick).not.toHaveBeenCalled()
+  })
+
+  it('should not bubble popup clicks to the parent container', async () => {
+    const user = userEvent.setup()
+    const parentClick = vi.fn()
+
+    render(
+      <div onClick={parentClick}>
+        <Operation {...defaultProps} isItemHovering={true} />
+      </div>,
+    )
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('menu'))
+
+    expect(parentClick).not.toHaveBeenCalled()
   })
 })
