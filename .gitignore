@@ -203,7 +203,7 @@ sdks/python-client/dify_client.egg-info
 
 .vscode/*
 !.vscode/launch.json.template
-!.vscode/settings.json
+!.vscode/settings.example.json
 !.vscode/README.md
 api/.vscode
 # vscode Code History Extension
