@@ -1,4 +1,13 @@
 {
+  "cucumber.features": [
+    "e2e/features/**/*.feature",
+  ],
+  "cucumber.glue": [
+    "e2e/features/**/*.ts",
+  ],
+
+  "tailwindCSS.experimental.configFile": "web/app/styles/globals.css",
+
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
   "editor.formatOnSave": false,
