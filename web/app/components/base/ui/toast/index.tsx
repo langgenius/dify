@@ -78,18 +78,6 @@ type ToastApi = {
   promise: <Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) => Promise<Value>
 }
 
-/**
- * Module-level singleton toast manager.
- *
- * Usage constraints:
- *   1. Mount exactly one <ToastHost /> per application. Multiple hosts share
- *      the same queue and will render every toast N times.
- *   2. The `toast(...)` API is client-only. Do not call it from Server
- *      Components or during SSR — use it inside event handlers, effects, or
- *      client-side hooks.
- *   3. In tests, call `toast.dismiss()` in `beforeEach` to reset state across
- *      cases (see __tests__/index.spec.tsx).
- */
 const toastManager = BaseToast.createToastManager<ToastData>()
 
 function isToastType(type: string): type is ToastType {

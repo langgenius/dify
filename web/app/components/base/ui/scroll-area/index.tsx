@@ -23,28 +23,7 @@ type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   labelledBy?: string
 }
 
-/**
- * CSS custom properties consumed by ScrollArea.
- *
- * Set any of these on an ancestor element to customize the component without
- * wrapping. This mirrors Base UI's own extension model (e.g.
- * `--scroll-area-corner-width`) and works naturally with Tailwind's
- * arbitrary-property syntax:
- *
- *   <ScrollAreaRoot className="[--dify-scrollbar-edge-hint-bg:var(--color-saas-background)]" />
- *
- * Or with React style props:
- *
- *   <ScrollAreaRoot style={{ [scrollAreaVars.edgeHintBg]: 'var(--color-saas-background)' }} />
- */
 export const scrollAreaVars = {
-  /**
-   * Fade-to color for the edge-hint gradient bars shown on the scrollbar when
-   * content overflows in that direction. Defaults to
-   * `var(--color-components-panel-bg)`, which blends with standard panel
-   * surfaces. Override when the ScrollArea is hosted on a differently-colored
-   * surface (e.g. the saas background on the pricing page).
-   */
   edgeHintBg: '--dify-scrollbar-edge-hint-bg',
 } as const
 

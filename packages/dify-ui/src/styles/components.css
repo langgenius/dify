@@ -1,12 +1,3 @@
-/* ScrollArea — edge-hint gradients.
-   Rendered as ::before/::after on the scrollbar wrapper (marked with
-   `data-dify-scrollbar`). Pseudo-element backgrounds with gradients cannot be
-   expressed in Tailwind, so they live here.
-
-   The fade-to color can be overridden on any ancestor via the
-   `--dify-scrollbar-edge-hint-bg` custom property. Defaults to the panel
-   background so the fade blends with standard surfaces. */
-
 [data-dify-scrollbar]::before,
 [data-dify-scrollbar]::after {
   content: '';
