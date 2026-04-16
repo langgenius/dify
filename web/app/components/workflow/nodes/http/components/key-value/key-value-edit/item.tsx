@@ -11,6 +11,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
@@ -124,10 +126,12 @@ const KeyValueItem: FC<Props> = ({
             </SelectTrigger>
             <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
               <SelectItem value="text">
-                text
+                <SelectItemText>text</SelectItemText>
+                <SelectItemIndicator />
               </SelectItem>
               <SelectItem value="file">
-                file
+                <SelectItemText>file</SelectItemText>
+                <SelectItemIndicator />
               </SelectItem>
             </SelectContent>
           </Select>
