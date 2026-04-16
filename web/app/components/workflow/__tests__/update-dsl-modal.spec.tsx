@@ -230,7 +230,7 @@ describe('UpdateDSLModal', () => {
 
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
     class InvalidDSLFileReader extends MockFileReader {
-      readAsText(_file: Blob) {
+      override readAsText(_file: Blob) {
         const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n' } } as unknown as ProgressEvent<FileReader>
         this.onload?.call(this as unknown as FileReader, event)
       }
