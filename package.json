@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "prepare": "vp config",
-    "type-check": "pnpm -r run type-check"
+    "type-check": "vp run -r type-check"
   },
   "devDependencies": {
     "vite": "catalog:",
