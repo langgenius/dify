@@ -95,9 +95,9 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     const fieldList = Object.keys(fieldMap).map((key) => {
       const field = fieldMap[key]
       return {
-        id: field?.label,
+        id: field?.label!,
         type: DataType.string,
-        name: field?.label,
+        name: field?.label!,
         value: getTargetValue(key),
       }
     })
@@ -120,8 +120,8 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     startToEdit,
     handleSave,
     handleCancel,
-    originInfo,
-    technicalParameters,
+    originInfo: originInfo!,
+    technicalParameters: technicalParameters!,
   }
 }
 export default useMetadataDocument

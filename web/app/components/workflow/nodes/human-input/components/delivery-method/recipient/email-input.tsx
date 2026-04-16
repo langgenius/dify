@@ -113,7 +113,7 @@ const EmailInput = ({
     else if (e.key === 'Backspace') {
       if (searchKey === '' && value.length > 0) {
         e.preventDefault()
-        onDelete(value[value.length - 1])
+        onDelete(value[value.length - 1]!)
         setSearchKey('')
         setOpen(false)
       }

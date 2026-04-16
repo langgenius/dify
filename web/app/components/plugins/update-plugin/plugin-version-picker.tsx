@@ -107,7 +107,7 @@ const PluginVersionPicker: FC<Props> = ({
                 <div className="system-sm-medium text-text-secondary">{version.version}</div>
                 {currentVersion === version.version && <Badge className="ml-1" text="CURRENT" />}
               </div>
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{formatDate(version.created_at, format)}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">{formatDate(version.created_at, format!)}</div>
             </div>
           ))}
         </div>

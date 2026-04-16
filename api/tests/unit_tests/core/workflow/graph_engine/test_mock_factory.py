@@ -7,11 +7,10 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 
 from typing import TYPE_CHECKING, Any
 
+from core.workflow.node_factory import DifyNodeFactory
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
-
-from core.workflow.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,

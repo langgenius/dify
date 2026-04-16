@@ -51,7 +51,7 @@ const DataSources = ({
 
     return dataSources.filter((toolWithProvider) => {
       return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
+        return tool.label[language]!.toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
   }, [searchText, dataSources, language])

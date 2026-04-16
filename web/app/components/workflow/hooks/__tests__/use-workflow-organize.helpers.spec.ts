@@ -88,7 +88,7 @@ describe('use-workflow-organize helpers', () => {
     const laidOut = applyLayoutToNodes({
       nodes: rootNodes,
       layout,
-      parentNodes: [rootNodes[2]],
+      parentNodes: [rootNodes[2]!],
       childLayoutsMap,
     })
     expect(laidOut.find(node => node.id === 'root-b')?.position).toEqual({ x: 210, y: 100 })
@@ -112,7 +112,7 @@ describe('use-workflow-organize helpers', () => {
     const laidOut = applyLayoutToNodes({
       nodes,
       layout,
-      parentNodes: [nodes[2]],
+      parentNodes: [nodes[2]!],
       childLayoutsMap: {},
     })
 

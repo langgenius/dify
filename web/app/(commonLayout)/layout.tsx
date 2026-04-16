@@ -5,7 +5,6 @@ import InSiteMessageNotification from '@/app/components/app/in-site-message/noti
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
-import GotoAnything from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
@@ -13,9 +12,14 @@ import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
+import dynamic from '@/next/dynamic'
 import PartnerStack from '../components/billing/partner-stack'
 import Splash from '../components/splash'
 import RoleRouteGuard from './role-route-guard'
+
+const GotoAnything = dynamic(() => import('@/app/components/goto-anything'), {
+  ssr: false,
+})
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (

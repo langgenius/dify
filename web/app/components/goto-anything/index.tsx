@@ -111,7 +111,7 @@ const GotoAnything: FC<Props> = ({
       // Check if it's a complete slash command
       if (query.startsWith('/')) {
         const commandName = query.substring(1).split(' ')[0]
-        const handler = slashCommandRegistry.findCommand(commandName)
+        const handler = slashCommandRegistry.findCommand(commandName!)
 
         // If it's a direct mode command, execute immediately
         const isAvailable = handler?.isAvailable?.() ?? true

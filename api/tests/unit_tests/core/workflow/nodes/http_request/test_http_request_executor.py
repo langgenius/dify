@@ -1,4 +1,8 @@
 import pytest
+
+from configs import dify_config
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.workflow.system_variables import default_system_variables
 from graphon.file.file_manager import file_manager
 from graphon.nodes.http_request import (
     BodyData,
@@ -11,10 +15,6 @@ from graphon.nodes.http_request.entities import HttpRequestNodeTimeout
 from graphon.nodes.http_request.exc import AuthorizationConfigError
 from graphon.nodes.http_request.executor import Executor
 from graphon.runtime import VariablePool
-
-from configs import dify_config
-from core.helper.ssrf_proxy import ssrf_proxy
-from core.workflow.system_variables import default_system_variables
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,

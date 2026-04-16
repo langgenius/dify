@@ -1,14 +1,13 @@
 from types import SimpleNamespace
 
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.nodes import BuiltinNodeTypes
-
 from core.workflow.system_variables import (
     build_system_variables,
     default_system_variables,
     get_node_creation_preload_selectors,
     system_variables_to_mapping,
 )
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.nodes import BuiltinNodeTypes
 
 
 def test_build_system_variables_normalizes_workflow_execution_id():

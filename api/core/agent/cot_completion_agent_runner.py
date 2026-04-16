@@ -1,5 +1,6 @@
 import json
 
+from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -7,8 +8,6 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
-from core.agent.cot_agent_runner import CotAgentRunner
 
 
 class CotCompletionAgentRunner(CotAgentRunner):

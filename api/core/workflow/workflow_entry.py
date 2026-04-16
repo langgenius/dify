@@ -3,20 +3,6 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, TypedDict
 
-from graphon.entities import GraphInitParams
-from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.errors import WorkflowNodeRunFailedError
-from graphon.file import File
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
-from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
-from graphon.nodes import BuiltinNodeTypes
-from graphon.nodes.base.node import Node
-from graphon.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-
 from configs import dify_config
 from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -40,6 +26,19 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.file import File
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
+from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
+from graphon.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,4 @@
 import type { TagSelectorProps } from './selector'
-import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { useUnmount } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -15,7 +14,7 @@ import { useStore as useTagStore } from './store'
 
 type PanelProps = {
   onCreate: () => void
-} & HtmlContentProps & TagSelectorProps
+} & TagSelectorProps
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props

@@ -105,7 +105,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
     if (option === 'chromePlugin') {
       const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')
       if (splitUrl.length > 1)
-        copy(splitUrl[1])
+        copy(splitUrl[1]!)
     }
     else {
       copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv))

@@ -342,7 +342,7 @@ describe('use-embedding-status', () => {
 
       await waitFor(() => {
         expect(onError).toHaveBeenCalled()
-        expect(onError.mock.calls[0][0]).toEqual(error)
+        expect(onError.mock.calls[0]![0]).toEqual(error)
       })
     })
   })

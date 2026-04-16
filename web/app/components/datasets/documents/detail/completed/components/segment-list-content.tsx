@@ -49,7 +49,7 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
     >
       <SegmentCard
         detail={firstSegment}
-        onClick={() => onClickCard(firstSegment)}
+        onClick={() => onClickCard(firstSegment!)}
         loading={isLoadingSegmentList}
         focused={{
           segmentIndex: currSegmentId === firstSegment?.id,
@@ -57,7 +57,7 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
         }}
       />
       <ChildSegmentList
-        parentChunkId={firstSegment?.id}
+        parentChunkId={firstSegment?.id!}
         onDelete={onDeleteChildChunk}
         childChunks={childSegments}
         handleInputChange={handleInputChange}

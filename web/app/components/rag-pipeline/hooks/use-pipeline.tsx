@@ -72,7 +72,7 @@ export const usePipeline = () => {
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[1] // Assuming the first element is always 'VARIABLE_PREFIX'(rag)
-    const afterNodes = getAllNodesInSameBranch(nodeId)
+    const afterNodes = getAllNodesInSameBranch(nodeId!)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     return effectNodes.length > 0
   }, [getAllNodesInSameBranch])
@@ -95,7 +95,7 @@ export const usePipeline = () => {
   const removeUsedVarInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[1] // Assuming the first element is always 'VARIABLE_PREFIX'(rag)
     const { getNodes, setNodes } = store.getState()
-    const afterNodes = getAllNodesInSameBranch(nodeId)
+    const afterNodes = getAllNodesInSameBranch(nodeId!)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
       const newNodes = getNodes().map((node) => {

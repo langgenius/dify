@@ -289,7 +289,7 @@ describe('Segment CRUD Flow', () => {
 
       // Open detail modal
       act(() => {
-        modalResult.current.onClickCard(segments[0])
+        modalResult.current.onClickCard(segments[0]!)
       })
 
       // All states should be independent

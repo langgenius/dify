@@ -174,7 +174,7 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState())
 
       expect(result.current.memberList).toHaveLength(2)
-      expect(result.current.memberList[0].name).toBe('User 1')
+      expect(result.current.memberList[0]!.name).toBe('User 1')
     })
 
     it('should return currentDataset from context', () => {

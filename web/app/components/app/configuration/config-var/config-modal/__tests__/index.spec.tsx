@@ -44,9 +44,9 @@ describe('ConfigModal', () => {
     )
 
     const textboxes = screen.getAllByRole('textbox')
-    fireEvent.blur(textboxes[0], { target: { value: 'question' } })
+    fireEvent.blur(textboxes[0]!, { target: { value: 'question' } })
 
-    expect(textboxes[1]).toHaveValue('question')
+    expect(textboxes[1])!.toHaveValue('question')
   })
 
   it('should submit the edited payload when the form is valid', () => {

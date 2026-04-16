@@ -102,12 +102,12 @@ describe('Embedded', () => {
     const optionButtons = document.body.querySelectorAll('[class*="option"]')
     expect(optionButtons.length).toBeGreaterThanOrEqual(3)
     act(() => {
-      fireEvent.click(optionButtons[2])
+      fireEvent.click(optionButtons[2]!)
     })
 
     const [chromeText] = screen.getAllByText('appOverview.overview.appInfo.embedded.chromePlugin')
     act(() => {
-      fireEvent.click(chromeText)
+      fireEvent.click(chromeText!)
     })
 
     expect(mockWindowOpen).toHaveBeenCalledWith(

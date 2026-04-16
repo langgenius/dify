@@ -14,7 +14,7 @@ const DemoForm = () => {
         if (!result.success) {
           const issues = result.error.issues
           console.log('Validation errors:', issues)
-          return issues[0].message
+          return issues[0]!.message
         }
         return undefined
       },

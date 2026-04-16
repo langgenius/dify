@@ -64,7 +64,7 @@ const ModelLoadBalancingConfigs = ({
         if (!prev)
           return prev
         const newConfigs = [...prev.configs]
-        const modifiedConfig = modifier(newConfigs[index])
+        const modifiedConfig = modifier(newConfigs[index]!)
         if (modifiedConfig)
           newConfigs[index] = modifiedConfig
         else

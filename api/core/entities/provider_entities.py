@@ -3,7 +3,6 @@ from __future__ import annotations
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.parameter_entities import (
@@ -13,6 +12,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class ProviderQuotaType(StrEnum):

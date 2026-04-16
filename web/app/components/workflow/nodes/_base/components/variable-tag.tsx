@@ -34,7 +34,7 @@ const VariableTag = ({
       if (startNode)
         return startNode
     }
-    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1] : valueSelector[0])
+    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1]! : valueSelector[0]!)
   }, [nodes, valueSelector, availableNodes, isRagVar])
 
   const isEnv = isENV(valueSelector)

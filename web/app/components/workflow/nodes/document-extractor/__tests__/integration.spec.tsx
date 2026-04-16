@@ -135,7 +135,7 @@ describe('document-extractor path', () => {
       />,
     )
 
-    expect(container).toBeEmptyDOMElement()
+    expect(container)!.toBeEmptyDOMElement()
   })
 
   it('should render the selected input variable on the node', () => {
@@ -146,8 +146,8 @@ describe('document-extractor path', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.docExtractor.inputVar')).toBeInTheDocument()
-    expect(screen.getByText('Input Files:start:node-1.files')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.docExtractor.inputVar'))!.toBeInTheDocument()
+    expect(screen.getByText('Input Files:start:node-1.files'))!.toBeInTheDocument()
   })
 
   it('should wire panel input changes and format supported file types for english locales', async () => {
@@ -172,16 +172,16 @@ describe('document-extractor path', () => {
     await user.click(screen.getByRole('button', { name: 'pick-file-var' }))
 
     expect(handleVarChanges).toHaveBeenCalledWith(['node-1', 'files'])
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' })).toHaveAttribute(
+    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}'))!.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }))!.toHaveAttribute(
       'href',
       'https://docs.example.com/document-extractor',
     )
-    expect(screen.getByText('text:string')).toBeInTheDocument()
+    expect(screen.getByText('text:string'))!.toBeInTheDocument()
   })
 
   it('should use chinese separators and array output types when the input is an array of files', () => {
-    mockLocale = LanguagesSupported[1]
+    mockLocale = LanguagesSupported[1]!
     mockUseConfig.mockReturnValueOnce(createConfigResult({
       inputs: createData({
         is_array_file: true,
@@ -198,7 +198,7 @@ describe('document-extractor path', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}')).toBeInTheDocument()
-    expect(screen.getByText('text:array[string]')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}'))!.toBeInTheDocument()
+    expect(screen.getByText('text:array[string]'))!.toBeInTheDocument()
   })
 })

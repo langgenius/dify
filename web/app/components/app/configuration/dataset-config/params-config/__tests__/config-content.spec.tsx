@@ -203,7 +203,7 @@ describe('ConfigContent', () => {
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
-      const [nextConfigs] = onChange.mock.calls[0]
+      const [nextConfigs] = (onChange.mock.calls[0] ?? []) as [any]
       expect(nextConfigs.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
     })
   })
@@ -239,10 +239,11 @@ describe('ConfigContent', () => {
       )
 
       // Assert
-      expect(screen.getByText('dataset.weightedScore.title')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.semantic')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
     })
   })
 

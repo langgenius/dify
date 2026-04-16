@@ -2,8 +2,6 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import TencentConfig
 from core.ops.entities.trace_entity import (
@@ -16,6 +14,8 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.tencent_trace.tencent_trace import TencentDataTrace
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)

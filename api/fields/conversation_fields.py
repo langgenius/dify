@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from graphon.file import File
 from pydantic import Field, field_validator, model_validator
 
 from fields.base import ResponseModel
+from graphon.file import File
 
 type JSONValue = Any
 
@@ -96,7 +96,7 @@ class ConversationAnnotation(ResponseModel):
 
 
 class ConversationAnnotationHitHistory(ResponseModel):
-    annotation_id: str
+    annotation_id: str = Field(validation_alias="id")
     annotation_create_account: SimpleAccount | None = None
     created_at: int | None = None
 
@@ -143,7 +143,7 @@ class MessageDetail(ResponseModel):
     query: str
     message: JSONValue
     message_tokens: int
-    answer: str
+    answer: str = Field(validation_alias="re_sign_file_url_answer")
     answer_tokens: int
     provider_response_latency: float
     from_source: str
@@ -156,7 +156,7 @@ class MessageDetail(ResponseModel):
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
-    metadata: JSONValue
+    metadata: JSONValue = Field(validation_alias="message_metadata_dict")
     status: str
     error: str | None = None
     parent_message_id: str | None = None
@@ -196,7 +196,7 @@ class ModelConfig(ResponseModel):
 
 
 class SimpleModelConfig(ResponseModel):
-    model: JSONValue | None = None
+    model: JSONValue | None = Field(default=None, validation_alias="model_dict")
     pre_prompt: str | None = None
 
 
@@ -210,6 +210,11 @@ class SimpleMessageDetail(ResponseModel):
     @classmethod
     def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
         return format_files_contained(value)
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def _normalize_message(cls, value: JSONValue) -> str:
+        return message_text(value)
 
 
 class Conversation(ResponseModel):
@@ -227,15 +232,22 @@ class Conversation(ResponseModel):
     model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
-    message: SimpleMessageDetail | None = None
+    message: SimpleMessageDetail | None = Field(default=None, validation_alias="first_message")
+
+    @field_validator("read_at", "created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class ConversationPagination(ResponseModel):
     page: int
-    limit: int
+    limit: int = Field(validation_alias="per_page")
     total: int
-    has_more: bool
-    data: list[Conversation]
+    has_more: bool = Field(validation_alias="has_next")
+    data: list[Conversation] = Field(validation_alias="items")
 
 
 class ConversationMessageDetail(ResponseModel):
@@ -246,7 +258,14 @@ class ConversationMessageDetail(ResponseModel):
     from_account_id: str | None = None
     created_at: int | None = None
     model_config_: ModelConfig | None = Field(default=None, alias="model_config")
-    message: MessageDetail | None = None
+    message: MessageDetail | None = Field(default=None, validation_alias="first_message")
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class ConversationWithSummary(ResponseModel):
@@ -258,7 +277,7 @@ class ConversationWithSummary(ResponseModel):
     from_account_id: str | None = None
     from_account_name: str | None = None
     name: str
-    summary: str
+    summary: str = Field(validation_alias="summary_or_query")
     read_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -269,13 +288,20 @@ class ConversationWithSummary(ResponseModel):
     admin_feedback_stats: FeedbackStat | None = None
     status_count: StatusCount | None = None
 
+    @field_validator("read_at", "created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
 
 class ConversationWithSummaryPagination(ResponseModel):
     page: int
-    limit: int
+    limit: int = Field(validation_alias="per_page")
     total: int
-    has_more: bool
-    data: list[ConversationWithSummary]
+    has_more: bool = Field(validation_alias="has_next")
+    data: list[ConversationWithSummary] = Field(validation_alias="items")
 
 
 class ConversationDetail(ResponseModel):
@@ -292,6 +318,13 @@ class ConversationDetail(ResponseModel):
     message_count: int
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 def to_timestamp(value: datetime | None) -> int | None:

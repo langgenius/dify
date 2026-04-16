@@ -157,9 +157,9 @@ describe('dataset-config/card-item', () => {
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
     const actionButtons = within(card).getAllByRole('button', { hidden: true })
 
-    expect(screen.getByText(dataset.name)).toBeInTheDocument()
-    expect(screen.getByText('dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search')).toBeInTheDocument()
-    expect(screen.getByText('dataset.externalTag')).toBeInTheDocument()
+    expect(screen.getByText(dataset.name))!.toBeInTheDocument()
+    expect(screen.getByText('dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search'))!.toBeInTheDocument()
+    expect(screen.getByText('dataset.externalTag'))!.toBeInTheDocument()
     expect(actionButtons).toHaveLength(2)
   })
 
@@ -170,9 +170,9 @@ describe('dataset-config/card-item', () => {
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
     const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton)
+    await user.click(editButton!)
 
-    expect(await screen.findByText('Mock settings modal')).toBeInTheDocument()
+    expect(await screen.findByText('Mock settings modal'))!.toBeInTheDocument()
     fireEvent.click(await screen.findByText('Save changes'))
 
     await waitFor(() => {
@@ -213,8 +213,8 @@ describe('dataset-config/card-item', () => {
     const nameElement = screen.getByText(dataset.name)
     const iconElement = nameElement.parentElement?.firstElementChild as HTMLElement
 
-    expect(iconElement).toHaveStyle({ background: '#FFF4ED' })
-    expect(iconElement.querySelector('em-emoji')).toHaveAttribute('id', '📙')
+    expect(iconElement)!.toHaveStyle({ background: '#FFF4ED' })
+    expect(iconElement.querySelector('em-emoji'))!.toHaveAttribute('id', '📙')
   })
 
   it('should apply mask overlay on mobile when drawer is open', async () => {
@@ -226,12 +226,12 @@ describe('dataset-config/card-item', () => {
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
     const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton)
-    expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
+    await user.click(editButton!)
+    expect(screen.getByText('Mock settings modal'))!.toBeInTheDocument()
 
     const overlay = [...document.querySelectorAll('[class]')]
       .find(element => element.className.toString().includes('bg-black/30'))
 
-    expect(overlay).toBeInTheDocument()
+    expect(overlay)!.toBeInTheDocument()
   })
 })

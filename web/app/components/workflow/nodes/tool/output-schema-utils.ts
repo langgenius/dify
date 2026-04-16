@@ -13,7 +13,7 @@ const resolveDifyCompactTypeString = (typeStr: string): VarType | undefined => {
   const m = /^array\[(string|number|integer|boolean|object|file|any)\]$/i.exec(trimmed)
   if (!m)
     return undefined
-  const inner = m[1].toLowerCase()
+  const inner = m[1]!.toLowerCase()
   const map: Record<string, VarType> = {
     string: VarType.arrayString,
     number: VarType.arrayNumber,

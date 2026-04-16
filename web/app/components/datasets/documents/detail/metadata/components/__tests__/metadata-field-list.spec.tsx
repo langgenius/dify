@@ -42,9 +42,9 @@ describe('MetadataFieldList', () => {
         />,
       )
 
-      expect(screen.getByText('Title')).toBeInTheDocument()
-      expect(screen.getByText('Language')).toBeInTheDocument()
-      expect(screen.getByText('Author')).toBeInTheDocument()
+      expect(screen.getByText('Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Language'))!.toBeInTheDocument()
+      expect(screen.getByText('Author'))!.toBeInTheDocument()
     })
 
     it('should return null when mainField is empty', () => {
@@ -76,7 +76,7 @@ describe('MetadataFieldList', () => {
         />,
       )
 
-      expect(screen.getByText('English')).toBeInTheDocument()
+      expect(screen.getByText('English'))!.toBeInTheDocument()
     })
   })
 
@@ -109,7 +109,7 @@ describe('MetadataFieldList', () => {
 
       // Find the first textbox and type in it
       const inputs = screen.getAllByRole('textbox')
-      fireEvent.change(inputs[0], { target: { value: 'New Title' } })
+      fireEvent.change(inputs[0]!, { target: { value: 'New Title' } })
 
       expect(onUpdate).toHaveBeenCalled()
     })
@@ -128,8 +128,8 @@ describe('MetadataFieldList', () => {
         />,
       )
 
-      expect(screen.getByText('Source')).toBeInTheDocument()
-      expect(screen.getByText('Web')).toBeInTheDocument()
+      expect(screen.getByText('Source'))!.toBeInTheDocument()
+      expect(screen.getByText('Web'))!.toBeInTheDocument()
     })
 
     it('should render custom render function output for fields with render', () => {
@@ -143,7 +143,7 @@ describe('MetadataFieldList', () => {
         />,
       )
 
-      expect(screen.getByText('15 / 5')).toBeInTheDocument()
+      expect(screen.getByText('15 / 5'))!.toBeInTheDocument()
     })
   })
 })

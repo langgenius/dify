@@ -81,7 +81,7 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument.id)
+  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {

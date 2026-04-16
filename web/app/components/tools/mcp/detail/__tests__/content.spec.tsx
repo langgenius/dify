@@ -199,22 +199,22 @@ describe('MCPDetailContent', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
+      expect(screen.getByText('Test MCP Server'))!.toBeInTheDocument()
     })
 
     it('should display MCP name', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
+      expect(screen.getByText('Test MCP Server'))!.toBeInTheDocument()
     })
 
     it('should display server identifier', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-mcp')).toBeInTheDocument()
+      expect(screen.getByText('test-mcp'))!.toBeInTheDocument()
     })
 
     it('should display server URL', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('https://example.com/mcp')).toBeInTheDocument()
+      expect(screen.getByText('https://example.com/mcp'))!.toBeInTheDocument()
     })
 
     it('should render close button', () => {
@@ -227,7 +227,8 @@ describe('MCPDetailContent', () => {
     it('should render operation dropdown', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
       // Operation dropdown trigger should be present
-      expect(document.querySelector('button')).toBeInTheDocument()
+      // Operation dropdown trigger should be present
+      expect(document.querySelector('button'))!.toBeInTheDocument()
     })
   })
 
@@ -238,7 +239,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.authorize')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.authorize'))!.toBeInTheDocument()
     })
 
     it('should show authorized button when authorized', () => {
@@ -247,7 +248,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.auth.authorized')).toBeInTheDocument()
+      expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
     })
 
     it('should show authorization required message when not authorized', () => {
@@ -256,7 +257,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.authorizingRequired')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.authorizingRequired'))!.toBeInTheDocument()
     })
 
     it('should show authorization tip', () => {
@@ -265,7 +266,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.authorizeTip')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.authorizeTip'))!.toBeInTheDocument()
     })
   })
 
@@ -276,7 +277,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.toolsEmpty')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.toolsEmpty'))!.toBeInTheDocument()
     })
 
     it('should show get tools button when empty', () => {
@@ -285,7 +286,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.getTools')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.getTools'))!.toBeInTheDocument()
     })
   })
 
@@ -294,7 +295,7 @@ describe('MCPDetailContent', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
       // Icon container should be present
       const iconContainer = document.querySelector('[class*="rounded-xl"][class*="border"]')
-      expect(iconContainer).toBeInTheDocument()
+      expect(iconContainer)!.toBeInTheDocument()
     })
   })
 
@@ -305,7 +306,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
+      expect(screen.getByText('Test MCP Server'))!.toBeInTheDocument()
     })
 
     it('should handle long MCP name', () => {
@@ -315,7 +316,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      expect(screen.getByText(longName))!.toBeInTheDocument()
     })
   })
 
@@ -332,8 +333,8 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tool1')).toBeInTheDocument()
-      expect(screen.getByText('tool2')).toBeInTheDocument()
+      expect(screen.getByText('tool1'))!.toBeInTheDocument()
+      expect(screen.getByText('tool2'))!.toBeInTheDocument()
     })
 
     it('should show single tool label when only one tool', () => {
@@ -345,7 +346,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.onlyTool')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.onlyTool'))!.toBeInTheDocument()
     })
 
     it('should show tools count when multiple tools', () => {
@@ -360,7 +361,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText(/tools.mcp.toolsNum/)).toBeInTheDocument()
+      expect(screen.getByText(/tools.mcp.toolsNum/))!.toBeInTheDocument()
     })
   })
 
@@ -375,7 +376,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.gettingTools')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.gettingTools'))!.toBeInTheDocument()
     })
 
     it('should show updating state when updating tools', () => {
@@ -388,7 +389,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.mcp.updateTools')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.updateTools'))!.toBeInTheDocument()
     })
 
     it('should show authorizing button when authorizing', () => {
@@ -464,7 +465,7 @@ describe('MCPDetailContent', () => {
       )
 
       const authorizeBtn = screen.getByText('tools.mcp.authorize')
-      expect(authorizeBtn.closest('button')).toBeDisabled()
+      expect(authorizeBtn.closest('button'))!.toBeDisabled()
     })
   })
 
@@ -483,7 +484,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle'))!.toBeInTheDocument()
       })
     })
 
@@ -503,7 +504,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle'))!.toBeInTheDocument()
       })
 
       // Confirm the update
@@ -541,7 +542,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(editBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('mcp-update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('mcp-update-modal'))!.toBeInTheDocument()
       })
     })
 
@@ -553,7 +554,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(editBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('mcp-update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('mcp-update-modal'))!.toBeInTheDocument()
       })
 
       // Close modal
@@ -574,7 +575,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(editBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('mcp-update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('mcp-update-modal'))!.toBeInTheDocument()
       })
 
       // Confirm form
@@ -601,7 +602,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(editBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('mcp-update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('mcp-update-modal'))!.toBeInTheDocument()
       })
 
       // Confirm form
@@ -624,7 +625,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete'))!.toBeInTheDocument()
       })
     })
 
@@ -636,7 +637,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete'))!.toBeInTheDocument()
       })
 
       // Cancel
@@ -656,7 +657,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete'))!.toBeInTheDocument()
       })
 
       // Confirm delete
@@ -678,7 +679,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.delete'))!.toBeInTheDocument()
       })
 
       // Confirm delete
@@ -743,7 +744,7 @@ describe('MCPDetailContent', () => {
       })
 
       // Get the callback function and call it
-      const oauthCallback = mockOpenOAuthPopup.mock.calls[0][1]
+      const oauthCallback = mockOpenOAuthPopup.mock.calls[0]![1]
       oauthCallback()
 
       await waitFor(() => {
@@ -765,7 +766,7 @@ describe('MCPDetailContent', () => {
 
       // Button should be disabled
       const authorizeBtn = screen.getByText('tools.mcp.authorize')
-      expect(authorizeBtn.closest('button')).toBeDisabled()
+      expect(authorizeBtn.closest('button'))!.toBeDisabled()
     })
   })
 
@@ -776,7 +777,7 @@ describe('MCPDetailContent', () => {
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByText('tools.auth.authorized')).toBeInTheDocument()
+      expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
     })
 
     it('should call handleAuthorize when authorized button is clicked', async () => {
@@ -805,7 +806,7 @@ describe('MCPDetailContent', () => {
       )
 
       const authorizedBtn = screen.getByText('tools.auth.authorized')
-      expect(authorizedBtn.closest('button')).toBeDisabled()
+      expect(authorizedBtn.closest('button'))!.toBeDisabled()
     })
   })
 
@@ -825,7 +826,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.toolUpdateConfirmTitle'))!.toBeInTheDocument()
       })
 
       // Cancel the update

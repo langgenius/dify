@@ -141,8 +141,8 @@ describe('DebugItem', () => {
     it('should render with basic props', () => {
       renderComponent()
 
-      expect(screen.getByTestId('model-parameter-trigger')).toBeInTheDocument()
-      expect(screen.getByTestId('dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('model-parameter-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('dropdown'))!.toBeInTheDocument()
     })
 
     it('should display correct index number', () => {
@@ -170,7 +170,7 @@ describe('DebugItem', () => {
       })
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
+      expect(wrapper)!.toHaveClass('custom-class')
       expect(wrapper.style.backgroundColor).toBe('red')
     })
 
@@ -193,7 +193,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('chat-item')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-item'))!.toBeInTheDocument()
       expect(screen.queryByTestId('text-generation-item')).not.toBeInTheDocument()
     })
 
@@ -207,7 +207,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('chat-item')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-item'))!.toBeInTheDocument()
     })
 
     it('should not render ChatItem when model is not active', () => {
@@ -261,7 +261,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('text-generation-item')).toBeInTheDocument()
+      expect(screen.getByTestId('text-generation-item'))!.toBeInTheDocument()
       expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
     })
 
@@ -502,7 +502,7 @@ describe('DebugItem', () => {
         expect.arrayContaining([
           models[0],
           models[1],
-          expect.objectContaining({ model: models[1].model }),
+          expect.objectContaining({ model: models[1]!.model }),
           models[2],
         ]),
       )
@@ -545,6 +545,37 @@ describe('DebugItem', () => {
 
       renderComponent()
 
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
       // When provider/model doesn't match, ChatItem won't render
       expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
     })

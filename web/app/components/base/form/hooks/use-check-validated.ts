@@ -20,7 +20,7 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
           const conditionValue = showOnValues[condition.variable]
           return conditionValue === condition.value
         })
-        const errors: any[] = show ? fields[key].errors : []
+        const errors: any[] = show ? fields[key]!.errors : []
         return [...acc, ...errors]
       }, [] as string[])
       if (errorArray.length) {

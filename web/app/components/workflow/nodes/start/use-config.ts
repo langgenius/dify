@@ -63,8 +63,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setInputs(newInputs)
     if (moreInfo?.payload?.type === ChangeType.changeVarName) {
       const changedVar = newList[moreInfo.index]
-      handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
-      renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
+      handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index]!.variable], [id, changedVar!.variable])
+      renameInspectVarName(id, inputs.variables[moreInfo.index]!.variable, changedVar!.variable)
     }
     else if (moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
       deleteNodeInspectorVars(id)

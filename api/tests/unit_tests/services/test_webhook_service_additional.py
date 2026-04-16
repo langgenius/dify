@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from graphon.variables.types import SegmentType
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -13,6 +12,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
+from graphon.variables.types import SegmentType
 from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
 

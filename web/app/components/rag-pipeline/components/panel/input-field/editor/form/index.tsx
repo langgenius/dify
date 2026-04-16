@@ -28,7 +28,7 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

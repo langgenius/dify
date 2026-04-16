@@ -90,14 +90,14 @@ describe('InfoGroup', () => {
       const { container } = render(
         <InfoGroup dataSetId="ds-1" list={mockList} />,
       )
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render title when provided', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} title="Test Title" />,
       )
-      expect(screen.getByText('Test Title')).toBeInTheDocument()
+      expect(screen.getByText('Test Title'))!.toBeInTheDocument()
     })
 
     it('should not render header when noHeader is true', () => {
@@ -126,7 +126,7 @@ describe('InfoGroup', () => {
       )
       // Tooltip icon should be present
       const tooltipIcon = screen.getByText('Test').closest('.flex')?.querySelector('svg')
-      expect(tooltipIcon).toBeInTheDocument()
+      expect(tooltipIcon)!.toBeInTheDocument()
     })
 
     it('should render headerRight content', () => {
@@ -138,7 +138,7 @@ describe('InfoGroup', () => {
           headerRight={<button data-testid="header-right-btn">Action</button>}
         />,
       )
-      expect(screen.getByTestId('header-right-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('header-right-btn'))!.toBeInTheDocument()
     })
   })
 
@@ -147,7 +147,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      expect(screen.getByTestId('add-metadata-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('add-metadata-btn'))!.toBeInTheDocument()
     })
 
     it('should not render add metadata button when isEdit is false', () => {
@@ -182,7 +182,7 @@ describe('InfoGroup', () => {
       )
 
       const inputs = screen.getAllByTestId('input-combined')
-      fireEvent.change(inputs[0], { target: { value: 'New Value' } })
+      fireEvent.change(inputs[0]!, { target: { value: 'New Value' } })
 
       expect(handleChange).toHaveBeenCalled()
     })
@@ -196,7 +196,7 @@ describe('InfoGroup', () => {
       // Find delete icons (RiDeleteBinLine SVGs inside cursor-pointer divs)
       const deleteButtons = container.querySelectorAll('svg.size-4')
       if (deleteButtons.length > 0)
-        fireEvent.click(deleteButtons[0])
+        fireEvent.click(deleteButtons[0]!)
 
       expect(handleDelete).toHaveBeenCalled()
     })
@@ -239,7 +239,8 @@ describe('InfoGroup', () => {
       fireEvent.click(screen.getByTestId('manage-action'))
 
       // The onManage callback triggers the navigation
-      expect(screen.getByTestId('manage-action')).toBeInTheDocument()
+      // The onManage callback triggers the navigation
+      expect(screen.getByTestId('manage-action'))!.toBeInTheDocument()
     })
   })
 
@@ -248,7 +249,7 @@ describe('InfoGroup', () => {
       const { container } = render(
         <InfoGroup dataSetId="ds-1" list={mockList} className="custom-class" />,
       )
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
 
     it('should apply contentClassName', () => {
@@ -256,7 +257,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} contentClassName="content-custom" />,
       )
       const contentDiv = container.querySelector('.content-custom')
-      expect(contentDiv).toBeInTheDocument()
+      expect(contentDiv)!.toBeInTheDocument()
     })
 
     it('should use uppercase title by default', () => {
@@ -264,7 +265,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} title="Test Title" />,
       )
       const titleElement = screen.getByText('Test Title')
-      expect(titleElement).toHaveClass('system-xs-semibold-uppercase')
+      expect(titleElement)!.toHaveClass('system-xs-semibold-uppercase')
     })
 
     it('should not use uppercase when uppercaseTitle is false', () => {
@@ -272,7 +273,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} title="Test Title" uppercaseTitle={false} />,
       )
       const titleElement = screen.getByText('Test Title')
-      expect(titleElement).toHaveClass('system-md-semibold')
+      expect(titleElement)!.toHaveClass('system-md-semibold')
     })
   })
 
@@ -284,7 +285,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={stringList} />,
       )
-      expect(screen.getByText('Test Value')).toBeInTheDocument()
+      expect(screen.getByText('Test Value'))!.toBeInTheDocument()
     })
 
     it('should display number value', () => {
@@ -294,7 +295,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={numberList} />,
       )
-      expect(screen.getByText('123')).toBeInTheDocument()
+      expect(screen.getByText('123'))!.toBeInTheDocument()
     })
 
     it('should format time value', () => {
@@ -305,7 +306,8 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={timeList} />,
       )
       // The mock formatTime returns formatted date
-      expect(screen.getByTestId('field-content')).toBeInTheDocument()
+      // The mock formatTime returns formatted date
+      expect(screen.getByTestId('field-content'))!.toBeInTheDocument()
     })
   })
 
@@ -314,7 +316,7 @@ describe('InfoGroup', () => {
       const { container } = render(
         <InfoGroup dataSetId="ds-1" list={[]} />,
       )
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle null value in list', () => {
@@ -324,7 +326,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={nullList} />,
       )
-      expect(screen.getByTestId('field')).toBeInTheDocument()
+      expect(screen.getByTestId('field'))!.toBeInTheDocument()
     })
 
     it('should handle items with built-in id', () => {
@@ -334,7 +336,7 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={builtInList} />,
       )
-      expect(screen.getByTestId('field')).toBeInTheDocument()
+      expect(screen.getByTestId('field'))!.toBeInTheDocument()
     })
   })
 })

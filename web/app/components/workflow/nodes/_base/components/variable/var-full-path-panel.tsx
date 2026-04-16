@@ -31,11 +31,11 @@ const VarFullPathPanel: FC<Props> = ({
     for (let i = 1; i < path.length; i++) {
       const isLast = i === path.length - 1
       const name = path[i]
-      current.properties[name] = {
+      current.properties[name!] = {
         type: isLast ? varType : Type.object,
         properties: {},
       } as Field
-      current = current.properties[name] as { type: Type.object, properties: { [key: string]: Field }, required: never[], additionalProperties: false }
+      current = current.properties[name!] as { type: Type.object, properties: { [key: string]: Field }, required: never[], additionalProperties: false }
     }
     return {
       schema,
@@ -49,7 +49,7 @@ const VarFullPathPanel: FC<Props> = ({
       </div>
       <Panel
         className="px-1 pb-3 pt-2"
-        root={{ attrName: path[0] }}
+        root={{ attrName: path[0]! }}
         payload={schema}
         readonly
       />

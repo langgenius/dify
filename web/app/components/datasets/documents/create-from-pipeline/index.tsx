@@ -133,7 +133,7 @@ const CreateFormPipeline = () => {
         [DatasourceType.onlineDrive]: selectedFileIds.length,
       }
       const count = datasourceType ? multipleCheckMap[datasourceType] : 0
-      if (count > 1) {
+      if (count! > 1) {
         showPlanUpgradeModal()
         return
       }

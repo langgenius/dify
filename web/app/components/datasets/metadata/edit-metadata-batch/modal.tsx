@@ -47,8 +47,8 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index].isUpdated = true
-        draft[index].updateType = UpdateType.delete
+        draft[index]!.isUpdated = true
+        draft[index]!.updateType = UpdateType.delete
       }
     })
     setTempleList(newTempleList)
@@ -57,9 +57,9 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index] = { ...list[index] }
-        draft[index].isUpdated = false
-        delete draft[index].updateType
+        draft[index] = { ...list[index]! }
+        draft[index]!.isUpdated = false
+        delete draft[index]!.updateType
       }
     })
     setTempleList(newTempleList)

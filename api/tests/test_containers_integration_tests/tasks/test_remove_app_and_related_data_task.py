@@ -2,12 +2,12 @@ import uuid
 from unittest.mock import ANY, call, patch
 
 import pytest
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from models import Tenant
 from models.enums import CreatorUserRole

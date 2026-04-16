@@ -86,15 +86,15 @@ describe('useCategories', () => {
     it('should use plural labels by default', () => {
       const { result } = renderHook(() => useCategories())
 
-      expect(result.current.categoriesMap.tool.label).toBe('plugin.category.tools')
-      expect(result.current.categoriesMap['agent-strategy'].label).toBe('plugin.category.agents')
+      expect(result.current.categoriesMap.tool!.label).toBe('plugin.category.tools')
+      expect(result.current.categoriesMap['agent-strategy']!.label).toBe('plugin.category.agents')
     })
 
     it('should use singular labels when isSingle is true', () => {
       const { result } = renderHook(() => useCategories(true))
 
-      expect(result.current.categoriesMap.tool.label).toBe('plugin.categorySingle.tool')
-      expect(result.current.categoriesMap['agent-strategy'].label).toBe('plugin.categorySingle.agent')
+      expect(result.current.categoriesMap.tool!.label).toBe('plugin.categorySingle.tool')
+      expect(result.current.categoriesMap['agent-strategy']!.label).toBe('plugin.categorySingle.agent')
     })
   })
 

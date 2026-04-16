@@ -87,7 +87,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
     })
 
     it('should show selected variable with proper formatting when value is provided', () => {
@@ -98,9 +99,10 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('var1')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
   })
 
@@ -114,7 +116,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert - Should display the selected value
-      expect(screen.getByText('var2')).toBeInTheDocument()
+      // Assert - Should display the selected value
+      expect(screen.getByText('var2'))!.toBeInTheDocument()
     })
 
     it('should show placeholder text when no value is selected', () => {
@@ -128,8 +131,39 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -144,7 +178,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('Select a variable')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
     })
 
     it('should apply custom className to VarPicker when provided', () => {
@@ -158,7 +193,8 @@ describe('ContextVar', () => {
       const { container } = render(<ContextVar {...props} />)
 
       // Assert
-      expect(container.querySelector('.custom-class')).toBeInTheDocument()
+      // Assert
+      expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
     })
   })
 
@@ -176,13 +212,13 @@ describe('ContextVar', () => {
       const triggers = screen.getAllByTestId('portal-trigger')
       const varPickerTrigger = triggers[triggers.length - 1]
 
-      await user.click(varPickerTrigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      await user.click(varPickerTrigger!)
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Select a different option
       const options = screen.getAllByText('var2')
       expect(options.length).toBeGreaterThan(0)
-      await user.click(options[0])
+      await user.click(options[0]!)
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
@@ -201,11 +237,11 @@ describe('ContextVar', () => {
       const varPickerTrigger = triggers[triggers.length - 1]
 
       // Open dropdown
-      await user.click(varPickerTrigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      await user.click(varPickerTrigger!)
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Close dropdown
-      await user.click(varPickerTrigger)
+      await user.click(varPickerTrigger!)
       expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
   })
@@ -223,8 +259,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
     })
 
@@ -240,8 +277,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -255,8 +293,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle options with different data types', () => {
@@ -275,9 +314,10 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('strVar')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('strVar'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
 
     it('should render variable names with special characters safely', () => {
@@ -294,7 +334,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('specialVar')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('specialVar'))!.toBeInTheDocument()
     })
   })
 })

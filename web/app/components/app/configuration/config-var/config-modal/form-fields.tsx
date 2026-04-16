@@ -12,6 +12,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
@@ -138,8 +140,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
             </SelectTrigger>
             <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItem>
-              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItem>
+              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
+                <SelectItemText>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
+                <SelectItemText>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
             </SelectContent>
           </Select>
         </Field>
@@ -161,9 +169,15 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
                 </SelectTrigger>
                 <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-                  <SelectItem value={EMPTY_SELECT_VALUE}>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItem>
+                  <SelectItem value={EMPTY_SELECT_VALUE}>
+                    <SelectItemText>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
                   {options.filter(option => option.trim() !== '').map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
