@@ -51,10 +51,10 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      expect(screen.getByTestId('credential-item-cred-1')).toBeInTheDocument()
-      expect(screen.getByTestId('credential-item-cred-2')).toBeInTheDocument()
-      expect(screen.getByText('API Key 1')).toBeInTheDocument()
-      expect(screen.getByText('API Key 2')).toBeInTheDocument()
+      expect(screen.getByTestId('credential-item-cred-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('credential-item-cred-2'))!.toBeInTheDocument()
+      expect(screen.getByText('API Key 1'))!.toBeInTheDocument()
+      expect(screen.getByText('API Key 2'))!.toBeInTheDocument()
     })
 
     it('should render model title when showModelTitle is true', () => {
@@ -67,7 +67,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('model-icon'))!.toBeInTheDocument()
       expect(screen.getAllByText('gpt-4')).toHaveLength(2)
     })
 
@@ -94,7 +94,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      expect(screen.getByText('Custom Title')).toBeInTheDocument()
+      expect(screen.getByText('Custom Title'))!.toBeInTheDocument()
     })
 
     it('should handle empty credentials array', () => {
@@ -122,7 +122,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Edit')[0].click()
+      screen.getAllByText('Edit')[0]!.click()
 
       expect(onEdit).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })
@@ -139,7 +139,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Delete')[0].click()
+      screen.getAllByText('Delete')[0]!.click()
 
       expect(onDelete).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })
@@ -156,7 +156,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Click')[0].click()
+      screen.getAllByText('Click')[0]!.click()
 
       expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })

@@ -1,12 +1,11 @@
 from collections.abc import Mapping
 from typing import Any
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from graphon.entities import GraphInitParams
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 
 
 def build_test_run_context(

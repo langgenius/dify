@@ -126,8 +126,8 @@ describe('Tabs', () => {
   it('should render start content and disabled tab tooltip text', () => {
     render(<Tabs {...baseProps} />)
 
-    expect(screen.getByText('start-content')).toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.startDisabledTip')).toBeInTheDocument()
+    expect(screen.getByText('start-content'))!.toBeInTheDocument()
+    expect(screen.getByText('workflow.tabs.startDisabledTip'))!.toBeInTheDocument()
   })
 
   it('should switch tabs through click handlers and render tools content with normalized icons', () => {
@@ -144,10 +144,10 @@ describe('Tabs', () => {
     fireEvent.click(screen.getByText('Start'))
 
     expect(onActiveTabChange).toHaveBeenCalledWith(TabsEnum.Start)
-    expect(screen.getByText('tools-content')).toBeInTheDocument()
-    expect(screen.getByText('/console/tool.svg')).toBeInTheDocument()
-    expect(screen.getByText('featured-on')).toBeInTheDocument()
-    expect(screen.getByText('featured-idle')).toBeInTheDocument()
+    expect(screen.getByText('tools-content'))!.toBeInTheDocument()
+    expect(screen.getByText('/console/tool.svg'))!.toBeInTheDocument()
+    expect(screen.getByText('featured-on'))!.toBeInTheDocument()
+    expect(screen.getByText('featured-idle'))!.toBeInTheDocument()
   })
 
   it('should sync normalized tools into workflow store state', () => {
@@ -183,7 +183,7 @@ describe('Tabs', () => {
       />,
     )
 
-    expect(screen.getByText('sources-content')).toBeInTheDocument()
+    expect(screen.getByText('sources-content'))!.toBeInTheDocument()
   })
 
   it('should keep the previous workflow store state when tool references do not change', () => {
@@ -197,7 +197,7 @@ describe('Tabs', () => {
       workflowTools: mockToolsState.workflowTools,
       mcpTools: mockToolsState.mcpTools,
     }
-    const updateState = mockSetState.mock.calls[0][0] as (state: typeof previousState) => typeof previousState
+    const updateState = mockSetState.mock.calls[0]![0] as (state: typeof previousState) => typeof previousState
 
     expect(updateState(previousState)).toBe(previousState)
   })
@@ -210,9 +210,9 @@ describe('Tabs', () => {
 
     render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
 
-    expect(screen.getByText('object-icon')).toBeInTheDocument()
+    expect(screen.getByText('object-icon'))!.toBeInTheDocument()
 
-    const updateState = mockSetState.mock.calls[0][0] as (state: {
+    const updateState = mockSetState.mock.calls[0]![0] as (state: {
       buildInTools?: Array<{ icon: string | Record<string, string>, name: string }>
       customTools?: Array<{ icon: string | Record<string, string>, name: string }>
       workflowTools?: Array<{ icon: string | Record<string, string>, name: string }>
@@ -242,7 +242,7 @@ describe('Tabs', () => {
 
     render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
 
-    expect(screen.getByText('tools-content')).toBeInTheDocument()
+    expect(screen.getByText('tools-content'))!.toBeInTheDocument()
   })
 
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {
@@ -257,7 +257,7 @@ describe('Tabs', () => {
 
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
-    expect(screen.getByText('tools-content')).toBeInTheDocument()
+    expect(screen.getByText('tools-content'))!.toBeInTheDocument()
     expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
   })
 
@@ -271,6 +271,6 @@ describe('Tabs', () => {
       />,
     )
 
-    expect(screen.getByText('start-content')).toBeInTheDocument()
+    expect(screen.getByText('start-content'))!.toBeInTheDocument()
   })
 })

@@ -32,7 +32,7 @@ const Citation: FC<CitationProps> = ({
     const documentIndex = prev.findIndex(i => i.documentId === documentId)
 
     if (documentIndex > -1) {
-      prev[documentIndex].sources.push(next)
+      prev[documentIndex]!.sources.push(next)
     }
     else {
       prev.push({
@@ -51,10 +51,10 @@ const Citation: FC<CitationProps> = ({
     let totalWidth = 0
     let limit = 0
     for (let i = 0; i < resources.length; i++) {
-      totalWidth += elesRef.current[i].clientWidth
+      totalWidth += elesRef.current[i]!.clientWidth
 
       if (totalWidth + i * 4 > containerWidth) {
-        totalWidth -= elesRef.current[i].clientWidth
+        totalWidth -= elesRef.current[i]!.clientWidth
 
         if (totalWidth + 34 > containerWidth)
           limit = i - 1

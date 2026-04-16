@@ -1,9 +1,9 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 
 export const Popover = BasePopover.Root
@@ -15,18 +15,18 @@ export const PopoverTitle = BasePopover.Title
 export const PopoverDescription = BasePopover.Description
 
 type PopoverContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   className?: string
   popupClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BasePopover.Positioner>,
+    BasePopover.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BasePopover.Popup>,
+    BasePopover.Popup.Props,
     'children' | 'className'
   >
 }

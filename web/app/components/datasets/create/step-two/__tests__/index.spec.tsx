@@ -1717,22 +1717,23 @@ describe('StepTwoFooter', () => {
       render(<StepTwoFooter {...defaultProps} />)
 
       // Should render Previous and Next buttons with correct text
-      expect(screen.getByText(/previousStep/i)).toBeInTheDocument()
-      expect(screen.getByText(/nextStep/i)).toBeInTheDocument()
+      // Should render Previous and Next buttons with correct text
+      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
+      expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
     })
 
     it('should render Previous and Next buttons when not in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} />)
 
-      expect(screen.getByText(/previousStep/i)).toBeInTheDocument()
-      expect(screen.getByText(/nextStep/i)).toBeInTheDocument()
+      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
+      expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
     })
 
     it('should render Save and Cancel buttons when in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} isSetting={true} />)
 
-      expect(screen.getByText(/save/i)).toBeInTheDocument()
-      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/save/i))!.toBeInTheDocument()
+      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
     })
   })
 
@@ -1772,14 +1773,14 @@ describe('StepTwoFooter', () => {
       render(<StepTwoFooter {...defaultProps} isCreating={true} />)
 
       const nextButton = screen.getByText(/nextStep/i).closest('button')
-      expect(nextButton).toBeDisabled()
+      expect(nextButton)!.toBeDisabled()
     })
 
     it('should show loading state on Save button when creating in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} isSetting={true} isCreating={true} />)
 
       const saveButton = screen.getByText(/save/i).closest('button')
-      expect(saveButton).toBeDisabled()
+      expect(saveButton)!.toBeDisabled()
     })
   })
 })
@@ -1811,18 +1812,50 @@ describe('PreviewPanel', () => {
       render(<PreviewPanel {...defaultProps} />)
 
       // Check for the preview header title text
-      expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
+      // Check for the preview header title text
+      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
     })
 
     it('should render idle state when isIdle is true', () => {
       render(<PreviewPanel {...defaultProps} isIdle={true} />)
 
-      expect(screen.getByText(/previewChunkTip/i)).toBeInTheDocument()
+      expect(screen.getByText(/previewChunkTip/i))!.toBeInTheDocument()
     })
 
     it('should render loading skeleton when isPending is true', () => {
       render(<PreviewPanel {...defaultProps} isIdle={false} isPending={true} />)
 
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
+      // Should show skeleton containers
       // Should show skeleton containers
       expect(screen.queryByText(/previewChunkTip/i)).not.toBeInTheDocument()
     })
@@ -1841,7 +1874,7 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText('Chunk 1 content')).toBeInTheDocument()
+      expect(screen.getByText('Chunk 1 content'))!.toBeInTheDocument()
     })
 
     it('should render QA preview when docForm is qa', () => {
@@ -1855,8 +1888,8 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText('Q1')).toBeInTheDocument()
-      expect(screen.getByText('A1')).toBeInTheDocument()
+      expect(screen.getByText('Q1'))!.toBeInTheDocument()
+      expect(screen.getByText('A1'))!.toBeInTheDocument()
     })
 
     it('should show chunk count badge for non-QA doc form', () => {
@@ -1870,7 +1903,7 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText(/25/)).toBeInTheDocument()
+      expect(screen.getByText(/25/))!.toBeInTheDocument()
     })
 
     it('should render parent-child preview when docForm is parentChild', () => {
@@ -1893,11 +1926,13 @@ describe('PreviewPanel', () => {
       )
 
       // Should render parent chunk label
-      expect(screen.getByText('Chunk-1')).toBeInTheDocument()
+      // Should render parent chunk label
+      expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
       // Should render child chunks
-      expect(screen.getByText('Child 1')).toBeInTheDocument()
-      expect(screen.getByText('Child 2')).toBeInTheDocument()
-      expect(screen.getByText('Child 3')).toBeInTheDocument()
+      // Should render child chunks
+      expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 3'))!.toBeInTheDocument()
     })
 
     it('should limit child chunks when chunkForContext is full-doc', () => {
@@ -1920,10 +1955,43 @@ describe('PreviewPanel', () => {
       )
 
       // Should render parent chunk
-      expect(screen.getByText('Chunk-1')).toBeInTheDocument()
+      // Should render parent chunk
+      expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
       // full-doc mode limits to FULL_DOC_PREVIEW_LENGTH (50)
-      expect(screen.getByText('ChildChunk1')).toBeInTheDocument()
-      expect(screen.getByText('ChildChunk50')).toBeInTheDocument()
+      // full-doc mode limits to FULL_DOC_PREVIEW_LENGTH (50)
+      expect(screen.getByText('ChildChunk1'))!.toBeInTheDocument()
+      expect(screen.getByText('ChildChunk50'))!.toBeInTheDocument()
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
+      // Should not render beyond the limit
       // Should not render beyond the limit
       expect(screen.queryByText('ChildChunk51')).not.toBeInTheDocument()
     })
@@ -1944,10 +2012,10 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText('Chunk-1')).toBeInTheDocument()
-      expect(screen.getByText('Chunk-2')).toBeInTheDocument()
-      expect(screen.getByText('P1-C1')).toBeInTheDocument()
-      expect(screen.getByText('P2-C1')).toBeInTheDocument()
+      expect(screen.getByText('Chunk-1'))!.toBeInTheDocument()
+      expect(screen.getByText('Chunk-2'))!.toBeInTheDocument()
+      expect(screen.getByText('P1-C1'))!.toBeInTheDocument()
+      expect(screen.getByText('P2-C1'))!.toBeInTheDocument()
     })
   })
 
@@ -2222,19 +2290,20 @@ describe('StepTwo Component', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section
-      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      // Should render the segmentation section
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show footer with Previous and Next buttons', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText(/stepTwo\.previousStep/i)).toBeInTheDocument()
-      expect(screen.getByText(/stepTwo\.nextStep/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.previousStep/i))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.nextStep/i))!.toBeInTheDocument()
     })
   })
 
@@ -2282,7 +2351,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // GeneralChunkingOptions renders a "Preview Chunk" button
       const previewButtons = screen.getAllByText(/stepTwo\.previewChunk/i)
-      fireEvent.click(previewButtons[0])
+      fireEvent.click(previewButtons[0]!)
       // updatePreview calls estimateHook.fetchEstimate()
       // No error means the handler executed successfully
     })
@@ -2292,7 +2361,7 @@ describe('StepTwo Component', () => {
       // ParentChildOptions renders an OptionCard; find the title element and click its parent card
       const parentChildTitles = screen.getAllByText(/stepTwo\.parentChild/i)
       // The first match is the title; click it to trigger onDocFormChange
-      fireEvent.click(parentChildTitles[0])
+      fireEvent.click(parentChildTitles[0]!)
       // handleDocFormChange sets docForm, segmentationType, and resets estimate
     })
   })
@@ -2307,7 +2376,8 @@ describe('StepTwo Component', () => {
         />,
       )
       // When currentDataset has parentChild doc_form, should show parent-child option
-      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      // When currentDataset has parentChild doc_form, should show parent-child option
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should render setting mode with Save/Cancel buttons', () => {
@@ -2320,8 +2390,8 @@ describe('StepTwo Component', () => {
           datasetId="test-id"
         />,
       )
-      expect(screen.getByText(/stepTwo\.save/i)).toBeInTheDocument()
-      expect(screen.getByText(/stepTwo\.cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.save/i))!.toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.cancel/i))!.toBeInTheDocument()
     })
 
     it('should call onCancel when Cancel button is clicked in setting mode', () => {
@@ -2362,8 +2432,9 @@ describe('StepTwo Component', () => {
     it('should show both general and parent-child options in create page', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // When isInInit (no datasetId, no isSetting), both options should show
-      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+      // When isInInit (no datasetId, no isSetting), both options should show
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
 
     it('should only show parent-child option when dataset has parentChild doc_form', () => {
@@ -2376,7 +2447,9 @@ describe('StepTwo Component', () => {
       )
       // showGeneralOption should be false (parentChild not in [text, qa])
       // showParentChildOption should be true
-      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+      // showGeneralOption should be false (parentChild not in [text, qa])
+      // showParentChildOption should be true
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
 
     it('should show general option only when dataset has text doc_form', () => {
@@ -2388,7 +2461,8 @@ describe('StepTwo Component', () => {
         />,
       )
       // showGeneralOption should be true (text is in [text, qa])
-      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
+      // showGeneralOption should be true (text is in [text, qa])
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
     })
   })
 
@@ -2401,7 +2475,7 @@ describe('StepTwo Component', () => {
           datasetId="test-id"
         />,
       )
-      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show general option for empty dataset (no doc_form)', () => {
@@ -2413,7 +2487,7 @@ describe('StepTwo Component', () => {
           datasetId="test-id"
         />,
       )
-      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show both options in empty dataset upload', () => {
@@ -2426,8 +2500,9 @@ describe('StepTwo Component', () => {
         />,
       )
       // isUploadInEmptyDataset=true shows both options
-      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+      // isUploadInEmptyDataset=true shows both options
+      expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild'))!.toBeInTheDocument()
     })
   })
 
@@ -2435,19 +2510,22 @@ describe('StepTwo Component', () => {
     it('should render indexing mode section', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // IndexingModeSection renders the index mode title
-      expect(screen.getByText(/stepTwo\.indexMode/i)).toBeInTheDocument()
+      // IndexingModeSection renders the index mode title
+      expect(screen.getByText(/stepTwo\.indexMode/i))!.toBeInTheDocument()
     })
 
     it('should render embedding model selector when QUALIFIED', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // ModelSelector is mocked and rendered with data-testid
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+      // ModelSelector is mocked and rendered with data-testid
+      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
     })
 
     it('should render retrieval method config', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // RetrievalMethodConfig is mocked with data-testid
-      expect(screen.getByTestId('retrieval-method-config')).toBeInTheDocument()
+      // RetrievalMethodConfig is mocked with data-testid
+      expect(screen.getByTestId('retrieval-method-config'))!.toBeInTheDocument()
     })
 
     it('should disable model and retrieval config when datasetId has existing data source', () => {
@@ -2460,14 +2538,14 @@ describe('StepTwo Component', () => {
       )
       // isModelAndRetrievalConfigDisabled should be true
       const modelSelector = screen.getByTestId('model-selector')
-      expect(modelSelector).toHaveAttribute('data-readonly', 'true')
+      expect(modelSelector)!.toHaveAttribute('data-readonly', 'true')
     })
   })
 
   describe('Preview Panel', () => {
     it('should render preview panel', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
     })
 
     it('should hide document picker in setting mode', () => {
@@ -2481,7 +2559,8 @@ describe('StepTwo Component', () => {
         />,
       )
       // Preview panel should still render
-      expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
+      // Preview panel should still render
+      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
     })
   })
 
@@ -2498,35 +2577,35 @@ describe('StepTwo Component', () => {
     it('should switch to QUALIFIED when selecting parentChild in ECONOMICAL mode', async () => {
       render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
       await vi.waitFor(() => {
-        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+        expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
       })
       const parentChildTitles = screen.getAllByText(/stepTwo\.parentChild/i)
-      fireEvent.click(parentChildTitles[0])
+      fireEvent.click(parentChildTitles[0]!)
     })
 
     it('should open QA confirm dialog and confirm switch when QA selected in ECONOMICAL mode', async () => {
       render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
       await vi.waitFor(() => {
-        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+        expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
       })
       const qaCheckbox = screen.getByText(/stepTwo\.useQALanguage/i)
       fireEvent.click(qaCheckbox)
       // Dialog should open → click Switch to confirm (triggers handleQAConfirm)
       const switchButton = await screen.findByText(/stepTwo\.switch/i)
-      expect(switchButton).toBeInTheDocument()
+      expect(switchButton)!.toBeInTheDocument()
       fireEvent.click(switchButton)
     })
 
     it('should close QA confirm dialog when cancel is clicked', async () => {
       render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
       await vi.waitFor(() => {
-        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+        expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
       })
       // Open QA confirm dialog
       const qaCheckbox = screen.getByText(/stepTwo\.useQALanguage/i)
       fireEvent.click(qaCheckbox)
       const dialogCancelButtons = await screen.findAllByText(/stepTwo\.cancel/i)
-      fireEvent.click(dialogCancelButtons[0])
+      fireEvent.click(dialogCancelButtons[0]!)
     })
 
     it('should handle picker change when selecting a different file', () => {
@@ -2545,7 +2624,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // The default maxChunkLength (1024) now exceeds the limit (100)
       const previewButtons = screen.getAllByText(/stepTwo\.previewChunk/i)
-      fireEvent.click(previewButtons[0])
+      fireEvent.click(previewButtons[0]!)
       // Restore
       document.body.removeAttribute('data-public-indexing-max-segmentation-tokens-length')
     })

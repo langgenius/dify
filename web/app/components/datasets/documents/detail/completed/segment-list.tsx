@@ -71,7 +71,7 @@ const SegmentList = (
     <div ref={ref} className="flex grow flex-col overflow-y-auto">
       {
         items.map((segItem) => {
-          const isLast = items[items.length - 1].id === segItem.id
+          const isLast = items[items.length - 1]!.id === segItem.id
           const segmentIndexFocused
             = currSegment?.segInfo?.id === segItem.id
               || (!currSegment && currChildChunk?.childChunkInfo?.segment_id === segItem.id)

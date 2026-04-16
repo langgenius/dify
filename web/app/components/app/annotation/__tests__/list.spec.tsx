@@ -64,7 +64,7 @@ describe('List', () => {
     )
 
     const checkboxes = getCheckboxes(container)
-    fireEvent.click(checkboxes[1])
+    fireEvent.click(checkboxes[1]!)
     expect(onSelectedIdsChange).toHaveBeenCalledWith(['a'])
 
     rerender(
@@ -79,10 +79,10 @@ describe('List', () => {
       />,
     )
     const updatedCheckboxes = getCheckboxes(container)
-    fireEvent.click(updatedCheckboxes[1])
+    fireEvent.click(updatedCheckboxes[1]!)
     expect(onSelectedIdsChange).toHaveBeenCalledWith([])
 
-    fireEvent.click(updatedCheckboxes[0])
+    fireEvent.click(updatedCheckboxes[0]!)
     expect(onSelectedIdsChange).toHaveBeenCalledWith(['a', 'b'])
   })
 
@@ -103,13 +103,13 @@ describe('List', () => {
 
     const row = screen.getByText(item.question).closest('tr') as HTMLTableRowElement
     const actionButtons = within(row).getAllByRole('button')
-    fireEvent.click(actionButtons[1])
+    fireEvent.click(actionButtons[1]!)
 
-    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
+    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
     fireEvent.click(confirmButton)
     expect(onRemove).toHaveBeenCalledWith(item.id)
 
-    expect(screen.getByText('appAnnotation.batchAction.selected')).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.batchAction.selected'))!.toBeInTheDocument()
   })
 })

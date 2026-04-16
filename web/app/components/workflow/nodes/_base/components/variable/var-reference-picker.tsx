@@ -186,7 +186,7 @@ const VarReferencePicker: FC<Props> = ({
     isLoopVar,
     iterationNode,
     loopNode,
-    outputVarNodeId,
+    outputVarNodeId: outputVarNodeId!,
     startNode,
     value,
   }), [availableNodes, hasValue, isConstant, isIterationVar, isLoopVar, iterationNode, loopNode, outputVarNodeId, startNode, value])
@@ -223,7 +223,7 @@ const VarReferencePicker: FC<Props> = ({
     const newValue = produce(value, (draft) => {
       if (draft[1] && draft[1].startsWith('sys.')) {
         draft.shift()
-        const paths = draft[0].split('.')
+        const paths = draft[0]!.split('.')
         paths.forEach((p, i) => {
           draft[i] = p
         })
@@ -254,10 +254,10 @@ const VarReferencePicker: FC<Props> = ({
     } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = currentNode.position
+    const position = currentNode!.position
     setViewport({
-      x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
-      y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+      x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [availableNodes, reactflow, store])

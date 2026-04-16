@@ -1,6 +1,7 @@
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -21,7 +22,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
-  onPublish?: (modelAndParameter?: ModelAndParameter, features?: any) => Promise<any> | any
+  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams, features?: any) => Promise<any> | any
   publishedConfig?: any
   resetAppConfig?: () => void
 }
@@ -61,7 +62,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         },
         enabled: !!(file_upload?.enabled || file_upload?.image?.enabled),
         allowed_file_types: file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
         allowed_file_upload_methods: file_upload?.allowed_file_upload_methods || file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
       } as FileUpload
@@ -70,8 +71,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
     setRestoreConfirmOpen(false)
   }, [featuresStore, props])
 
-  const handlePublish = useCallback((modelAndParameter?: ModelAndParameter) => {
-    return props.onPublish?.(modelAndParameter, features)
+  const handlePublish = useCallback((params?: ModelAndParameter | PublishWorkflowParams) => {
+    return props.onPublish?.(params, features)
   }, [features, props])
 
   return (

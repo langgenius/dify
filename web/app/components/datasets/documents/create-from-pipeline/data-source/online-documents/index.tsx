@@ -115,7 +115,7 @@ const OnlineDocuments = ({
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     setOnlineDocuments(selectedPages)
   }, [dataSourceStore, PagesMapAndSelectedPagesId])
@@ -160,7 +160,7 @@ const OnlineDocuments = ({
                   checkedIds={selectedPagesId}
                   disabledValue={new Set()}
                   searchValue={searchValue}
-                  list={documentsData[0].pages || []}
+                  list={documentsData[0]!.pages || []}
                   pagesMap={PagesMapAndSelectedPagesId}
                   onSelect={handleSelectPages}
                   canPreview={!isInPipeline}

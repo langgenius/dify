@@ -33,8 +33,8 @@ describe('Input', () => {
       render(<Input {...props} />)
 
       const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('type', 'text')
+      expect(input)!.toBeInTheDocument()
+      expect(input)!.toHaveAttribute('type', 'text')
     })
 
     it('should render number input when isNumber is true', () => {
@@ -42,23 +42,23 @@ describe('Input', () => {
       render(<Input {...props} />)
 
       const input = screen.getByRole('spinbutton')
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('type', 'number')
-      expect(input).toHaveAttribute('min', '0')
+      expect(input)!.toBeInTheDocument()
+      expect(input)!.toHaveAttribute('type', 'number')
+      expect(input)!.toHaveAttribute('min', '0')
     })
 
     it('should render with placeholder', () => {
       const props = createInputProps({ placeholder: 'Enter URL' })
       render(<Input {...props} />)
 
-      expect(screen.getByPlaceholderText('Enter URL')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter URL'))!.toBeInTheDocument()
     })
 
     it('should render with initial value', () => {
       const props = createInputProps({ value: 'test value' })
       render(<Input {...props} />)
 
-      expect(screen.getByDisplayValue('test value')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('test value'))!.toBeInTheDocument()
     })
   })
 
@@ -164,7 +164,7 @@ describe('Header', () => {
       const props = createHeaderProps()
       render(<Header {...props} />)
 
-      expect(screen.getByText('Test Title')).toBeInTheDocument()
+      expect(screen.getByText('Test Title'))!.toBeInTheDocument()
     })
 
     it('should render doc link', () => {
@@ -172,15 +172,15 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.example.com')
-      expect(link).toHaveAttribute('target', '_blank')
+      expect(link)!.toHaveAttribute('href', 'https://docs.example.com')
+      expect(link)!.toHaveAttribute('target', '_blank')
     })
 
     it('should render button text when not in pipeline', () => {
       const props = createHeaderProps({ buttonText: 'Configure' })
       render(<Header {...props} />)
 
-      expect(screen.getByText('Configure')).toBeInTheDocument()
+      expect(screen.getByText('Configure'))!.toBeInTheDocument()
     })
 
     it('should not render button text when in pipeline', () => {
@@ -197,7 +197,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const titleElement = screen.getByText('Test Title')
-      expect(titleElement).toHaveClass('system-sm-semibold')
+      expect(titleElement)!.toHaveClass('system-sm-semibold')
     })
 
     it('should apply default styles when isInPipeline is false', () => {
@@ -205,7 +205,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const titleElement = screen.getByText('Test Title')
-      expect(titleElement).toHaveClass('system-md-semibold')
+      expect(titleElement)!.toHaveClass('system-md-semibold')
     })
 
     it('should apply compact button styles when isInPipeline is true', () => {
@@ -213,8 +213,8 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('size-6')
-      expect(button).toHaveClass('px-1')
+      expect(button)!.toHaveClass('size-6')
+      expect(button)!.toHaveClass('px-1')
     })
 
     it('should apply default button styles when isInPipeline is false', () => {
@@ -222,8 +222,8 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('gap-x-0.5')
-      expect(button).toHaveClass('px-1.5')
+      expect(button)!.toHaveClass('gap-x-0.5')
+      expect(button)!.toHaveClass('px-1.5')
     })
   })
 
@@ -269,8 +269,8 @@ describe('CrawledResultItem', () => {
       })
       render(<CrawledResultItem {...props} />)
 
-      expect(screen.getByText('My Page')).toBeInTheDocument()
-      expect(screen.getByText('https://mysite.com')).toBeInTheDocument()
+      expect(screen.getByText('My Page'))!.toBeInTheDocument()
+      expect(screen.getByText('https://mysite.com'))!.toBeInTheDocument()
     })
 
     it('should render checkbox (custom Checkbox component)', () => {
@@ -279,14 +279,14 @@ describe('CrawledResultItem', () => {
 
       // Find checkbox by data-testid
       const checkbox = screen.getByTestId('checkbox-test-item')
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
     })
 
     it('should render preview button', () => {
       const props = createItemProps()
       render(<CrawledResultItem {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.preview')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.preview'))!.toBeInTheDocument()
     })
   })
 
@@ -330,7 +330,7 @@ describe('CrawledResultItem', () => {
       const { container } = render(<CrawledResultItem {...props} />)
 
       const wrapper = container.firstChild
-      expect(wrapper).toHaveClass('bg-state-base-active')
+      expect(wrapper)!.toHaveClass('bg-state-base-active')
     })
 
     it('should not apply active style when isPreview is false', () => {
@@ -374,9 +374,9 @@ describe('CrawledResult', () => {
       const props = createResultProps()
       render(<CrawledResult {...props} />)
 
-      expect(screen.getByText('Page 1')).toBeInTheDocument()
-      expect(screen.getByText('Page 2')).toBeInTheDocument()
-      expect(screen.getByText('Page 3')).toBeInTheDocument()
+      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 3'))!.toBeInTheDocument()
     })
 
     it('should render time info', () => {
@@ -384,14 +384,15 @@ describe('CrawledResult', () => {
       render(<CrawledResult {...props} />)
 
       // The component uses i18n, so we check for the key pattern
-      expect(screen.getByText(/scrapTimeInfo/)).toBeInTheDocument()
+      // The component uses i18n, so we check for the key pattern
+      expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
     })
 
     it('should render select all checkbox', () => {
       const props = createResultProps()
       render(<CrawledResult {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.selectAll')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.selectAll'))!.toBeInTheDocument()
     })
 
     it('should render reset all when all items are checked', () => {
@@ -402,7 +403,7 @@ describe('CrawledResult', () => {
       const props = createResultProps({ list, checkedList: list })
       render(<CrawledResult {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.resetAll')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.resetAll'))!.toBeInTheDocument()
     })
   })
 
@@ -457,7 +458,7 @@ describe('CrawledResult', () => {
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
       ]
-      const props = createResultProps({ list, checkedList: [list[0]], onSelectedChange })
+      const props = createResultProps({ list, checkedList: [list[0]!], onSelectedChange })
 
       render(<CrawledResult {...props} />)
       await userEvent.click(getItemCheckbox(0))
@@ -472,7 +473,7 @@ describe('CrawledResult', () => {
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
         createCrawlResultItem({ source_url: 'https://page3.com', title: 'Page 3' }),
       ]
-      const props = createResultProps({ list, checkedList: [list[0], list[1]], onSelectedChange })
+      const props = createResultProps({ list, checkedList: [list[0]!, list[1]!], onSelectedChange })
 
       render(<CrawledResult {...props} />)
       await userEvent.click(getItemCheckbox(0))
@@ -493,7 +494,7 @@ describe('CrawledResult', () => {
       render(<CrawledResult {...props} />)
 
       const previewButtons = screen.getAllByText('datasetCreation.stepOne.website.preview')
-      await userEvent.click(previewButtons[1])
+      await userEvent.click(previewButtons[1]!)
 
       expect(onPreview).toHaveBeenCalledWith(list[1])
     })
@@ -509,7 +510,7 @@ describe('CrawledResult', () => {
       render(<CrawledResult {...props} />)
 
       const previewButtons = screen.getAllByText('datasetCreation.stepOne.website.preview')
-      await userEvent.click(previewButtons[0])
+      await userEvent.click(previewButtons[0]!)
 
       expect(onPreview).toHaveBeenCalledWith(list[0])
     })
@@ -527,14 +528,15 @@ describe('CrawledResult', () => {
       render(<CrawledResult {...props} />)
 
       // Should still render the header with resetAll (empty list = all checked)
-      expect(screen.getByText('datasetCreation.stepOne.website.resetAll')).toBeInTheDocument()
+      // Should still render the header with resetAll (empty list = all checked)
+      expect(screen.getByText('datasetCreation.stepOne.website.resetAll'))!.toBeInTheDocument()
     })
 
     it('should handle className prop', () => {
       const props = createResultProps({ className: 'custom-class' })
       const { container } = render(<CrawledResult {...props} />)
 
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
   })
 })

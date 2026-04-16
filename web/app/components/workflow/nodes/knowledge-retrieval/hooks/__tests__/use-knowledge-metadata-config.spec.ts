@@ -100,8 +100,8 @@ describe('use-knowledge-metadata-config', () => {
       })
     })
 
-    const firstCondition = setInputs.mock.calls[1][0].metadata_filtering_conditions!.conditions[0] as MetadataFilteringCondition
-    const secondCondition = setInputs.mock.calls[2][0].metadata_filtering_conditions!.conditions[1] as MetadataFilteringCondition
+    const firstCondition = setInputs.mock.calls[1]![0].metadata_filtering_conditions!.conditions[0] as MetadataFilteringCondition
+    const secondCondition = setInputs.mock.calls[2]![0].metadata_filtering_conditions!.conditions[1] as MetadataFilteringCondition
 
     act(() => {
       result.current.handleUpdateCondition(secondCondition.id, {

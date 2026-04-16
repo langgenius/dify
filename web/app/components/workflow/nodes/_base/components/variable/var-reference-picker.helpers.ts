@@ -49,7 +49,7 @@ export const getIsIterationVar = (
 ) => {
   if (!isInIteration || !Array.isArray(value))
     return false
-  return value[0] === parentId && ['item', 'index'].includes(value[1])
+  return value[0] === parentId && ['item', 'index'].includes(value[1]!)
 }
 
 export const getIsLoopVar = (
@@ -59,7 +59,7 @@ export const getIsLoopVar = (
 ) => {
   if (!isInLoop || !Array.isArray(value))
     return false
-  return value[0] === parentId && ['item', 'index'].includes(value[1])
+  return value[0] === parentId && ['item', 'index'].includes(value[1]!)
 }
 
 export const getOutputVarNode = ({

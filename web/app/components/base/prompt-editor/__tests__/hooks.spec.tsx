@@ -359,23 +359,23 @@ describe('prompt-editor/hooks', () => {
       const user = userEvent.setup()
       render(<TriggerHarness />)
 
-      expect(screen.getByText('closed')).toBeInTheDocument()
+      expect(screen.getByText('closed'))!.toBeInTheDocument()
 
       await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('open')).toBeInTheDocument()
+      expect(screen.getByText('open'))!.toBeInTheDocument()
 
       await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('closed')).toBeInTheDocument()
+      expect(screen.getByText('closed'))!.toBeInTheDocument()
     })
 
     it('should keep state unchanged when consumer does not attach the returned ref', async () => {
       const user = userEvent.setup()
       const { unmount } = render(<TriggerNoRefHarness />)
 
-      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
 
       await user.click(screen.getByTestId('trigger-no-ref-state'))
-      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
 
       expect(() => unmount()).not.toThrow()
     })
@@ -399,8 +399,8 @@ describe('prompt-editor/hooks', () => {
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledTimes(2)
       // Verify the first call uses TextNode, not MockTargetNode
       const calls = mockState.editor.registerNodeTransform.mock.calls
-      expect(calls[0][0]).not.toBe(MockTargetNode)
-      expect(typeof calls[0][0]).toBe('function')
+      expect(calls[0]![0]).not.toBe(MockTargetNode)
+      expect(typeof calls[0]![0]).toBe('function')
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
         MockTargetNode,
         expect.any(Function),

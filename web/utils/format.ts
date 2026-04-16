@@ -43,9 +43,9 @@ export const formatNumber = (num: number | string) => {
     let precision: number
     if (match) {
       // Scientific notation: precision is exponent + decimal digits in mantissa
-      const exponent = Number.parseInt(match[1], 10)
+      const exponent = Number.parseInt(match[1]!, 10)
       const mantissa = str.split('e')[0]
-      const mantissaDecimalPart = mantissa.split('.')[1]
+      const mantissaDecimalPart = mantissa!.split('.')[1]
       precision = exponent + (mantissaDecimalPart?.length || 0)
     }
     else {
@@ -60,7 +60,7 @@ export const formatNumber = (num: number | string) => {
   }
 
   const parts = numStr.split('.')
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  parts[0] = parts[0]!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')
 }
 
@@ -125,8 +125,8 @@ export const formatNumberAbbreviated = (num: number) => {
   ]
 
   for (let i = 0; i < units.length; i++) {
-    if (num >= units[i].value) {
-      const value = num / units[i].value
+    if (num >= units[i]!.value) {
+      const value = num / units[i]!.value
       let rounded = Math.round(value * 10) / 10
       let unitIndex = i
 
@@ -138,8 +138,8 @@ export const formatNumberAbbreviated = (num: number) => {
 
       const formatted = rounded.toFixed(1)
       return formatted.endsWith('.0')
-        ? `${Number.parseInt(formatted)}${units[unitIndex].symbol}`
-        : `${formatted}${units[unitIndex].symbol}`
+        ? `${Number.parseInt(formatted)}${units[unitIndex]!.symbol}`
+        : `${formatted}${units[unitIndex]!.symbol}`
     }
   }
   // Fallback: if no threshold matched, return the number string

@@ -129,9 +129,9 @@ describe('MembersPage', () => {
   it('should render workspace and member information', () => {
     render(<MembersPage />)
 
-    expect(screen.getByText('Test Workspace')).toBeInTheDocument()
-    expect(screen.getByText('Owner User')).toBeInTheDocument()
-    expect(screen.getByText('Admin User')).toBeInTheDocument()
+    expect(screen.getByText('Test Workspace'))!.toBeInTheDocument()
+    expect(screen.getByText('Owner User'))!.toBeInTheDocument()
+    expect(screen.getByText('Admin User'))!.toBeInTheDocument()
   })
 
   it('should open and close invite modal', async () => {
@@ -140,7 +140,7 @@ describe('MembersPage', () => {
     render(<MembersPage />)
 
     await user.click(screen.getByRole('button', { name: /invite/i }))
-    expect(screen.getByText('Invite Modal')).toBeInTheDocument()
+    expect(screen.getByText('Invite Modal'))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close Invite Modal' }))
     expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
@@ -154,7 +154,7 @@ describe('MembersPage', () => {
     await user.click(screen.getByRole('button', { name: /invite/i }))
     await user.click(screen.getByRole('button', { name: 'Send Invite Results' }))
 
-    expect(screen.getByText('Invited Modal')).toBeInTheDocument()
+    expect(screen.getByText('Invited Modal'))!.toBeInTheDocument()
     expect(mockRefetch).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Close Invited Modal' }))
@@ -167,7 +167,7 @@ describe('MembersPage', () => {
     render(<MembersPage />)
 
     await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal')).toBeInTheDocument()
+    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
   })
 
   it('should show non-interactive owner role when transfer ownership is not allowed', () => {
@@ -178,7 +178,7 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText('common.members.owner')).toBeInTheDocument()
+    expect(screen.getByText('common.members.owner'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
   })
 
@@ -202,7 +202,7 @@ describe('MembersPage', () => {
     render(<MembersPage />)
 
     await user.click(screen.getByTestId('edit-workspace-pencil'))
-    expect(screen.getByText('Edit Workspace Modal')).toBeInTheDocument()
+    expect(screen.getByText('Edit Workspace Modal'))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
     expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
@@ -214,7 +214,7 @@ describe('MembersPage', () => {
     render(<MembersPage />)
 
     await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal')).toBeInTheDocument()
+    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
     expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
@@ -222,7 +222,7 @@ describe('MembersPage', () => {
 
   it('should show pending status and you indicator', () => {
     const pendingAccount: Member = {
-      ...mockAccounts[1],
+      ...mockAccounts[1]!,
       status: 'pending',
     }
     vi.mocked(useMembers).mockReturnValue({
@@ -232,8 +232,8 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText(/members\.pending/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.you/i)).toBeInTheDocument() // Current user is owner@example.com
+    expect(screen.getByText(/members\.pending/i))!.toBeInTheDocument()
+    expect(screen.getByText(/members\.you/i))!.toBeInTheDocument() // Current user is owner@example.com
   })
 
   it('should show billing information for limited plan', () => {
@@ -247,10 +247,10 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument() // accounts.length
-    expect(screen.getByText('/')).toBeInTheDocument()
-    expect(screen.getByText('5')).toBeInTheDocument() // plan.total.teamMembers
+    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
+    expect(screen.getByText('2'))!.toBeInTheDocument() // accounts.length
+    expect(screen.getByText('/'))!.toBeInTheDocument()
+    expect(screen.getByText('5'))!.toBeInTheDocument() // plan.total.teamMembers
   })
 
   it('should show unlimited billing information', () => {
@@ -264,7 +264,7 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText(/plansCommon\.unlimited/i)).toBeInTheDocument()
+    expect(screen.getByText(/plansCommon\.unlimited/i))!.toBeInTheDocument()
   })
 
   it('should show non-billing member format for team plan even when billing is enabled', () => {
@@ -279,7 +279,8 @@ describe('MembersPage', () => {
     render(<MembersPage />)
 
     // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
+    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
   it('should show invite button when user is manager but not owner', () => {
@@ -292,13 +293,13 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /invite/i }))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
   })
 
   it('should use created_at as fallback when last_active_at is empty', () => {
     const memberNoLastActive: Member = {
-      ...mockAccounts[1],
+      ...mockAccounts[1]!,
       last_active_at: '',
       created_at: '1700000000',
     }
@@ -327,8 +328,8 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
+    expect(screen.getByText('1'))!.toBeInTheDocument()
   })
 
   it('should not show plural s when only one account in non-billing layout', () => {
@@ -339,8 +340,8 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
+    expect(screen.getByText('1'))!.toBeInTheDocument()
   })
 
   it('should show normal role as fallback for unknown role', () => {
@@ -357,7 +358,7 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+    expect(screen.getByText('common.members.normal'))!.toBeInTheDocument()
   })
 
   it('should show upgrade button when member limit is full', () => {
@@ -371,6 +372,6 @@ describe('MembersPage', () => {
 
     render(<MembersPage />)
 
-    expect(screen.getByText('Upgrade Button')).toBeInTheDocument()
+    expect(screen.getByText('Upgrade Button'))!.toBeInTheDocument()
   })
 })

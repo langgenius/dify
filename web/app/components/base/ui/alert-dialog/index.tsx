@@ -1,9 +1,9 @@
 'use client'
 
+import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import type { ButtonProps } from '@/app/components/base/ui/button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { Button } from '@/app/components/base/ui/button'
 
 export const AlertDialog = BaseAlertDialog.Root
@@ -12,11 +12,11 @@ export const AlertDialogTitle = BaseAlertDialog.Title
 export const AlertDialogDescription = BaseAlertDialog.Description
 
 type AlertDialogContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
   overlayClassName?: string
-  popupProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Popup>, 'children' | 'className'>
-  backdropProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Backdrop>, 'className'>
+  popupProps?: Omit<BaseAlertDialog.Popup.Props, 'children' | 'className'>
+  backdropProps?: Omit<BaseAlertDialog.Backdrop.Props, 'className'>
 }
 
 export function AlertDialogContent({
@@ -50,7 +50,7 @@ export function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = React.ComponentPropsWithoutRef<'div'>
+type AlertDialogActionsProps = ComponentPropsWithoutRef<'div'>
 
 export function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   return (
@@ -62,8 +62,8 @@ export function AlertDialogActions({ className, ...props }: AlertDialogActionsPr
 }
 
 type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
-  children: React.ReactNode
-  closeProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Close>, 'children' | 'render'>
+  children: ReactNode
+  closeProps?: Omit<BaseAlertDialog.Close.Props, 'children' | 'render'>
 }
 
 export function AlertDialogCancelButton({

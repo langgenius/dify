@@ -54,10 +54,10 @@ const WeightedScore = ({
             <div className="mr-1 truncate uppercase" title={t('weightedScore.semantic', { ns: 'dataset' }) || ''}>
               {t('weightedScore.semantic', { ns: 'dataset' })}
             </div>
-            {formatNumber(value.value[0])}
+            {formatNumber(value.value[0]!)}
           </div>
           <div className="flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500 system-xs-semibold-uppercase">
-            {formatNumber(value.value[1])}
+            {formatNumber(value.value[1]!)}
             <div className="ml-1 truncate uppercase" title={t('weightedScore.keyword', { ns: 'dataset' }) || ''}>
               {t('weightedScore.keyword', { ns: 'dataset' })}
             </div>

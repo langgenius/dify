@@ -152,7 +152,7 @@ const Breadcrumbs = ({
               <BreadcrumbItem
                 index={breadcrumbs.length - 1}
                 handleClick={handleClickBreadcrumb}
-                name={breadcrumbsConfig.lastBreadcrumb}
+                name={breadcrumbsConfig.lastBreadcrumb!}
                 isActive={true}
                 disabled={true}
                 showSeparator={false}

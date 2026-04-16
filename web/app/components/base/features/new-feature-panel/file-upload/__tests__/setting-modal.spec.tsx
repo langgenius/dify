@@ -46,7 +46,7 @@ describe('FileUploadSettings (setting-modal)', () => {
       </FileUploadSettings>,
     )
 
-    expect(screen.getByText('Upload Settings')).toBeInTheDocument()
+    expect(screen.getByText('Upload Settings'))!.toBeInTheDocument()
   })
 
   it('should render SettingContent in portal', async () => {
@@ -57,7 +57,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
+      expect(screen.getByText(/feature\.fileUpload\.modalTitle/))!.toBeInTheDocument()
     })
   })
 
@@ -73,7 +73,7 @@ describe('FileUploadSettings (setting-modal)', () => {
 
     expect(onOpen).toHaveBeenCalled()
     // The toggle function should flip the open state
-    const toggleFn = onOpen.mock.calls[0][0]
+    const toggleFn = onOpen.mock.calls[0]![0]
     expect(typeof toggleFn).toBe('function')
     expect(toggleFn(false)).toBe(true)
     expect(toggleFn(true)).toBe(false)
@@ -101,7 +101,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
 
@@ -118,7 +118,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /operation\.save/ }))
 
@@ -134,7 +134,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
+      expect(screen.getByText(/feature\.imageUpload\.modalTitle/))!.toBeInTheDocument()
     })
   })
 })

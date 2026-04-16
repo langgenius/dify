@@ -1,5 +1,4 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
-import type * as React from 'react'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 
@@ -24,11 +23,11 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
+type AvatarRootProps = BaseAvatar.Root.Props & {
   size?: AvatarSize
 }
 
-function AvatarRoot({
+export function AvatarRoot({
   size = 'md',
   className,
   ...props
@@ -45,25 +44,11 @@ function AvatarRoot({
   )
 }
 
-type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
-
-function AvatarImage({
-  className,
-  ...props
-}: AvatarImageProps) {
-  return (
-    <BaseAvatar.Image
-      className={cn('absolute inset-0 size-full object-cover', className)}
-      {...props}
-    />
-  )
-}
-
-type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
+type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
   size?: AvatarSize
 }
 
-function AvatarFallback({
+export function AvatarFallback({
   size = 'md',
   className,
   ...props
@@ -75,6 +60,20 @@ function AvatarFallback({
         avatarSizeClasses[size].text,
         className,
       )}
+      {...props}
+    />
+  )
+}
+
+type AvatarImageProps = BaseAvatar.Image.Props
+
+export function AvatarImage({
+  className,
+  ...props
+}: AvatarImageProps) {
+  return (
+    <BaseAvatar.Image
+      className={cn('absolute inset-0 size-full object-cover', className)}
       {...props}
     />
   )
