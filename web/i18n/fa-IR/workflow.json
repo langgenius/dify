@@ -1189,6 +1189,7 @@
   "versionHistory.action.deleteFailure": "حذف نسخه ناموفق بود",
   "versionHistory.action.deleteSuccess": "نسخه حذف شد",
   "versionHistory.action.restoreFailure": "بازیابی نسخه ناموفق بود",
+  "versionHistory.action.restoreInProgress": "{{userName}} در حال بازیابی به نسخه {{versionName}} است...",
   "versionHistory.action.restoreSuccess": "نسخه بازیابی شد",
   "versionHistory.action.updateFailure": "به‌روزرسانی نسخه ناموفق بود",
   "versionHistory.action.updateSuccess": "نسخه به‌روزرسانی شد",
