@@ -57,6 +57,12 @@ vi.mock('@/app/components/base/ui/popover', () => ({
   PopoverClose: ({ children, className }: { children: ReactNode, className?: string }) => <button className={className}>{children}</button>,
 }))
 
+vi.mock('@/app/components/base/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
+  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
+
 vi.mock('../plugin-group', () => ({
   ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => <div data-testid="plugin-group">{items.map(item => item.title).join(',')}</div>,
 }))

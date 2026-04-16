@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { cn } from '@/utils/classnames'
 import {
@@ -39,6 +40,7 @@ const WorkflowChecklist = ({
 }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const label = t('panel.checklist', { ns: 'workflow' })
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
   const needWarningNodes = useChecklist(nodes, edges)
@@ -66,31 +68,42 @@ const WorkflowChecklist = ({
 
   return (
     <Popover open={open} onOpenChange={newOpen => !disabled && setOpen(newOpen)}>
-      <PopoverTrigger
-        render={(
-          <button
-            type="button"
-            className={cn(
-              'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              disabled && 'cursor-not-allowed opacity-50',
-            )}
-            disabled={disabled || undefined}
-          >
-            <span
-              className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
-            >
-              <span
-                className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
-              />
-            </span>
-            {!!needWarningNodes.length && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
-                {needWarningNodes.length}
-              </span>
-            )}
-          </button>
-        )}
-      />
+      <Tooltip>
+        <TooltipTrigger
+          delay={0}
+          render={(
+            <PopoverTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={label}
+                  className={cn(
+                    'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    disabled && 'cursor-not-allowed opacity-50',
+                  )}
+                  disabled={disabled || undefined}
+                >
+                  <span
+                    className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+                  >
+                    <span
+                      className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
+                    />
+                  </span>
+                  {!!needWarningNodes.length && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                      {needWarningNodes.length}
+                    </span>
+                  )}
+                </button>
+              )}
+            />
+          )}
+        />
+        <TooltipContent className="bg-components-tooltip-bg">
+          {label}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         placement="bottom-start"
         sideOffset={12}
@@ -101,15 +114,15 @@ const WorkflowChecklist = ({
           className="overflow-y-auto"
           style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}
         >
-          <div className="flex flex-col gap-0.5 px-3 pb-1 pt-3.5">
+          <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
               <div className="min-w-0 grow pr-8">
-                <h2 className="text-base font-semibold leading-6 text-text-primary">
+                <h2 className="text-base leading-6 font-semibold text-text-primary">
                   {t('panel.checklist', { ns: 'workflow' })}
                   {needWarningNodes.length > 0 && `(${needWarningNodes.length})`}
                 </h2>
               </div>
-              <PopoverClose className="-mr-0.5 -mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg">
+              <PopoverClose className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg">
                 <span className="i-ri-close-line size-4 text-text-tertiary" />
               </PopoverClose>
             </div>
@@ -122,7 +135,7 @@ const WorkflowChecklist = ({
 
           {needWarningNodes.length > 0
             ? (
-                <div className="flex flex-col gap-1 px-4 pb-4 pt-1">
+                <div className="flex flex-col gap-1 px-4 pt-1 pb-4">
                   {pluginItems.length > 0 && (
                     <ChecklistPluginGroup items={pluginItems} />
                   )}
@@ -138,7 +151,7 @@ const WorkflowChecklist = ({
               )
             : (
                 <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
-                  <span className="i-custom-vender-line-general-checklist-square mx-auto mb-[5px] block h-8 w-8 text-text-quaternary" />
+                  <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
                   {t('panel.checklistResolved', { ns: 'workflow' })}
                 </div>
               )}
