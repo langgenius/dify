@@ -66,7 +66,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
       </div>
       <div className="px-4 py-2">
         <div className="relative">
-          <div className="h-6 text-xs font-medium leading-6 text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
+          <div className="h-6 text-xs leading-6 font-medium text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
           <div className="py-1">
             <div className="flex">
               <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">{t('meta.status', { ns: 'runLog' })}</div>

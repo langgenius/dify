@@ -43,7 +43,7 @@ const UserInput = ({
         />
         {t('panel.userInputField', { ns: 'workflow' }).toLocaleUpperCase()}
       </div>
-      <div className="px-2 pb-3 pt-1">
+      <div className="px-2 pt-1 pb-3">
         {
           expanded && (
             <div className="py-2 text-[13px] text-text-primary">

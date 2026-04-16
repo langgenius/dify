@@ -66,7 +66,7 @@ const CredentialSelector = ({
               leaveTo="transform opacity-0 scale-95"
             >
               <MenuItems
-                className="absolute left-0 top-8 z-10 w-80
+                className="absolute top-8 left-0 z-10 w-80
                   origin-top-right rounded-lg border-[0.5px]
                   border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5"
               >
@@ -88,7 +88,7 @@ const CredentialSelector = ({
                               size={20}
                             />
                             <div
-                              className="mr-2 grow truncate text-text-secondary system-sm-medium"
+                              className="mr-2 grow truncate system-sm-medium text-text-secondary"
                               title={displayName}
                             >
                               {displayName}

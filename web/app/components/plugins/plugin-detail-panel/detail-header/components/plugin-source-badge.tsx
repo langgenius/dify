@@ -48,7 +48,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
 
   return (
     <>
-      <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
+      <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
       <Tooltip popupContent={t(config.tipKey as never, { ns: 'plugin' })}>
         <div>{config.icon}</div>
       </Tooltip>

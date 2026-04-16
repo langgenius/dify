@@ -30,8 +30,8 @@ const CopyIcon = ({ content }: Props) => {
     >
       <div onMouseLeave={reset}>
         {!copied
-          ? (<span className="i-custom-vender-line-files-copy mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} data-testid="copy-icon" />)
-          : (<span className="i-custom-vender-line-files-copy-check mx-1 h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)}
+          ? (<span className="mx-1 i-custom-vender-line-files-copy h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} data-testid="copy-icon" />)
+          : (<span className="mx-1 i-custom-vender-line-files-copy-check h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)}
       </div>
     </Tooltip>
   )
