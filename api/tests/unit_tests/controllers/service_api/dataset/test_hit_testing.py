@@ -165,11 +165,11 @@ class TestHitTestingApiPost:
 
         assert response["query"] == "complex query"
         call_kwargs = mock_hit_svc.retrieve.call_args
-        # retrieval_model is serialized via model_dump, verify key fields
+        # retrieval_model now stays as a validated RetrievalModel through the controller/base path.
         passed_retrieval_model = call_kwargs.kwargs.get("retrieval_model")
         assert passed_retrieval_model is not None
-        assert passed_retrieval_model["search_method"] == "semantic_search"
-        assert passed_retrieval_model["top_k"] == 10
+        assert passed_retrieval_model.search_method == "semantic_search"
+        assert passed_retrieval_model.top_k == 10
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
