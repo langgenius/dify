@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
-from graphon.enums import BuiltinNodeTypes
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from graphon.enums import BuiltinNodeTypes
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,

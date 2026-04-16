@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import Request, Response
-from graphon.entities.graph_config import NodeConfigDict
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -21,6 +20,7 @@ from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.entities.graph_config import NodeConfigDict
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger

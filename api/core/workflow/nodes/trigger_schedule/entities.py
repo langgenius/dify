@@ -1,10 +1,10 @@
 from typing import Any, Literal, Union
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import NodeType
 from pydantic import BaseModel, Field
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 
 
 class TriggerScheduleNodeData(BaseNodeData):

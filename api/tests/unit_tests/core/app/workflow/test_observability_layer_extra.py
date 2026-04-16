@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from graphon.enums import BuiltinNodeTypes
-
 from core.app.workflow.layers.observability import ObservabilityLayer
+from graphon.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerExtras:

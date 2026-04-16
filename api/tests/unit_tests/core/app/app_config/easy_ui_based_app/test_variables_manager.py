@@ -1,9 +1,9 @@
 import pytest
-from graphon.variables.input_entities import VariableEntityType
 
 from core.app.app_config.easy_ui_based_app.variables.manager import (
     BasicVariablesConfigManager,
 )
+from graphon.variables.input_entities import VariableEntityType
 
 
 class TestBasicVariablesConfigManagerConvert:

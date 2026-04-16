@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Any
 
 from flask_restx import Namespace, fields
-from graphon.variables.types import SegmentType
 from pydantic import field_validator
 
 from fields.base import ResponseModel
+from graphon.variables.types import SegmentType
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
