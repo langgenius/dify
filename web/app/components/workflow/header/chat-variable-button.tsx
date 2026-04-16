@@ -5,7 +5,6 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { Button } from '@/app/components/base/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { t } = useTranslation()

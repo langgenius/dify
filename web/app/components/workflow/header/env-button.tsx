@@ -6,7 +6,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { t } = useTranslation()
