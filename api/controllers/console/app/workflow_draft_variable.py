@@ -25,6 +25,7 @@ from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from fields.base import ResponseModel
@@ -49,6 +50,16 @@ class WorkflowDraftVariableUpdatePayload(BaseModel):
     value: Any | None = Field(default=None, description="Variable value")
 
 
+class ConversationVariableUpdatePayload(BaseModel):
+    conversation_variables: list[dict[str, Any]] = Field(
+        ..., description="Conversation variables for the draft workflow"
+    )
+
+
+class EnvironmentVariableUpdatePayload(BaseModel):
+    environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
+
+
 console_ns.schema_model(
     WorkflowDraftVariableListQuery.__name__,
     WorkflowDraftVariableListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
@@ -56,6 +67,14 @@ console_ns.schema_model(
 console_ns.schema_model(
     WorkflowDraftVariableUpdatePayload.__name__,
     WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    ConversationVariableUpdatePayload.__name__,
+    ConversationVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    EnvironmentVariableUpdatePayload.__name__,
+    EnvironmentVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 
@@ -645,6 +664,34 @@ class ConversationVariableCollectionApi(Resource):
             _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
         ).model_dump(mode="json")
 
+    @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
+    @console_ns.doc("update_conversation_variables")
+    @console_ns.doc(description="Update conversation variables for workflow draft")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Conversation variables updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    def post(self, app_model: App):
+        payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
+
+        workflow_service = WorkflowService()
+
+        conversation_variables_list = payload.conversation_variables
+        conversation_variables = [
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_conversation_variables(
+            app_model=app_model,
+            account=current_user,
+            conversation_variables=conversation_variables,
+        )
+
+        return {"result": "success"}
+
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
 class SystemVariableCollectionApi(Resource):
@@ -705,3 +752,31 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return WorkflowDraftEnvVariableListResponse.model_validate({"items": env_vars_list}).model_dump(mode="json")
+
+    @console_ns.expect(console_ns.models[EnvironmentVariableUpdatePayload.__name__])
+    @console_ns.doc("update_environment_variables")
+    @console_ns.doc(description="Update environment variables for workflow draft")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Environment variables updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
+
+        workflow_service = WorkflowService()
+
+        environment_variables_list = payload.environment_variables
+        environment_variables = [
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_environment_variables(
+            app_model=app_model,
+            account=current_user,
+            environment_variables=environment_variables,
+        )
+
+        return {"result": "success"}

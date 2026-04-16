@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Avatar } from '.'
+import { Avatar, AvatarFallback, AvatarRoot } from '.'
 
 const meta = {
   title: 'Base/Data Display/Avatar',
@@ -83,4 +83,28 @@ export const AllFallbackSizes: Story = {
       ))}
     </div>
   ),
+}
+
+export const ComposedFallback: Story = {
+  render: () => (
+    <AvatarRoot size="xl">
+      <AvatarFallback size="xl" style={{ backgroundColor: '#2563eb' }}>
+        C
+      </AvatarFallback>
+    </AvatarRoot>
+  ),
+  parameters: {
+    docs: {
+      source: {
+        language: 'tsx',
+        code: `
+<AvatarRoot size="xl">
+  <AvatarFallback size="xl" style={{ backgroundColor: '#2563eb' }}>
+    C
+  </AvatarFallback>
+</AvatarRoot>
+        `.trim(),
+      },
+    },
+  },
 }
