@@ -138,7 +138,7 @@ class ApiToolManageService:
 
         # check if the provider exists
         # Create new session with automatic transaction management
-        with sessionmaker(db.engine).begin() as _session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
@@ -297,7 +297,7 @@ class ApiToolManageService:
 
         # check if the provider exists
         # create new session with automatic transaction management
-        with sessionmaker(db.engine).begin() as _session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
@@ -376,7 +376,7 @@ class ApiToolManageService:
         """
 
         # create new session with automatic transaction management
-        with sessionmaker(db.engine).begin() as _session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
