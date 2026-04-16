@@ -38,7 +38,7 @@ const ScoreSlider: FC<Props> = ({
           aria-label={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}
         />
         <div
-          className="pointer-events-none absolute top-[-16px] text-text-primary system-sm-semibold"
+          className="pointer-events-none absolute top-[-16px] system-sm-semibold text-text-primary"
           style={{
             left: `calc(4px + ${(safeValue - 80) / 20} * (100% - 8px))`,
             transform: 'translateX(-50%)',

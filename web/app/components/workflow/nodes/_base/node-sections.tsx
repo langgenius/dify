@@ -25,7 +25,7 @@ export const NodeHeaderMeta = ({
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
         <Tooltip>
           <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
+            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
               {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
@@ -73,7 +73,7 @@ export const NodeBody = ({
 }: NodeBodyProps) => {
   if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
     return (
-      <div className="grow pb-1 pl-1 pr-1">
+      <div className="grow pr-1 pb-1 pl-1">
         {child}
       </div>
     )
@@ -87,7 +87,7 @@ export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
     return null
 
   return (
-    <div className="whitespace-pre-line wrap-break-word px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
+    <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
       {data.desc}
     </div>
   )

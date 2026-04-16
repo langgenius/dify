@@ -30,7 +30,7 @@ const DefaultValue = ({
 
   return (
     <div className="px-4 pt-2">
-      <div className="body-xs-regular mb-2 text-text-tertiary">
+      <div className="mb-2 body-xs-regular text-text-tertiary">
         {t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' })}
         &nbsp;
       </div>
@@ -43,7 +43,7 @@ const DefaultValue = ({
                 className="py-1"
               >
                 <div className="mb-1 flex items-center">
-                  <div className="system-sm-medium mr-1 text-text-primary">{form.key}</div>
+                  <div className="mr-1 system-sm-medium text-text-primary">{form.key}</div>
                   <div className="system-xs-regular text-text-tertiary">{form.type}</div>
                 </div>
                 {

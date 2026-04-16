@@ -122,7 +122,7 @@ const DebugWithMultipleModel = () => {
               key={modelConfig.id}
               modelAndParameter={modelConfig}
               className={`
-                absolute left-6 top-0 min-h-[200px]
+                absolute top-0 left-6 min-h-[200px]
                 ${twoLine && index === 0 && 'mr-2'}
                 ${threeLine && (index === 0 || index === 1) && 'mr-2'}
                 ${fourLine && (index === 0 || index === 2) && 'mr-2'}

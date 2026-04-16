@@ -14,7 +14,7 @@ const CodeBlockDemo = ({
 }) => {
   return (
     <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Code block</div>
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Code block</div>
       <CodeBlock
         className={`language-${language}`}
       >

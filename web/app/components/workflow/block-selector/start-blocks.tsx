@@ -80,7 +80,7 @@ const StartBlocks = ({
             className="mb-2"
             type={block.type}
           />
-          <div className="system-md-medium mb-1 text-text-primary">
+          <div className="mb-1 system-md-medium text-text-primary">
             {block.type === BlockEnumValues.TriggerWebhook
               ? t('customWebhook', { ns: 'workflow' })
               : t(`blocks.${block.type}`, { ns: 'workflow' })}
@@ -89,7 +89,7 @@ const StartBlocks = ({
             {t(`blocksAbout.${block.type}`, { ns: 'workflow' })}
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
-            <div className="system-xs-regular mb-1 mt-1 text-text-tertiary">
+            <div className="mt-1 mb-1 system-xs-regular text-text-tertiary">
               {t('author', { ns: 'tools' })}
               {' '}
               {t('difyTeam', { ns: 'workflow' })}
@@ -109,7 +109,7 @@ const StartBlocks = ({
         <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
           <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
           {block.type === BlockEnumValues.Start && (
-            <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+            <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
           )}
         </div>
       </div>

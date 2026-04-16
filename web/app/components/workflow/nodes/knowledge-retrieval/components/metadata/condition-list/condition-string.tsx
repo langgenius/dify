@@ -40,12 +40,12 @@ const ConditionString = ({
   }, [onChange])
 
   return (
-    <div className="flex h-8 items-center pl-1 pr-2">
+    <div className="flex h-8 items-center pr-2 pl-1">
       <ConditionValueMethod
         valueMethod={valueMethod}
         onValueMethodChange={onValueMethodChange}
       />
-      <div className="ml-1 mr-1.5 h-4 w-px bg-divider-regular"></div>
+      <div className="mr-1.5 ml-1 h-4 w-px bg-divider-regular"></div>
       {
         valueMethod === 'variable' && !isCommonVariable && (
           <ConditionVariableSelector

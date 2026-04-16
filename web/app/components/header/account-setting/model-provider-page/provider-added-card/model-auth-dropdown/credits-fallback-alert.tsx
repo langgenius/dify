@@ -12,13 +12,13 @@ export default function CreditsFallbackAlert({ hasCredentials }: CreditsFallback
     : 'modelProvider.card.noApiKeysFallback'
 
   return (
-    <div className="mx-2 mb-1 mt-0.5 rounded-lg bg-background-section-burn p-3">
+    <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
-        <div className="text-text-primary system-sm-medium">
+        <div className="system-sm-medium text-text-primary">
           {t(titleKey, { ns: 'common' })}
         </div>
         {hasCredentials && (
-          <div className="text-text-tertiary system-xs-regular">
+          <div className="system-xs-regular text-text-tertiary">
             {t('modelProvider.card.apiKeyUnavailableFallbackDescription', { ns: 'common' })}
           </div>
         )}

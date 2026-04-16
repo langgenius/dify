@@ -12,7 +12,7 @@ const Item = ({
 }: ItemProps) => {
   return (
     <div className="flex items-center">
-      <span className="system-sm-regular grow text-text-secondary">{label}</span>
+      <span className="grow system-sm-regular text-text-secondary">{label}</span>
       {tooltip && (
         <Tooltip
           content={tooltip}

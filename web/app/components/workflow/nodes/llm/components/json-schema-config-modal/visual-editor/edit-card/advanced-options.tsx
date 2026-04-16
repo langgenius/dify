@@ -47,7 +47,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
           </div>
         </div>
         <div className="flex flex-col">
-          <div className="system-xs-medium flex h-6 items-center text-text-secondary">
+          <div className="flex h-6 items-center system-xs-medium text-text-secondary">
             Enum
           </div>
           <Textarea

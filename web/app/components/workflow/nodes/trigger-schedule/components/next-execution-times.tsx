@@ -26,10 +26,10 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
       <div className="flex min-h-[80px] flex-col rounded-xl bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (
           <div key={index} className="flex items-baseline text-xs">
-            <span className="w-6 select-none text-right font-mono font-normal leading-[150%] tracking-wider text-text-quaternary">
+            <span className="w-6 text-right font-mono leading-[150%] font-normal tracking-wider text-text-quaternary select-none">
               {String(index + 1).padStart(2, '0')}
             </span>
-            <span className="pl-2 pr-3 font-mono font-normal leading-[150%] tracking-wider text-text-secondary">
+            <span className="pr-3 pl-2 font-mono leading-[150%] font-normal tracking-wider text-text-secondary">
               {time}
             </span>
           </div>

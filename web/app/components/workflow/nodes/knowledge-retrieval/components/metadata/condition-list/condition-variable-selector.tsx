@@ -64,11 +64,11 @@ const ConditionVariableSelector = ({
           {
             !valueSelector.length && (
               <>
-                <div className="system-sm-regular flex grow items-center text-components-input-text-placeholder">
+                <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
                   <Variable02 className="mr-1 h-4 w-4" />
                   {t('nodes.knowledgeRetrieval.metadata.panel.select', { ns: 'workflow' })}
                 </div>
-                <div className="system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary">
+                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">
                   {varType}
                 </div>
               </>

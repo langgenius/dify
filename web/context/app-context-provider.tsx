@@ -145,7 +145,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     >
       <div className="flex h-full flex-col overflow-y-auto">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
-        <div className="relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body">
+        <div className="relative flex grow flex-col overflow-x-hidden overflow-y-auto bg-background-body">
           {children}
         </div>
       </div>
