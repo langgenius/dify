@@ -1,15 +1,13 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
 import * as React from 'react'
-import { useIsLogin } from '@/service/use-common'
+import { useUserProfile } from '@/service/use-common'
 import Loading from './base/loading'
 
 const Splash: FC<PropsWithChildren> = () => {
-  // would auto redirect to signin page if not logged in
-  const { isLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
+  const { isPending, data } = useUserProfile()
 
-  if (isLoading || !isLoggedIn) {
+  if (isPending || !data?.profile) {
     return (
       <div className="fixed inset-0 z-9999999 flex h-full items-center justify-center bg-background-body">
         <Loading />
