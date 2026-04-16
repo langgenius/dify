@@ -208,9 +208,7 @@ class Dataset(Base):
         default=DATASET_PERMISSION_DEFAULT,
     )
     # Nullable until the first document defines the source; see DatasetService.save_document_with_dataset_id
-    data_source_type: Mapped[DataSourceType | None] = mapped_column(
-        EnumText(DataSourceType, length=255), nullable=True
-    )
+    data_source_type: Mapped[DataSourceType | None] = mapped_column(EnumText(DataSourceType, length=255), nullable=True)
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
