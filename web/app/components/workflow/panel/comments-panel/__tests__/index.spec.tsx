@@ -110,8 +110,8 @@ vi.mock('@/app/components/base/user-avatar-list', () => ({
 }))
 
 vi.mock('@/app/components/base/switch', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange: (value: boolean) => void }) => (
-    <button type="button" data-testid="show-resolved-switch" onClick={() => onChange(!value)}>
+  default: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (value: boolean) => void }) => (
+    <button type="button" data-testid="show-resolved-switch" onClick={() => onCheckedChange(!checked)}>
       toggle
     </button>
   ),
