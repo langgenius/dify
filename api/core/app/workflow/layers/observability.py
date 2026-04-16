@@ -12,10 +12,6 @@ from contextvars import Token
 from dataclasses import dataclass
 from typing import cast, final, override
 
-from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphNodeEventBase
-from graphon.nodes.base.node import Node
 from opentelemetry import context as context_api
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
 
@@ -28,6 +24,10 @@ from extensions.otel.parser import (
     ToolNodeOTelParser,
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 

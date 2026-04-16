@@ -5,6 +5,19 @@ from collections.abc import Sequence
 from unittest import mock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.llm.model_access import (
+    DifyCredentialsProvider,
+    DifyModelFactory,
+    build_dify_model_access,
+    fetch_model_config,
+)
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -67,19 +80,6 @@ from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
-from core.app.llm.model_access import (
-    DifyCredentialsProvider,
-    DifyModelFactory,
-    build_dify_model_access,
-    fetch_model_config,
-)
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.system_variables import default_system_variables
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 

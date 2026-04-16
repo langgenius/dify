@@ -4,11 +4,10 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from graphon.enums import BuiltinNodeTypes
-
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import MessageTraceInfo, WorkflowTraceInfo
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+from graphon.enums import BuiltinNodeTypes
 
 
 def _create_trace_instance() -> LangFuseDataTrace:

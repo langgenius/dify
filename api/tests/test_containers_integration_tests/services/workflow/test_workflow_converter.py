@@ -5,9 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -21,6 +18,9 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import Account, Tenant
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
