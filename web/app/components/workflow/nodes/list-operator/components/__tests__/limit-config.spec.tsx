@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import LimitConfig from '../limit-config'
 
 type MockSwitchProps = {
-  value: boolean
-  onChange: (value: boolean) => void
+  checked: boolean
+  onCheckedChange: (value: boolean) => void
   disabled?: boolean
 }
 
@@ -25,9 +25,9 @@ vi.mock('@/app/components/base/switch', () => ({
     return (
       <button
         type="button"
-        onClick={() => !props.disabled && props.onChange(!props.value)}
+        onClick={() => !props.disabled && props.onCheckedChange(!props.checked)}
       >
-        {`switch:${props.value}`}
+        {`switch:${props.checked}`}
       </button>
     )
   },

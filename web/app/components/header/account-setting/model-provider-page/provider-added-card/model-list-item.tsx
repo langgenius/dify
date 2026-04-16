@@ -108,16 +108,16 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                   }
                   offset={{ mainAxis: 4 }}
                 >
-                  <Switch value={false} disabled size="md" />
+                  <Switch checked={false} disabled size="md" />
                 </Tooltip>
               )
             : (isCurrentWorkspaceManager && (
                 <Switch
                   className="ml-2"
-                  value={model?.status === ModelStatusEnum.active}
+                  checked={model?.status === ModelStatusEnum.active}
                   disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
                   size="md"
-                  onChange={onEnablingStateChange}
+                  onCheckedChange={onEnablingStateChange}
                 />
               ))
         }

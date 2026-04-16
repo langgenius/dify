@@ -140,8 +140,8 @@ const EmailConfigureModal = ({
             </div>
           </div>
           <Switch
-            value={debugMode}
-            onChange={checked => setDebugMode(checked)}
+            checked={debugMode}
+            onCheckedChange={checked => setDebugMode(checked)}
           />
         </div>
       </div>

@@ -120,8 +120,8 @@ const ToolItem = ({
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            value={switchValue ?? false}
-            onChange={onSwitchChange}
+            checked={switchValue ?? false}
+            onCheckedChange={onSwitchChange}
           />
         </div>
       )}

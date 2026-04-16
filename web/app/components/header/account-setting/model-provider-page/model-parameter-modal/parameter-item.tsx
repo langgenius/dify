@@ -331,8 +331,8 @@ function ParameterItem({
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className="mr-2 w-7">
                 <Switch
-                  value={!isNullOrUndefined(value)}
-                  onChange={handleSwitch}
+                  checked={!isNullOrUndefined(value)}
+                  onCheckedChange={handleSwitch}
                   size="md"
                 />
               </div>
