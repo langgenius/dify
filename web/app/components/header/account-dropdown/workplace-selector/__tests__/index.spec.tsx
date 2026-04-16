@@ -9,12 +9,17 @@ const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
 
+type MockSelectState = {
+  value: string
+  onValueChange: (value: string | null) => void
+}
+
 const selectMocks = vi.hoisted(() => ({
   state: {
     value: '',
     onValueChange: () => {},
-  },
-  reset: () => ({
+  } as MockSelectState,
+  reset: (): MockSelectState => ({
     value: '',
     onValueChange: () => {},
   }),
