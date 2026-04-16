@@ -115,7 +115,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       await openAsyncWindow(async () => {
         const { installed_apps } = await fetchInstalledAppList(app.id)
         if (installed_apps?.length > 0)
-          return `${basePath}/explore/installed/${installed_apps[0].id}`
+          return `${basePath}/explore/installed/${installed_apps[0]!.id}`
         throw new Error('No app found in Explore')
       }, {
         onError: (err) => {

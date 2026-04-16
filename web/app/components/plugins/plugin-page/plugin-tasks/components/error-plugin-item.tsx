@@ -30,14 +30,14 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
     const [org, name] = parts
     setIsFetching(true)
     try {
-      const response = await fetchPluginInfoFromMarketPlace({ org, name })
+      const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
       const info = response.data.plugin
       const manifest: Plugin = {
         plugin_id: plugin.plugin_id,
         type: info.category as Plugin['type'],
         category: info.category,
-        name,
-        org,
+        name: name!,
+        org: org!,
         version: info.latest_version,
         latest_version: info.latest_version,
         latest_package_identifier: info.latest_package_identifier,

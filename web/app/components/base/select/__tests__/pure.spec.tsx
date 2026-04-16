@@ -18,27 +18,27 @@ describe('PureSelect', () => {
   describe('Rendering', () => {
     it('should render i18n placeholder when single value is empty', () => {
       render(<PureSelect options={options} />)
-      expect(screen.getByTitle(/select/i)).toBeInTheDocument()
+      expect(screen.getByTitle(/select/i))!.toBeInTheDocument()
     })
 
     it('should render custom placeholder when provided', () => {
       render(<PureSelect options={options} placeholder="Choose value" />)
-      expect(screen.getByTitle('Choose value')).toBeInTheDocument()
+      expect(screen.getByTitle('Choose value'))!.toBeInTheDocument()
     })
 
     it('should render selected option label in single mode', () => {
       render(<PureSelect options={options} value="banana" />)
-      expect(screen.getByTitle('Banana')).toBeInTheDocument()
+      expect(screen.getByTitle('Banana'))!.toBeInTheDocument()
     })
 
     it('should render selected count text in multiple mode', () => {
       render(<PureSelect options={options} multiple={true} value={['apple', 'banana']} />)
-      expect(screen.getByText(/selected/i)).toBeInTheDocument()
+      expect(screen.getByText(/selected/i))!.toBeInTheDocument()
     })
 
     it('should render placeholder in multiple mode when selected values are empty', () => {
       render(<PureSelect options={options} multiple={true} value={[]} placeholder="Pick fruits" />)
-      expect(screen.getByTitle('Pick fruits')).toBeInTheDocument()
+      expect(screen.getByTitle('Pick fruits'))!.toBeInTheDocument()
     })
   })
 
@@ -51,7 +51,7 @@ describe('PureSelect', () => {
       render(<PureSelect options={options} onChange={onChange} />)
 
       await user.click(screen.getByTitle(/select/i))
-      expect(screen.getByTitle('Banana')).toBeInTheDocument()
+      expect(screen.getByTitle('Banana'))!.toBeInTheDocument()
 
       await user.click(screen.getByTitle('Banana'))
 
@@ -73,7 +73,7 @@ describe('PureSelect', () => {
       )
 
       await user.click(screen.getByText(/common\.dynamicSelect\.selected/i))
-      await user.click(screen.getAllByTitle('Banana')[0])
+      await user.click(screen.getAllByTitle('Banana')[0]!)
 
       expect(onChange).toHaveBeenCalledWith(['apple', 'banana'])
     })
@@ -92,7 +92,7 @@ describe('PureSelect', () => {
       )
 
       await user.click(screen.getByText(/common\.dynamicSelect\.selected/i))
-      await user.click(screen.getAllByTitle('Apple')[0])
+      await user.click(screen.getAllByTitle('Apple')[0]!)
 
       expect(onChange).toHaveBeenCalledWith(['banana'])
     })
@@ -110,7 +110,7 @@ describe('PureSelect', () => {
         />,
       )
 
-      await user.click(screen.getAllByTitle('Apple')[0])
+      await user.click(screen.getAllByTitle('Apple')[0]!)
       expect(onChange).toHaveBeenCalledWith(['apple'])
     })
   })
@@ -128,7 +128,7 @@ describe('PureSelect', () => {
         />,
       )
 
-      expect(screen.getByTitle('Apple')).toBeInTheDocument()
+      expect(screen.getByTitle('Apple'))!.toBeInTheDocument()
       await user.click(screen.getByTitle(/select/i))
 
       expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -161,7 +161,7 @@ describe('PureSelect', () => {
         />,
       )
 
-      await user.click(screen.getAllByTitle('Apple')[0])
+      await user.click(screen.getAllByTitle('Apple')[0]!)
       expect(onChange).not.toHaveBeenCalled()
     })
   })
@@ -187,11 +187,11 @@ describe('PureSelect', () => {
       const triggerLabel = screen.getByTitle(/select/i)
       const trigger = triggerLabel.parentElement
 
-      expect(trigger).toHaveClass('trigger-class')
-      expect(document.querySelector('.wrapper-class')).toBeInTheDocument()
-      expect(document.querySelector('.popup-class')).toBeInTheDocument()
+      expect(trigger)!.toHaveClass('trigger-class')
+      expect(document.querySelector('.wrapper-class'))!.toBeInTheDocument()
+      expect(document.querySelector('.popup-class'))!.toBeInTheDocument()
       expect(document.querySelectorAll('.item-class')).toHaveLength(options.length)
-      expect(screen.getByText('Available options')).toHaveClass('title-class')
+      expect(screen.getByText('Available options'))!.toHaveClass('title-class')
     })
   })
 })

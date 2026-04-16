@@ -57,7 +57,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     if (bottomPanelRef.current) {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          const { inlineSize, blockSize } = entry.borderBoxSize[0]!
           setBottomPanelWidth(inlineSize)
           setBottomPanelHeight(blockSize)
         }

@@ -13,7 +13,7 @@ const Card: FC<CardProps> = ({
         log.length === 1 && (
           <div className="px-4 py-2">
             <div className="whitespace-pre-line text-text-secondary">
-              {log[0].text}
+              {log[0]!.text}
             </div>
           </div>
         )

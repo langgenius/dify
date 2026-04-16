@@ -78,7 +78,7 @@ const AppPicker: FC<Props> = ({
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
-    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading)
+    if (!target!.isIntersecting || loadingRef.current || !hasMore || isLoading)
       return
 
     loadingRef.current = true

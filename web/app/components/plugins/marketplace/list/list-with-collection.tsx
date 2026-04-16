@@ -68,7 +68,7 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
             )}
             >
               {
-                marketplaceCollectionPluginsMap[collection.name].map((plugin) => {
+                marketplaceCollectionPluginsMap[collection.name]!.map((plugin) => {
                   if (cardRender)
                     return cardRender(plugin)
 

@@ -48,7 +48,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
           {
             currentLogItem.log?.length === 1 && (
               <>
-                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0].text} />
+                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0]!.text} />
                 <div className="mx-2.5 h-[14px] w-px bg-divider-regular" />
               </>
             )

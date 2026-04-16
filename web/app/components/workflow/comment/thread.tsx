@@ -84,7 +84,7 @@ const ThreadMessage: FC<{
           continue
 
         const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar))
+        if (searchStart > 0 && !/\s/.test(previousChar!))
           continue
 
         if (

@@ -400,6 +400,11 @@
       "count": 3
     }
   },
+  "app/components/app/configuration/config-var/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/app/configuration/config-var/config-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -564,6 +569,11 @@
       "count": 1
     }
   },
+  "app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -596,6 +606,11 @@
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/retrieval-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/debug/__tests__/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1158,6 +1173,9 @@
   "app/components/base/chat/chat/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
     }
   },
   "app/components/base/chat/chat/type.ts": {
@@ -1887,6 +1905,11 @@
       "count": 1
     }
   },
+  "app/components/base/image-uploader/__tests__/utils.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
   "app/components/base/image-uploader/audio-preview.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2368,6 +2391,11 @@
       "count": 2
     }
   },
+  "app/components/base/prompt-editor/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
   "app/components/base/prompt-log-modal/card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2534,6 +2562,11 @@
       "count": 1
     }
   },
+  "app/components/base/tag-management/__tests__/panel.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/base/tag-management/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2600,6 +2633,11 @@
       "count": 1
     }
   },
+  "app/components/base/voice-input/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
   "app/components/base/voice-input/index.stories.tsx": {
     "no-console": {
       "count": 2
@@ -2640,6 +2678,11 @@
   "app/components/billing/annotation-full/modal.tsx": {
     "no-restricted-imports": {
       "count": 1
+    }
+  },
+  "app/components/billing/billing-page/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
     }
   },
   "app/components/billing/plan-upgrade-modal/index.tsx": {
@@ -3242,6 +3285,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/documents/detail/completed/components/segment-list-content.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/detail/completed/display-toggle.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3330,6 +3378,11 @@
   },
   "app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/metadata/components/metadata-field-list.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
       "count": 1
     }
   },
@@ -3497,6 +3550,9 @@
   "app/components/datasets/metadata/hooks/use-metadata-document.ts": {
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 2
     }
   },
   "app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
@@ -4050,6 +4106,11 @@
       "count": 2
     }
   },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/__tests__/use-activate-credential.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/credits-fallback-alert.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -4160,6 +4221,11 @@
   },
   "app/components/plugins/card/card-tags.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/card/index.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
       "count": 1
     }
   },
@@ -4458,6 +4524,11 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -5578,6 +5649,9 @@
   "app/components/workflow/nodes/_base/components/before-run-form/form.tsx": {
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
@@ -5837,6 +5911,11 @@
   },
   "app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker/field.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
       "count": 1
     }
   },
@@ -6290,6 +6369,9 @@
     },
     "ts/no-explicit-any": {
       "count": 2
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/human-input/components/delivery-method/upgrade-modal.tsx": {
@@ -6857,6 +6939,11 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/loop/use-single-run-form-params.helpers.ts": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -7151,6 +7238,11 @@
   },
   "app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
       "count": 1
     }
   },
@@ -7456,6 +7548,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/run/loop-log/__tests__/loop-log-trigger.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
   "app/components/workflow/run/loop-log/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -7586,6 +7683,11 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
     }
   },
   "app/components/workflow/utils/data-source.ts": {
@@ -7848,7 +7950,7 @@
   },
   "context/modal-context.test.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 5
     }
   },
   "context/modal-context.ts": {
@@ -8017,6 +8119,11 @@
       "count": 1
     }
   },
+  "plugins/dev-proxy/server.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
   "scripts/component-analyzer.js": {
     "regexp/no-unused-capturing-group": {
       "count": 6
@@ -8125,6 +8232,9 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
     }
   },
   "service/use-tools.ts": {

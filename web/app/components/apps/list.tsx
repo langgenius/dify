@@ -151,7 +151,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
           fetchNextPage()
       }, {
         root: containerRef.current,

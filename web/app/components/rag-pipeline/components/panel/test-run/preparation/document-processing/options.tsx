@@ -21,7 +21,7 @@ const Options = ({ initialData, configurations, schema, CustomActions, onSubmit 
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `Path: ${firstIssue.path.join('.')} Error: ${firstIssue.message}`
+          const errorMessage = `Path: ${firstIssue!.path.join('.')} Error: ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

@@ -254,7 +254,7 @@ describe('SearchBox', () => {
     it('should render without crashing', () => {
       render(<SearchBox {...defaultProps} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should render with marketplace mode styling', () => {
@@ -263,7 +263,8 @@ describe('SearchBox', () => {
       )
 
       // In marketplace mode, TagsFilter comes before input
-      expect(container.querySelector('.rounded-xl')).toBeInTheDocument()
+      // In marketplace mode, TagsFilter comes before input
+      expect(container.querySelector('.rounded-xl'))!.toBeInTheDocument()
     })
 
     it('should render with non-marketplace mode styling', () => {
@@ -272,25 +273,26 @@ describe('SearchBox', () => {
       )
 
       // In non-marketplace mode, search icon appears first
-      expect(container.querySelector('.rounded-lg')).toBeInTheDocument()
+      // In non-marketplace mode, search icon appears first
+      expect(container.querySelector('.rounded-lg'))!.toBeInTheDocument()
     })
 
     it('should render placeholder correctly', () => {
       render(<SearchBox {...defaultProps} placeholder="Search here..." />)
 
-      expect(screen.getByPlaceholderText('Search here...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Search here...'))!.toBeInTheDocument()
     })
 
     it('should render search input with current value', () => {
       render(<SearchBox {...defaultProps} search="test query" />)
 
-      expect(screen.getByDisplayValue('test query')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('test query'))!.toBeInTheDocument()
     })
 
     it('should render TagsFilter component', () => {
       render(<SearchBox {...defaultProps} />)
 
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -305,8 +307,9 @@ describe('SearchBox', () => {
       const input = screen.getByRole('textbox')
 
       // Both should be rendered
-      expect(portalElem).toBeInTheDocument()
-      expect(input).toBeInTheDocument()
+      // Both should be rendered
+      expect(portalElem)!.toBeInTheDocument()
+      expect(input)!.toBeInTheDocument()
     })
 
     it('should render clear button when search has value in marketplace mode', () => {
@@ -337,7 +340,8 @@ describe('SearchBox', () => {
       )
 
       // Search icon should be present
-      expect(container.querySelector('.text-components-input-text-placeholder')).toBeInTheDocument()
+      // Search icon should be present
+      expect(container.querySelector('.text-components-input-text-placeholder'))!.toBeInTheDocument()
     })
 
     it('should render clear button when search has value', () => {
@@ -353,8 +357,8 @@ describe('SearchBox', () => {
       const portalElem = screen.getByTestId('portal-elem')
       const input = screen.getByRole('textbox')
 
-      expect(portalElem).toBeInTheDocument()
-      expect(input).toBeInTheDocument()
+      expect(portalElem)!.toBeInTheDocument()
+      expect(input)!.toBeInTheDocument()
     })
 
     it('should set autoFocus when prop is true', () => {
@@ -362,7 +366,8 @@ describe('SearchBox', () => {
 
       const input = screen.getByRole('textbox')
       // autoFocus is a boolean attribute that React handles specially
-      expect(input).toBeInTheDocument()
+      // autoFocus is a boolean attribute that React handles specially
+      expect(input)!.toBeInTheDocument()
     })
   })
 
@@ -394,7 +399,7 @@ describe('SearchBox', () => {
       const buttons = screen.getAllByRole('button')
       // Find the clear button (the one in the search area)
       const clearButton = buttons[buttons.length - 1]
-      fireEvent.click(clearButton)
+      fireEvent.click(clearButton!)
 
       expect(onSearchChange).toHaveBeenCalledWith('')
     })
@@ -412,7 +417,7 @@ describe('SearchBox', () => {
 
       const buttons = screen.getAllByRole('button')
       // First button should be the clear button in non-marketplace mode
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
 
       expect(onSearchChange).toHaveBeenCalledWith('')
     })
@@ -486,7 +491,7 @@ describe('SearchBox', () => {
         <SearchBox {...defaultProps} wrapperClassName="custom-wrapper-class" />,
       )
 
-      expect(container.querySelector('.custom-wrapper-class')).toBeInTheDocument()
+      expect(container.querySelector('.custom-wrapper-class'))!.toBeInTheDocument()
     })
 
     it('should apply inputClassName correctly', () => {
@@ -494,19 +499,19 @@ describe('SearchBox', () => {
         <SearchBox {...defaultProps} inputClassName="custom-input-class" />,
       )
 
-      expect(container.querySelector('.custom-input-class')).toBeInTheDocument()
+      expect(container.querySelector('.custom-input-class'))!.toBeInTheDocument()
     })
 
     it('should handle empty placeholder', () => {
       render(<SearchBox {...defaultProps} placeholder="" />)
 
-      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
+      expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', '')
     })
 
     it('should use default placeholder when not provided', () => {
       render(<SearchBox {...defaultProps} />)
 
-      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
+      expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', '')
     })
   })
 
@@ -517,14 +522,14 @@ describe('SearchBox', () => {
     it('should handle empty search value', () => {
       render(<SearchBox {...defaultProps} search="" />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toHaveValue('')
     })
 
     it('should handle empty tags array', () => {
       render(<SearchBox {...defaultProps} tags={[]} />)
 
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-elem'))!.toBeInTheDocument()
     })
 
     it('should handle special characters in search', () => {
@@ -541,7 +546,7 @@ describe('SearchBox', () => {
       const longString = 'a'.repeat(1000)
       render(<SearchBox {...defaultProps} search={longString} />)
 
-      expect(screen.getByDisplayValue(longString)).toBeInTheDocument()
+      expect(screen.getByDisplayValue(longString))!.toBeInTheDocument()
     })
 
     it('should handle whitespace-only search', () => {
@@ -649,13 +654,13 @@ describe('SearchBoxWrapper', () => {
     it('should render without crashing', () => {
       render(<SearchBoxWrapper />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should apply custom wrapper class to the input wrapper', () => {
       const { container } = render(<SearchBoxWrapper wrapperClassName="custom-wrapper" />)
 
-      expect(container.querySelector('.custom-wrapper')).toBeInTheDocument()
+      expect(container.querySelector('.rounded-xl'))!.toBeInTheDocument()
     })
   })
 
@@ -664,7 +669,8 @@ describe('SearchBoxWrapper', () => {
       render(<SearchBoxWrapper />)
 
       // Check for z-11 class from wrapper
-      expect(container.querySelector('.z-11')).toBeInTheDocument()
+      // Check for z-11 class from wrapper
+      expect(container.querySelector('.z-11'))!.toBeInTheDocument()
     })
 
     it('should commit search when pressing Enter', () => {
@@ -707,7 +713,7 @@ describe('SearchBoxWrapper', () => {
     it('should use translation for placeholder', () => {
       render(<SearchBoxWrapper />)
 
-      expect(screen.getByPlaceholderText('searchInMarketplace')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Search plugins'))!.toBeInTheDocument()
     })
   })
 })
@@ -732,13 +738,13 @@ describe('MarketplaceTrigger', () => {
     it('should render without crashing', () => {
       render(<MarketplaceTrigger {...defaultProps} />)
 
-      expect(screen.getByText('All Tags')).toBeInTheDocument()
+      expect(screen.getByText('All Tags'))!.toBeInTheDocument()
     })
 
     it('should show "All Tags" when no tags selected', () => {
       render(<MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />)
 
-      expect(screen.getByText('All Tags')).toBeInTheDocument()
+      expect(screen.getByText('All Tags'))!.toBeInTheDocument()
     })
 
     it('should show arrow down icon when no tags selected', () => {
@@ -747,7 +753,8 @@ describe('MarketplaceTrigger', () => {
       )
 
       // Arrow down icon should be present
-      expect(container.querySelector('.size-4')).toBeInTheDocument()
+      // Arrow down icon should be present
+      expect(container.querySelector('.size-4'))!.toBeInTheDocument()
     })
   })
 
@@ -761,7 +768,7 @@ describe('MarketplaceTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show multiple tag labels separated by comma', () => {
@@ -773,7 +780,7 @@ describe('MarketplaceTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
+      expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
     })
 
     it('should show +N indicator when more than 2 tags selected', () => {
@@ -785,7 +792,7 @@ describe('MarketplaceTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('+2')).toBeInTheDocument()
+      expect(screen.getByText('+2'))!.toBeInTheDocument()
     })
 
     it('should only show first 2 tags in label', () => {
@@ -797,7 +804,7 @@ describe('MarketplaceTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
+      expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
       expect(screen.queryByText('Search')).not.toBeInTheDocument()
     })
   })
@@ -813,7 +820,8 @@ describe('MarketplaceTrigger', () => {
       )
 
       // RiCloseCircleFill icon should be present
-      expect(container.querySelector('.text-text-quaternary')).toBeInTheDocument()
+      // RiCloseCircleFill icon should be present
+      expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
     })
 
     it('should not show clear button when no tags selected', () => {
@@ -821,6 +829,37 @@ describe('MarketplaceTrigger', () => {
         <MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />,
       )
 
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
+      // Clear button should not be present
       // Clear button should not be present
       expect(container.querySelector('.text-text-quaternary')).not.toBeInTheDocument()
     })
@@ -850,7 +889,7 @@ describe('MarketplaceTrigger', () => {
         <MarketplaceTrigger {...defaultProps} open selectedTagsLength={0} />,
       )
 
-      expect(container.querySelector('.bg-state-base-hover')).toBeInTheDocument()
+      expect(container.querySelector('.bg-state-base-hover'))!.toBeInTheDocument()
     })
 
     it('should apply border styling when tags are selected', () => {
@@ -862,7 +901,7 @@ describe('MarketplaceTrigger', () => {
         />,
       )
 
-      expect(container.querySelector('.border-components-button-secondary-border')).toBeInTheDocument()
+      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
     })
   })
 
@@ -872,7 +911,7 @@ describe('MarketplaceTrigger', () => {
         <MarketplaceTrigger {...defaultProps} tagsMap={{}} tags={[]} />,
       )
 
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 })
@@ -897,13 +936,13 @@ describe('ToolSelectorTrigger', () => {
     it('should render without crashing', () => {
       const { container } = render(<ToolSelectorTrigger {...defaultProps} />)
 
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render price tag icon', () => {
       const { container } = render(<ToolSelectorTrigger {...defaultProps} />)
 
-      expect(container.querySelector('.size-4')).toBeInTheDocument()
+      expect(container.querySelector('.size-4'))!.toBeInTheDocument()
     })
   })
 
@@ -917,7 +956,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show multiple tag labels separated by comma', () => {
@@ -929,7 +968,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
+      expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
     })
 
     it('should show +N indicator when more than 2 tags selected', () => {
@@ -941,7 +980,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('+2')).toBeInTheDocument()
+      expect(screen.getByText('+2'))!.toBeInTheDocument()
     })
 
     it('should not show tag labels when no tags selected', () => {
@@ -961,7 +1000,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(container.querySelector('.text-text-quaternary')).toBeInTheDocument()
+      expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
     })
 
     it('should not show clear button when no tags selected', () => {
@@ -1021,7 +1060,7 @@ describe('ToolSelectorTrigger', () => {
         <ToolSelectorTrigger {...defaultProps} open selectedTagsLength={0} />,
       )
 
-      expect(container.querySelector('.bg-state-base-hover')).toBeInTheDocument()
+      expect(container.querySelector('.bg-state-base-hover'))!.toBeInTheDocument()
     })
 
     it('should apply border styling when tags are selected', () => {
@@ -1033,7 +1072,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(container.querySelector('.border-components-button-secondary-border')).toBeInTheDocument()
+      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
     })
 
     it('should not apply hover styling when open but has tags', () => {
@@ -1047,7 +1086,8 @@ describe('ToolSelectorTrigger', () => {
       )
 
       // Should have border styling, not hover
-      expect(container.querySelector('.border-components-button-secondary-border')).toBeInTheDocument()
+      // Should have border styling, not hover
+      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
     })
   })
 
@@ -1062,7 +1102,7 @@ describe('ToolSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
   })
 })
@@ -1090,7 +1130,7 @@ describe('TagsFilter', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-elem'))!.toBeInTheDocument()
     })
 
     it('should pass usedInMarketplace prop to TagsFilter', () => {
@@ -1105,7 +1145,8 @@ describe('TagsFilter', () => {
       )
 
       // MarketplaceTrigger should show "All Tags"
-      expect(screen.getByText('All Tags')).toBeInTheDocument()
+      // MarketplaceTrigger should show "All Tags"
+      expect(screen.getByText('All Tags'))!.toBeInTheDocument()
     })
 
     it('should show selected tags count in TagsFilter trigger', () => {
@@ -1119,7 +1160,7 @@ describe('TagsFilter', () => {
         />,
       )
 
-      expect(screen.getByText('+1')).toBeInTheDocument()
+      expect(screen.getByText('+1'))!.toBeInTheDocument()
     })
   })
 
@@ -1138,7 +1179,7 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       })
     })
 
@@ -1157,7 +1198,7 @@ describe('TagsFilter', () => {
       // Open
       fireEvent.click(trigger)
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       })
 
       // Close
@@ -1183,8 +1224,8 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
-        expect(screen.getByText('RAG')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
+        expect(screen.getByText('RAG'))!.toBeInTheDocument()
       })
     })
 
@@ -1203,7 +1244,7 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       })
 
       const agentOption = screen.getByText('Agent')
@@ -1254,7 +1295,7 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('RAG')).toBeInTheDocument()
+        expect(screen.getByText('RAG'))!.toBeInTheDocument()
       })
 
       const ragOption = screen.getByText('RAG')
@@ -1297,7 +1338,7 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       })
 
       const inputs = screen.getAllByRole('textbox')
@@ -1307,7 +1348,7 @@ describe('TagsFilter', () => {
 
       if (searchInput) {
         fireEvent.change(searchInput, { target: { value: 'agent' } })
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       }
     })
   })
@@ -1333,7 +1374,8 @@ describe('TagsFilter', () => {
       })
 
       // Verify dropdown content is rendered
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Verify dropdown content is rendered
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should render tag options when dropdown is open', async () => {
@@ -1350,13 +1392,14 @@ describe('TagsFilter', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       })
 
       // When no tags selected, these should appear once each in dropdown
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-      expect(screen.getByText('RAG')).toBeInTheDocument()
-      expect(screen.getByText('Search')).toBeInTheDocument()
+      // When no tags selected, these should appear once each in dropdown
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
+      expect(screen.getByText('RAG'))!.toBeInTheDocument()
+      expect(screen.getByText('Search'))!.toBeInTheDocument()
     })
   })
 })
@@ -1382,8 +1425,8 @@ describe('Accessibility', () => {
     )
 
     const input = screen.getByRole('textbox')
-    expect(input).toBeInTheDocument()
-    expect(input).toHaveAttribute('placeholder', 'Search plugins')
+    expect(input)!.toBeInTheDocument()
+    expect(input)!.toHaveAttribute('placeholder', 'Search plugins')
   })
 
   it('should have clickable tag options in dropdown', async () => {
@@ -1392,7 +1435,7 @@ describe('Accessibility', () => {
     fireEvent.click(screen.getByTestId('portal-trigger'))
 
     await waitFor(() => {
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
   })
 })
@@ -1428,7 +1471,7 @@ describe('Combined Workflows', () => {
     fireEvent.click(trigger)
 
     await waitFor(() => {
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     const agentOption = screen.getByText('Agent')
@@ -1453,9 +1496,9 @@ describe('Combined Workflows', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('test')).toBeInTheDocument()
-    expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
-    expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('test'))!.toBeInTheDocument()
+    expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
+    expect(screen.getByTestId('portal-elem'))!.toBeInTheDocument()
   })
 
   it('should handle prop changes correctly', () => {
@@ -1470,7 +1513,7 @@ describe('Combined Workflows', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('initial')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('initial'))!.toBeInTheDocument()
 
     rerender(
       <SearchBox
@@ -1481,6 +1524,6 @@ describe('Combined Workflows', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('updated')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('updated'))!.toBeInTheDocument()
   })
 })

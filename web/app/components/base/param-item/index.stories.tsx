@@ -56,7 +56,7 @@ const ParamItemPlayground = () => {
     setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...prev[id]!,
         value: Number.parseFloat(value.toFixed(3)),
       },
     }))
@@ -66,7 +66,7 @@ const ParamItemPlayground = () => {
     setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...prev[id]!,
         enabled,
       },
     }))
@@ -87,8 +87,8 @@ const ParamItemPlayground = () => {
           id={param.id}
           name={param.name}
           tip={param.tip}
-          value={state[param.id].value}
-          enable={state[param.id].enabled}
+          value={state[param.id]!.value}
+          enable={state[param.id]!.enabled}
           min={param.min}
           max={param.max}
           step={param.step}

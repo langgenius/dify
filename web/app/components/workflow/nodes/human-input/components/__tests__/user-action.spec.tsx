@@ -123,7 +123,7 @@ describe('UserActionItem', () => {
 
     fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), { target: { value: '   ' } })
     fireEvent.click(screen.getByText('change-style'))
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button')[1]!)
 
     expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '' }))
     expect(onChange).toHaveBeenNthCalledWith(2, expect.objectContaining({ button_style: UserActionButtonType.Ghost }))
@@ -138,8 +138,8 @@ describe('UserActionItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder')).toBeDisabled()
-    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder')).toBeDisabled()
+    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'))!.toBeDisabled()
+    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'))!.toBeDisabled()
     expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 })

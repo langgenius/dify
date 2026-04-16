@@ -56,7 +56,7 @@ describe('trigger-webhook/parameter-table', () => {
     })
 
     onChange.mockClear()
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
 
     expect(onChange).toHaveBeenCalledWith([{
       name: 'page',
@@ -82,7 +82,7 @@ describe('trigger-webhook/parameter-table', () => {
       />,
     )
 
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
 
     expect(onChange).toHaveBeenCalledWith([{
       name: 'message',

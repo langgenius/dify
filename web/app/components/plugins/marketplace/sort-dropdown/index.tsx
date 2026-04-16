@@ -59,7 +59,7 @@ const SortDropdown = () => {
             {t('marketplace.sortBy', { ns: 'plugin' })}
           </span>
           <span className="system-sm-medium mr-1 text-text-primary">
-            {selectedOption.text}
+            {selectedOption!.text}
           </span>
           <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
         </div>

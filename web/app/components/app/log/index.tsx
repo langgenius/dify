@@ -78,7 +78,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...((debouncedQueryParams.period !== '9')
       ? {
-          start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
           end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
         }
       : {}),

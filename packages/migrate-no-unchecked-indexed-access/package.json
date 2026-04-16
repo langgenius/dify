@@ -1,0 +1,20 @@
+{
+  "name": "migrate-no-unchecked-indexed-access",
+  "private": true,
+  "version": "0.0.0-private",
+  "type": "module",
+  "bin": {
+    "migrate-no-unchecked-indexed-access": "./bin/migrate-no-unchecked-indexed-access.js"
+  },
+  "scripts": {
+    "build": "vp pack"
+  },
+  "dependencies": {
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
