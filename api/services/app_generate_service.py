@@ -416,6 +416,7 @@ class AppGenerateService:
         cls,
         app_model: App,
         workflow_run: WorkflowRun,
+        replay: bool = False,
     ):
         if workflow_run.status.is_ended():
             # TODO(QuantumGhost): handled the ended scenario.
@@ -424,5 +425,5 @@ class AppGenerateService:
         generator = AdvancedChatAppGenerator()
 
         return generator.convert_to_event_stream(
-            generator.retrieve_events(AppMode(app_model.mode), workflow_run.id),
+            generator.retrieve_events(AppMode(app_model.mode), workflow_run.id, replay=replay),
         )

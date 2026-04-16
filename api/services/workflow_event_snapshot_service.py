@@ -61,6 +61,7 @@ def build_workflow_event_stream(
     session_maker: sessionmaker[Session],
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
+    replay: bool = False,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -103,7 +104,7 @@ def build_workflow_event_stream(
         last_msg_time = time.time()
         last_ping_time = last_msg_time
 
-        with topic.subscribe() as sub:
+        with topic.subscribe(replay=replay) as sub:
             buffer_state = _start_buffering(sub)
             try:
                 task_id = _resolve_task_id(resumption_context, buffer_state, workflow_run.id)

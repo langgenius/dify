@@ -35,12 +35,12 @@ function getFormattedChatList(messages: any[]) {
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
-    let workflowRunId = ''
+    let workflowRunIdFromExtra = ''
     if (item.status === 'paused') {
       item.extra_contents?.forEach((content: ExtraContent) => {
         if (content.type === 'human_input' && !content.submitted) {
           humanInputFormDataList.push(content.form_definition)
-          workflowRunId = content.workflow_run_id
+          workflowRunIdFromExtra = content.workflow_run_id
         }
       })
     }
@@ -62,7 +62,8 @@ function getFormattedChatList(messages: any[]) {
       parentMessageId: `question-${item.id}`,
       humanInputFormDataList,
       humanInputFilledFormDataList,
-      workflow_run_id: workflowRunId,
+      workflow_run_id: item.workflow_run_id || workflowRunIdFromExtra,
+      created_at: item.created_at,
     })
   })
   return newChatList

@@ -92,7 +92,14 @@ class Subscriber(Protocol):
     """
 
     @abstractmethod
-    def subscribe(self) -> Subscription:
+    def subscribe(self, *, replay: bool = False) -> Subscription:
+        """Create a new subscription.
+
+        :param replay: When True and the underlying transport supports message retention
+            (e.g. Redis Streams), the subscription replays all buffered messages from
+            the beginning of the stream before switching to live tail.  Transports
+            without retention (plain Pub/Sub) silently ignore this flag.
+        """
         pass
 
 
