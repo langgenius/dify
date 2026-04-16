@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
@@ -6,7 +7,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
-import { cn } from '@/utils/classnames'
 import Operations from './operations'
 
 type ActionsProps = {

@@ -176,6 +176,29 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   )
 }
 
+type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
+
+const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
+    appId: props.app.id,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
+
+  const shouldShowOpenInExploreOption = !props.app.has_draft_trigger
+    && (
+      !systemFeatures.webapp_auth.enabled
+      || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
+    )
+
+  return (
+    <AppCardOperationsMenu
+      {...props}
+      shouldShowOpenInExploreOption={shouldShowOpenInExploreOption}
+    />
+  )
+}
+
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
@@ -192,10 +215,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
-    appId: app.id,
-    enabled: isOperationsMenuOpen && systemFeatures.webapp_auth.enabled,
-  })
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
 
   const onConfirmDelete = useCallback(async () => {
@@ -365,11 +384,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }, [onRefresh, setShowAccessControl])
 
   const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
-  const shouldShowOpenInExploreOption = !app.has_draft_trigger
-    && (
-      !systemFeatures.webapp_auth.enabled
-      || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
-    )
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
@@ -495,24 +509,42 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                       <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    placement="bottom-end"
-                    sideOffset={4}
-                    popupClassName={operationsMenuWidthClassName}
-                  >
-                    <AppCardOperationsMenu
-                      app={app}
-                      shouldShowSwitchOption={shouldShowSwitchOption}
-                      shouldShowOpenInExploreOption={shouldShowOpenInExploreOption}
-                      shouldShowAccessControlOption={shouldShowAccessControlOption}
-                      onEdit={handleShowEditModal}
-                      onDuplicate={handleShowDuplicateModal}
-                      onExport={exportCheck}
-                      onSwitch={handleShowSwitchModal}
-                      onDelete={handleShowDeleteConfirm}
-                      onAccessControl={handleShowAccessControl}
-                    />
-                  </DropdownMenuContent>
+                  {isOperationsMenuOpen && (
+                    <DropdownMenuContent
+                      placement="bottom-end"
+                      sideOffset={4}
+                      popupClassName={operationsMenuWidthClassName}
+                    >
+                      {systemFeatures.webapp_auth.enabled
+                        ? (
+                            <AppCardOperationsMenuContent
+                              app={app}
+                              shouldShowSwitchOption={shouldShowSwitchOption}
+                              shouldShowAccessControlOption={shouldShowAccessControlOption}
+                              onEdit={handleShowEditModal}
+                              onDuplicate={handleShowDuplicateModal}
+                              onExport={exportCheck}
+                              onSwitch={handleShowSwitchModal}
+                              onDelete={handleShowDeleteConfirm}
+                              onAccessControl={handleShowAccessControl}
+                            />
+                          )
+                        : (
+                            <AppCardOperationsMenu
+                              app={app}
+                              shouldShowSwitchOption={shouldShowSwitchOption}
+                              shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                              shouldShowAccessControlOption={shouldShowAccessControlOption}
+                              onEdit={handleShowEditModal}
+                              onDuplicate={handleShowDuplicateModal}
+                              onExport={exportCheck}
+                              onSwitch={handleShowSwitchModal}
+                              onDelete={handleShowDeleteConfirm}
+                              onAccessControl={handleShowAccessControl}
+                            />
+                          )}
+                    </DropdownMenuContent>
+                  )}
                 </DropdownMenu>
               </div>
             </>
