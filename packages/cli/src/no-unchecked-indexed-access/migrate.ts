@@ -8,6 +8,7 @@ export const SUPPORTED_DIAGNOSTIC_CODES = new Set([2322, 2339, 2345, 2488, 2532,
 const DEFAULT_MAX_ITERATIONS = 10
 const ACCESS_DIAGNOSTIC_CODES = new Set([2339, 2532, 18047, 18048])
 const ASSIGNABILITY_DIAGNOSTIC_CODES = new Set([2322, 2345, 2769])
+const parsedConfigCache = new Map<string, ts.ParsedCommandLine>()
 
 type CliOptions = {
   files: string[]
@@ -107,23 +108,31 @@ function splitFilesArgument(value: string): string[] {
 }
 
 function parseTsConfig(projectPath: string): ts.ParsedCommandLine {
+  const cached = parsedConfigCache.get(projectPath)
+  if (cached)
+    return cached
+
   const configFile = ts.readConfigFile(projectPath, ts.sys.readFile)
   if (configFile.error)
     throw new Error(formatDiagnostic(configFile.error))
 
   const configDirectory = path.dirname(projectPath)
-  return ts.parseJsonConfigFileContent(
+  const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
     ts.sys,
     configDirectory,
     undefined,
     projectPath,
   )
+  parsedConfigCache.set(projectPath, parsedConfig)
+  return parsedConfig
 }
 
 function createMigrationProgram(
+  rootNames: string[],
   parsedConfig: ts.ParsedCommandLine,
   fileTexts: Map<string, string>,
+  oldProgram?: ts.Program,
 ): ts.Program {
   const compilerHost = ts.createCompilerHost(parsedConfig.options, true)
   const originalGetSourceFile = compilerHost.getSourceFile.bind(compilerHost)
@@ -141,9 +150,11 @@ function createMigrationProgram(
   }
 
   return ts.createProgram({
+    oldProgram,
     host: compilerHost,
     options: parsedConfig.options,
-    rootNames: parsedConfig.fileNames,
+    projectReferences: parsedConfig.projectReferences,
+    rootNames,
   })
 }
 
@@ -160,6 +171,24 @@ function isTargetFile(fileName: string): boolean {
 
 function normalizeFileName(fileName: string): string {
   return path.resolve(fileName)
+}
+
+function isDeclarationSupportFile(fileName: string): boolean {
+  return fileName.endsWith('.d.ts')
+}
+
+function getMigrationRootNames(
+  parsedConfig: ts.ParsedCommandLine,
+  targetFiles: string[],
+): string[] {
+  const rootNames = new Set(targetFiles)
+
+  for (const fileName of parsedConfig.fileNames.map(normalizeFileName)) {
+    if (isDeclarationSupportFile(fileName))
+      rootNames.add(fileName)
+  }
+
+  return Array.from(rootNames)
 }
 
 function createFileMatcher(filePatterns: string[]): (fileName: string) => boolean {
@@ -1673,12 +1702,14 @@ export async function runMigration(options: CliOptions) {
 
   const fileTexts = new Map<string, string>()
   const printer = ts.createPrinter()
+  const migrationRootNames = getMigrationRootNames(parsedConfig, targetFiles)
 
   let totalEdits = 0
   let converged = false
+  let previousProgram: ts.Program | undefined
 
   for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
-    const program = createMigrationProgram(parsedConfig, fileTexts)
+    const program = createMigrationProgram(migrationRootNames, parsedConfig, fileTexts, previousProgram)
     const checker = program.getTypeChecker()
     const editsByFile = new Map<string, TextEdit[]>()
 
@@ -1756,6 +1787,7 @@ export async function runMigration(options: CliOptions) {
 
     totalEdits += iterationEditCount
     console.log(`Iteration ${iteration}: ${iterationEditCount} edit(s) across ${editsByFile.size} file(s).`)
+    previousProgram = program
   }
 
   if (totalEdits === 0) {

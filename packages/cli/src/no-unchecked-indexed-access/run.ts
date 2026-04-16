@@ -1,4 +1,7 @@
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { promisify } from 'node:util'
@@ -9,6 +12,7 @@ const DIAGNOSTIC_PATTERN = /^(.+?\.(?:ts|tsx))\((\d+),(\d+)\): error TS(\d+): (.
 const DEFAULT_BATCH_SIZE = 100
 const DEFAULT_BATCH_ITERATIONS = 5
 const DEFAULT_MAX_ROUNDS = 20
+const TYPECHECK_CACHE_DIR = path.join(os.tmpdir(), 'dify-no-unchecked-indexed-access')
 
 type CliOptions = {
   batchIterations: number
@@ -91,11 +95,24 @@ function parseArgs(argv: string[]): CliOptions {
   return options
 }
 
+function getTypeCheckBuildInfoPath(projectPath: string): string {
+  const hash = createHash('sha1')
+    .update(projectPath)
+    .digest('hex')
+    .slice(0, 16)
+
+  return path.join(TYPECHECK_CACHE_DIR, `${hash}.tsbuildinfo`)
+}
+
 async function runTypeCheck(project: string): Promise<{ diagnostics: DiagnosticEntry[], exitCode: number, rawOutput: string }> {
-  const projectDirectory = path.dirname(path.resolve(process.cwd(), project))
+  const projectPath = path.resolve(process.cwd(), project)
+  const projectDirectory = path.dirname(projectPath)
+  const buildInfoPath = getTypeCheckBuildInfoPath(projectPath)
+
+  await fs.mkdir(TYPECHECK_CACHE_DIR, { recursive: true })
 
   try {
-    const { stdout, stderr } = await execFileAsync('pnpm', ['exec', 'tsc', '--noEmit', '--pretty', 'false', '--incremental', 'false', '--project', project], {
+    const { stdout, stderr } = await execFileAsync('pnpm', ['exec', 'tsc', '--noEmit', '--pretty', 'false', '--incremental', '--tsBuildInfoFile', buildInfoPath, '--project', projectPath], {
       cwd: projectDirectory,
       env: {
         ...process.env,
