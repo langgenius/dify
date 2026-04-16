@@ -14,28 +14,6 @@ export const PopoverTitle = BasePopover.Title
 /** @public */
 export const PopoverDescription = BasePopover.Description
 
-type PopoverCloseButtonProps = Omit<BasePopover.Close.Props, 'children'>
-
-/** @public */
-export function PopoverCloseButton({
-  className,
-  'aria-label': ariaLabel = 'Close',
-  ...props
-}: PopoverCloseButtonProps) {
-  return (
-    <BasePopover.Close
-      aria-label={ariaLabel}
-      {...props}
-      className={cn(
-        'absolute top-2 right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
-        className,
-      )}
-    >
-      <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-    </BasePopover.Close>
-  )
-}
-
 type PopoverContentProps = {
   children: ReactNode
   placement?: Placement
