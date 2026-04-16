@@ -217,7 +217,7 @@ class TestDatasetDocumentListApi:
 
         payload = {"indexing_technique": "economy"}
         created_dataset = SimpleNamespace(id="ds-1", name="Dataset", indexing_technique="economy")
-        created_document = SimpleNamespace(id="doc-1", name="Document", doc_metadata_details=[])
+        created_document = SimpleNamespace(id="doc-1", name="Document", doc_metadata_details=None)
 
         with (
             app.test_request_context("/", json=payload),

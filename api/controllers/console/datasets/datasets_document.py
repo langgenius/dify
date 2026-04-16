@@ -141,6 +141,13 @@ class DocumentResponse(ResponseModel):
     def _normalize_enum_fields(cls, value: Any) -> Any:
         return _normalize_enum(value)
 
+    @field_validator("doc_metadata", mode="before")
+    @classmethod
+    def _normalize_doc_metadata(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+        return value
+
     @field_validator("created_at", "disabled_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
