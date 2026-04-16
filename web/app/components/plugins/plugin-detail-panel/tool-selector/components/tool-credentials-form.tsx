@@ -2,20 +2,20 @@
 import type { FC } from 'react'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolCredentialFormSchema } from '@/app/components/tools/utils/to-form-schema'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   collection: Collection

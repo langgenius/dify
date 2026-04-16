@@ -4,7 +4,8 @@
     "tests/",
     ".venv",
     "migrations/",
-    "core/rag"
+    "core/rag",
+    "providers/",
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
@@ -36,7 +37,9 @@
     "gmpy2",
     "sendgrid",
     "sendgrid.helpers.mail",
-    "holo_search_sdk.types"
+    "holo_search_sdk.types",
+    "dify_vdb_qdrant",
+    "dify_vdb_tidb_on_qdrant"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
@@ -47,7 +50,6 @@
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryIsInstance": "hint",
-  "reportUntypedFunctionDecorator": "hint",
   "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
   "pythonVersion": "3.12",

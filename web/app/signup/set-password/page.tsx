@@ -1,16 +1,17 @@
 'use client'
 import type { MailRegisterResponse } from '@/service/use-common'
+import { cn } from '@langgenius/dify-ui/cn'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
+import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 
 const parseUtmInfo = () => {
@@ -68,6 +69,7 @@ const ChangePasswordForm = () => {
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
         const utmInfo = parseUtmInfo()
+        rememberCreateAppExternalAttribution({ utmInfo })
         trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,
@@ -102,7 +104,7 @@ const ChangePasswordForm = () => {
           <h2 className="title-4xl-semi-bold text-text-primary">
             {t('changePassword', { ns: 'login' })}
           </h2>
-          <p className="body-md-regular mt-2 text-text-secondary">
+          <p className="mt-2 body-md-regular text-text-secondary">
             {t('changePasswordTip', { ns: 'login' })}
           </p>
         </div>
@@ -111,7 +113,7 @@ const ChangePasswordForm = () => {
           <div>
             {/* Password */}
             <div className="mb-5">
-              <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
+              <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
                 {t('account.newPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">
@@ -124,11 +126,11 @@ const ChangePasswordForm = () => {
                 />
 
               </div>
-              <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
+              <div className="mt-1 body-xs-regular text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
             </div>
             {/* Confirm Password */}
             <div className="mb-5">
-              <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
+              <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
                 {t('account.confirmPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">

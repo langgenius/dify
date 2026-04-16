@@ -3,20 +3,20 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Button from '@/app/components/base/button'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import TabSlider from '@/app/components/base/tab-slider'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { MCPAuthMethod } from '@/app/components/tools/types'
-import { cn } from '@/utils/classnames'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import { isValidServerID, isValidUrl, useMCPModalForm } from './hooks/use-mcp-modal-form'
 import AuthenticationSection from './sections/authentication-section'
@@ -131,10 +131,10 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
   return (
     <>
-      <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
+      <div className="absolute top-5 right-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
-      <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">
+      <div className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}
       </div>
 
@@ -197,7 +197,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
           <div className="flex h-6 items-center">
             <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
           </div>
-          <div className="body-xs-regular mb-1 text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
+          <div className="mb-1 body-xs-regular text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
           <Input
             value={state.serverIdentifier}
             onChange={e => actions.setServerIdentifier(e.target.value)}

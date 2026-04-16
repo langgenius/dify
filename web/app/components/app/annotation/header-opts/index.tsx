@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -16,13 +17,12 @@ import {
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import CustomPopover from '@/app/components/base/popover'
+import { Button } from '@/app/components/base/ui/button'
 import { useLocale } from '@/context/i18n'
+
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
-
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
-import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
 import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
@@ -103,12 +103,12 @@ const HeaderOptions: FC<Props> = ({
           }}
         >
           <FilePlus02 className="h-4 w-4 text-text-tertiary" />
-          <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
+          <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
         </button>
         <Menu as="div" className="relative h-full w-full">
           <MenuButton className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
             <FileDownload02 className="h-4 w-4 text-text-tertiary" />
-            <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
+            <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
             <ChevronRight className="h-[14px] w-[14px] shrink-0 text-text-tertiary" />
           </MenuButton>
           <Transition
@@ -122,7 +122,7 @@ const HeaderOptions: FC<Props> = ({
           >
             <MenuItems
               className={cn(
-                'absolute left-1 top-px z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
+                'absolute top-px left-1 z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
               )}
             >
               <CSVDownloader
@@ -135,11 +135,11 @@ const HeaderOptions: FC<Props> = ({
                 ]}
               >
                 <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
-                  <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
+                  <span className="grow text-left system-sm-regular text-text-secondary">CSV</span>
                 </button>
               </CSVDownloader>
               <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', 'border-0!')} onClick={JSONLOutput}>
-                <span className="system-sm-regular grow text-left text-text-secondary">JSONL</span>
+                <span className="grow text-left system-sm-regular text-text-secondary">JSONL</span>
               </button>
             </MenuItems>
           </Transition>
@@ -150,7 +150,7 @@ const HeaderOptions: FC<Props> = ({
           className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
           <RiDeleteBinLine className="h-4 w-4" />
-          <span className="system-sm-regular grow text-left">
+          <span className="grow text-left system-sm-regular">
             {t('table.header.clearAll', { ns: 'appAnnotation' })}
           </span>
         </button>

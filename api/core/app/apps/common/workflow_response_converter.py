@@ -22,6 +22,7 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.apps.common.pause_reason_serializer import pause_reason_to_public_dict
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -317,7 +318,7 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+        pause_reasons = [pause_reason_to_public_dict(reason) for reason in event.reasons]
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}
@@ -337,6 +338,21 @@ class WorkflowResponseConverter:
                         definition_payload = {}
                     display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
                 form_token_by_form_id = load_form_tokens_by_form_id(human_input_form_ids, session=session)
+
+        for pause_reason in pause_reasons:
+            if pause_reason.get("type") != "human_input_required":
+                continue
+
+            form_id = pause_reason.get("form_id")
+            if not isinstance(form_id, str):
+                continue
+
+            expiration_time = expiration_times_by_form_id.get(form_id)
+            if expiration_time is None:
+                raise ValueError(f"HumanInputForm not found for pause reason, form_id={form_id}")
+
+            pause_reason["form_token"] = form_token_by_form_id.get(form_id)
+            pause_reason["expiration_time"] = int(expiration_time.timestamp())
 
         responses: list[StreamResponse] = []
 

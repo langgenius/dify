@@ -29,14 +29,15 @@ class CreditPoolService:
     @classmethod
     def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
         """get tenant credit pool"""
-        return db.session.scalar(
-            select(TenantCreditPool)
-            .where(
-                TenantCreditPool.tenant_id == tenant_id,
-                TenantCreditPool.pool_type == pool_type,
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            return session.scalar(
+                select(TenantCreditPool)
+                .where(
+                    TenantCreditPool.tenant_id == tenant_id,
+                    TenantCreditPool.pool_type == pool_type,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
 
     @classmethod
     def check_credits_available(

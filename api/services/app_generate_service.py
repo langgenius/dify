@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -88,7 +88,7 @@ class AppGenerateService:
     def generate(
         cls,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -162,6 +162,7 @@ class AppGenerateService:
                                 invoke_from=invoke_from,
                                 streaming=True,
                                 call_depth=0,
+                                workflow_run_id=str(uuid.uuid4()),
                             )
                             payload_json = payload.model_dump_json()
 
@@ -183,6 +184,10 @@ class AppGenerateService:
                     else:
                         # Blocking mode: run synchronously and return JSON instead of SSE
                         # Keep behaviour consistent with WORKFLOW blocking branch.
+                        pause_config = PauseStateLayerConfig(
+                            session_factory=session_factory.get_session_maker(),
+                            state_owner_user_id=workflow.created_by,
+                        )
                         advanced_generator = AdvancedChatAppGenerator()
                         return rate_limit.generate(
                             advanced_generator.convert_to_event_stream(
@@ -194,6 +199,7 @@ class AppGenerateService:
                                     invoke_from=invoke_from,
                                     workflow_run_id=str(uuid.uuid4()),
                                     streaming=False,
+                                    pause_state_config=pause_config,
                                 )
                             ),
                             request_id=request_id,
@@ -356,11 +362,11 @@ class AppGenerateService:
     def generate_more_like_this(
         cls,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping, Generator]:
+    ) -> Mapping | Generator:
         """
         Generate more like this
         :param app_model: app model

@@ -41,15 +41,20 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    ChatbotAppPausedBlockingResponse,
+    HumanInputRequiredResponse,
     AnnotationReply,
     AnnotationReplyAccount,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
+    WorkflowPauseStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.nodes.human_input.entities import UserAction
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
 from tests.workflow_test_utils import build_test_variable_pool
@@ -122,6 +127,57 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert response.data.answer == "done"
         assert response.data.metadata == {"k": "v"}
+
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "partial answer"
+        pipeline._workflow_run_id = "run-id"
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+            total_tokens=7,
+            node_run_steps=3,
+        )
+
+        def _gen():
+            yield HumanInputRequiredResponse(
+                task_id="task",
+                workflow_run_id="run-id",
+                data=HumanInputRequiredResponse.Data(
+                    form_id="form-1",
+                    node_id="node-1",
+                    node_title="Approval",
+                    form_content="Need approval",
+                    inputs=[],
+                    actions=[UserAction(id="approve", title="Approve")],
+                    display_in_ui=True,
+                    form_token="token-1",
+                    resolved_default_values={},
+                    expiration_time=123,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert isinstance(response, ChatbotAppPausedBlockingResponse)
+        assert response.data.workflow_run_id == "run-id"
+        assert response.data.status == "paused"
+        assert response.data.paused_nodes == ["node-1"]
+        assert response.data.reasons == [
+            {
+                "type": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "form_id": "form-1",
+                "node_id": "node-1",
+                "node_title": "Approval",
+                "form_content": "Need approval",
+                "inputs": [],
+                "actions": [{"id": "approve", "title": "Approve", "button_style": "default"}],
+                "display_in_ui": True,
+                "form_token": "token-1",
+                "resolved_default_values": {},
+                "expiration_time": 123,
+            }
+        ]
 
     def test_handle_text_chunk_event_updates_state(self):
         pipeline = _make_pipeline()

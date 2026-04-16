@@ -1,18 +1,18 @@
 'use client'
 import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import RoleSelector from './role-selector'
 import 'react-multi-email/dist/style.css'
 
@@ -87,7 +87,7 @@ const InviteModal = ({
         backdropProps={{ forceRender: true }}
         className="w-[400px] overflow-visible px-8 py-6"
       >
-        <DialogCloseButton data-testid="invite-modal-close" className="right-8 top-6" />
+        <DialogCloseButton data-testid="invite-modal-close" className="top-6 right-8" />
         <div className="mb-2 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
             {t('members.inviteTeamMember', { ns: 'common' })}
@@ -97,12 +97,12 @@ const InviteModal = ({
         {!isEmailSetup && (
           <div className="grow basis-0 overflow-y-auto pb-4">
             <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div className="absolute top-0 left-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
               <div className="relative flex h-full w-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
                   <div className="i-ri-error-warning-fill h-5 w-5 text-text-warning" />
                 </div>
-                <div className="text-text-primary system-xs-medium">
+                <div className="system-xs-medium text-text-primary">
                   <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
                 </div>
               </div>
@@ -134,7 +134,7 @@ const InviteModal = ({
               placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}
             />
             <div className={
-              cn('flex items-center justify-end text-text-tertiary system-xs-regular', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
+              cn('flex items-center justify-end system-xs-regular text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
             }
             >
               <span>{usedSize}</span>

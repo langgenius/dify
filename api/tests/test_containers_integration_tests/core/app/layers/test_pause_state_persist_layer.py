@@ -88,11 +88,11 @@ class TestPauseStatePersistenceLayerTestContainers:
     def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
-        from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+        from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -101,7 +101,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -557,11 +557,9 @@ class TestPauseStatePersistenceLayerTestContainers:
         self.session.refresh(self.test_workflow_run)
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
-        pause_states = (
-            self.session.query(WorkflowPauseModel)
-            .filter(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
-            .all()
-        )
+        pause_states = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
+        ).all()
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers):

@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import type { PluginDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -12,7 +13,6 @@ import {
   Handle,
   Position,
 } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../block-selector'
 import {
   useAvailableBlocks,
@@ -79,7 +79,7 @@ export const NodeTargetHandle = memo(({
         position={Position.Left}
         className={cn(
           'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-          'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+          'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
           data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
@@ -190,7 +190,7 @@ export const NodeSourceHandle = memo(({
       position={Position.Right}
       className={cn(
         'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-        'after:absolute after:right-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+        'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
         data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
@@ -203,7 +203,7 @@ export const NodeSourceHandle = memo(({
     >
       <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
         <div className="system-xs-regular text-text-tertiary">
-          <div className=" whitespace-nowrap">
+          <div className="whitespace-nowrap">
             <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.click.title', { ns: 'workflow' })}</span>
             {t('common.parallelTip.click.desc', { ns: 'workflow' })}
           </div>

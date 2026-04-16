@@ -9,14 +9,14 @@ from datetime import datetime
 from threading import Thread
 from typing import Any, Union
 
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -60,14 +60,17 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
+    ChatbotAppPausedBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
     StreamResponse,
     WorkflowTaskState,
+    WorkflowPauseStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -210,7 +213,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if message.status == MessageStatus.PAUSED and message.answer:
             self._task_state.answer = message.answer
 
-    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def process(
+        self,
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        ChatbotAppPausedBlockingResponse,
+        Generator[ChatbotAppStreamResponse, None, None],
+    ]:
         """
         Process generate task pipeline.
         :return:
@@ -226,14 +235,39 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> ChatbotAppBlockingResponse:
+    def _to_blocking_response(
+        self, generator: Generator[StreamResponse, None, None]
+    ) -> Union[ChatbotAppBlockingResponse, ChatbotAppPausedBlockingResponse]:
         """
         Process blocking response.
         :return:
         """
+        human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
+            elif isinstance(stream_response, HumanInputRequiredResponse):
+                human_input_responses.append(stream_response)
+            elif isinstance(stream_response, WorkflowPauseStreamResponse):
+                return ChatbotAppPausedBlockingResponse(
+                    task_id=stream_response.task_id,
+                    data=ChatbotAppPausedBlockingResponse.Data(
+                        id=self._message_id,
+                        mode=self._conversation_mode,
+                        conversation_id=self._conversation_id,
+                        message_id=self._message_id,
+                        workflow_run_id=stream_response.data.workflow_run_id,
+                        answer=self._task_state.answer,
+                        metadata=self._message_end_to_stream_response().metadata,
+                        created_at=self._message_created_at,
+                        paused_nodes=stream_response.data.paused_nodes,
+                        reasons=stream_response.data.reasons,
+                        status=stream_response.data.status,
+                        elapsed_time=stream_response.data.elapsed_time,
+                        total_tokens=stream_response.data.total_tokens,
+                        total_steps=stream_response.data.total_steps,
+                    ),
+                )
             elif isinstance(stream_response, MessageEndStreamResponse):
                 extras = {}
                 if stream_response.metadata:
@@ -254,7 +288,41 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             else:
                 continue
 
+        if human_input_responses:
+            return self._build_paused_blocking_response_from_human_input(human_input_responses)
+
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _build_paused_blocking_response_from_human_input(
+        self, human_input_responses: list[HumanInputRequiredResponse]
+    ) -> ChatbotAppPausedBlockingResponse:
+        runtime_state = self._resolve_graph_runtime_state()
+        paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
+        reasons = []
+        for response in human_input_responses:
+            reason = response.data.model_dump(mode="json")
+            reason["type"] = PauseReasonType.HUMAN_INPUT_REQUIRED
+            reasons.append(reason)
+
+        return ChatbotAppPausedBlockingResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ChatbotAppPausedBlockingResponse.Data(
+                id=self._message_id,
+                mode=self._conversation_mode,
+                conversation_id=self._conversation_id,
+                message_id=self._message_id,
+                workflow_run_id=human_input_responses[-1].workflow_run_id,
+                answer=self._task_state.answer,
+                metadata=self._message_end_to_stream_response().metadata,
+                created_at=self._message_created_at,
+                paused_nodes=paused_nodes,
+                reasons=reasons,
+                status=WorkflowExecutionStatus.PAUSED,
+                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
+            ),
+        )
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -328,13 +396,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            yield session
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""

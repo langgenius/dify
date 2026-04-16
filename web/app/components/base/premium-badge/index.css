@@ -3,7 +3,7 @@
   background-clip: padding-box, border-box;
 }
 
-@utility allowHover {
+@utility pb-allow-hover {
   @apply cursor-pointer;
   &.premium-badge-blue:hover {
     @apply bg-util-colors-blue-blue-300;
@@ -65,7 +65,7 @@
       var(--color-premium-badge-border-highlight-color) 0%,
       #155aef 100%
     );
-  &.allowHover:hover {
+  &.pb-allow-hover:hover {
     @apply bg-util-colors-blue-blue-300;
     background-image:
       linear-gradient(90deg, #296dffe6 0%, #004aebe6 100%),
@@ -86,7 +86,7 @@
       var(--color-premium-badge-border-highlight-color) 0%,
       #6172f3 100%
     );
-  &.allowHover:hover {
+  &.pb-allow-hover:hover {
     @apply bg-util-colors-indigo-indigo-300;
     background-image:
       linear-gradient(90deg, #6172f3e6 0%, #2d31a6e6 100%),
@@ -107,7 +107,7 @@
       var(--color-premium-badge-border-highlight-color) 0%,
       #676f83 100%
     );
-  &.allowHover:hover {
+  &.pb-allow-hover:hover {
     @apply bg-util-colors-gray-gray-300;
     background-image:
       linear-gradient(90deg, #676f83e6 0%, #354052e6 100%),
@@ -128,7 +128,7 @@
       var(--color-premium-badge-border-highlight-color) 0%,
       #e62e05 100%
     );
-  &.allowHover:hover {
+  &.pb-allow-hover:hover {
     @apply bg-util-colors-orange-orange-300;
     background-image:
       linear-gradient(90deg, #ff4405e6 0%, #b93815e6 100%),

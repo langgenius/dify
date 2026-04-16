@@ -36,6 +36,7 @@ class WorkflowEventsApi(Resource):
             "task_id": "Workflow run ID",
             "user": "End user identifier (query param)",
             "include_state_snapshot": "Whether to replay from persisted state snapshot",
+            "continue_on_pause": "Whether to keep the stream open across workflow_paused events",
         }
     )
     @service_api_ns.doc(
@@ -97,6 +98,8 @@ class WorkflowEventsApi(Resource):
                 raise NotWorkflowAppError()
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+            continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+            terminal_events = ["workflow_finished"] if continue_on_pause else None
 
             def _generate_stream_events():
                 if include_state_snapshot:
@@ -107,10 +110,15 @@ class WorkflowEventsApi(Resource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            close_on_pause=not continue_on_pause,
                         )
                     )
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(app_mode, workflow_run_entity.id),
+                    msg_generator.retrieve_events(
+                        app_mode,
+                        workflow_run_entity.id,
+                        terminal_events=terminal_events,
+                    ),
                 )
 
             event_generator = _generate_stream_events

@@ -1,9 +1,9 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 
@@ -64,7 +64,7 @@ const CrawledResult = ({
 
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
-      <div className="system-sm-medium pt-2 text-text-primary">
+      <div className="pt-2 system-sm-medium text-text-primary">
         {t(`${I18N_PREFIX}.scrapTimeInfo`, {
           ns: 'datasetCreation',
           total: list.length,

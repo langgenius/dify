@@ -6,7 +6,7 @@ import json
 import sys
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from werkzeug.exceptions import NotFound
@@ -128,7 +128,11 @@ class TestWorkflowEventsApi:
             response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
         assert response.get_data(as_text=True) == "data: streamed\n\n"
-        msg_generator.retrieve_events.assert_called_once_with(AppMode.WORKFLOW, "run-1")
+        msg_generator.retrieve_events.assert_called_once_with(
+            AppMode.WORKFLOW,
+            "run-1",
+            terminal_events=None,
+        )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
     def test_running_run_with_snapshot(self, app, monkeypatch: pytest.MonkeyPatch) -> None:

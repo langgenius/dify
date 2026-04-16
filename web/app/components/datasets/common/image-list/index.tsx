@@ -1,8 +1,8 @@
 import type { ImageInfo } from '../image-previewer'
 import type { FileEntity } from '@/app/components/base/file-thumb'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useState } from 'react'
 import FileThumb from '@/app/components/base/file-thumb'
-import { cn } from '@/utils/classnames'
 import ImagePreviewer from '../image-previewer'
 import More from './more'
 

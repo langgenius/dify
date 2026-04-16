@@ -1,12 +1,12 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { cn } from '@/utils/classnames'
 import { checkJsonDepth } from '../../utils'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
@@ -90,7 +90,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
         <button
           type="button"
           className={cn(
-            'system-xs-medium flex shrink-0 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-components-button-ghost-bg-hover',
+            'flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover',
             open && 'bg-components-button-ghost-bg-hover',
           )}
         >
@@ -100,11 +100,11 @@ const JsonImporter: FC<JsonImporterProps> = ({
       <PortalToFollowElemContent className="z-100">
         <div className="flex w-[400px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
           {/* Title */}
-          <div className="relative px-3 pb-1 pt-3.5">
-            <div className="absolute bottom-0 right-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
+          <div className="relative px-3 pt-3.5 pb-1">
+            <div className="absolute right-2.5 bottom-0 flex h-8 w-8 items-center justify-center" onClick={onClose}>
               <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
-            <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
+            <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
               {t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}
             </div>
           </div>

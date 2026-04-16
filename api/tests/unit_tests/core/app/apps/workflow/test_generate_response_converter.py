@@ -9,6 +9,7 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
 )
 

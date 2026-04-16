@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ProgressBar from '@/app/components/billing/progress-bar'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
@@ -44,7 +44,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
       <div className="flex justify-between">
         {!isTeam && (
           <div>
-            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+            <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip1', { ns: 'billing' })}
             </div>
             <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip1des', { ns: 'billing' })}</div>
@@ -52,7 +52,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         )}
         {isTeam && (
           <div>
-            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+            <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip2', { ns: 'billing' })}
             </div>
             <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip2des', { ns: 'billing' })}</div>
@@ -70,7 +70,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         )}
       </div>
       <div className="flex flex-col gap-2">
-        <div className="system-xs-medium flex items-center justify-between text-text-secondary">
+        <div className="flex items-center justify-between system-xs-medium text-text-secondary">
           <div>{t('usagePage.buildApps', { ns: 'billing' })}</div>
           <div>
             {usage}

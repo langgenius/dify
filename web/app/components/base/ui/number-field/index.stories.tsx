@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
-import { cn } from '@/utils/classnames'
 import {
   NumberField,
   NumberFieldControls,

@@ -327,7 +327,8 @@ class TestGenerate:
             streaming=False,
         )
         assert result == {"result": "advanced-blocking"}
-        assert gen_spy.call_args.kwargs.get("streaming") is False
+        call_kwargs = gen_spy.call_args.kwargs
+        assert call_kwargs.get("streaming") is False
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------

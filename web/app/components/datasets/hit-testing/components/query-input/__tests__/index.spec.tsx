@@ -123,9 +123,9 @@ describe('QueryInput', () => {
   it('should show loading state on submit button when loading', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
-    // The real Button component does not disable on loading; it shows a spinner
-    expect(submitButton).toBeInTheDocument()
-    expect(submitButton.querySelector('[role="status"]')).toBeInTheDocument()
+    expect(submitButton).toBeDisabled()
+    expect(submitButton).toHaveAttribute('aria-busy', 'true')
+    expect(submitButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 
   // Cover line 83: images useMemo with image_query data

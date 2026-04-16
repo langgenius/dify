@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
@@ -37,10 +38,12 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
@@ -90,27 +93,49 @@ def _make_pipeline():
 
 
 class TestWorkflowGenerateTaskPipeline:
-    def test_to_blocking_response_handles_pause(self):
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+            total_tokens=5,
+            node_run_steps=2,
+        )
 
         def _gen():
-            yield WorkflowPauseStreamResponse(
+            yield HumanInputRequiredResponse(
                 task_id="task",
-                workflow_run_id="run",
-                data=WorkflowPauseStreamResponse.Data(
-                    workflow_run_id="run",
-                    status=WorkflowExecutionStatus.PAUSED,
-                    outputs={},
-                    created_at=1,
-                    elapsed_time=0.1,
-                    total_tokens=0,
-                    total_steps=0,
+                workflow_run_id="run-id",
+                data=HumanInputRequiredResponse.Data(
+                    form_id="form-1",
+                    node_id="node-1",
+                    node_title="Human Input",
+                    form_content="content",
+                    expiration_time=1,
                 ),
             )
 
         response = pipeline._to_blocking_response(_gen())
 
+        assert isinstance(response, WorkflowAppPausedBlockingResponse)
+        assert response.workflow_run_id == "run-id"
         assert response.data.status == WorkflowExecutionStatus.PAUSED
+        assert response.data.paused_nodes == ["node-1"]
+        assert response.data.reasons == [
+            {
+                "type": "human_input_required",
+                "form_id": "form-1",
+                "node_id": "node-1",
+                "node_title": "Human Input",
+                "form_content": "content",
+                "inputs": [],
+                "actions": [],
+                "display_in_ui": False,
+                "form_token": None,
+                "resolved_default_values": {},
+                "expiration_time": 1,
+            }
+        ]
 
     def test_to_blocking_response_handles_finish(self):
         pipeline = _make_pipeline()
@@ -610,33 +635,33 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_database_session_rolls_back_on_error(self, monkeypatch):
         pipeline = _make_pipeline()
-        calls = {"commit": 0, "rollback": 0}
+        calls = {"enter": 0, "exit_exc": None}
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
+        class _BeginContext:
             def __enter__(self):
-                return self
+                calls["enter"] += 1
+                return MagicMock()
 
             def __exit__(self, exc_type, exc, tb):
+                calls["exit_exc"] = exc_type
                 return False
 
-            def commit(self):
-                calls["commit"] += 1
+        class _Sessionmaker:
+            def __init__(self, *args, **kwargs):
+                pass
 
-            def rollback(self):
-                calls["rollback"] += 1
+            def begin(self):
+                return _BeginContext()
 
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.Session", _Session)
+        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.sessionmaker", _Sessionmaker)
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
 
         with pytest.raises(RuntimeError, match="db error"):
             with pipeline._database_session():
                 raise RuntimeError("db error")
 
-        assert calls["commit"] == 0
-        assert calls["rollback"] == 1
+        assert calls["enter"] == 1
+        assert calls["exit_exc"] is RuntimeError
 
     def test_node_retry_and_started_handlers_cover_none_and_value(self):
         pipeline = _make_pipeline()

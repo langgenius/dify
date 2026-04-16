@@ -90,7 +90,6 @@ def test_graph_run_paused_event_emits_queue_pause_event():
     assert queue_event.outputs == {"foo": "bar"}
     assert queue_event.paused_nodes == ["node-pause-1"]
 
-
 def _build_converter():
     application_generate_entity = SimpleNamespace(
         inputs={},

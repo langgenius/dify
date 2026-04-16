@@ -41,9 +41,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
-from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -61,9 +60,20 @@ class _WorkflowRunError(Exception):
     pass
 
 
+def _select_recipient_token(
+    recipients: Sequence[HumanInputFormRecipient],
+    recipient_type: RecipientType,
+) -> str | None:
+    recipient = next((recipient for recipient in recipients if recipient.recipient_type == recipient_type), None)
+    if recipient is None or not recipient.access_token:
+        return None
+    return recipient.access_token
+
+
 def _build_human_input_required_reason(
     reason_model: WorkflowPauseReason,
     form_model: HumanInputForm | None,
+    recipients: Sequence[HumanInputFormRecipient] = (),
 ) -> HumanInputRequired:
     form_content = ""
     inputs = []
@@ -90,6 +100,12 @@ def _build_human_input_required_reason(
             resolved_default_values = dict(definition.default_values)
             node_title = definition.node_title or node_title
 
+    # Service API pause payloads and replayed workflow events must expose the public token used by
+    # `/form/human_input/:form_token`, so prefer the standalone web-app surface and only fall back
+    # to the console token when a web-app token is unavailable.
+    form_token = _select_recipient_token(recipients, RecipientType.STANDALONE_WEB_APP) or _select_recipient_token(
+        recipients, RecipientType.CONSOLE
+    )
     return HumanInputRequired(
         form_id=form_id,
         form_content=form_content,
@@ -97,6 +113,7 @@ def _build_human_input_required_reason(
         actions=actions,
         node_id=node_id,
         node_title=node_title,
+        form_token=form_token,
         resolved_default_values=resolved_default_values,
     )
 
@@ -744,12 +761,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Upload the state file
 
             # Create the pause record
-            pause_model = WorkflowPause()
-            pause_model.id = str(uuidv7())
-            pause_model.workflow_id = workflow_run.workflow_id
-            pause_model.workflow_run_id = workflow_run.id
-            pause_model.state_object_key = state_obj_key
-            pause_model.created_at = naive_utc_now()
+            pause_model = WorkflowPause(
+                workflow_id=workflow_run.workflow_id,
+                workflow_run_id=workflow_run.id,
+                state_object_key=state_obj_key,
+            )
             pause_reason_models = []
             for reason in pause_reasons:
                 if isinstance(reason, HumanInputRequired):
@@ -806,12 +822,23 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             form_stmt = select(HumanInputForm).where(HumanInputForm.id.in_(form_ids))
             for form in session.scalars(form_stmt).all():
                 form_models[form.id] = form
+        recipients_by_form_id: dict[str, list[HumanInputFormRecipient]] = {}
+        if form_ids:
+            recipient_stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
+            for recipient in session.scalars(recipient_stmt).all():
+                recipients_by_form_id.setdefault(recipient.form_id, []).append(recipient)
 
         pause_reasons: list[PauseReason] = []
         for reason in pause_reason_models:
             if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
                 form_model = form_models.get(reason.form_id)
-                pause_reasons.append(_build_human_input_required_reason(reason, form_model))
+                pause_reasons.append(
+                    _build_human_input_required_reason(
+                        reason,
+                        form_model,
+                        recipients_by_form_id.get(reason.form_id, ()),
+                    )
+                )
             else:
                 pause_reasons.append(reason.to_entity())
         return pause_reasons
