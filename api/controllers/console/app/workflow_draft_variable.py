@@ -106,7 +106,7 @@ def _serialize_workflow_draft_variable(variable: WorkflowDraftVariable, *, inclu
 def _serialize_workflow_draft_variable_list(
     workflow_vars: WorkflowDraftVariableList, *, include_value: bool
 ) -> dict[str, Any]:
-    response = {
+    response: dict[str, Any] = {
         "items": [
             _serialize_workflow_draft_variable(variable, include_value=include_value)
             for variable in workflow_vars.variables
