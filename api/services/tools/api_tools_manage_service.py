@@ -298,9 +298,8 @@ class ApiToolManageService:
 
         # check if the provider exists
         # create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
+        with sessionmaker(db.engine).begin() as _session:
+            provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
                     ApiToolProvider.tenant_id == tenant_id,
@@ -308,59 +307,60 @@ class ApiToolManageService:
                 )
                 .limit(1)
             )
-        if provider is None:
-            raise ValueError(f"api provider {provider_name} does not exists")
 
-        # parse openapi to tool bundle
-        extra_info: dict[str, str] = {}
-        # extra info like description will be set here
-        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+            if provider is None:
+                raise ValueError(f"api provider {provider_name} does not exists")
 
-        # update db provider
-        provider.name = provider_name
-        provider.icon = json.dumps(icon)
-        provider.schema = schema
-        provider.description = extra_info.get("description", "")
-        provider.schema_type_str = schema_type
-        provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
-        provider.privacy_policy = privacy_policy
-        provider.custom_disclaimer = custom_disclaimer
+            # parse openapi to tool bundle
+            extra_info: dict[str, str] = {}
+            # extra info like description will be set here
+            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-        if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            # update db provider
+            provider.name = provider_name
+            provider.icon = json.dumps(icon)
+            provider.schema = schema
+            provider.description = extra_info.get("description", "")
+            provider.schema_type_str = schema_type
+            provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
+            provider.privacy_policy = privacy_policy
+            provider.custom_disclaimer = custom_disclaimer
 
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+            if "auth_type" not in credentials:
+                raise ValueError("auth_type is required")
 
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
-        # load tools into provider entity
-        provider_controller.load_bundled_tools(tool_bundles)
+            # get auth type, none or api key
+            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-        # get original credentials if exists
-        encrypter, cache = create_tool_provider_encrypter(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-        )
+            # create provider entity
+            provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+            # load tools into provider entity
+            provider_controller.load_bundled_tools(tool_bundles)
 
-        original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
-        # check if the credential has changed, save the original credential
-        for name, value in credentials.items():
-            if name in masked_credentials and value == masked_credentials[name]:
-                credentials[name] = original_credentials[name]
+            # get original credentials if exists
+            encrypter, cache = create_tool_provider_encrypter(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+            )
 
-        credentials = dict(encrypter.encrypt(credentials))
-        provider.credentials_str = json.dumps(credentials)
+            original_credentials = encrypter.decrypt(provider.credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
 
-        with sessionmaker(db.engine).begin() as _session:
+            # check if the credential has changed, save the original credential
+            for name, value in credentials.items():
+                if name in masked_credentials and value == masked_credentials[name]:
+                    credentials[name] = original_credentials[name]
+
+            credentials = dict(encrypter.encrypt(credentials))
+            provider.credentials_str = json.dumps(credentials)
+
             _session.add(provider)
+
+            # update labels
+            ToolLabelManager.update_tool_labels(provider_controller, labels, _session)
 
         # delete cache
         cache.delete()
-
-        # update labels
-        ToolLabelManager.update_tool_labels(provider_controller, labels)
 
         return {"result": "success"}
 
