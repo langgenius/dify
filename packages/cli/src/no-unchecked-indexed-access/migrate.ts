@@ -14,6 +14,7 @@ type CliOptions = {
   files: string[]
   maxIterations: number
   project: string
+  useFullProjectRoots?: boolean
   verbose: boolean
   write: boolean
 }
@@ -177,6 +178,18 @@ function isDeclarationSupportFile(fileName: string): boolean {
   return fileName.endsWith('.d.ts')
 }
 
+function isSetupSupportFile(fileName: string): boolean {
+  const baseName = path.basename(fileName)
+  return baseName === 'vitest.setup.ts'
+    || baseName === 'vitest.setup.tsx'
+    || baseName === 'jest.setup.ts'
+    || baseName === 'jest.setup.tsx'
+    || baseName === 'setupTests.ts'
+    || baseName === 'setupTests.tsx'
+    || baseName === 'test.setup.ts'
+    || baseName === 'test.setup.tsx'
+}
+
 function getMigrationRootNames(
   parsedConfig: ts.ParsedCommandLine,
   targetFiles: string[],
@@ -184,7 +197,7 @@ function getMigrationRootNames(
   const rootNames = new Set(targetFiles)
 
   for (const fileName of parsedConfig.fileNames.map(normalizeFileName)) {
-    if (isDeclarationSupportFile(fileName))
+    if (isDeclarationSupportFile(fileName) || isSetupSupportFile(fileName))
       rootNames.add(fileName)
   }
 
@@ -1702,7 +1715,9 @@ export async function runMigration(options: CliOptions) {
 
   const fileTexts = new Map<string, string>()
   const printer = ts.createPrinter()
-  const migrationRootNames = getMigrationRootNames(parsedConfig, targetFiles)
+  const migrationRootNames = options.useFullProjectRoots
+    ? parsedConfig.fileNames.map(normalizeFileName)
+    : getMigrationRootNames(parsedConfig, targetFiles)
 
   let totalEdits = 0
   let converged = false

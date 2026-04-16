@@ -223,13 +223,26 @@ async function runBatchMigration(options: CliOptions) {
 
     for (const [index, batch] of batches.entries()) {
       console.log(`  Batch ${index + 1}/${batches.length}: ${batch.length} file(s)`)
-      const result = await runMigration({
+      let result = await runMigration({
         files: batch,
         maxIterations: options.batchIterations,
         project: options.project,
         verbose: options.verbose,
         write: true,
       })
+
+      if (result.totalEdits === 0) {
+        console.log('    No edits produced; retrying batch with full project roots.')
+        result = await runMigration({
+          files: batch,
+          maxIterations: options.batchIterations,
+          project: options.project,
+          useFullProjectRoots: true,
+          verbose: options.verbose,
+          write: true,
+        })
+      }
+
       roundEdits += result.totalEdits
     }
 
