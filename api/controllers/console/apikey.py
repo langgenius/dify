@@ -159,7 +159,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(200, "Success", console_ns.models[ApiKeyList.__name__])
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
@@ -199,7 +199,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(200, "Success", console_ns.models[ApiKeyList.__name__])
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
