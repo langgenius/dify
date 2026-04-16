@@ -5,13 +5,13 @@ import { Menu } from '@base-ui/react/menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
-  menuGroupLabelClassName,
-  menuIndicatorClassName,
-  menuPopupAnimationClassName,
-  menuPopupBaseClassName,
-  menuRowClassName,
-  menuSeparatorClassName,
-} from '@/app/components/base/ui/menu-shared'
+  overlayGroupLabelClassName,
+  overlayIndicatorClassName,
+  overlayPopupAnimationClassName,
+  overlayPopupBaseClassName,
+  overlayRowClassName,
+  overlaySeparatorClassName,
+} from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 
 export const DropdownMenu = Menu.Root
@@ -26,7 +26,7 @@ export function DropdownMenuRadioItem({
 }: React.ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
   return (
     <Menu.RadioItem
-      className={cn(menuRowClassName, className)}
+      className={cn(overlayRowClassName, className)}
       {...props}
     />
   )
@@ -38,7 +38,7 @@ export function DropdownMenuRadioItemIndicator({
 }: Omit<React.ComponentPropsWithoutRef<typeof Menu.RadioItemIndicator>, 'children'>) {
   return (
     <Menu.RadioItemIndicator
-      className={cn(menuIndicatorClassName, className)}
+      className={cn(overlayIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -52,7 +52,7 @@ export function DropdownMenuCheckboxItem({
 }: React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>) {
   return (
     <Menu.CheckboxItem
-      className={cn(menuRowClassName, className)}
+      className={cn(overlayRowClassName, className)}
       {...props}
     />
   )
@@ -64,7 +64,7 @@ export function DropdownMenuCheckboxItemIndicator({
 }: Omit<React.ComponentPropsWithoutRef<typeof Menu.CheckboxItemIndicator>, 'children'>) {
   return (
     <Menu.CheckboxItemIndicator
-      className={cn(menuIndicatorClassName, className)}
+      className={cn(overlayIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -78,7 +78,7 @@ export function DropdownMenuGroupLabel({
 }: React.ComponentPropsWithoutRef<typeof Menu.GroupLabel>) {
   return (
     <Menu.GroupLabel
-      className={cn(menuGroupLabelClassName, className)}
+      className={cn(overlayGroupLabelClassName, className)}
       {...props}
     />
   )
@@ -135,8 +135,8 @@ function renderDropdownMenuPopup({
       >
         <Menu.Popup
           className={cn(
-            menuPopupBaseClassName,
-            menuPopupAnimationClassName,
+            overlayPopupBaseClassName,
+            overlayPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -182,7 +182,7 @@ export function DropdownMenuSubTrigger({
 }: DropdownMenuSubTriggerProps) {
   return (
     <Menu.SubmenuTrigger
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     >
       {children}
@@ -235,7 +235,7 @@ export function DropdownMenuItem({
 }: DropdownMenuItemProps) {
   return (
     <Menu.Item
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     />
   )
@@ -253,7 +253,7 @@ export function DropdownMenuLinkItem({
 }: DropdownMenuLinkItemProps) {
   return (
     <Menu.LinkItem
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -266,7 +266,7 @@ export function DropdownMenuSeparator({
 }: React.ComponentPropsWithoutRef<typeof Menu.Separator>) {
   return (
     <Menu.Separator
-      className={cn(menuSeparatorClassName, className)}
+      className={cn(overlaySeparatorClassName, className)}
       {...props}
     />
   )

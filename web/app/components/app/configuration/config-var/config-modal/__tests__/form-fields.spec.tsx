@@ -44,18 +44,25 @@ vi.mock('@/app/components/base/select', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
-    <div>
-      <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
-      {children}
-    </div>
-  ),
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectValue: () => <span>select-value</span>,
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
+vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+
+  return {
+    ...actual,
+    Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
+      <div>
+        <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
+        {children}
+      </div>
+    ),
+    SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectValue: () => <span>select-value</span>,
+    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+    SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
+  }
+})
 
 vi.mock('../field', () => ({
   default: ({ children, title }: { children: ReactNode, title: string }) => (

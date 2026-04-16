@@ -26,66 +26,83 @@ const MockSelectContext = React.createContext<{
   onValueChange: () => {},
 })
 
-vi.mock('@/app/components/base/ui/select', () => ({
-  Select: ({
-    value,
-    onValueChange,
-    children,
-  }: {
-    value: string
-    onValueChange: (value: string) => void
-    children: React.ReactNode
-  }) => (
-    <MockSelectContext.Provider value={{ value, onValueChange }}>
-      <div data-testid="select-root">{children}</div>
-    </MockSelectContext.Provider>
-  ),
-  SelectTrigger: ({
-    children,
-    className,
-    'data-testid': testId,
-  }: {
-    'children': React.ReactNode
-    'className'?: string
-    'data-testid'?: string
-  }) => (
-    <button data-testid={testId ?? 'select-trigger'} data-class={className}>
-      {children}
-    </button>
-  ),
-  SelectValue: () => {
-    const { value } = React.useContext(MockSelectContext)
-    return <span data-testid="selected-value">{value}</span>
-  },
-  SelectContent: ({
-    children,
-    popupClassName,
-  }: {
-    children: React.ReactNode
-    popupClassName?: string
-  }) => (
-    <div data-testid="select-content" data-popup-class={popupClassName}>
-      {children}
-    </div>
-  ),
-  SelectItem: ({
-    children,
-    value,
-  }: {
-    children: React.ReactNode
-    value: string
-  }) => {
-    const { onValueChange } = React.useContext(MockSelectContext)
-    return (
-      <button
-        data-testid={`select-item-${value}`}
-        onClick={() => onValueChange(value)}
-      >
+vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+
+  return {
+    ...actual,
+    Select: ({
+      value,
+      onValueChange,
+      children,
+    }: {
+      value: string
+      onValueChange: (value: string) => void
+      children: React.ReactNode
+    }) => (
+      <MockSelectContext.Provider value={{ value, onValueChange }}>
+        <div data-testid="select-root">{children}</div>
+      </MockSelectContext.Provider>
+    ),
+    SelectTrigger: ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      'children': React.ReactNode
+      'className'?: string
+      'data-testid'?: string
+    }) => (
+      <button data-testid={testId ?? 'select-trigger'} data-class={className}>
         {children}
       </button>
-    )
-  },
-}))
+    ),
+    SelectValue: () => {
+      const { value } = React.useContext(MockSelectContext)
+      return <span data-testid="selected-value">{value}</span>
+    },
+    SelectContent: ({
+      children,
+      popupClassName,
+    }: {
+      children: React.ReactNode
+      popupClassName?: string
+    }) => (
+      <div data-testid="select-content" data-popup-class={popupClassName}>
+        {children}
+      </div>
+    ),
+    SelectItem: ({
+      children,
+      value,
+    }: {
+      children: React.ReactNode
+      value: string
+    }) => {
+      const { onValueChange } = React.useContext(MockSelectContext)
+      return (
+        <button
+          data-testid={`select-item-${value}`}
+          onClick={() => onValueChange(value)}
+        >
+          {children}
+        </button>
+      )
+    },
+    SelectItemText: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode
+      className?: string
+    }) => <span data-class={className}>{children}</span>,
+    SelectItemIndicator: ({
+      className,
+    }: {
+      className?: string
+    }) => <span data-testid="select-item-indicator" data-class={className} />,
+  }
+})
 
 // ==================== Test Utilities ====================
 
