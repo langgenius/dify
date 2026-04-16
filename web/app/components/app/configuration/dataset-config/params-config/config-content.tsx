@@ -88,6 +88,7 @@ const ConfigContent: FC<Props> = ({
       model_name: datasetConfigs.reranking_model?.reranking_model_name ?? '',
     }
   }, [datasetConfigs.reranking_model])
+  const rerankSettingsDisabled = type === RETRIEVE_TYPE.multiWay && selectedDatasets.length <= 1
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -132,6 +133,9 @@ const ConfigContent: FC<Props> = ({
   }
 
   const handleRerankModeChange = (mode: RerankingModeEnum) => {
+    if (rerankSettingsDisabled)
+      return
+
     if (mode === datasetConfigs.reranking_mode)
       return
 
@@ -178,13 +182,16 @@ const ConfigContent: FC<Props> = ({
   }, [datasetConfigs.reranking_enable, canManuallyToggleRerank])
 
   const handleManuallyToggleRerank = useCallback((enable: boolean) => {
+    if (rerankSettingsDisabled)
+      return
+
     if (!currentRerankModel && enable)
       toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange({
       ...datasetConfigs,
       reranking_enable: enable,
     })
-  }, [currentRerankModel, datasetConfigs, onChange])
+  }, [currentRerankModel, datasetConfigs, onChange, rerankSettingsDisabled, t])
 
   return (
     <div>
@@ -238,7 +245,8 @@ const ConfigContent: FC<Props> = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary',
+                        'flex h-8 w-[calc((100%-8px)/2)] items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary',
+                        rerankSettingsDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
                         selectedRerankMode === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
                       )}
                       onClick={() => handleRerankModeChange(option.value)}
@@ -269,6 +277,7 @@ const ConfigContent: FC<Props> = ({
                         size="md"
                         checked={showRerankModel ?? false}
                         onCheckedChange={handleManuallyToggleRerank}
+                        disabled={rerankSettingsDisabled}
                       />
                     )
                   }
@@ -298,6 +307,7 @@ const ConfigContent: FC<Props> = ({
                           })
                         }}
                         modelList={rerankModelList}
+                        readonly={rerankSettingsDisabled}
                       />
                     </div>
                   )
@@ -317,6 +327,7 @@ const ConfigContent: FC<Props> = ({
                     ],
                   }}
                   onChange={handleWeightedScoreChange}
+                  readonly={rerankSettingsDisabled}
                 />
                 <TopKItem
                   value={datasetConfigs.top_k}
