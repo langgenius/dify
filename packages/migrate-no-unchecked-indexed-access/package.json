@@ -7,12 +7,14 @@
     "migrate-no-unchecked-indexed-access": "./bin/migrate-no-unchecked-indexed-access.js"
   },
   "scripts": {
-    "build": "vp pack"
+    "build": "vp pack",
+    "type-check": "tsc"
   },
   "dependencies": {
     "typescript": "catalog:"
   },
   "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

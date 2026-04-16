@@ -14,8 +14,8 @@ describe("sse parsing", () => {
       events.push(event);
     }
     expect(events).toHaveLength(1);
-    expect(events[0].event).toBe("message");
-    expect(events[0].data).toEqual({ answer: "hi" });
+    expect(events[0]!.event).toBe("message");
+    expect(events[0]!.data).toEqual({ answer: "hi" });
   });
 
   it("handles multi-line data payloads", async () => {
@@ -24,8 +24,8 @@ describe("sse parsing", () => {
     for await (const event of parseSseStream(stream)) {
       events.push(event);
     }
-    expect(events[0].raw).toBe("line1\nline2");
-    expect(events[0].data).toBe("line1\nline2");
+    expect(events[0]!.raw).toBe("line1\nline2");
+    expect(events[0]!.data).toBe("line1\nline2");
   });
 
   it("ignores comments and flushes the last event without a trailing separator", async () => {

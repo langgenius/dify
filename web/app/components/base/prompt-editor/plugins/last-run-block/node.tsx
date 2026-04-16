@@ -5,15 +5,15 @@ import LastRunBlockComponent from './component'
 type SerializedNode = SerializedLexicalNode
 
 export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
-  static getType(): string {
+  static override getType(): string {
     return 'last-run-block'
   }
 
-  static clone(node: LastRunBlockNode): LastRunBlockNode {
+  static override clone(node: LastRunBlockNode): LastRunBlockNode {
     return new LastRunBlockNode(node.getKey())
   }
 
-  isInline(): boolean {
+  override isInline(): boolean {
     return true
   }
 
@@ -21,17 +21,17 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
     super(key)
   }
 
-  createDOM(): HTMLElement {
+  override createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  updateDOM(): false {
+  override updateDOM(): false {
     return false
   }
 
-  decorate(): React.JSX.Element {
+  override decorate(): React.JSX.Element {
     return (
       <LastRunBlockComponent
         nodeKey={this.getKey()}
@@ -39,20 +39,20 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
     )
   }
 
-  static importJSON(): LastRunBlockNode {
+  static override importJSON(): LastRunBlockNode {
     const node = $createLastRunBlockNode()
 
     return node
   }
 
-  exportJSON(): SerializedNode {
+  override exportJSON(): SerializedNode {
     return {
       type: 'last-run-block',
       version: 1,
     }
   }
 
-  getTextContent(): string {
+  override getTextContent(): string {
     return '{{#last_run#}}'
   }
 }

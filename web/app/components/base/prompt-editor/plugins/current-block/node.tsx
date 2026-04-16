@@ -7,15 +7,15 @@ type SerializedNode = SerializedLexicalNode & { generatorType: GeneratorType }
 
 export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
   __generatorType: GeneratorType
-  static getType(): string {
+  static override getType(): string {
     return 'current-block'
   }
 
-  static clone(node: CurrentBlockNode): CurrentBlockNode {
+  static override clone(node: CurrentBlockNode): CurrentBlockNode {
     return new CurrentBlockNode(node.__generatorType, node.getKey())
   }
 
-  isInline(): boolean {
+  override isInline(): boolean {
     return true
   }
 
@@ -25,17 +25,17 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__generatorType = generatorType
   }
 
-  createDOM(): HTMLElement {
+  override createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  updateDOM(): false {
+  override updateDOM(): false {
     return false
   }
 
-  decorate(): React.JSX.Element {
+  override decorate(): React.JSX.Element {
     return (
       <CurrentBlockComponent
         nodeKey={this.getKey()}
@@ -49,13 +49,13 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     return self.__generatorType
   }
 
-  static importJSON(serializedNode: SerializedNode): CurrentBlockNode {
+  static override importJSON(serializedNode: SerializedNode): CurrentBlockNode {
     const node = $createCurrentBlockNode(serializedNode.generatorType)
 
     return node
   }
 
-  exportJSON(): SerializedNode {
+  override exportJSON(): SerializedNode {
     return {
       type: 'current-block',
       version: 1,
@@ -63,7 +63,7 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     }
   }
 
-  getTextContent(): string {
+  override getTextContent(): string {
     return '{{#current#}}'
   }
 }

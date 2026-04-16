@@ -1,0 +1,11 @@
+{
+  "name": "@dify/tsconfig",
+  "version": "0.0.0-private",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./nextjs.json": "./nextjs.json",
+    "./node.json": "./node.json",
+    "./web.json": "./web.json"
+  }
+}
