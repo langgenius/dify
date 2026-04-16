@@ -202,12 +202,23 @@ describe('useSnippetInit', () => {
       onSuccess?.({
         created_at: 1_712_345_678,
       })
-      return { data: undefined, isLoading: false }
+      return { data: { created_at: 1_712_345_678 }, isLoading: false }
     })
 
     renderHook(() => useSnippetInit('snippet-1'))
 
     expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
+  })
+
+  it('should reset published metadata when the published workflow is unavailable', () => {
+    mockUseSnippetPublishedWorkflow.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    })
+
+    renderHook(() => useSnippetInit('snippet-1'))
+
+    expect(mockSetPublishedAt).toHaveBeenCalledWith(0)
   })
 
   it('should stay loading while draft workflow is still fetching', () => {

@@ -7,6 +7,7 @@ import {
   useMemo,
 } from 'react'
 import Header from '@/app/components/workflow/header'
+import { useStore } from '@/app/components/workflow/store'
 import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
 import RunMode from './run-mode'
@@ -32,6 +33,8 @@ const SnippetHeader = ({
   onPublishMenuOpenChange,
   onPublish,
 }: SnippetHeaderProps) => {
+  const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
+  const publishedAt = useStore(state => state.publishedAt)
   const viewHistoryProps = useMemo(() => {
     return {
       historyUrl: `/snippets/${snippetId}/workflow-runs`,
@@ -46,10 +49,12 @@ const SnippetHeader = ({
           middle: (
             <Publisher
               uiMeta={uiMeta}
+              draftUpdatedAt={draftUpdatedAt}
               open={isPublishMenuOpen}
               isPublishing={isPublishing}
               onOpenChange={onPublishMenuOpenChange}
               onPublish={onPublish}
+              publishedAt={publishedAt}
             />
           ),
         },
@@ -69,7 +74,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [inputFieldCount, isPublishMenuOpen, isPublishing, onPublish, onPublishMenuOpenChange, onToggleInputPanel, uiMeta, viewHistoryProps])
+  }, [draftUpdatedAt, inputFieldCount, isPublishMenuOpen, isPublishing, onPublish, onPublishMenuOpenChange, onToggleInputPanel, publishedAt, uiMeta, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

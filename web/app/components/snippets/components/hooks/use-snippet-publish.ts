@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { toast } from '@/app/components/base/ui/toast'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useSnippetDetailStore } from '../../store'
@@ -15,6 +16,7 @@ export const useSnippetPublish = ({
   snippetId,
 }: UseSnippetPublishOptions) => {
   const { t } = useTranslation('snippet')
+  const workflowStore = useWorkflowStore()
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
   const {
     isPublishMenuOpen,
@@ -26,16 +28,17 @@ export const useSnippetPublish = ({
 
   const handlePublish = useCallback(async () => {
     try {
-      await publishSnippetMutation.mutateAsync({
+      const publishedWorkflow = await publishSnippetMutation.mutateAsync({
         params: { snippetId },
       })
+      workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
       setPublishMenuOpen(false)
       toast.success(t('publishSuccess'))
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('publishFailed'))
     }
-  }, [publishSnippetMutation, setPublishMenuOpen, snippetId, t])
+  }, [publishSnippetMutation, setPublishMenuOpen, snippetId, t, workflowStore])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (event) => {
     if (publishSnippetMutation.isPending)

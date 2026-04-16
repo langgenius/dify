@@ -9,7 +9,7 @@ vi.mock('@/app/components/rag-pipeline/components/panel/input-field/hooks', () =
   useFloatingRight: (...args: unknown[]) => mockUseFloatingRight(...args),
 }))
 
-vi.mock('@/app/components/rag-pipeline/components/panel/input-field/editor/form', () => ({
+vi.mock('../input-field-form', () => ({
   default: ({ isEditMode }: { isEditMode: boolean }) => (
     <div data-testid="snippet-input-field-form">{isEditMode ? 'edit' : 'create'}</div>
   ),

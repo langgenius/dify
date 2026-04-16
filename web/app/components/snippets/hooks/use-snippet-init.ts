@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useSnippetDefaultBlockConfigs,
@@ -54,9 +54,16 @@ export const useSnippetInit = (snippetId: string) => {
       nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
     })
   })
-  useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
+  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
     workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
   })
+
+  useEffect(() => {
+    if (publishedWorkflowQuery.isLoading)
+      return
+
+    workflowStore.getState().setPublishedAt(publishedWorkflowQuery.data?.created_at ?? 0)
+  }, [publishedWorkflowQuery.data?.created_at, publishedWorkflowQuery.isLoading, workflowStore])
 
   const mockData = useMemo(() => getSnippetDetailMock(snippetId), [snippetId])
   const shouldUseMockData = !snippetApiDetail.isLoading && !snippetApiDetail.data && !!mockData

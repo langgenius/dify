@@ -5,6 +5,7 @@ import { useSnippetPublish } from '../use-snippet-publish'
 const mockMutateAsync = vi.fn()
 const mockSetPublishMenuOpen = vi.fn()
 const mockUseKeyPress = vi.fn()
+const mockSetPublishedAt = vi.fn()
 
 let isPublishMenuOpen = false
 let isPending = false
@@ -28,6 +29,14 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: () => ({
+    getState: () => ({
+      setPublishedAt: mockSetPublishedAt,
+    }),
+  }),
+}))
+
 vi.mock('../../../store', () => ({
   useSnippetDetailStore: (selector: (state: {
     isPublishMenuOpen: boolean
@@ -44,7 +53,7 @@ describe('useSnippetPublish', () => {
     isPublishMenuOpen = false
     isPending = false
     shortcutHandler = undefined
-    mockMutateAsync.mockResolvedValue(undefined)
+    mockMutateAsync.mockResolvedValue({ created_at: 1_712_345_678 })
     mockUseKeyPress.mockImplementation((_key, handler) => {
       shortcutHandler = handler
     })
@@ -63,6 +72,7 @@ describe('useSnippetPublish', () => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })
+      expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
       expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
       expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
@@ -104,7 +114,8 @@ describe('useSnippetPublish', () => {
       expect(preventDefault).toHaveBeenCalledTimes(1)
     })
 
-    it('should ignore the shortcut outside the orchestrate section', () => {
+    it('should ignore the shortcut while publishing is pending', () => {
+      isPending = true
       renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
       }))
