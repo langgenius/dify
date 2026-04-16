@@ -17,11 +17,6 @@
       "count": 2
     }
   },
-  "packages/migrate-no-unchecked-indexed-access/dist/cli.mjs": {
-    "style/no-mixed-operators": {
-      "count": 2
-    }
-  },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
     "no-console": {
       "count": 11
