@@ -120,7 +120,6 @@ jobs:
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          cd web
           vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
       - if: github.event_name != 'merge_group'

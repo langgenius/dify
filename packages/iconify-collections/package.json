@@ -1,12 +1,12 @@
 {
   "name": "@dify/iconify-collections",
-  "private": true,
   "version": "0.0.0-private",
+  "private": true,
   "exports": {
     "./custom-public": {
       "types": "./custom-public/index.d.ts",
-      "require": "./custom-public/index.js",
-      "import": "./custom-public/index.mjs"
+      "import": "./custom-public/index.mjs",
+      "require": "./custom-public/index.js"
     },
     "./custom-public/icons.json": "./custom-public/icons.json",
     "./custom-public/info.json": "./custom-public/info.json",
@@ -14,8 +14,8 @@
     "./custom-public/chars.json": "./custom-public/chars.json",
     "./custom-vender": {
       "types": "./custom-vender/index.d.ts",
-      "require": "./custom-vender/index.js",
-      "import": "./custom-vender/index.mjs"
+      "import": "./custom-vender/index.mjs",
+      "require": "./custom-vender/index.js"
     },
     "./custom-vender/icons.json": "./custom-vender/icons.json",
     "./custom-vender/info.json": "./custom-vender/info.json",

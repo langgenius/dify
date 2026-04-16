@@ -1,12 +1,12 @@
 {
   "extends": "@dify/tsconfig/base.json",
   "compilerOptions": {
-    "noEmit": false,
+    "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
+    "noEmit": false,
     "outDir": "dist",
-    "rootDir": "src",
+    "sourceMap": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
