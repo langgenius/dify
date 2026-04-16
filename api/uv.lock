@@ -1326,6 +1326,7 @@ dependencies = [
     { name = "redis", extra = ["hiredis"] },
     { name = "resend" },
     { name = "sendgrid" },
+    { name = "sseclient-py" },
     { name = "weave" },
 ]
 
@@ -1352,7 +1353,6 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "scipy-stubs" },
-    { name = "sseclient-py" },
     { name = "testcontainers" },
     { name = "types-aiofiles" },
     { name = "types-beautifulsoup4" },
@@ -1580,6 +1580,7 @@ requires-dist = [
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5" },
+    { name = "sseclient-py", specifier = ">=1.8.0" },
     { name = "weave", specifier = ">=0.52.36,<1.0.0" },
 ]
 
@@ -1606,7 +1607,6 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.15.10" },
     { name = "scipy-stubs", specifier = ">=1.15.3.0" },
-    { name = "sseclient-py", specifier = ">=1.8.0" },
     { name = "testcontainers", specifier = ">=4.14.2" },
     { name = "types-aiofiles", specifier = ">=25.1.0" },
     { name = "types-beautifulsoup4", specifier = ">=4.12.0" },
