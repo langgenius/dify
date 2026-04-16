@@ -1,0 +1,7 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"]
+}

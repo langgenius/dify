@@ -77,6 +77,8 @@ jobs:
         with:
           files: |
             web/**
+            e2e/**
+            sdks/nodejs-client/**
             packages/**
             package.json
             pnpm-lock.yaml
@@ -110,10 +112,10 @@ jobs:
         working-directory: ./web
         run: vp run lint:tss
 
-      - name: Web type check
+      - name: Workspace type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run type-check
+        working-directory: .
+        run: pnpm run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
