@@ -514,7 +514,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                 )}
               >
                 <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
-                <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+                <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
                   <DropdownMenuTrigger
                     aria-label={t('operation.more', { ns: 'common' })}
                     className={cn(
