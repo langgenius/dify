@@ -33,6 +33,21 @@ describe('GlobalVariableButton', () => {
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
   })
 
+  it('should apply the same active styles as the view history icon button when the global variable panel is visible', () => {
+    renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
+      initialStoreState: {
+        showGlobalVariablePanel: true,
+      },
+    })
+
+    const button = screen.getByRole('button')
+    const icon = button.querySelector('svg')
+
+    expect(button).toHaveAttribute('aria-label', 'workflow.globalVar.title')
+    expect(button).toHaveClass('bg-state-accent-hover')
+    expect(icon).toHaveClass('text-components-button-secondary-accent-text')
+  })
+
   it('should keep the button disabled when the disabled prop is true', () => {
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled />, {
       initialStoreState: {
