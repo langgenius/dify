@@ -5,12 +5,14 @@ import { create } from 'zustand'
 
 type SnippetDetailUIState = {
   activeSection: SnippetSection
+  fields: SnippetInputField[]
   isInputPanelOpen: boolean
   isPublishMenuOpen: boolean
   isPreviewMode: boolean
   isEditorOpen: boolean
   editingField: SnippetInputField | null
   setActiveSection: (section: SnippetSection) => void
+  setFields: (fields: SnippetInputField[]) => void
   setInputPanelOpen: (value: boolean) => void
   toggleInputPanel: () => void
   setPublishMenuOpen: (value: boolean) => void
@@ -23,6 +25,7 @@ type SnippetDetailUIState = {
 
 const initialState = {
   activeSection: 'orchestrate' as SnippetSection,
+  fields: [] as SnippetInputField[],
   isInputPanelOpen: false,
   isPublishMenuOpen: false,
   isPreviewMode: false,
@@ -33,6 +36,7 @@ const initialState = {
 export const useSnippetDetailStore = create<SnippetDetailUIState>(set => ({
   ...initialState,
   setActiveSection: activeSection => set({ activeSection }),
+  setFields: fields => set({ fields }),
   setInputPanelOpen: isInputPanelOpen => set({ isInputPanelOpen }),
   toggleInputPanel: () => set(state => ({ isInputPanelOpen: !state.isInputPanelOpen, isPublishMenuOpen: false })),
   setPublishMenuOpen: isPublishMenuOpen => set({ isPublishMenuOpen }),

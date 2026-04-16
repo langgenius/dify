@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
 } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
@@ -85,7 +86,13 @@ const SnippetMain = ({
       nodesMap,
     }
   }, [workflowAvailableNodesMetaData])
-  const reset = useSnippetDetailStore(state => state.reset)
+  const {
+    reset,
+    setFields,
+  } = useSnippetDetailStore(useShallow(state => ({
+    reset: state.reset,
+    setFields: state.setFields,
+  })))
   const {
     editingField,
     fields,
@@ -100,7 +107,6 @@ const SnippetMain = ({
     handleToggleInputPanel,
   } = useSnippetInputFieldActions({
     snippetId,
-    initialFields: payload.inputFields,
   })
   const {
     handlePublish,
@@ -121,6 +127,10 @@ const SnippetMain = ({
   useEffect(() => {
     reset()
   }, [reset, snippetId])
+
+  useEffect(() => {
+    setFields(payload.inputFields)
+  }, [payload.inputFields, setFields, snippetId])
 
   const hooksStore = useMemo(() => {
     return {

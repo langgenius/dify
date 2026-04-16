@@ -10,6 +10,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/client'
 import { postWithKeepalive } from '@/service/fetch'
+import { useSnippetDetailStore } from '../store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
 
 const isSyncConflictError = (error: unknown): error is { bodyUsed: boolean, json: () => Promise<{ code?: string }> } => {
@@ -30,7 +31,13 @@ export const useNodesSyncDraft = (snippetId: string) => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
 
-  const getGraphSyncPayload = useCallback(() => {
+  const getInputFieldsSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
+    return {
+      input_fields: inputFields ?? useSnippetDetailStore.getState().fields,
+    }
+  }, [])
+
+  const getDraftSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
     const {
       getNodes,
       edges,
@@ -59,13 +66,14 @@ export const useNodesSyncDraft = (snippetId: string) => {
     })
 
     return {
+      ...getInputFieldsSyncPayload(inputFields),
       graph: {
         nodes: producedNodes,
         edges: producedEdges,
         viewport: { x, y, zoom },
       },
     }
-  }, [snippetId, store])
+  }, [getInputFieldsSyncPayload, snippetId, store])
 
   const syncDraft = useCallback(async (
     payload: Omit<SnippetDraftSyncPayload, 'hash'>,
@@ -116,34 +124,38 @@ export const useNodesSyncDraft = (snippetId: string) => {
     if (getNodesReadOnly())
       return
 
-    const graphPayload = getGraphSyncPayload()
-    if (!graphPayload)
+    const draftPayload = getDraftSyncPayload()
+    if (!draftPayload)
       return
 
     const { syncWorkflowDraftHash } = workflowStore.getState()
     postWithKeepalive(`${API_PREFIX}/snippets/${snippetId}/workflows/draft`, {
-      ...graphPayload,
+      ...draftPayload,
       hash: syncWorkflowDraftHash,
     })
-  }, [getGraphSyncPayload, getNodesReadOnly, snippetId, workflowStore])
+  }, [getDraftSyncPayload, getNodesReadOnly, snippetId, workflowStore])
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
   ) => {
-    const graphPayload = getGraphSyncPayload()
-    if (!graphPayload)
+    const draftPayload = getDraftSyncPayload()
+    if (!draftPayload)
       return
 
-    await syncDraft(graphPayload, notRefreshWhenSyncError, callback)
-  }, [getGraphSyncPayload, syncDraft])
+    await syncDraft(draftPayload, notRefreshWhenSyncError, callback)
+  }, [getDraftSyncPayload, syncDraft])
 
   const performInputFieldsSync = useCallback(async (
     inputFields: SnippetInputField[],
     callback?: SyncInputFieldsDraftCallback,
   ) => {
+    const draftPayload = getDraftSyncPayload(inputFields)
+    if (!draftPayload)
+      return
+
     await syncDraft(
-      { input_fields: inputFields },
+      draftPayload,
       false,
       callback,
       (draftWorkflow) => {
@@ -153,7 +165,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
         callback?.onRefresh?.(refreshedInputFields)
       },
     )
-  }, [syncDraft])
+  }, [getDraftSyncPayload, syncDraft])
 
   const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
   const syncInputFieldsDraft = useSerialAsyncCallback(performInputFieldsSync)

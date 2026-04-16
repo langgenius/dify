@@ -1,5 +1,5 @@
 import type { SnippetInputField } from '@/models/snippet'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { toast } from '@/app/components/base/ui/toast'
@@ -8,37 +8,38 @@ import { useSnippetDetailStore } from '../../store'
 
 type UseSnippetInputFieldActionsOptions = {
   snippetId: string
-  initialFields: SnippetInputField[]
 }
 
 export const useSnippetInputFieldActions = ({
   snippetId,
-  initialFields,
 }: UseSnippetInputFieldActionsOptions) => {
   const { t } = useTranslation('snippet')
-  const [fields, setFields] = useState<SnippetInputField[]>(initialFields)
   const { syncInputFieldsDraft } = useNodesSyncDraft(snippetId)
   const {
     editingField,
+    fields,
     isEditorOpen,
     isInputPanelOpen,
     closeEditor,
     openEditor,
+    setFields,
     setInputPanelOpen,
     toggleInputPanel,
   } = useSnippetDetailStore(useShallow(state => ({
     editingField: state.editingField,
+    fields: state.fields,
     isEditorOpen: state.isEditorOpen,
     isInputPanelOpen: state.isInputPanelOpen,
     closeEditor: state.closeEditor,
     openEditor: state.openEditor,
+    setFields: state.setFields,
     setInputPanelOpen: state.setInputPanelOpen,
     toggleInputPanel: state.toggleInputPanel,
   })))
 
   const handleSortChange = useCallback((newFields: SnippetInputField[]) => {
     setFields(newFields)
-  }, [])
+  }, [setFields])
 
   const handleRemoveField = useCallback((index: number) => {
     const nextFields = fields.filter((_, currentIndex) => currentIndex !== index)
@@ -46,7 +47,7 @@ export const useSnippetInputFieldActions = ({
     void syncInputFieldsDraft(nextFields, {
       onRefresh: setFields,
     })
-  }, [fields, syncInputFieldsDraft])
+  }, [fields, setFields, syncInputFieldsDraft])
 
   const handleSubmitField = useCallback((field: SnippetInputField) => {
     const originalVariable = editingField?.variable
@@ -66,7 +67,7 @@ export const useSnippetInputFieldActions = ({
       onRefresh: setFields,
     })
     closeEditor()
-  }, [closeEditor, editingField?.variable, fields, syncInputFieldsDraft, t])
+  }, [closeEditor, editingField?.variable, fields, setFields, syncInputFieldsDraft, t])
 
   const handleToggleInputPanel = useCallback(() => {
     if (isInputPanelOpen)

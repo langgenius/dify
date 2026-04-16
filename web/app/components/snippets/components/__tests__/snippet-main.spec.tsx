@@ -8,6 +8,7 @@ const mockSyncInputFieldsDraft = vi.fn()
 const mockCloseEditor = vi.fn()
 const mockOpenEditor = vi.fn()
 const mockReset = vi.fn()
+const mockSetFields = vi.fn()
 const mockSetInputPanelOpen = vi.fn()
 const mockSetPublishMenuOpen = vi.fn()
 const mockToggleInputPanel = vi.fn()
@@ -38,33 +39,24 @@ const mockInspectVarsCrud = {
   invalidateConversationVarValues: vi.fn(),
 }
 let capturedHooksStore: Record<string, unknown> | undefined
+let snippetDetailStoreState: {
+  editingField: SnippetInputField | null
+  fields: SnippetInputField[]
+  isEditorOpen: boolean
+  isInputPanelOpen: boolean
+  isPublishMenuOpen: boolean
+  closeEditor: typeof mockCloseEditor
+  openEditor: typeof mockOpenEditor
+  reset: typeof mockReset
+  setFields: typeof mockSetFields
+  setInputPanelOpen: typeof mockSetInputPanelOpen
+  setPublishMenuOpen: typeof mockSetPublishMenuOpen
+  toggleInputPanel: typeof mockToggleInputPanel
+  togglePublishMenu: typeof mockTogglePublishMenu
+}
 
 vi.mock('@/app/components/snippets/store', () => ({
-  useSnippetDetailStore: (selector: (state: {
-    editingField: SnippetInputField | null
-    isEditorOpen: boolean
-    isInputPanelOpen: boolean
-    isPublishMenuOpen: boolean
-    closeEditor: typeof mockCloseEditor
-    openEditor: typeof mockOpenEditor
-    reset: typeof mockReset
-    setInputPanelOpen: typeof mockSetInputPanelOpen
-    setPublishMenuOpen: typeof mockSetPublishMenuOpen
-    toggleInputPanel: typeof mockToggleInputPanel
-    togglePublishMenu: typeof mockTogglePublishMenu
-  }) => unknown) => selector({
-    editingField: null,
-    isEditorOpen: false,
-    isInputPanelOpen: true,
-    isPublishMenuOpen: false,
-    closeEditor: mockCloseEditor,
-    openEditor: mockOpenEditor,
-    reset: mockReset,
-    setInputPanelOpen: mockSetInputPanelOpen,
-    setPublishMenuOpen: mockSetPublishMenuOpen,
-    toggleInputPanel: mockToggleInputPanel,
-    togglePublishMenu: mockTogglePublishMenu,
-  }),
+  useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) => selector(snippetDetailStoreState),
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
@@ -216,6 +208,21 @@ describe('SnippetMain', () => {
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
     mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
     capturedHooksStore = undefined
+    snippetDetailStoreState = {
+      editingField: null,
+      fields: [...payload.inputFields],
+      isEditorOpen: false,
+      isInputPanelOpen: true,
+      isPublishMenuOpen: false,
+      closeEditor: mockCloseEditor,
+      openEditor: mockOpenEditor,
+      reset: mockReset,
+      setFields: mockSetFields,
+      setInputPanelOpen: mockSetInputPanelOpen,
+      setPublishMenuOpen: mockSetPublishMenuOpen,
+      toggleInputPanel: mockToggleInputPanel,
+      togglePublishMenu: mockTogglePublishMenu,
+    }
   })
 
   describe('Input Fields Sync', () => {
