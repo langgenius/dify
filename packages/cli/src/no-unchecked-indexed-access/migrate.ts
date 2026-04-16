@@ -334,6 +334,15 @@ function createDirectEditTarget(
   }
 }
 
+function createIterableFallbackTarget(expression: ts.Expression): EditTarget {
+  return createDirectEditTarget(
+    expression.getSourceFile(),
+    expression.getStart(expression.getSourceFile()),
+    expression.getEnd(),
+    `(${expression.getText(expression.getSourceFile())} ?? [])`,
+  )
+}
+
 function getTokenAtPosition(sourceFile: ts.SourceFile, position: number): ts.Node {
   let current: ts.Node = sourceFile
 
@@ -683,13 +692,8 @@ function findIterableTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const spreadElement = findAncestor(token, ts.isSpreadElement)
-  if (
-    spreadElement
-    && typeIncludesUndefined(checker.getTypeAtLocation(spreadElement.expression))
-    && !isAlreadyNonNull(spreadElement.expression)
-  ) {
-    return createExpressionTarget(spreadElement.expression)
-  }
+  if (spreadElement && !isAlreadyNonNull(spreadElement.expression))
+    return createIterableFallbackTarget(spreadElement.expression)
 
   const arrayLiteral = findAncestor(token, ts.isArrayLiteralExpression)
   if (arrayLiteral) {
@@ -704,11 +708,8 @@ function findIterableTarget(
       if (!overlapsDiagnostic && (start < arrayLiteral.getStart(sourceFile) || end > arrayLiteral.getEnd()))
         continue
 
-      if (
-        typeIncludesUndefined(checker.getTypeAtLocation(element.expression))
-        && !isAlreadyNonNull(element.expression)
-      ) {
-        return createExpressionTarget(element.expression)
+      if (!isAlreadyNonNull(element.expression)) {
+        return createIterableFallbackTarget(element.expression)
       }
     }
   }
@@ -774,12 +775,18 @@ function createArrayDestructuringReplacement(
   expression: ts.Expression,
   elements: readonly (ts.ArrayBindingElement | ts.Expression)[],
   checker: ts.TypeChecker,
+  options?: {
+    fallbackToEmptyArray?: boolean
+  },
 ): string | undefined {
   if (elements.length === 0)
     return undefined
 
   const tupleTypes = elements.map(element => getArrayPatternElementTypeText(element, checker))
-  return `(${expression.getText(sourceFile)}) as [${tupleTypes.join(', ')}]`
+  const expressionText = options?.fallbackToEmptyArray
+    ? `(${expression.getText(sourceFile)} ?? [])`
+    : `(${expression.getText(sourceFile)})`
+  return `${expressionText} as [${tupleTypes.join(', ')}]`
 }
 
 function findArrayDestructuringTarget(
@@ -788,14 +795,14 @@ function findArrayDestructuringTarget(
 ): EditTarget | undefined {
   const binaryExpression = findAncestor(token, ts.isBinaryExpression)
   if (binaryExpression && isAssignmentOperator(binaryExpression.operatorToken.kind) && ts.isArrayLiteralExpression(binaryExpression.left)) {
-    if (typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right)) && !isAlreadyNonNull(binaryExpression.right))
-      return createExpressionTarget(binaryExpression.right)
-
     const replacement = createArrayDestructuringReplacement(
       binaryExpression.getSourceFile(),
       binaryExpression.right,
       binaryExpression.left.elements,
       checker,
+      {
+        fallbackToEmptyArray: typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right)),
+      },
     )
     if (replacement) {
       return createDirectEditTarget(
@@ -809,14 +816,14 @@ function findArrayDestructuringTarget(
 
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
   if (variableDeclaration?.initializer && ts.isArrayBindingPattern(variableDeclaration.name)) {
-    if (typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)) && !isAlreadyNonNull(variableDeclaration.initializer))
-      return createExpressionTarget(variableDeclaration.initializer)
-
     const replacement = createArrayDestructuringReplacement(
       variableDeclaration.getSourceFile(),
       variableDeclaration.initializer,
       variableDeclaration.name.elements,
       checker,
+      {
+        fallbackToEmptyArray: typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)),
+      },
     )
     if (replacement) {
       return createDirectEditTarget(
