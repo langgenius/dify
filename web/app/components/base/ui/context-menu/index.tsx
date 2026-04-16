@@ -124,7 +124,7 @@ export function ContextMenuItem({
 }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       {...props}
     />
   )
@@ -142,7 +142,7 @@ export function ContextMenuLinkItem({
 }: ContextMenuLinkItemProps) {
   return (
     <BaseContextMenu.LinkItem
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -213,7 +213,7 @@ export function ContextMenuSubTrigger({
 }: ContextMenuSubTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       {...props}
     >
       {children}

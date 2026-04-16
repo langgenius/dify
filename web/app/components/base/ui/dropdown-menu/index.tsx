@@ -182,7 +182,7 @@ export function DropdownMenuSubTrigger({
 }: DropdownMenuSubTriggerProps) {
   return (
     <Menu.SubmenuTrigger
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       {...props}
     >
       {children}
@@ -235,7 +235,7 @@ export function DropdownMenuItem({
 }: DropdownMenuItemProps) {
   return (
     <Menu.Item
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       {...props}
     />
   )
@@ -253,7 +253,7 @@ export function DropdownMenuLinkItem({
 }: DropdownMenuLinkItemProps) {
   return (
     <Menu.LinkItem
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
       closeOnClick={closeOnClick}
       {...props}
     />
