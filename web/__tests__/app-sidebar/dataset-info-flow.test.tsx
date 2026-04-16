@@ -194,7 +194,7 @@ describe('App Sidebar Dataset Info Flow', () => {
     openDropdown()
     fireEvent.click(await screen.findByText('common.operation.edit'))
 
-    expect(screen.getByTestId('rename-dataset-modal')).toBeInTheDocument()
+    expect(await screen.findByTestId('rename-dataset-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'rename-success' }))
 

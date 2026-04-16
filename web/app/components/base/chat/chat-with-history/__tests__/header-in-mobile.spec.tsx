@@ -209,7 +209,9 @@ describe('HeaderInMobile', () => {
     fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
 
     // Check if chat settings overlay is open
-    expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
+    })
 
     // Close chat settings via overlay click
     fireEvent.click(screen.getByTestId('mobile-chat-settings-overlay'))
@@ -233,7 +235,9 @@ describe('HeaderInMobile', () => {
     })
     fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
 
-    expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
+    })
 
     // Click inside the settings panel (find the title)
     const settingsTitle = screen.getByText(/share\.chat\.chatSettingsTitle/i)
@@ -278,7 +282,9 @@ describe('HeaderInMobile', () => {
     })
     fireEvent.click(screen.getByText(/share\.chat\.resetChat/i))
 
-    expect(handleNewConversation).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(handleNewConversation).toHaveBeenCalled()
+    })
   })
 
   it('should handle pin conversation', async () => {
@@ -344,7 +350,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     // RenameModal should be visible
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
     const input = screen.getByDisplayValue('Conv 1')
     fireEvent.change(input, { target: { value: 'New Name' } })
 
@@ -372,7 +378,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     // RenameModal should be visible
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
     // Click cancel button
     const cancelButton = screen.getByRole('button', { name: /common\.operation\.cancel/i })
@@ -404,7 +410,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     // RenameModal should be visible with loading state
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
   it('should handle delete conversation', async () => {

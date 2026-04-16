@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import Breadcrumbs from '../index'
 
@@ -42,6 +42,16 @@ const resetMockStoreState = () => {
   mockStoreState.setBreadcrumbs = vi.fn()
   mockStoreState.setPrefix = vi.fn()
   mockStoreState.setBucket = vi.fn()
+}
+
+const getDropdownTrigger = () => {
+  return document.querySelector('[aria-haspopup="menu"]') as HTMLElement | null
+}
+
+const openCollapsedBreadcrumbDropdown = () => {
+  const dropdownTrigger = getDropdownTrigger()
+  expect(dropdownTrigger).toBeInTheDocument()
+  fireEvent.click(dropdownTrigger as HTMLElement)
 }
 
 describe('Breadcrumbs', () => {
@@ -335,15 +345,11 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Act - Click on dropdown trigger (the ... button)
-        const dropdownTrigger = screen.getAllByRole('button').find(btn => btn.querySelector('svg'))
-        if (dropdownTrigger)
-          fireEvent.click(dropdownTrigger)
+        openCollapsedBreadcrumbDropdown()
 
         // Assert - Collapsed breadcrumbs should be visible
-        await waitFor(() => {
-          expect(screen.getByText('folder3')).toBeInTheDocument()
-          expect(screen.getByText('folder4')).toBeInTheDocument()
-        })
+        expect(await screen.findByText('folder3')).toBeInTheDocument()
+        expect(await screen.findByText('folder4')).toBeInTheDocument()
       })
     })
   })
@@ -480,9 +486,7 @@ describe('Breadcrumbs', () => {
 
         // Assert - Should collapse because 3 > 2
         // Dropdown should be present
-        const buttons = screen.getAllByRole('button')
-        const hasDropdownTrigger = buttons.some(btn => btn.querySelector('svg'))
-        expect(hasDropdownTrigger).toBe(true)
+        expect(getDropdownTrigger()).toBeInTheDocument()
       })
 
       it('should use displayBreadcrumbNum=3 when isInPipeline is false', () => {
@@ -511,9 +515,7 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should collapse because 3 > 2
-        const buttons = screen.getAllByRole('button')
-        const hasDropdownTrigger = buttons.some(btn => btn.querySelector('svg'))
-        expect(hasDropdownTrigger).toBe(true)
+        expect(getDropdownTrigger()).toBeInTheDocument()
       })
     })
   })
@@ -582,9 +584,7 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Act - Click dropdown to see collapsed items
-        const dropdownTrigger = screen.getAllByRole('button').find(btn => btn.querySelector('svg'))
-        if (dropdownTrigger)
-          fireEvent.click(dropdownTrigger)
+        openCollapsedBreadcrumbDropdown()
 
         // prefixBreadcrumbs = ['f1', 'f2']
         // collapsedBreadcrumbs = ['f3', 'f4']
@@ -592,10 +592,8 @@ describe('Breadcrumbs', () => {
         expect(screen.getByText('f1')).toBeInTheDocument()
         expect(screen.getByText('f2')).toBeInTheDocument()
         expect(screen.getByText('f5')).toBeInTheDocument()
-        await waitFor(() => {
-          expect(screen.getByText('f3')).toBeInTheDocument()
-          expect(screen.getByText('f4')).toBeInTheDocument()
-        })
+        expect(await screen.findByText('f3')).toBeInTheDocument()
+        expect(await screen.findByText('f4')).toBeInTheDocument()
       })
 
       it('should not collapse when breadcrumbs.length <= displayBreadcrumbNum', () => {
@@ -739,15 +737,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Act - Open dropdown and click on collapsed breadcrumb (f3, index=2)
-        const dropdownTrigger = screen.getAllByRole('button').find(btn => btn.querySelector('svg'))
-        if (dropdownTrigger)
-          fireEvent.click(dropdownTrigger)
-
-        await waitFor(() => {
-          expect(screen.getByText('f3')).toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByText('f3'))
+        openCollapsedBreadcrumbDropdown()
+        fireEvent.click(await screen.findByText('f3'))
 
         // Assert - Should slice to index 2 + 1 = 3
         expect(mockStoreState.setBreadcrumbs).toHaveBeenCalledWith(['f1', 'f2', 'f3'])
@@ -810,17 +801,13 @@ describe('Breadcrumbs', () => {
       render(<Breadcrumbs {...props} />)
 
       // Act - Open dropdown
-      const dropdownTrigger = screen.getAllByRole('button').find(btn => btn.querySelector('svg'))
-      if (dropdownTrigger)
-        fireEvent.click(dropdownTrigger)
+      openCollapsedBreadcrumbDropdown()
 
       // Assert - First, last, and collapsed should be accessible
       expect(screen.getByText('folder-0')).toBeInTheDocument()
       expect(screen.getByText('folder-1')).toBeInTheDocument()
       expect(screen.getByText('folder-19')).toBeInTheDocument()
-      await waitFor(() => {
-        expect(screen.getByText('folder-2')).toBeInTheDocument()
-      })
+      expect(await screen.findByText('folder-2')).toBeInTheDocument()
     })
 
     it('should handle empty bucket string', () => {
@@ -879,9 +866,7 @@ describe('Breadcrumbs', () => {
       render(<Breadcrumbs {...props} />)
 
       // Assert - Should collapse because breadcrumbs.length > expectedNum
-      const buttons = screen.getAllByRole('button')
-      const hasDropdownTrigger = buttons.some(btn => btn.querySelector('svg'))
-      expect(hasDropdownTrigger).toBe(true)
+      expect(getDropdownTrigger()).toBeInTheDocument()
     })
   })
 
