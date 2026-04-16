@@ -58,11 +58,7 @@ export const Default: Story = {
             className="h-9 w-full rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder focus:border-components-input-border-hover"
           />
         </div>
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <DialogCloseButton
-            aria-label="Cancel"
-            className="static h-8 w-auto rounded-lg bg-components-button-secondary-bg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-          />
+        <div className="mt-6 flex items-center justify-end">
           <Button variant="primary">Send invite</Button>
         </div>
       </DialogContent>
