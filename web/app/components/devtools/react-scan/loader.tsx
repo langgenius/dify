@@ -9,7 +9,7 @@ export function ReactScanLoader() {
     <Script
       src="//unpkg.com/react-scan/dist/auto.global.js"
       crossOrigin="anonymous"
-      strategy="beforeInteractive"
+      strategy="afterInteractive"
     />
   )
 }
