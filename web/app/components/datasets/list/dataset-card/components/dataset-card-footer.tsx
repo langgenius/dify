@@ -1,11 +1,11 @@
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiFileTextFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { cn } from '@/utils/classnames'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -35,7 +35,7 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 px-4 pb-3 pt-2 text-text-tertiary',
+        'flex items-center gap-x-3 px-4 pt-2 pb-3 text-text-tertiary',
         !dataset.embedding_available && 'opacity-30',
       )}
     >

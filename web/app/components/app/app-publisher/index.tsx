@@ -1,4 +1,5 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { EvaluationWorkflowAssociatedTarget } from '@/types/evaluation'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
@@ -7,6 +8,7 @@ import { useKeyPress } from 'ahooks'
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -21,6 +23,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Button } from '@/app/components/base/ui/button'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -32,6 +37,8 @@ import { fetchInstalledAppList } from '@/service/explore'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
 import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
 import { AppModeEnum, AppTypeEnum } from '@/types/app'
+import { useInvalidateAppWorkflow } from '@/service/use-workflow'
+import { fetchPublishedWorkflow } from '@/service/workflow'
 import { basePath } from '@/utils/var'
 import { toast } from '../../base/ui/toast'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
@@ -131,6 +138,7 @@ const AppPublisher = ({
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
+  const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -167,6 +175,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const openAsyncWindow = useAsyncWindowOpen()
 
   const isAppAccessSet = useMemo(() => isPublisherAccessConfigured(appDetail, appAccessSubjects), [appAccessSubjects, appDetail])
@@ -194,12 +203,35 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+
+      const appId = appDetail?.id
+      const socket = appId ? webSocketClient.getSocket(appId) : null
+      if (appId)
+        invalidateAppWorkflow(appId)
+      else
+        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+      if (socket) {
+        const timestamp = Date.now()
+        socket.emit('collaboration_event', {
+          type: 'app_publish_update',
+          data: {
+            action: 'published',
+            timestamp,
+          },
+          timestamp,
+        })
+      }
+      else if (appId) {
+        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+      }
+
       trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
     }
-    catch {
+    catch (error) {
+      console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
-  }, [appDetail, onPublish])
+  }, [appDetail, onPublish, invalidateAppWorkflow])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -334,6 +366,29 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  useEffect(() => {
+    const appId = appDetail?.id
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
+      const action = typeof update.data.action === 'string' ? update.data.action : undefined
+      if (action === 'published') {
+        invalidateAppWorkflow(appId)
+        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
+          .then((publishedWorkflow) => {
+            if (publishedWorkflow?.created_at)
+              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
+          })
+          .catch((error) => {
+            console.warn('[app-publisher] refresh published workflow failed', error)
+          })
+      }
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable

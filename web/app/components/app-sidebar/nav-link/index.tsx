@@ -1,9 +1,9 @@
 'use client'
 import type { RemixiconComponentType } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 export type NavIcon = React.ComponentType<
   React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
@@ -61,7 +61,7 @@ const NavLink = ({
         key={name}
         type="button"
         disabled
-        className={cn('flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 system-sm-medium hover:bg-components-menu-item-bg-hover', 'pl-3 pr-1')}
+        className={cn('flex h-8 cursor-not-allowed items-center rounded-lg system-sm-medium text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover', 'pr-1 pl-3')}
         title={mode === 'collapse' ? name : ''}
         aria-disabled
       >

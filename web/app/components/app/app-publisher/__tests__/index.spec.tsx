@@ -17,6 +17,7 @@ const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
 const mockConvertWorkflowType = vi.fn()
 const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -104,6 +105,10 @@ vi.mock('@/service/use-evaluation', () => ({
     refetch: mockRefetchEvaluationWorkflowAssociatedTargets,
     isFetching: false,
   }),
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({

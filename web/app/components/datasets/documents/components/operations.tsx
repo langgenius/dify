@@ -1,6 +1,7 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArchive2Line, RiDeleteBinLine, RiDownload2Line, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -27,7 +28,6 @@ import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentDownload, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentSummary, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
 import RenameModal from './rename-modal'
@@ -154,18 +154,18 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   }, [datasetId, downloadDocument, id, isDownloading, name, t])
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
-      {isListScene && !embeddingAvailable && (<Switch value={false} onChange={noop} disabled={true} size="md" />)}
+      {isListScene && !embeddingAvailable && (<Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />)}
       {isListScene && embeddingAvailable && (
         <>
           {archived
             ? (
                 <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="!font-semibold">
                   <div>
-                    <Switch value={false} onChange={noop} disabled={true} size="md" />
+                    <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
                   </div>
                 </Tooltip>
               )
-            : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
+            : <Switch checked={enabled} onCheckedChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
           <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
         </>
       )}

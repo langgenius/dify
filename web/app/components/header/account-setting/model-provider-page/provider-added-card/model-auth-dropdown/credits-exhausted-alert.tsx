@@ -24,12 +24,12 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
   const usagePercent = totalCredits > 0 ? Math.min((usedCredits / totalCredits) * 100, 100) : 100
 
   return (
-    <div className="mx-2 mb-1 mt-0.5 rounded-lg bg-background-section-burn p-3">
+    <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
-        <div className="text-text-primary system-sm-medium">
+        <div className="system-sm-medium text-text-primary">
           {t(titleKey, { ns: 'common' })}
         </div>
-        <div className="text-text-tertiary system-xs-regular">
+        <div className="system-xs-regular text-text-tertiary">
           <Trans
             i18nKey={descriptionKey}
             ns="common"
@@ -37,7 +37,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
               upgradeLink: (
                 <button
                   type="button"
-                  className="cursor-pointer border-0 bg-transparent p-0 text-left text-text-accent system-xs-medium"
+                  className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
                   onClick={() => setShowPricingModal()}
                 />
               ),
@@ -47,10 +47,10 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
       </div>
       <div className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span className="text-text-tertiary system-xs-medium">
+          <span className="system-xs-medium text-text-tertiary">
             {t('modelProvider.card.usageLabel', { ns: 'common' })}
           </span>
-          <div className="flex items-center gap-0.5 text-text-tertiary system-xs-regular">
+          <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
             <CreditsCoin className="h-3 w-3" />
             <span>
               {formatNumber(usedCredits)}
@@ -59,7 +59,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             </span>
           </div>
         </div>
-        <div className="h-1 overflow-hidden radius-sm bg-components-progress-error-bg">
+        <div className="h-1 overflow-hidden rounded-md bg-components-progress-error-bg">
           <div
             className="h-full rounded-l-[6px] bg-components-progress-error-progress"
             style={{ width: `${usagePercent}%` }}

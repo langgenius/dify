@@ -1,8 +1,8 @@
 import type { App, AppSSO } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'
 
@@ -52,9 +52,9 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
         {expand && (
           <div className="flex flex-col items-start gap-1">
             <div className="flex w-full">
-              <div className="truncate whitespace-nowrap text-text-secondary system-md-semibold">{appDetail.name}</div>
+              <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">{appDetail.name}</div>
             </div>
-            <div className="whitespace-nowrap text-text-tertiary system-2xs-medium-uppercase">
+            <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>
           </div>

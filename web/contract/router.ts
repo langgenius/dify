@@ -1,5 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { appDeleteContract, appWorkflowTypeConvertContract } from './console/apps'
+import { accountAvatarContract } from './console/account'
+import { appDeleteContract, appWorkflowTypeConvertContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   availableEvaluationMetricsContract,
@@ -86,6 +87,13 @@ import {
   triggerSubscriptionVerifyContract,
 } from './console/trigger'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
+import {
+  workflowDraftEnvironmentVariablesContract,
+  workflowDraftUpdateConversationVariablesContract,
+  workflowDraftUpdateEnvironmentVariablesContract,
+  workflowDraftUpdateFeaturesContract,
+} from './console/workflow'
+import { workflowCommentContracts } from './console/workflow-comment'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -97,10 +105,14 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  account: {
+    avatar: accountAvatarContract,
+  },
   systemFeatures: systemFeaturesContract,
   apps: {
     deleteApp: appDeleteContract,
     convertWorkflowType: appWorkflowTypeConvertContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
     apps: exploreAppsContract,
@@ -185,6 +197,13 @@ export const consoleRouterContract = {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  workflowDraft: {
+    environmentVariables: workflowDraftEnvironmentVariablesContract,
+    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+    updateFeatures: workflowDraftUpdateFeaturesContract,
+  },
+  workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
   triggers: {

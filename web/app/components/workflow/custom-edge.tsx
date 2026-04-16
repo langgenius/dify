@@ -3,6 +3,7 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { intersection } from 'es-toolkit/array'
 import {
   memo,
@@ -17,7 +18,6 @@ import {
   Position,
 } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { cn } from '@/utils/classnames'
 import BlockSelector from './block-selector'
 import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
@@ -55,6 +55,7 @@ const CustomEdge = ({
     curvature: 0.16,
   })
   const [open, setOpen] = useState(false)
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
@@ -142,8 +143,8 @@ const CustomEdge = ({
       <EdgeLabelRenderer>
         <div
           className={cn(
-            'nopan nodrag hover:scale-125',
-            data?._hovering ? 'block' : 'hidden',
+            'nopan nodrag',
+            (data?._hovering || isTriggerHovered) ? 'block' : 'hidden',
             open && 'block!',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
             data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
@@ -154,6 +155,8 @@ const CustomEdge = ({
             pointerEvents: 'all',
             opacity: data._waitingRun ? 0.7 : 1,
           }}
+          onMouseEnter={() => setIsTriggerHovered(true)}
+          onMouseLeave={() => setIsTriggerHovered(false)}
         >
           <BlockSelector
             open={open}

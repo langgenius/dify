@@ -198,9 +198,13 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+  }
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -390,7 +394,152 @@ describe('List', () => {
       }), expect.any(Object))
     })
 
-    it('should render and close the DSL import modal when a file is dropped', () => {
+    it('should handle checkbox change', () => {
+      renderList()
+
+      const checkbox = screen.getByTestId('checkbox-undefined')
+      fireEvent.click(checkbox)
+
+      expect(mockSetQuery).toHaveBeenCalled()
+    })
+  })
+
+  describe('Non-Editor User', () => {
+    it('should not render new app card for non-editors', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+    })
+
+    it('should not render drop DSL hint for non-editors', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.queryByText(/drop dsl file to create app/i)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Dataset Operator Behavior', () => {
+    it('should not trigger redirect at component level for dataset operators', () => {
+      mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
+
+      renderList()
+
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Local Storage Refresh', () => {
+    it('should call refetch when refresh key is set in localStorage', () => {
+      localStorage.setItem('needRefreshAppList', '1')
+
+      renderList()
+
+      expect(mockRefetch).toHaveBeenCalled()
+      expect(localStorage.getItem('needRefreshAppList')).toBeNull()
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle multiple renders without issues', () => {
+      const { unmount } = renderWithNuqs(<List />)
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+
+      unmount()
+      renderList()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+    })
+
+    it('should render app cards correctly', () => {
+      renderList()
+
+      expect(screen.getByText('Test App 1')).toBeInTheDocument()
+      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+    })
+
+    it('should render with all filter options visible', () => {
+      renderList()
+
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+    })
+  })
+
+  describe('Dragging State', () => {
+    it('should show drop hint when DSL feature is enabled for editors', () => {
+      renderList()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+    })
+
+    it('should render dragging state overlay when dragging', () => {
+      mockDragging = true
+      const { container } = renderList()
+      expect(container).toBeInTheDocument()
+    })
+  })
+
+  describe('App Type Tabs', () => {
+    it('should render all app type tabs', () => {
+      renderList()
+
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
+      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
+      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+    })
+
+    it('should update URL for each app type tab click', async () => {
+      const { onUrlUpdate } = renderList()
+
+      const appTypeTexts = [
+        { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
+        { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
+        { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
+        { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
+        { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
+      ]
+
+      for (const { mode, text } of appTypeTexts) {
+        onUrlUpdate.mockClear()
+        fireEvent.click(screen.getByText(text))
+        await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+        expect(lastCall.searchParams.get('category')).toBe(mode)
+      }
+    })
+  })
+
+  describe('App List Display', () => {
+    it('should display all app cards from data', () => {
+      renderList()
+
+      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+    })
+
+    it('should display app names correctly', () => {
+      renderList()
+
+      expect(screen.getByText('Test App 1')).toBeInTheDocument()
+      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+    })
+  })
+
+  describe('Footer Visibility', () => {
+    it('should render footer when branding is disabled', () => {
+      renderList()
+      expect(screen.getByTestId('footer')).toBeInTheDocument()
+    })
+  })
+
+  describe('DSL File Drop', () => {
+    it('should handle DSL file drop and show modal', () => {
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })

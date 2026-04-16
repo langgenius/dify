@@ -3,8 +3,10 @@
 import type { FC } from 'react'
 import type { StudioPageType } from '.'
 import type { App } from '@/types/app'
+import type { WorkflowOnlineUser } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
-import { useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -16,11 +18,12 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import dynamic from '@/next/dynamic'
+import { fetchWorkflowOnlineUsers } from '@/service/apps'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
-import { cn } from '@/utils/classnames'
 import SnippetCard from '../snippets/components/snippet-card'
 import SnippetCreateCard from '../snippets/components/snippet-create-card'
+import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import AppTypeFilter from './app-type-filter'
@@ -71,8 +74,9 @@ const List: FC<Props> = ({
   const anchorRef = useRef<HTMLDivElement>(null)
   const newAppCardRef = useRef<HTMLDivElement>(null)
 
-  const setKeywords = useCallback((nextKeywords: string) => {
-    setQuery(prev => ({ ...prev, keywords: nextKeywords }))
+  const [workflowOnlineUsersMap, setWorkflowOnlineUsersMap] = useState<Record<string, WorkflowOnlineUser[]>>({})
+  const setKeywords = useCallback((keywords: string) => {
+    setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
 
   const setTagIDs = useCallback((nextTagIDs: string[]) => {
@@ -232,6 +236,53 @@ const List: FC<Props> = ({
   const emptyStateMessage = isAppsPage
     ? t('newApp.noAppsFound', { ns: 'app' })
     : t('tabs.noSnippetsFound', { ns: 'workflow' })
+  const pages = data?.pages ?? []
+  const appIds = useMemo(() => {
+    const ids = new Set<string>()
+    pages.forEach((page) => {
+      page.data?.forEach((app) => {
+        if (app.id)
+          ids.add(app.id)
+      })
+    })
+    return Array.from(ids)
+  }, [pages])
+
+  const refreshWorkflowOnlineUsers = useCallback(async () => {
+    if (!systemFeatures.enable_collaboration_mode) {
+      setWorkflowOnlineUsersMap({})
+      return
+    }
+
+    if (!appIds.length) {
+      setWorkflowOnlineUsersMap({})
+      return
+    }
+
+    try {
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
+      setWorkflowOnlineUsersMap(onlineUsersMap)
+    }
+    catch {
+      setWorkflowOnlineUsersMap({})
+    }
+  }, [appIds, systemFeatures.enable_collaboration_mode])
+
+  useEffect(() => {
+    void refreshWorkflowOnlineUsers()
+  }, [refreshWorkflowOnlineUsers])
+
+  useEffect(() => {
+    if (!systemFeatures.enable_collaboration_mode)
+      return
+
+    const timer = window.setInterval(() => {
+      void refetch()
+      void refreshWorkflowOnlineUsers()
+    }, 10000)
+
+    return () => window.clearInterval(timer)
+  }, [refetch, refreshWorkflowOnlineUsers, systemFeatures.enable_collaboration_mode])
 
   return (
     <>
@@ -296,8 +347,13 @@ const List: FC<Props> = ({
 
           {showSkeleton && <AppCardSkeleton count={6} />}
 
-          {!showSkeleton && isAppsPage && hasAnyApp && appItems.map(app => (
-            <AppCard key={app.id} app={app} onRefresh={refetch} />
+          {!showSkeleton && isAppsPage && hasAnyApp && pages.flatMap(({ data: apps }) => apps).map(app => (
+            <AppCard
+              key={app.id}
+              app={app}
+              onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+              onRefresh={refetch}
+            />
           ))}
 
           {!showSkeleton && !isAppsPage && hasAnySnippet && snippetItems.map(snippet => (

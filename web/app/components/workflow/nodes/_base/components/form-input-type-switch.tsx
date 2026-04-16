@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditLine,
 } from '@remixicon/react'
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   value: VarType
@@ -20,7 +20,7 @@ const FormInputTypeSwitch: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className="inline-flex h-8 shrink-0 gap-px radius-lg bg-components-segmented-control-bg-normal p-0.5">
+    <div className="inline-flex h-8 shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
       <Tooltip
         popupContent={value === VarType.variable ? '' : t('nodes.common.typeSwitch.variable', { ns: 'workflow' })}
       >

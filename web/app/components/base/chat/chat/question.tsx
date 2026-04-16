@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -18,7 +19,6 @@ import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
@@ -164,7 +164,7 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
+            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton

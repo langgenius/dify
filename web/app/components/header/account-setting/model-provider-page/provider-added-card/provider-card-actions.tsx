@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -12,7 +13,6 @@ import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {

@@ -1,5 +1,6 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightSLine,
   RiDeleteBinLine,
@@ -15,7 +16,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import { useToolIcon } from '../hooks'
 
 type Props = {

@@ -4,6 +4,7 @@ import type {
 import type {
   NodeProps,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -25,7 +26,6 @@ import {
 import {
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type SimpleNodeProps = NodeProps
 
@@ -94,7 +94,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           )
         }
         <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
         )}
         >
           <BlockIcon
@@ -104,7 +104,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>
               {data.title}

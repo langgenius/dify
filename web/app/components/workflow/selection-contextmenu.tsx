@@ -22,8 +22,9 @@ import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evalu
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import CreateSnippetDialog from './create-snippet-dialog'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -309,7 +310,12 @@ const SelectionContextmenu = () => {
 
   // Access React Flow methods
   const store = useStoreApi()
+
+  // Access React Flow methods
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  // Get selected nodes for alignment logic
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
@@ -465,7 +471,33 @@ const SelectionContextmenu = () => {
 
     workflowStore.setState({ nodeAnimation: false })
 
-    const nodes = store.getState().getNodes()
+    // Get all current nodes
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+
+    // Get all selected nodes
+    const selectedNodeIds = selectedNodes.map(node => node.id)
+
+    // Find container nodes and their children
+    // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
+    // when the container is selected. This prevents child nodes from being moved outside their containers.
+    const childNodeIds = new Set<string>()
+
+    nodes.forEach((node) => {
+      // Check if this is a container node (Iteration or Loop)
+      if (node.data._children && node.data._children.length > 0) {
+        // If container node is selected, add its children to the exclusion set
+        if (selectedNodeIds.includes(node.id)) {
+          // Add all its children to the childNodeIds set
+          node.data._children.forEach((child: { nodeId: string, nodeType: string }) => {
+            childNodeIds.add(child.nodeId)
+          })
+        }
+      }
+    })
+
+    // Filter out child nodes from the alignment operation
+    // Only align nodes that are selected AND are not children of container nodes
+    // This ensures container nodes can be aligned while their children stay in the same relative position
     const nodesToAlign = getAlignableNodes(nodes, selectedNodes)
 
     if (nodesToAlign.length <= 1) {
@@ -482,7 +514,7 @@ const SelectionContextmenu = () => {
     if (alignType === AlignType.DistributeHorizontal || alignType === AlignType.DistributeVertical) {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
-        store.getState().setNodes(distributedNodes)
+        setNodes(distributedNodes)
         handleSelectionContextmenuCancel()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
@@ -507,7 +539,10 @@ const SelectionContextmenu = () => {
     })
 
     try {
-      store.getState().setNodes(newNodes)
+      // Directly use setNodes to update nodes - consistent with handleNodeDrag
+      setNodes(newNodes)
+
+      // Close popup
       handleSelectionContextmenuCancel()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
       setHelpLineHorizontal()
@@ -518,7 +553,7 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
 
   if ((!selectionMenu || !anchor) && !isCreateSnippetDialogOpen)
     return null
@@ -544,7 +579,7 @@ const SelectionContextmenu = () => {
                 disabled={item.disabled}
                 className={cn(
                   'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
-                  item.action === 'delete' && 'data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive',
+                  item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
                 )}
                 onClick={() => handleMenuAction(item.action)}
               >
@@ -566,7 +601,7 @@ const SelectionContextmenu = () => {
                   <ContextMenuItem
                     key={item.alignType}
                     aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                    className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-[highlighted]:bg-state-base-hover data-[highlighted]:text-text-secondary"
+                    className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
                     data-testid={`selection-contextmenu-item-${item.alignType}`}
                     onClick={() => handleAlignNodes(item.alignType)}
                   >
