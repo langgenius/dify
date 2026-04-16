@@ -1563,7 +1563,7 @@ requires-dist = [
     { name = "httpx-sse", specifier = "~=0.4.0" },
     { name = "json-repair", specifier = "~=0.59.2" },
     { name = "langfuse", specifier = ">=4.2.0,<5.0.0" },
-    { name = "langsmith", specifier = ">=0.7.30,<1.0.0" },
+    { name = "langsmith", specifier = ">=0.7.31,<1.0.0" },
     { name = "mlflow-skinny", specifier = ">=3.11.1,<4.0.0" },
     { name = "opentelemetry-distro", specifier = ">=0.62b0,<1.0.0" },
     { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<1.0.0" },
@@ -3450,7 +3450,7 @@ wheels = [
 
 [[package]]
 name = "langsmith"
-version = "0.7.30"
+version = "0.7.31"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -3463,9 +3463,9 @@ dependencies = [
     { name = "xxhash" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/e7/d27d952ce9824d684a3bb500a06541a2d55734bc4d849cdfcca2dfd4d93a/langsmith-0.7.30.tar.gz", hash = "sha256:d9df7ba5e42f818b63bda78776c8f2fc853388be3ae77b117e5d183a149321a2", size = 1106040, upload-time = "2026-04-09T21:12:01.892Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/11/696019490992db5c87774dc20515529ef42a01e1d770fb754ed6d9b12fb0/langsmith-0.7.31.tar.gz", hash = "sha256:331ee4f7c26bb5be4022b9859b7d7b122cbf8c9d01d9f530114c1914b0349ffb", size = 1178480, upload-time = "2026-04-14T17:55:41.242Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/19/96250cf58070c5563446651b03bb76c2eb5afbf08e754840ab639532d8c6/langsmith-0.7.30-py3-none-any.whl", hash = "sha256:43dd9f8d290e4d406606d6cc0bd62f5d1050963f05fe0ab6ffe50acf41f2f55a", size = 372682, upload-time = "2026-04-09T21:12:00.481Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/a1/a013cf458c301cda86a213dd153ce0a01c93f1ab5833f951e6a44c9763ce/langsmith-0.7.31-py3-none-any.whl", hash = "sha256:0291d49203f6e80dda011af1afda61eb0595a4d697adb684590a8805e1d61fb6", size = 373276, upload-time = "2026-04-14T17:55:39.677Z" },
 ]
 
 [[package]]
