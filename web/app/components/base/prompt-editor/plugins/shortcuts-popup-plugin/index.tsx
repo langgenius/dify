@@ -7,6 +7,7 @@ import {
   size,
   useFloating,
 } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $getSelection,
@@ -20,7 +21,6 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '@/utils/classnames'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
 
@@ -203,7 +203,7 @@ export default function ShortcutsPopupPlugin({
       let rect: DOMRect | null = null
 
       if (rects && rects.length)
-        rect = rects[rects.length - 1]
+        rect = rects[rects.length - 1]!
 
       else
         rect = range.getBoundingClientRect()

@@ -38,8 +38,8 @@ describe('use-edges-interactions.helpers', () => {
 
     const result = applyConnectedHandleNodeData(nodes, edgeChanges)
 
-    expect(result[0].data._connectedSourceHandleIds).toEqual(['branch-a'])
-    expect(result[1].data._connectedSourceHandleIds).toEqual([])
+    expect(result[0]!.data._connectedSourceHandleIds).toEqual(['branch-a'])
+    expect(result[1]!.data._connectedSourceHandleIds).toEqual([])
     expect(mockGetNodesConnectedSourceOrTargetHandleIdsMap).toHaveBeenCalledWith(edgeChanges, nodes)
   })
 

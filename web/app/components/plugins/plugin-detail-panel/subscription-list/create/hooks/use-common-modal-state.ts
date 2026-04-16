@@ -202,7 +202,7 @@ export const useCommonModalState = ({
     if (!apiKeyCredentialsSchema.length)
       return
     apiKeyCredentialsFormRef.current?.setFields([{
-      name: apiKeyCredentialsSchema[0].name,
+      name: apiKeyCredentialsSchema[0]!.name,
       errors: [],
     }])
   }, [apiKeyCredentialsSchema])

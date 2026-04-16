@@ -38,7 +38,7 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0)
-      onFileChange(files[0])
+      onFileChange(files[0]!)
   }
 
   const fileChangeHandle = enabled

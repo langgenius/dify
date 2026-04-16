@@ -129,7 +129,7 @@ describe('useRagPipelineSearch', () => {
       const results = searchFn('GPT')
 
       expect(results.length).toBeGreaterThan(0)
-      expect(results[0].title).toBe('GPT Model')
+      expect(results[0]!.title).toBe('GPT Model')
     })
 
     it('should find nodes by type', () => {
@@ -176,7 +176,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('Search')
 
-      expect(results[0].title).toBe('Web Search')
+      expect(results[0]!.title).toBe('Web Search')
     })
 
     it('should return empty array when no nodes match', () => {
@@ -215,7 +215,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('Start')
 
-      expect(results[0].type).toBe('workflow-node')
+      expect(results[0]!.type).toBe('workflow-node')
     })
   })
 })

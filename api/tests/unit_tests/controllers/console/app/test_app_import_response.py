@@ -18,7 +18,7 @@ class _DependencyValue:
 
 
 def test_leaked_dependency_response_normalizes_model_values():
-    payload = app_import_module.AppImportCheckDependenciesResponse.model_validate(
+    payload = app_import_module._serialize_check_dependencies_result(
         {
             "leaked_dependencies": [
                 {
@@ -28,7 +28,7 @@ def test_leaked_dependency_response_normalizes_model_values():
                 }
             ]
         }
-    ).model_dump(mode="json")
+    )
 
     assert payload["leaked_dependencies"][0]["value"] == {
         "plugin_unique_identifier": "plugin-1",
@@ -47,13 +47,6 @@ def test_check_dependencies_api_accepts_dict_result(app, monkeypatch):
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    class _DummySessionMaker:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def begin(self):
-            return _DummySessionContext()
-
     monkeypatch.setattr(
         app_import_module.AppDslService,
         "check_dependencies",
@@ -67,11 +60,14 @@ def test_check_dependencies_api_accepts_dict_result(app, monkeypatch):
             ]
         },
     )
-    monkeypatch.setattr(app_import_module, "sessionmaker", _DummySessionMaker)
+    monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: _DummySessionContext())
     monkeypatch.setattr(app_import_module, "db", SimpleNamespace(engine=object()))
 
     with app.test_request_context("/console/api/apps/imports/app-1/check-dependencies", method="GET"):
         response, status = method(api, app_model=SimpleNamespace(id="app-1"))
 
     assert status == 200
-    assert response["leaked_dependencies"][0]["value"] == {"marketplace_plugin_unique_identifier": "plugin-2"}
+    assert response["leaked_dependencies"][0]["value"] == {
+        "marketplace_plugin_unique_identifier": "plugin-2",
+        "version": None,
+    }

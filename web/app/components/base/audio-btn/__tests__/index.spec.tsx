@@ -32,7 +32,7 @@ describe('AudioBtn', () => {
 
   const hoverAndCheckTooltip = async (expectedText: string) => {
     await userEvent.hover(getButton())
-    expect(await screen.findByText(expectedText)).toBeInTheDocument()
+    expect(await screen.findByText(expectedText))!.toBeInTheDocument()
   }
 
   const getLatestAudioCallback = () => {
@@ -64,7 +64,7 @@ describe('AudioBtn', () => {
     it('should render button with play tooltip by default', async () => {
       render(<AudioBtn value="hello" />)
 
-      expect(getButton()).toBeInTheDocument()
+      expect(getButton())!.toBeInTheDocument()
       expect(getButton()).not.toBeDisabled()
       await hoverAndCheckTooltip('play')
     })
@@ -73,7 +73,7 @@ describe('AudioBtn', () => {
       const { container } = render(<AudioBtn value="hello" className="custom-wrapper" />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).toHaveClass('custom-wrapper')
+      expect(wrapper)!.toHaveClass('custom-wrapper')
     })
   })
 
@@ -87,8 +87,8 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/text-to-audio')
-      expect(call[1]).toBe(true)
+      expect(call![0]).toBe('/text-to-audio')
+      expect(call![1]).toBe(true)
     })
 
     it('should call app endpoint when appId exists', async () => {
@@ -100,8 +100,8 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/apps/123/text-to-audio')
-      expect(call[1]).toBe(false)
+      expect(call![0]).toBe('/apps/123/text-to-audio')
+      expect(call![1]).toBe(false)
     })
 
     it('should call installed app endpoint for explore installed routes', async () => {
@@ -113,8 +113,8 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('/installed-apps/456/text-to-audio')
-      expect(call[1]).toBe(false)
+      expect(call![0]).toBe('/installed-apps/456/text-to-audio')
+      expect(call![1]).toBe(false)
     })
   })
 
@@ -126,9 +126,9 @@ describe('AudioBtn', () => {
 
       await waitFor(() => {
         expect(mockPlayAudio).toHaveBeenCalledTimes(1)
-        expect(getButton()).toBeDisabled()
+        expect(getButton())!.toBeDisabled()
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
       await hoverAndCheckTooltip('loading')
     })
 
@@ -159,7 +159,7 @@ describe('AudioBtn', () => {
       })
 
       await hoverAndCheckTooltip('loading')
-      expect(getButton()).toBeDisabled()
+      expect(getButton())!.toBeDisabled()
     })
 
     it.each(['ended', 'paused', 'error'])('should return to play tooltip when %s event is received', async (event) => {
@@ -183,9 +183,9 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[2]).toBe('msg-1')
-      expect(call[3]).toBe('hello')
-      expect(call[4]).toBe('en-US')
+      expect(call![2]).toBe('msg-1')
+      expect(call![3]).toBe('hello')
+      expect(call![4]).toBe('en-US')
     })
 
     it('should keep empty route when neither token nor appId is present', async () => {
@@ -194,9 +194,9 @@ describe('AudioBtn', () => {
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call[0]).toBe('')
-      expect(call[1]).toBe(false)
-      expect(call[3]).toBeUndefined()
+      expect(call![0]).toBe('')
+      expect(call![1]).toBe(false)
+      expect(call![3]).toBeUndefined()
     })
   })
 })

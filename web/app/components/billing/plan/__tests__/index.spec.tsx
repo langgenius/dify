@@ -95,8 +95,8 @@ describe('PlanComp', () => {
   it('renders plan info and handles education verify success', async () => {
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('billing.plans.professional.name')).toBeInTheDocument()
-    expect(screen.getByTestId('plan-upgrade-btn')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.professional.name'))!.toBeInTheDocument()
+    expect(screen.getByTestId('plan-upgrade-btn'))!.toBeInTheDocument()
 
     const verifyBtn = screen.getByText('education.toVerified')
     fireEvent.click(verifyBtn)
@@ -143,7 +143,7 @@ describe('PlanComp', () => {
     })
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('billing.plans.sandbox.name')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
   })
 
   it('renders team plan', () => {
@@ -155,7 +155,7 @@ describe('PlanComp', () => {
     })
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('billing.plans.team.name')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.team.name'))!.toBeInTheDocument()
   })
 
   it('shows verify button when education account is about to expire', () => {
@@ -167,7 +167,7 @@ describe('PlanComp', () => {
     })
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('education.toVerified')).toBeInTheDocument()
+    expect(screen.getByText('education.toVerified'))!.toBeInTheDocument()
   })
 
   it('renders enterprise plan without upgrade button', () => {
@@ -179,7 +179,7 @@ describe('PlanComp', () => {
     })
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('billing.plans.enterprise.name')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.enterprise.name'))!.toBeInTheDocument()
     expect(screen.queryByTestId('plan-upgrade-btn')).not.toBeInTheDocument()
   })
 
@@ -198,7 +198,8 @@ describe('PlanComp', () => {
     render(<PlanComp loc="billing-page" />)
 
     // Sandbox plan with finite apiRateLimit and null reset uses getDaysUntilEndOfMonth()
-    expect(screen.getByText('billing.plans.sandbox.name')).toBeInTheDocument()
+    // Sandbox plan with finite apiRateLimit and null reset uses getDaysUntilEndOfMonth()
+    expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
   })
 
   it('shows apiRateLimit reset info when reset is a number', () => {
@@ -215,7 +216,7 @@ describe('PlanComp', () => {
     })
     render(<PlanComp loc="billing-page" />)
 
-    expect(screen.getByText('billing.plans.professional.name')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.professional.name'))!.toBeInTheDocument()
   })
 
   it('does not show education verify when enableEducationPlan is false', () => {
@@ -241,7 +242,7 @@ describe('PlanComp', () => {
     await waitFor(() => expect(screen.getByTestId('verify-modal').getAttribute('data-is-show')).toBe('true'))
 
     // Get the props passed to the modal and call onConfirm/onCancel
-    const lastCall = verifyStateModalMock.mock.calls[verifyStateModalMock.mock.calls.length - 1][0]
+    const lastCall = verifyStateModalMock.mock.calls[verifyStateModalMock.mock.calls.length - 1]![0]
     expect(lastCall.onConfirm).toBeDefined()
     expect(lastCall.onCancel).toBeDefined()
 

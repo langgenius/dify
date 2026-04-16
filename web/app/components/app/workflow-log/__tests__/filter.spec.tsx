@@ -56,8 +56,9 @@ describe('Filter', () => {
       )
 
       // Should render status chip, period chip, and search input
-      expect(screen.getByText('All')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      // Should render status chip, period chip, and search input
+      expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
 
     it('should render all filter components', () => {
@@ -69,11 +70,14 @@ describe('Filter', () => {
       )
 
       // Status chip
-      expect(screen.getByText('All')).toBeInTheDocument()
+      // Status chip
+      expect(screen.getByText('All'))!.toBeInTheDocument()
       // Period chip (shows translated key)
-      expect(screen.getByText('appLog.filter.period.last7days')).toBeInTheDocument()
+      // Period chip (shows translated key)
+      expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
       // Search input
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      // Search input
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
   })
 
@@ -90,7 +94,8 @@ describe('Filter', () => {
       )
 
       // Chip should show Success for succeeded status
-      expect(screen.getByText('Success')).toBeInTheDocument()
+      // Chip should show Success for succeeded status
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
     })
 
     it('should open status dropdown when clicked', async () => {
@@ -107,10 +112,10 @@ describe('Filter', () => {
 
       // Should show all status options
       await waitFor(() => {
-        expect(screen.getByText('Success')).toBeInTheDocument()
-        expect(screen.getByText('Fail')).toBeInTheDocument()
-        expect(screen.getByText('Stop')).toBeInTheDocument()
-        expect(screen.getByText('Partial Success')).toBeInTheDocument()
+        expect(screen.getByText('Success'))!.toBeInTheDocument()
+        expect(screen.getByText('Fail'))!.toBeInTheDocument()
+        expect(screen.getByText('Stop'))!.toBeInTheDocument()
+        expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
       })
     })
 
@@ -167,7 +172,7 @@ describe('Filter', () => {
       // Find the clear icon (div with group/clear class) in the status chip
       const clearIcon = container.querySelector('.group\\/clear')
 
-      expect(clearIcon).toBeInTheDocument()
+      expect(clearIcon)!.toBeInTheDocument()
       await user.click(clearIcon!)
 
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -190,7 +195,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText(expectedLabel)).toBeInTheDocument()
+      expect(screen.getByText(expectedLabel))!.toBeInTheDocument()
     })
   })
 
@@ -206,7 +211,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
+      expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
     })
 
     it('should open period dropdown when clicked', async () => {
@@ -223,10 +228,10 @@ describe('Filter', () => {
 
       // Should show all period options
       await waitFor(() => {
-        expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.last4weeks')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.last3months')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.allTime')).toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last4weeks'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last3months'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.allTime'))!.toBeInTheDocument()
       })
     })
 
@@ -287,7 +292,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByDisplayValue('test search')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('test search'))!.toBeInTheDocument()
     })
 
     it('should call setQueryParams when typing in search', async () => {
@@ -337,7 +342,7 @@ describe('Filter', () => {
       // Find the clear icon div (has cursor-pointer class and contains RiCloseCircleFill)
       const clearIconDiv = inputWrapper?.querySelector('div.cursor-pointer')
 
-      expect(clearIconDiv).toBeInTheDocument()
+      expect(clearIconDiv)!.toBeInTheDocument()
       await user.click(clearIconDiv!)
 
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -399,11 +404,11 @@ describe('Filter', () => {
       ['9', 'allTime', -1],
     ])('TIME_PERIOD_MAPPING[%s] should have name=%s and correct value', (key, name, expectedValue) => {
       const mapping = TIME_PERIOD_MAPPING[key]
-      expect(mapping.name).toBe(name)
+      expect(mapping!.name).toBe(name)
       if (expectedValue >= 0)
-        expect(mapping.value).toBe(expectedValue)
+        expect(mapping!.value).toBe(expectedValue)
       else
-        expect(mapping.value).toBe(-1)
+        expect(mapping!.value).toBe(-1)
     })
   })
 
@@ -420,7 +425,7 @@ describe('Filter', () => {
       )
 
       const input = screen.getByPlaceholderText('common.operation.search')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should handle empty string keyword', () => {
@@ -432,7 +437,7 @@ describe('Filter', () => {
       )
 
       const input = screen.getByPlaceholderText('common.operation.search')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should preserve other query params when updating status', async () => {
@@ -515,9 +520,9 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('Success')).toBeInTheDocument()
-      expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('integration test')).toBeInTheDocument()
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('integration test'))!.toBeInTheDocument()
     })
 
     it('should have proper layout with flex and gap', () => {
@@ -529,9 +534,9 @@ describe('Filter', () => {
       )
 
       const filterContainer = container.firstChild as HTMLElement
-      expect(filterContainer).toHaveClass('flex')
-      expect(filterContainer).toHaveClass('flex-row')
-      expect(filterContainer).toHaveClass('gap-2')
+      expect(filterContainer)!.toHaveClass('flex')
+      expect(filterContainer)!.toHaveClass('flex-row')
+      expect(filterContainer)!.toHaveClass('gap-2')
     })
   })
 })

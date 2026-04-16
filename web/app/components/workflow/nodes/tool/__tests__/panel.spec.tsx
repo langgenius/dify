@@ -192,7 +192,7 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(mockToolForm).not.toHaveBeenCalled()
     })
@@ -213,21 +213,21 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByText('workflow.nodes.tool.inputVars')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.tool.settings')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.tool.inputVars'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.tool.settings'))!.toBeInTheDocument()
       expect(screen.getAllByTestId('split')).toHaveLength(2)
 
       fireEvent.click(screen.getByRole('button', { name: 'Manage Input Field' }))
 
       expect(mockToolForm).toHaveBeenCalledTimes(2)
-      expect(mockToolForm.mock.calls[0][0]).toEqual(expect.objectContaining({
+      expect(mockToolForm.mock.calls[0]![0]).toEqual(expect.objectContaining({
         nodeId: 'tool-node-1',
         showManageInputField: true,
       }))
-      expect(mockToolForm.mock.calls[1][0]).toEqual(expect.objectContaining({
+      expect(mockToolForm.mock.calls[1]![0]).toEqual(expect.objectContaining({
         nodeId: 'tool-node-1',
       }))
-      expect(mockToolForm.mock.calls[1][0]).not.toHaveProperty('showManageInputField')
+      expect(mockToolForm.mock.calls[1]![0]).not.toHaveProperty('showManageInputField')
       expect(mockWorkflowStoreState.setShowInputFieldPanel).toHaveBeenCalledWith(true)
     })
 
@@ -242,9 +242,9 @@ describe('ToolPanel', () => {
 
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.settings')).not.toBeInTheDocument()
-      expect(screen.getByText('text')).toBeInTheDocument()
-      expect(screen.getByText('files')).toBeInTheDocument()
-      expect(screen.getByText('json')).toBeInTheDocument()
+      expect(screen.getByText('text'))!.toBeInTheDocument()
+      expect(screen.getByText('files'))!.toBeInTheDocument()
+      expect(screen.getByText('json'))!.toBeInTheDocument()
       expect(mockToolForm).not.toHaveBeenCalled()
     })
   })
@@ -274,10 +274,10 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByText('summary')).toBeInTheDocument()
-      expect(screen.getByText('string (qa_structured)')).toBeInTheDocument()
-      expect(screen.getByText('Summary field')).toBeInTheDocument()
-      expect(screen.getByTestId('structured-output')).toHaveTextContent('details-object_structured')
+      expect(screen.getByText('summary'))!.toBeInTheDocument()
+      expect(screen.getByText('string (qa_structured)'))!.toBeInTheDocument()
+      expect(screen.getByText('Summary field'))!.toBeInTheDocument()
+      expect(screen.getByTestId('structured-output'))!.toHaveTextContent('details-object_structured')
       expect(mockWrapStructuredVarItem).toHaveBeenCalledWith(expect.objectContaining({
         name: 'details',
       }), 'object_structured')
@@ -301,8 +301,8 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByTestId('var-item-summary')).toHaveTextContent('summary')
-      expect(screen.getByTestId('var-item-summary')).toHaveTextContent('String'.toLowerCase())
+      expect(screen.getByTestId('var-item-summary'))!.toHaveTextContent('summary')
+      expect(screen.getByTestId('var-item-summary'))!.toHaveTextContent('String'.toLowerCase())
       expect(screen.getByTestId('var-item-summary')).not.toHaveTextContent('qa_structured')
     })
   })

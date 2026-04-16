@@ -43,9 +43,9 @@ describe('TreeViewPlugin', () => {
     await waitFor(() => {
       expect(editor).not.toBeNull()
     })
-    expect(screen.getByTestId('lexical-tree-view')).toBeInTheDocument()
+    expect(screen.getByTestId('lexical-tree-view'))!.toBeInTheDocument()
 
-    const firstCallProps = mockTreeView.mock.calls[0][0] as Record<string, unknown>
+    const firstCallProps = mockTreeView.mock.calls[0]![0] as Record<string, unknown>
 
     expect(firstCallProps.editor).toBe(editor)
     expect(firstCallProps.viewClassName).toBe('tree-view-output')

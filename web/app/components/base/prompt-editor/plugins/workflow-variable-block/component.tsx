@@ -69,11 +69,11 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const [localAvailableVariables, setLocalAvailableVariables] = useState<NodeOutPutVar[]>(availableVariables || [])
-  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]!]
 
   const isException = isExceptionVariable(varName, node?.type)
   const sourceNodeId = variables[isRagVar ? 1 : 0]
-  const isLlmModelInstalled = useLlmModelPluginInstalled(sourceNodeId, localWorkflowNodesMap)
+  const isLlmModelInstalled = useLlmModelPluginInstalled(sourceNodeId!, localWorkflowNodesMap)
   const variableValid = useMemo(() => {
     if (isSpecialVar(variables[0] ?? ''))
       return true
@@ -120,10 +120,10 @@ const WorkflowVariableBlockComponent = ({
     } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = node.position
+    const position = node!.position
     setViewport({
-      x: (clientWidth - 400 - node.width! * zoom) / 2 - position!.x * zoom,
-      y: (clientHeight - node.height! * zoom) / 2 - position!.y * zoom,
+      x: (clientWidth - 400 - node!.width! * zoom) / 2 - position!.x * zoom,
+      y: (clientHeight - node!.height! * zoom) / 2 - position!.y * zoom,
       zoom: transform[2],
     })
   }, [node, reactflow, store])
@@ -163,7 +163,7 @@ const WorkflowVariableBlockComponent = ({
           path={variables.slice(1)}
           varType={getVarType
             ? getVarType({
-                nodeId: variables[0],
+                nodeId: variables[0]!,
                 valueSelector: variables,
               })
             : Type.string}

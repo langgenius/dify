@@ -198,7 +198,7 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockPostWithKeepalive).toHaveBeenCalled()
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
     })
   })
@@ -390,7 +390,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
     })
 
@@ -413,7 +413,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
     })
 
@@ -436,7 +436,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
     })
 
@@ -451,7 +451,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.source_workflow_id).toBeUndefined()
     })
 
@@ -471,7 +471,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.edges[0].data._hidden).toBeUndefined()
       expect(sentParams.graph.edges[0].data.visible).toBe(false)
     })

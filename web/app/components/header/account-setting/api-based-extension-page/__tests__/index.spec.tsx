@@ -38,7 +38,8 @@ describe('ApiBasedExtensionPage', () => {
       render(<ApiBasedExtensionPage />)
 
       // Assert
-      expect(screen.getByText('common.apiBasedExtension.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.apiBasedExtension.title'))!.toBeInTheDocument()
     })
 
     it('should render list of extensions when data exists', () => {
@@ -58,10 +59,11 @@ describe('ApiBasedExtensionPage', () => {
       render(<ApiBasedExtensionPage />)
 
       // Assert
-      expect(screen.getByText('Extension 1')).toBeInTheDocument()
-      expect(screen.getByText('url1')).toBeInTheDocument()
-      expect(screen.getByText('Extension 2')).toBeInTheDocument()
-      expect(screen.getByText('url2')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
+      expect(screen.getByText('url1'))!.toBeInTheDocument()
+      expect(screen.getByText('Extension 2'))!.toBeInTheDocument()
+      expect(screen.getByText('url2'))!.toBeInTheDocument()
     })
 
     it('should handle loading state', () => {
@@ -76,8 +78,39 @@ describe('ApiBasedExtensionPage', () => {
       render(<ApiBasedExtensionPage />)
 
       // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
-      expect(screen.getByText('common.apiBasedExtension.add')).toBeInTheDocument()
+      expect(screen.getByText('common.apiBasedExtension.add'))!.toBeInTheDocument()
     })
   })
 
@@ -113,7 +146,7 @@ describe('ApiBasedExtensionPage', () => {
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
 
       // Trigger callback manually from the mock call
-      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0][0]
+      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
       if (typeof callArgs === 'object' && callArgs !== null && 'onSaveCallback' in callArgs) {
         if (callArgs.onSaveCallback) {
           callArgs.onSaveCallback()
@@ -138,7 +171,7 @@ describe('ApiBasedExtensionPage', () => {
       fireEvent.click(screen.getByText('common.operation.edit'))
 
       // Retrieve the onSaveCallback from the modal call and execute it
-      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0][0]
+      const callArgs = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
       if (typeof callArgs === 'object' && callArgs !== null && 'onSaveCallback' in callArgs) {
         if (callArgs.onSaveCallback)
           callArgs.onSaveCallback()

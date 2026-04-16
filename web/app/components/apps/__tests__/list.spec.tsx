@@ -116,9 +116,13 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+  }
+})
 
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
@@ -218,55 +222,55 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
     })
 
     it('should render tab slider with all app types', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
       renderList()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render created by me checkbox', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
       renderList()
 
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
     it('should render new app card for editors', () => {
       renderList()
-      expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
+      expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
     })
 
     it('should render footer when branding is disabled', () => {
       renderList()
-      expect(screen.getByTestId('footer')).toBeInTheDocument()
+      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
 
     it('should render drop DSL hint for editors', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
   })
 
@@ -277,7 +281,7 @@ describe('List', () => {
       fireEvent.click(screen.getByText('app.types.workflow'))
 
       await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
     })
 
@@ -287,7 +291,7 @@ describe('List', () => {
       fireEvent.click(screen.getByText('app.types.all'))
 
       await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       // nuqs removes the default value ('all') from URL params
       expect(lastCall.searchParams.has('category')).toBe(false)
     })
@@ -296,7 +300,7 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
@@ -314,7 +318,7 @@ describe('List', () => {
       renderList()
 
       const clearButton = document.querySelector('.group')
-      expect(clearButton).toBeInTheDocument()
+      expect(clearButton)!.toBeInTheDocument()
       if (clearButton)
         fireEvent.click(clearButton)
 
@@ -325,14 +329,14 @@ describe('List', () => {
   describe('Tag Filter', () => {
     it('should render tag filter component', () => {
       renderList()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
   })
 
   describe('Created By Me Filter', () => {
     it('should render checkbox with correct label', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
 
     it('should handle checkbox change', () => {
@@ -386,39 +390,40 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = renderWithNuqs(<List />)
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      const { unmount } = renderWithNuqs(<List />)
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
 
-      rerender(<List />)
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      unmount()
+      renderList()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1')).toBeInTheDocument()
-      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
     })
 
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
   })
 
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
 
     it('should render dragging state overlay when dragging', () => {
       mockDragging = true
       const { container } = renderList()
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -426,12 +431,12 @@ describe('List', () => {
     it('should render all app type tabs', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
     it('should update URL for each app type tab click', async () => {
@@ -449,7 +454,7 @@ describe('List', () => {
         onUrlUpdate.mockClear()
         fireEvent.click(screen.getByText(text))
         await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
         expect(lastCall.searchParams.get('category')).toBe(mode)
       }
     })
@@ -459,22 +464,22 @@ describe('List', () => {
     it('should display all app cards from data', () => {
       renderList()
 
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
     it('should display app names correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1')).toBeInTheDocument()
-      expect(screen.getByText('Test App 2')).toBeInTheDocument()
+      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
     })
   })
 
   describe('Footer Visibility', () => {
     it('should render footer when branding is disabled', () => {
       renderList()
-      expect(screen.getByTestId('footer')).toBeInTheDocument()
+      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
   })
 
@@ -488,7 +493,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
     it('should close DSL modal when onClose is called', () => {
@@ -500,7 +505,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
@@ -516,7 +521,7 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('success-dsl-modal'))
 
@@ -580,7 +585,7 @@ describe('List', () => {
     it('should handle error state in useEffect', () => {
       mockServiceState.error = new Error('Test error')
       const { container } = renderList()
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 })

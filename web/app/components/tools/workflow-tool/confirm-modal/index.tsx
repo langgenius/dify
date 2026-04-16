@@ -1,12 +1,12 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type ConfirmModalProps = {
   show: boolean

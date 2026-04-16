@@ -11,8 +11,8 @@ export const parseVectorSpaceToMB = (vectorSpace: string): number => {
   if (!match)
     return 0
 
-  const value = Number.parseInt(match[1], 10)
-  const unit = match[2].toUpperCase()
+  const value = Number.parseInt(match[1]!, 10)
+  const unit = match[2]!.toUpperCase()
 
   return unit === 'GB' ? value * 1024 : value
 }

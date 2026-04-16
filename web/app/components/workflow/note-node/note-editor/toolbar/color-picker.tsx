@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useState,
@@ -7,40 +8,39 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { THEME_MAP } from '../../constants'
 import { NoteTheme } from '../../types'
 
 export const COLOR_LIST = [
   {
     key: NoteTheme.blue,
-    inner: THEME_MAP[NoteTheme.blue].title,
-    outer: THEME_MAP[NoteTheme.blue].outer,
+    inner: THEME_MAP[NoteTheme.blue]!.title,
+    outer: THEME_MAP[NoteTheme.blue]!.outer,
   },
   {
     key: NoteTheme.cyan,
-    inner: THEME_MAP[NoteTheme.cyan].title,
-    outer: THEME_MAP[NoteTheme.cyan].outer,
+    inner: THEME_MAP[NoteTheme.cyan]!.title,
+    outer: THEME_MAP[NoteTheme.cyan]!.outer,
   },
   {
     key: NoteTheme.green,
-    inner: THEME_MAP[NoteTheme.green].title,
-    outer: THEME_MAP[NoteTheme.green].outer,
+    inner: THEME_MAP[NoteTheme.green]!.title,
+    outer: THEME_MAP[NoteTheme.green]!.outer,
   },
   {
     key: NoteTheme.yellow,
-    inner: THEME_MAP[NoteTheme.yellow].title,
-    outer: THEME_MAP[NoteTheme.yellow].outer,
+    inner: THEME_MAP[NoteTheme.yellow]!.title,
+    outer: THEME_MAP[NoteTheme.yellow]!.outer,
   },
   {
     key: NoteTheme.pink,
-    inner: THEME_MAP[NoteTheme.pink].title,
-    outer: THEME_MAP[NoteTheme.pink].outer,
+    inner: THEME_MAP[NoteTheme.pink]!.title,
+    outer: THEME_MAP[NoteTheme.pink]!.outer,
   },
   {
     key: NoteTheme.violet,
-    inner: THEME_MAP[NoteTheme.violet].title,
-    outer: THEME_MAP[NoteTheme.violet].outer,
+    inner: THEME_MAP[NoteTheme.violet]!.title,
+    outer: THEME_MAP[NoteTheme.violet]!.outer,
   },
 ]
 
@@ -70,7 +70,7 @@ const ColorPicker = ({
           <div
             className={cn(
               'h-4 w-4 rounded-full border border-black/5',
-              THEME_MAP[theme].title,
+              THEME_MAP[theme]!.title,
             )}
           >
           </div>
@@ -91,14 +91,14 @@ const ColorPicker = ({
               >
                 <div
                   className={cn(
-                    'absolute left-1/2 top-1/2 hidden h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] group-hover:block',
+                    'absolute top-1/2 left-1/2 hidden h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] group-hover:block',
                     color.outer,
                   )}
                 >
                 </div>
                 <div
                   className={cn(
-                    'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/5',
+                    'absolute top-1/2 left-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/5',
                     color.inner,
                   )}
                 >

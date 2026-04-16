@@ -1,5 +1,6 @@
 import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
@@ -12,7 +13,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -137,7 +137,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
 
     e.stopPropagation()
     e.preventDefault()
-    onChooseCreateType(methodType)
+    onChooseCreateType(methodType!)
   }
 
   if (!supportedMethods.length)
@@ -172,7 +172,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                 >
                   <div className="flex flex-1 items-center justify-center">
                     <RiAddLine className="mr-2 size-4" />
-                    {buttonTextMap[methodType]}
+                    {buttonTextMap[methodType!]}
                     {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && (
                       <Badge
                         className="mr-0.5 ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface"
@@ -196,7 +196,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               )
             : (
                 <Tooltip
-                  popupContent={subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
+                  popupContent={subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
                   disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
                 >
                   <ActionButton

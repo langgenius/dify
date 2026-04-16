@@ -72,7 +72,7 @@ describe('ImageList', () => {
     it('should render without crashing', () => {
       const images = createMockImages(3)
       const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render all images when count is below limit', () => {
@@ -87,7 +87,8 @@ describe('ImageList', () => {
       const images = createMockImages(15)
       render(<ImageList images={images} size="md" limit={9} />)
       // More button should be visible
-      expect(screen.getByText(/\+6/)).toBeInTheDocument()
+      // More button should be visible
+      expect(screen.getByText(/\+6/))!.toBeInTheDocument()
     })
   })
 
@@ -97,33 +98,35 @@ describe('ImageList', () => {
       const { container } = render(
         <ImageList images={images} size="md" className="custom-class" />,
       )
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
 
     it('should use default limit of 9', () => {
       const images = createMockImages(12)
       render(<ImageList images={images} size="md" />)
       // Should show "+3" for remaining images
-      expect(screen.getByText(/\+3/)).toBeInTheDocument()
+      // Should show "+3" for remaining images
+      expect(screen.getByText(/\+3/))!.toBeInTheDocument()
     })
 
     it('should respect custom limit', () => {
       const images = createMockImages(10)
       render(<ImageList images={images} size="md" limit={5} />)
       // Should show "+5" for remaining images
-      expect(screen.getByText(/\+5/)).toBeInTheDocument()
+      // Should show "+5" for remaining images
+      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
     })
 
     it('should handle size prop sm', () => {
       const images = createMockImages(2)
       const { container } = render(<ImageList images={images} size="sm" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle size prop md', () => {
       const images = createMockImages(2)
       const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -136,6 +139,37 @@ describe('ImageList', () => {
       fireEvent.click(moreButton)
 
       // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
+      // More button should disappear
       expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
     })
 
@@ -146,9 +180,10 @@ describe('ImageList', () => {
       // Find and click an image thumbnail
       const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
       if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0])
+        fireEvent.click(thumbnails[0]!)
         // Preview should open
-        expect(screen.getByTestId('image-previewer')).toBeInTheDocument()
+        // Preview should open
+        expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
       }
     })
 
@@ -159,12 +194,43 @@ describe('ImageList', () => {
       // Open preview
       const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
       if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0])
+        fireEvent.click(thumbnails[0]!)
 
         // Close preview
         const closeButton = screen.getByTestId('close-preview')
         fireEvent.click(closeButton)
 
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
+        // Preview should be closed
         // Preview should be closed
         expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
       }
@@ -174,7 +240,7 @@ describe('ImageList', () => {
   describe('Edge Cases', () => {
     it('should handle empty images array', () => {
       const { container } = render(<ImageList images={[]} size="md" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should not open preview when clicked image not found in list (index === -1)', () => {
@@ -185,7 +251,8 @@ describe('ImageList', () => {
       fireEvent.click(firstThumb)
 
       // Preview should open for valid image
-      expect(screen.getByTestId('image-previewer')).toBeInTheDocument()
+      // Preview should open for valid image
+      expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
 
       // Close preview
       fireEvent.click(screen.getByTestId('close-preview'))
@@ -197,7 +264,7 @@ describe('ImageList', () => {
 
       const validThumb = screen.getByTestId('file-thumb-https://example.com/image-1.png')
       fireEvent.click(validThumb)
-      expect(screen.getByTestId('image-previewer')).toBeInTheDocument()
+      expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
     })
 
     it('should return early when file sourceUrl is not found in limitedImages (index === -1)', () => {
@@ -217,13 +284,44 @@ describe('ImageList', () => {
       }
 
       // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
+      // Preview should NOT open because the file was not found in limitedImages
       expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
     })
 
     it('should handle single image', () => {
       const images = createMockImages(1)
       const { container } = render(<ImageList images={images} size="md" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should not show More button when images count equals limit', () => {
@@ -236,12 +334,44 @@ describe('ImageList', () => {
       const images = createMockImages(5)
       render(<ImageList images={images} size="md" limit={0} />)
       // Should show "+5" for all images
-      expect(screen.getByText(/\+5/)).toBeInTheDocument()
+      // Should show "+5" for all images
+      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
     })
 
     it('should handle limit larger than images count', () => {
       const images = createMockImages(5)
       render(<ImageList images={images} size="md" limit={100} />)
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
+      // Should not show More button
       // Should not show More button
       expect(screen.queryByText(/\+/)).not.toBeInTheDocument()
     })

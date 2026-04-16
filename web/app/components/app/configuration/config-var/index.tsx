@@ -4,6 +4,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -27,7 +28,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -165,8 +165,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
+          if (promptVariables[i]!.key === newExternalDataTool.variable && i !== index) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }
@@ -220,7 +220,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const handleRemoveVar = useCallback((index: number) => {
     const removeVar = promptVariables[index]
 
-    if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar.is_context_var) {
+    if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar!.is_context_var) {
       showDeleteContextVarModal()
       setRemoveIndex(index)
       return

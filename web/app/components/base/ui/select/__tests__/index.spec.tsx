@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../index'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
 
 const renderOpenSelect = ({
   rootProps = {},
@@ -33,8 +33,14 @@ const renderOpenSelect = ({
         }}
         {...contentProps}
       >
-        <SelectItem value="seattle">Seattle</SelectItem>
-        <SelectItem value="new-york">New York</SelectItem>
+        <SelectItem value="seattle">
+          <SelectItemText>Seattle</SelectItemText>
+          <SelectItemIndicator />
+        </SelectItem>
+        <SelectItem value="new-york">
+          <SelectItemText>New York</SelectItemText>
+          <SelectItemIndicator />
+        </SelectItem>
       </SelectContent>
     </Select>,
   )
@@ -50,8 +56,14 @@ describe('Select wrappers', () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
-              <SelectItem value="seattle">Seattle</SelectItem>
-              <SelectItem value="new-york">New York</SelectItem>
+              <SelectItem value="seattle">
+                <SelectItemText>Seattle</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+              <SelectItem value="new-york">
+                <SelectItemText>New York</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
             </SelectContent>
           </Select>
         </form>,
@@ -66,22 +78,6 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
-    it('should render clear button when clearable is true and loading is false', () => {
-      renderOpenSelect({
-        triggerProps: { clearable: true },
-      })
-
-      expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument()
-    })
-
-    it('should hide clear button when loading is true', () => {
-      renderOpenSelect({
-        triggerProps: { clearable: true, loading: true },
-      })
-
-      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
-    })
-
     it('should forward native trigger props when trigger props are provided', () => {
       renderOpenSelect({
         triggerProps: {
@@ -92,48 +88,6 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'Choose option' })
       expect(trigger).toBeDisabled()
-    })
-
-    it('should call onClear and stop click propagation when clear button is clicked', () => {
-      const onClear = vi.fn()
-      const onTriggerClick = vi.fn()
-
-      renderOpenSelect({
-        triggerProps: {
-          clearable: true,
-          onClear,
-          onClick: onTriggerClick,
-        },
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /clear selection/i }))
-
-      expect(onClear).toHaveBeenCalledTimes(1)
-      expect(onTriggerClick).not.toHaveBeenCalled()
-    })
-
-    it('should stop mouse down propagation when clear button receives mouse down', () => {
-      const onTriggerMouseDown = vi.fn()
-
-      renderOpenSelect({
-        triggerProps: {
-          clearable: true,
-          onMouseDown: onTriggerMouseDown,
-        },
-      })
-
-      fireEvent.mouseDown(screen.getByRole('button', { name: /clear selection/i }))
-
-      expect(onTriggerMouseDown).not.toHaveBeenCalled()
-    })
-
-    it('should not throw when clear button is clicked without onClear handler', () => {
-      renderOpenSelect({
-        triggerProps: { clearable: true },
-      })
-
-      const clearButton = screen.getByRole('button', { name: /clear selection/i })
-      expect(() => fireEvent.click(clearButton)).not.toThrow()
     })
 
     it('should apply regular size variant classes by default', () => {
@@ -182,26 +136,6 @@ describe('Select wrappers', () => {
       expect(trigger.className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
     })
 
-    it('should show error icon and apply destructive styling when variant is destructive', () => {
-      renderOpenSelect({
-        triggerProps: { variant: 'destructive' },
-      })
-
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('border-components-input-border-destructive')
-      expect(trigger.className).toContain('bg-components-input-bg-destructive')
-      const errorIcon = trigger.querySelector('.i-ri-error-warning-line')
-      expect(errorIcon).toBeInTheDocument()
-    })
-
-    it('should hide clear button when variant is destructive even if clearable', () => {
-      renderOpenSelect({
-        triggerProps: { clearable: true, variant: 'destructive' },
-      })
-
-      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
-    })
-
     it('should apply readonly styling via data attributes when Root is readOnly', () => {
       renderOpenSelect({
         rootProps: { readOnly: true },
@@ -235,6 +169,14 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
       expect(trigger.className).toContain('data-placeholder:text-components-input-text-placeholder')
+    })
+
+    it('should render built-in chevron icon', () => {
+      renderOpenSelect()
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      const chevron = trigger.querySelector('.i-ri-arrow-down-s-line')
+      expect(chevron).toBeInTheDocument()
     })
   })
 
@@ -291,7 +233,10 @@ describe('Select wrappers', () => {
               'onFocus': onListFocus,
             }}
           >
-            <SelectItem value="seattle">Seattle</SelectItem>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
           </SelectContent>
         </Select>,
       )
@@ -330,9 +275,13 @@ describe('Select wrappers', () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
-            <SelectItem value="seattle">Seattle</SelectItem>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
             <SelectItem value="new-york" disabled aria-label="Disabled New York">
-              New York
+              <SelectItemText>New York</SelectItemText>
+              <SelectItemIndicator />
             </SelectItem>
           </SelectContent>
         </Select>,
@@ -341,6 +290,23 @@ describe('Select wrappers', () => {
       fireEvent.click(screen.getByRole('option', { name: 'Disabled New York' }))
 
       expect(onValueChange).not.toHaveBeenCalled()
+    })
+
+    it('should support custom composition with SelectItemText without indicator', () => {
+      render(
+        <Select open defaultValue="a">
+          <SelectTrigger aria-label="custom select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectItem value="a" className="gap-2">
+              <SelectItemText>Custom Item</SelectItemText>
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      expect(screen.getByRole('option', { name: 'Custom Item' })).toBeInTheDocument()
     })
   })
 })

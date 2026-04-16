@@ -58,7 +58,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0].textContent).toContain('embedding.custom')
+    expect(values[0]!.textContent).toContain('embedding.custom')
   })
 
   it('should display hierarchical mode with parent mode label', () => {
@@ -78,7 +78,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0].textContent).toContain('embedding.hierarchical')
+    expect(values[0]!.textContent).toContain('embedding.hierarchical')
   })
 
   it('should display "-" when no sourceData mode', () => {
@@ -90,7 +90,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0].textContent).toBe('-')
+    expect(values[0]!.textContent).toBe('-')
   })
 
   it('should display segment length for general mode', () => {
@@ -102,7 +102,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[1].textContent).toBe('500')
+    expect(values[1]!.textContent).toBe('500')
   })
 
   it('should display enabled pre-processing rules', () => {
@@ -115,7 +115,7 @@ describe('RuleDetail', () => {
 
     const values = screen.getAllByTestId('field-value')
     // Only remove_extra_spaces is enabled
-    expect(values[2].textContent).toContain('stepTwo.removeExtraSpaces')
+    expect(values[2]!.textContent).toContain('stepTwo.removeExtraSpaces')
   })
 
   it('should display economical index mode', () => {
@@ -128,7 +128,7 @@ describe('RuleDetail', () => {
 
     const values = screen.getAllByTestId('field-value')
     // Index mode field is 4th (index 3)
-    expect(values[3].textContent).toContain('stepTwo.economical')
+    expect(values[3]!.textContent).toContain('stepTwo.economical')
   })
 
   it('should display qualified index mode for high_quality', () => {
@@ -140,6 +140,6 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[3].textContent).toContain('stepTwo.qualified')
+    expect(values[3]!.textContent).toContain('stepTwo.qualified')
   })
 })

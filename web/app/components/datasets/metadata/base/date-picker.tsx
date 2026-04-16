@@ -1,4 +1,5 @@
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCalendarLine,
   RiCloseCircleFill,
@@ -9,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -47,7 +47,7 @@ const WrappedDatePicker = ({
         </div>
         <RiCloseCircleFill
           className={cn(
-            'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
+            'hidden h-4 w-4 cursor-pointer group-hover:block hover:text-components-input-text-filled',
             value && 'text-text-quaternary',
           )}
           onClick={() => handleDateChange()}

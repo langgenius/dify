@@ -1,5 +1,6 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import EmailItem from './email-item'
 import MemberList from './member-list'
 
@@ -113,7 +113,7 @@ const EmailInput = ({
     else if (e.key === 'Backspace') {
       if (searchKey === '' && value.length > 0) {
         e.preventDefault()
-        onDelete(value[value.length - 1])
+        onDelete(value[value.length - 1]!)
         setSearchKey('')
         setOpen(false)
       }
@@ -153,7 +153,7 @@ const EmailInput = ({
             <PortalToFollowElemTrigger className="block h-6 min-w-[166px]">
               <input
                 ref={inputRef}
-                className="system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
+                className="h-6 min-w-[166px] appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
                 placeholder={placeholder}
                 onFocus={() => setIsFocus(true)}
                 onBlur={handleInputBlur}

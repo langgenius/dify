@@ -1,22 +1,22 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import * as React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 type TooltipContentVariant = 'default' | 'plain'
 
 type TooltipContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   positionerClassName?: string
   className?: string
   variant?: TooltipContentVariant
-} & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children' | 'className'>
+} & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
 
 export function TooltipContent({
   children,

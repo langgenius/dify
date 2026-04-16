@@ -340,7 +340,7 @@ describe('file-uploader utils', () => {
       }] as unknown as FileEntity[]
 
       const result = getProcessedFiles(files)
-      expect(result[0].url).toBe('')
+      expect(result[0]!.url).toBe('')
     })
 
     it('should fallback to empty string when uploadedId is missing', () => {
@@ -357,7 +357,7 @@ describe('file-uploader utils', () => {
       }] as unknown as FileEntity[]
 
       const result = getProcessedFiles(files)
-      expect(result[0].upload_file_id).toBe('')
+      expect(result[0]!.upload_file_id).toBe('')
     })
 
     it('should filter out files with progress -1', () => {
@@ -384,7 +384,7 @@ describe('file-uploader utils', () => {
 
       const result = getProcessedFiles(files)
       expect(result).toHaveLength(1)
-      expect(result[0].upload_file_id).toBe('1')
+      expect(result[0]!.upload_file_id).toBe('1')
     })
   })
 
@@ -432,7 +432,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('image')
+      expect(result[0]!.supportFileType).toBe('image')
     })
 
     it('should correct video file misclassified as document', () => {
@@ -450,7 +450,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('video')
+      expect(result[0]!.supportFileType).toBe('video')
     })
 
     it('should correct audio file misclassified as document', () => {
@@ -468,7 +468,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('audio')
+      expect(result[0]!.supportFileType).toBe('audio')
     })
 
     it('should correct document file misclassified as image', () => {
@@ -486,7 +486,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('document')
+      expect(result[0]!.supportFileType).toBe('document')
     })
 
     it('should NOT correct when filename and MIME type conflict', () => {
@@ -504,7 +504,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('document')
+      expect(result[0]!.supportFileType).toBe('document')
     })
 
     it('should NOT correct when filename and MIME type both point to same type', () => {
@@ -522,7 +522,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('image')
+      expect(result[0]!.supportFileType).toBe('image')
     })
 
     it('should handle files with missing filename', () => {
@@ -540,7 +540,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('document')
+      expect(result[0]!.supportFileType).toBe('document')
     })
 
     it('should handle files with missing MIME type', () => {
@@ -558,7 +558,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('document')
+      expect(result[0]!.supportFileType).toBe('document')
     })
 
     it('should handle files with unknown extensions', () => {
@@ -576,7 +576,7 @@ describe('file-uploader utils', () => {
       }]
 
       const result = getProcessedFilesFromResponse(files)
-      expect(result[0].supportFileType).toBe('document')
+      expect(result[0]!.supportFileType).toBe('document')
     })
 
     it('should handle multiple different file types correctly', () => {
@@ -621,9 +621,9 @@ describe('file-uploader utils', () => {
 
       const result = getProcessedFilesFromResponse(files)
 
-      expect(result[0].supportFileType).toBe('image') // correct, no change
-      expect(result[1].supportFileType).toBe('image') // corrected from document to image
-      expect(result[2].supportFileType).toBe('document') // conflict, no change
+      expect(result[0]!.supportFileType).toBe('image') // correct, no change
+      expect(result[1]!.supportFileType).toBe('image') // corrected from document to image
+      expect(result[2]!.supportFileType).toBe('document') // conflict, no change
     })
   })
 

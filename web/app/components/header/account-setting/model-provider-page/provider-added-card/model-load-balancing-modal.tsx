@@ -1,4 +1,5 @@
 import type { Credential, CustomConfigurationModelFixedFields, ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -15,7 +16,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
-import { cn } from '@/utils/classnames'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
 import { useAuth } from '../model-auth/hooks/use-auth'
@@ -164,7 +164,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
         const prevIndex = newConfigs.findIndex(item => item.credential_id === modelCredential.credential_id && item.name !== '__inherit__')
         const newIndex = available_credentials.findIndex(c => c.credential_id === modelCredential.credential_id)
         if (newIndex > -1 && prevIndex > -1)
-          newConfigs[prevIndex].name = available_credentials[newIndex].credential_name || ''
+          newConfigs[prevIndex]!.name = available_credentials[newIndex]!.credential_name || ''
         return {
           ...prev,
           configs: newConfigs,

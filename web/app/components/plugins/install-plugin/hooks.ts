@@ -52,7 +52,7 @@ export const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], cu
   const versions = fetchedReleases.map(release => release.tag_name)
   const latestVersion = getLatestVersion(versions)
   try {
-    needUpdate = compareVersion(latestVersion, currentVersion) === 1
+    needUpdate = compareVersion(latestVersion!, currentVersion) === 1
     if (needUpdate)
       toastProps.message = `New version available: ${latestVersion}`
   }

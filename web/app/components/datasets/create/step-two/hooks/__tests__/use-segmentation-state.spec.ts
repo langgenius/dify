@@ -133,8 +133,8 @@ describe('useSegmentationState', () => {
         result.current.toggleRule('remove_extra_spaces')
       })
 
-      expect(result.current.rules[0].enabled).toBe(false)
-      expect(result.current.rules[1].enabled).toBe(false)
+      expect(result.current.rules[0]!.enabled).toBe(false)
+      expect(result.current.rules[1]!.enabled).toBe(false)
     })
 
     it('should toggle second rule without affecting first', () => {
@@ -151,8 +151,8 @@ describe('useSegmentationState', () => {
         result.current.toggleRule('remove_urls_emails')
       })
 
-      expect(result.current.rules[0].enabled).toBe(true)
-      expect(result.current.rules[1].enabled).toBe(true)
+      expect(result.current.rules[0]!.enabled).toBe(true)
+      expect(result.current.rules[1]!.enabled).toBe(true)
     })
   })
 

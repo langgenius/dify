@@ -132,7 +132,7 @@ export const useInspectVarsCrudCommon = ({
       dataSourceList: dataSourceList || [],
     }
     const currentNodeOutputVars = toNodeOutputVars([currentNode], false, () => true, [], [], [], allPluginInfoList, schemaTypeDefinitions)
-    const vars = await fetchNodeInspectVars(flowType, flowId, nodeId)
+    const vars = await fetchNodeInspectVars(flowType, flowId, nodeId!)
     const varsWithSchemaType = vars.map((varItem) => {
       const schemaType = currentNodeOutputVars[0]?.vars.find(v => v.variable === varItem.name)?.schemaType || ''
       return {
@@ -140,7 +140,7 @@ export const useInspectVarsCrudCommon = ({
         schemaType,
       }
     })
-    setNodeInspectVars(nodeId, varsWithSchemaType)
+    setNodeInspectVars(nodeId!, varsWithSchemaType)
   }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools])
 
   // after last run would call this
@@ -163,9 +163,9 @@ export const useInspectVarsCrudCommon = ({
           })
         }
         else {
-          draft[index].vars = payload
+          draft[index]!.vars = payload
           // put the node to the topAdd commentMore actions
-          draft.unshift(draft.splice(index, 1)[0])
+          draft.unshift(draft.splice(index, 1)[0]!)
         }
       }
     })

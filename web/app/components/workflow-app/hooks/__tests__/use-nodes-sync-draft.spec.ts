@@ -8,6 +8,10 @@ const mockPostWithKeepalive = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
+const mockCollaborationIsConnected = vi.fn()
+const mockCollaborationGetIsLeader = vi.fn()
+const mockCollaborationEmitSyncRequest = vi.fn()
+let isCollaborationEnabled = false
 
 let reactFlowState: {
   getNodes: typeof mockGetNodes
@@ -55,6 +59,23 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ getNodesReadOnly: mockGetNodesReadOnly }),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    isConnected: (...args: unknown[]) => mockCollaborationIsConnected(...args),
+    getIsLeader: (...args: unknown[]) => mockCollaborationGetIsLeader(...args),
+    emitSyncRequest: (...args: unknown[]) => mockCollaborationEmitSyncRequest(...args),
+  },
+}))
+
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => unknown) =>
+    selector({
+      systemFeatures: {
+        enable_collaboration_mode: isCollaborationEnabled,
+      },
+    }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
@@ -109,6 +130,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockGetNodesReadOnly.mockReturnValue(false)
     mockGetNodes.mockReturnValue([{ id: 'n1', position: { x: 0, y: 0 }, data: { type: 'start' } }])
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationGetIsLeader.mockReturnValue(true)
+    isCollaborationEnabled = false
   })
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
@@ -260,5 +284,42 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       }),
       hash: 'hash-123',
     }))
+  })
+
+  it('should emit sync request instead of syncing when current user is collaboration follower', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    const callbacks = {
+      onSuccess: vi.fn(),
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+
+    const { result } = renderHook(() => useNodesSyncDraft())
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, callbacks)
+    })
+
+    expect(mockCollaborationEmitSyncRequest).toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onSuccess).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should skip keepalive sync on page close when current user is collaboration follower', () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+
+    const { result } = renderHook(() => useNodesSyncDraft())
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 })

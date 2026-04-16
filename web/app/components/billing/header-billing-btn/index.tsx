@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import { Plan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 

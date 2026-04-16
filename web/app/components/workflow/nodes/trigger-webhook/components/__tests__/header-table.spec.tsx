@@ -19,14 +19,14 @@ describe('trigger-webhook/header-table', () => {
       />,
     )
 
-    fireEvent.change(screen.getAllByRole('textbox')[0], { target: { value: 'Auth Token' } })
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'Auth Token' } })
     expect(onChange).toHaveBeenLastCalledWith([{
       name: 'Auth_Token',
       required: false,
     }])
 
     onChange.mockClear()
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
 
     expect(onChange).toHaveBeenCalledWith([{
       name: 'x-request-id',
@@ -43,7 +43,7 @@ describe('trigger-webhook/header-table', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('authorization')).toBeDisabled()
+    expect(screen.getByDisplayValue('authorization'))!.toBeDisabled()
     expect(screen.getAllByRole('checkbox')).toHaveLength(1)
   })
 })

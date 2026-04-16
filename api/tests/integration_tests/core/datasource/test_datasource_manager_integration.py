@@ -1,9 +1,8 @@
 from collections.abc import Generator
 
-from graphon.node_events import StreamCompletedEvent
-
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage
+from graphon.node_events import StreamCompletedEvent
 
 
 def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:

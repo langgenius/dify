@@ -3,10 +3,10 @@
 from uuid import uuid4
 
 import pytest
-from graphon.variables import StringVariable
 from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
+from graphon.variables import StringVariable
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
 

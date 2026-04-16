@@ -1,4 +1,5 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useMemo } from 'react'
@@ -11,7 +12,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { CrawlStep } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 
 const I18N_PREFIX = 'stepOne.website'
 
@@ -43,7 +43,7 @@ const Options = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

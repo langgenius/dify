@@ -42,13 +42,13 @@ describe('useSingleRunFormParams', () => {
       }))
 
       expect(result.current.forms).toHaveLength(1)
-      expect(result.current.forms[0].inputs).toEqual([{
+      expect(result.current.forms[0]!.inputs).toEqual([{
         label: 'workflow.nodes.common.inputVars',
         variable: 'query',
         type: InputVarType.paragraph,
         required: true,
       }])
-      expect(result.current.forms[0].values).toEqual({ query: 'what is dify' })
+      expect(result.current.forms[0]!.values).toEqual({ query: 'what is dify' })
     })
 
     it('should update run input data when the query changes', () => {
@@ -63,7 +63,7 @@ describe('useSingleRunFormParams', () => {
       }))
 
       act(() => {
-        result.current.forms[0].onChange({ query: 'new query' })
+        result.current.forms[0]!.onChange({ query: 'new query' })
       })
 
       expect(setRunInputData).toHaveBeenCalledWith({ query: 'new query' })

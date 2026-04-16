@@ -99,7 +99,7 @@ describe('parameter-extractor/use-single-run-form-params', () => {
     }))
 
     expect(result.current.forms).toHaveLength(2)
-    expect(result.current.forms[0].inputs).toEqual(expect.arrayContaining([
+    expect(result.current.forms[0]!.inputs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         variable: 'query',
         type: InputVarType.paragraph,
@@ -108,15 +108,15 @@ describe('parameter-extractor/use-single-run-form-params', () => {
         variable: '#node-2.answer#',
       }),
     ]))
-    expect(result.current.forms[1].inputs).toEqual([{
+    expect(result.current.forms[1]!.inputs).toEqual([{
       label: 'image',
       variable: '#files#',
       type: InputVarType.singleFile,
       required: false,
     }])
 
-    result.current.forms[0].onChange({ query: 'updated' })
-    result.current.forms[1].onChange({ '#files#': ['file-2'] })
+    result.current.forms[0]!.onChange({ query: 'updated' })
+    result.current.forms[1]!.onChange({ '#files#': ['file-2'] })
 
     expect(setRunInputData).toHaveBeenNthCalledWith(1, {
       'query': 'updated',
@@ -128,7 +128,7 @@ describe('parameter-extractor/use-single-run-form-params', () => {
       '#context#': 'ctx',
       '#files#': ['file-2'],
     })
-    const availableVarOptions = mockUseAvailableVarList.mock.calls[0][1] as { filterVar: (payload: { type: VarType }) => boolean }
+    const availableVarOptions = mockUseAvailableVarList.mock.calls[0]![1] as { filterVar: (payload: { type: VarType }) => boolean }
 
     expect(availableVarOptions.filterVar({ type: VarType.file })).toBe(true)
     expect(availableVarOptions.filterVar({ type: VarType.string })).toBe(false)

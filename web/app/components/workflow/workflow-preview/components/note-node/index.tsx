@@ -1,5 +1,6 @@
 import type { NodeProps } from 'reactflow'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useRef,
@@ -10,7 +11,6 @@ import {
   NoteEditor,
   NoteEditorContextProvider,
 } from '@/app/components/workflow/note-node/note-editor'
-import { cn } from '@/utils/classnames'
 
 const NoteNode = ({
   data,
@@ -23,8 +23,8 @@ const NoteNode = ({
     <div
       className={cn(
         'relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
-        THEME_MAP[theme].bg,
-        data.selected ? THEME_MAP[theme].border : 'border-black/5',
+        THEME_MAP[theme]!.bg,
+        data.selected ? THEME_MAP[theme]!.border : 'border-black/5',
       )}
       style={{
         width: data.width,
@@ -40,7 +40,7 @@ const NoteNode = ({
           <div
             className={cn(
               'h-2 shrink-0 rounded-t-md opacity-50',
-              THEME_MAP[theme].title,
+              THEME_MAP[theme]!.title,
             )}
           >
           </div>

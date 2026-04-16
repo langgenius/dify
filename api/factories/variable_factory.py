@@ -8,6 +8,11 @@ shared conversion functions for legacy callers and tests.
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from configs import dify_config
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
 from graphon.variables.exc import VariableError
 from graphon.variables.factory import (
     TypeMismatchError,
@@ -29,12 +34,6 @@ from graphon.variables.variables import (
     SecretVariable,
     StringVariable,
     VariableBase,
-)
-
-from configs import dify_config
-from core.workflow.variable_prefixes import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
 )
 
 __all__ = [

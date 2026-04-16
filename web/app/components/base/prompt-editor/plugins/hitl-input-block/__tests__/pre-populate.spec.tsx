@@ -82,12 +82,12 @@ describe('PrePopulate', () => {
       />,
     )
 
-    expect(screen.getByText('Static Content')).toBeInTheDocument()
+    expect(screen.getByText('Static Content'))!.toBeInTheDocument()
 
     await user.keyboard('{Tab}')
 
     expect(screen.queryByText('Static Content')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByRole('textbox'))!.toBeInTheDocument()
   })
 
   it('should update constant value and toggle to variable mode when type switch is clicked', async () => {
@@ -154,7 +154,7 @@ describe('PrePopulate', () => {
       />,
     )
 
-    const pickerProps = mockVarReferencePicker.mock.calls[0][0] as VarReferencePickerProps
+    const pickerProps = mockVarReferencePicker.mock.calls[0]![0] as VarReferencePickerProps
 
     const allowString = pickerProps.filterVar({ type: 'string' } as Var)
     const allowNumber = pickerProps.filterVar({ type: 'number' } as Var)

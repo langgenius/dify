@@ -10,6 +10,7 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import {
   getKeyboardKeyCodeBySystem,
@@ -35,6 +36,8 @@ export const useShortcuts = (): void => {
   const {
     handleModeHand,
     handleModePointer,
+    handleModeComment,
+    isCommentModeAvailable,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
@@ -151,6 +154,16 @@ export const useShortcuts = (): void => {
     useCapture: true,
   })
 
+  useKeyPress('c', (e) => {
+    if (shouldHandleShortcut(e) && isCommentModeAvailable) {
+      e.preventDefault()
+      handleModeComment()
+    }
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
@@ -222,6 +235,13 @@ export const useShortcuts = (): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.l`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      collaborationManager.downloadGraphImportLog()
+    }
+  }, { exactMatch: true, useCapture: true })
 
   // Shift ↓
   useKeyPress(
