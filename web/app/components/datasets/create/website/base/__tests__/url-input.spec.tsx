@@ -51,7 +51,7 @@ describe('UrlInput', () => {
     it('should show loading state on button when running', () => {
       render(<UrlInput isRunning={true} onRun={mockOnRun} />)
       const button = screen.getByRole('button')
-      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
       expect(button).toHaveAttribute('aria-busy', 'true')
       expect(button.querySelector('.animate-spin')).toBeInTheDocument()
     })

@@ -1773,14 +1773,14 @@ describe('StepTwoFooter', () => {
       render(<StepTwoFooter {...defaultProps} isCreating={true} />)
 
       const nextButton = screen.getByText(/nextStep/i).closest('button')
-      expect(nextButton)!.toBeDisabled()
+      expect(nextButton).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should show loading state on Save button when creating in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} isSetting={true} isCreating={true} />)
 
       const saveButton = screen.getByText(/save/i).closest('button')
-      expect(saveButton)!.toBeDisabled()
+      expect(saveButton).toHaveAttribute('aria-disabled', 'true')
     })
   })
 })

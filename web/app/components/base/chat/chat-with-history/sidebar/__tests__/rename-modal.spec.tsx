@@ -84,7 +84,7 @@ describe('RenameModal', () => {
   it('shows loading state when saveLoading is true', () => {
     render(<RenameModal {...defaultProps} saveLoading />)
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('aria-disabled', 'true')
     expect(saveButton).toHaveAttribute('aria-busy', 'true')
     expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
