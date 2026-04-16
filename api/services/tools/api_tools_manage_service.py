@@ -377,9 +377,8 @@ class ApiToolManageService:
         """
 
         # create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
+        with sessionmaker(db.engine).begin() as _session:
+            provider: ApiToolProvider | None = _session.scalar(
                 select(ApiToolProvider)
                 .where(
                     ApiToolProvider.tenant_id == tenant_id,
@@ -388,11 +387,9 @@ class ApiToolManageService:
                 .limit(1)
             )
 
-        if provider is None:
-            raise ValueError(f"you have not added provider {provider_name}")
+            if provider is None:
+                raise ValueError(f"you have not added provider {provider_name}")
 
-        # create new session with automatic transaction management to delete the provider
-        with sessionmaker(db.engine).begin() as _session:
             _session.delete(provider)
 
         return {"result": "success"}
