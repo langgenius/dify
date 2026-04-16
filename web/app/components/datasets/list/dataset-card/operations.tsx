@@ -54,7 +54,7 @@ const Operations = ({
       {showDelete && (
         <>
           <DropdownMenuSeparator />
-          <DropdownMenuItem destructive onClick={handleDelete}>
+          <DropdownMenuItem variant="destructive" onClick={handleDelete}>
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
             {t('operation.delete', { ns: 'common' })}
           </DropdownMenuItem>

@@ -5,7 +5,7 @@ import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  overlayGroupLabelClassName,
+  overlayLabelClassName,
   overlaySeparatorClassName,
 } from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -17,18 +17,18 @@ export const SelectGroup = BaseSelect.Group
 
 const selectSizeClassName: Record<string, string> = {
   small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-  regular: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
+  medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
   large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
 }
 
 type SelectTriggerProps = BaseSelect.Trigger.Props & {
-  size?: 'small' | 'regular' | 'large'
+  size?: 'small' | 'medium' | 'large'
 }
 
 export function SelectTrigger({
   className,
   children,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: SelectTriggerProps) {
   return (
@@ -55,13 +55,13 @@ export function SelectTrigger({
   )
 }
 
-export function SelectGroupLabel({
+export function SelectLabel({
   className,
   ...props
 }: BaseSelect.GroupLabel.Props) {
   return (
     <BaseSelect.GroupLabel
-      className={cn(overlayGroupLabelClassName, className)}
+      className={cn(overlayLabelClassName, className)}
       {...props}
     />
   )

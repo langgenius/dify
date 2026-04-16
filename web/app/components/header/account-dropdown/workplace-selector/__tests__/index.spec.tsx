@@ -71,7 +71,7 @@ vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
       <div data-testid="workplace-selector-content">{children}</div>
     ),
     SelectGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectItem: ({
       children,
       value,

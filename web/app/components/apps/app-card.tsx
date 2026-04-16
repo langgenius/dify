@@ -167,7 +167,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
         </>
       )}
       <DropdownMenuItem
-        destructive
+        variant="destructive"
         className="gap-2 px-3"
         onClick={e => handleMenuAction(e, onDelete)}
       >

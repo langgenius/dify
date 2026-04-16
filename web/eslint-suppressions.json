@@ -3631,9 +3631,6 @@
   "app/components/datasets/settings/index-method/keyword-number.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/datasets/settings/permission-selector/index.tsx": {
@@ -7259,9 +7256,6 @@
   "app/components/workflow/nodes/trigger-webhook/panel.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {

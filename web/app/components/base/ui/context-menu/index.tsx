@@ -1,13 +1,15 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { OverlayItemVariant } from '@/app/components/base/ui/overlay-shared'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   overlayBackdropClassName,
-  overlayGroupLabelClassName,
+  overlayDestructiveClassName,
   overlayIndicatorClassName,
+  overlayLabelClassName,
   overlayPopupAnimationClassName,
   overlayPopupBaseClassName,
   overlayRowClassName,
@@ -114,35 +116,37 @@ export function ContextMenuContent({
 }
 
 type ContextMenuItemProps = BaseContextMenu.Item.Props & {
-  destructive?: boolean
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuItem({
   className,
-  destructive,
+  variant = 'default',
   ...props
 }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     />
   )
 }
 
 type ContextMenuLinkItemProps = BaseContextMenu.LinkItem.Props & {
-  destructive?: boolean
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuLinkItem({
   className,
-  destructive,
+  variant = 'default',
   closeOnClick = true,
   ...props
 }: ContextMenuLinkItemProps) {
   return (
     <BaseContextMenu.LinkItem
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -202,18 +206,19 @@ export function ContextMenuRadioItemIndicator({
 }
 
 type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
-  destructive?: boolean
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuSubTrigger({
   className,
-  destructive,
+  variant = 'default',
   children,
   ...props
 }: ContextMenuSubTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive data-highlighted:bg-state-destructive-hover', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     >
       {children}
@@ -255,13 +260,13 @@ export function ContextMenuSubContent({
   })
 }
 
-export function ContextMenuGroupLabel({
+export function ContextMenuLabel({
   className,
   ...props
 }: BaseContextMenu.GroupLabel.Props) {
   return (
     <BaseContextMenu.GroupLabel
-      className={cn(overlayGroupLabelClassName, className)}
+      className={cn(overlayLabelClassName, className)}
       {...props}
     />
   )
