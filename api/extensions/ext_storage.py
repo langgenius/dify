@@ -134,7 +134,7 @@ class Storage:
         if not self._path_prefix:
             return results
         prefix_with_slash = self._path_prefix + "/"
-        return [r[len(prefix_with_slash):] if r.startswith(prefix_with_slash) else r for r in results]
+        return [r.removeprefix(prefix_with_slash) for r in results]
 
 
 storage = Storage()
