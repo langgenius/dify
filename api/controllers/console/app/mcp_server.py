@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Any
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -19,13 +20,13 @@ from models.model import AppMCPServer
 
 class MCPServerCreatePayload(BaseModel):
     description: str | None = Field(default=None, description="Server description")
-    parameters: dict = Field(..., description="Server parameters configuration")
+    parameters: dict[str, Any] = Field(..., description="Server parameters configuration")
 
 
 class MCPServerUpdatePayload(BaseModel):
     id: str = Field(..., description="Server ID")
     description: str | None = Field(default=None, description="Server description")
-    parameters: dict = Field(..., description="Server parameters configuration")
+    parameters: dict[str, Any] = Field(..., description="Server parameters configuration")
     status: str | None = Field(default=None, description="Server status")
 
 
@@ -41,13 +42,13 @@ class AppMCPServerResponse(ResponseModel):
     server_code: str
     description: str
     status: AppMCPServerStatus
-    parameters: dict | str
+    parameters: dict[str, Any] | list[Any] | str
     created_at: int | None = None
     updated_at: int | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
-    def _normalize_parameters(cls, value: dict | str) -> dict | str:
+    def _normalize_parameters(cls, value: Any) -> Any:
         if isinstance(value, str):
             try:
                 return json.loads(value)
@@ -78,6 +79,8 @@ class AppMCPServerController(Resource):
     @get_app_model
     def get(self, app_model):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
+        if server is None:
+            return {}
         return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
 
     @console_ns.doc("create_app_mcp_server")
@@ -112,7 +115,7 @@ class AppMCPServerController(Resource):
         )
         db.session.add(server)
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json"), 201
 
     @console_ns.doc("update_app_mcp_server")
     @console_ns.doc(description="Update MCP server configuration for an application")
