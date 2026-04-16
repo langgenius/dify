@@ -67,7 +67,7 @@ const VarList: FC<Props> = ({
 
       const newKey = e.target.value
 
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
 
       onVarNameChange?.(list[index]!.variable, newKey)
       const newList = produce(list, (draft) => {

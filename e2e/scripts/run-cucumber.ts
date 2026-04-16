@@ -17,12 +17,10 @@ const parseArgs = (argv: string[]): RunOptions => {
   let headed = false
   const forwardArgs: string[] = []
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-
+  for (const [index, arg] of argv.entries()) {
     if (arg === '--') {
       forwardArgs.push(...argv.slice(index + 1))
-      break
+      return { forwardArgs, full, headed }
     }
 
     if (arg === '--full') {
@@ -38,11 +36,7 @@ const parseArgs = (argv: string[]): RunOptions => {
     forwardArgs.push(arg)
   }
 
-  return {
-    forwardArgs,
-    full,
-    headed,
-  }
+  return { forwardArgs, full, headed }
 }
 
 const hasCustomTags = (forwardArgs: string[]) =>

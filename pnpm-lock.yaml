@@ -589,6 +589,9 @@ importers:
       '@cucumber/cucumber':
         specifier: 'catalog:'
         version: 12.8.0
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../packages/tsconfig
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.59.1
@@ -617,9 +620,15 @@ importers:
         specifier: 'catalog:'
         version: 3.5.0
     devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
 
   packages/iconify-collections:
     devDependencies:
@@ -633,6 +642,9 @@ importers:
         specifier: 'catalog:'
         version: 6.0.2
     devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.0
@@ -643,8 +655,13 @@ importers:
         specifier: 'catalog:'
         version: 0.1.18(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(@voidzero-dev/vite-plus-core@0.1.18(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3)
 
+  packages/tsconfig: {}
+
   sdks/nodejs-client:
     devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@eslint/js':
         specifier: 'catalog:'
         version: 10.0.1(eslint@10.2.0(jiti@2.6.1))
@@ -997,6 +1014,9 @@ importers:
       '@dify/iconify-collections':
         specifier: workspace:*
         version: link:../packages/iconify-collections
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../packages/tsconfig
       '@egoist/tailwindcss-icons':
         specifier: 'catalog:'
         version: 1.9.2(tailwindcss@4.2.2)

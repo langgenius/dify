@@ -19,6 +19,11 @@
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:"
+    "@dify/tsconfig": "workspace:*",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "type-check": "tsc"
   }
 }

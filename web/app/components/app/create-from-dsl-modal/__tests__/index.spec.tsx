@@ -258,7 +258,8 @@ describe('CreateFromDSLModal', () => {
       expect(getCreateButton())!.toBeDisabled()
     })
 
-    ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
+    const latestHandlerAfterRemove = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
+    latestHandlerAfterRemove?.handler()
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
@@ -387,7 +388,8 @@ describe('CreateFromDSLModal', () => {
     )
 
     expect(screen.getByText('apps-full'))!.toBeInTheDocument()
-    ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
+    const latestPlanLimitHandler = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
+    latestPlanLimitHandler?.handler()
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
   })
 

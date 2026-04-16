@@ -55,7 +55,7 @@ const OutputVarList: FC<Props> = ({
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const newKey = e.target.value
 
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
 
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]!

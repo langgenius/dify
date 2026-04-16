@@ -34,7 +34,8 @@ let exitCode = 0
 
 try {
   await main()
-  exitCode = process.exitCode ?? 0
+  const currentExitCode = process.exitCode
+  exitCode = typeof currentExitCode === 'number' ? currentExitCode : 0
 }
 catch (error) {
   console.error(error instanceof Error ? error.message : error)

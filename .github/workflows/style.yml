@@ -77,6 +77,8 @@ jobs:
         with:
           files: |
             web/**
+            e2e/**
+            sdks/nodejs-client/**
             packages/**
             package.json
             pnpm-lock.yaml
@@ -112,7 +114,7 @@ jobs:
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
+        working-directory: .
         run: vp run type-check
 
       - name: Web dead code check

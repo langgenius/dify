@@ -2,7 +2,8 @@
   "name": "dify",
   "private": true,
   "scripts": {
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "type-check": "vp run -r type-check"
   },
   "devDependencies": {
     "vite": "catalog:",

@@ -10,7 +10,7 @@ export const i18n = {
   locales: LanguagesSupported,
 } as const
 
-export { Locale }
+export type { Locale }
 
 export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
   Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365 })

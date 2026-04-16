@@ -48,8 +48,8 @@
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "test:watch": "vp test --watch",
-    "type-check": "tsc --noEmit",
-    "type-check:tsgo": "tsgo --noEmit",
+    "type-check": "tsc",
+    "type-check:tsgo": "tsgo",
     "uglify-embed": "node ./bin/uglify-embed"
   },
   "dependencies": {
@@ -161,6 +161,7 @@
     "@antfu/eslint-config": "catalog:",
     "@chromatic-com/storybook": "catalog:",
     "@dify/iconify-collections": "workspace:*",
+    "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",
     "@hono/node-server": "catalog:",
