@@ -274,8 +274,8 @@ catalogs:
       specifier: 10.6.0
       version: 10.6.0
     dompurify:
-      specifier: 3.3.3
-      version: 3.3.3
+      specifier: 3.4.0
+      version: 3.4.0
     echarts:
       specifier: 6.0.0
       version: 6.0.0
@@ -778,7 +778,7 @@ importers:
         version: 10.6.0
       dompurify:
         specifier: 'catalog:'
-        version: 3.3.3
+        version: 3.4.0
       echarts:
         specifier: 'catalog:'
         version: 6.0.0
@@ -5467,8 +5467,8 @@ packages:
     resolution: {integrity: sha512-6obghkliLdmKa56xdbLOpUZ43pAR6xFy1uOrxBaIDjT+yaRuuybLjGS9eVBoSR/UPU5fq3OXClEHLJNGvbxKpQ==}
     engines: {node: '>=20'}
 
-  dompurify@3.3.3:
-    resolution: {integrity: sha512-Oj6pzI2+RqBfFG+qOaOLbFXLQ90ARpcGG6UePL82bJLtdsa6CYJD7nmiU8MW9nQNOtCHV3lZ/Bzq1X0QYbBZCA==}
+  dompurify@3.4.0:
+    resolution: {integrity: sha512-nolgK9JcaUXMSmW+j1yaSvaEaoXYHwWyGJlkoCTghc97KgGDDSnpoU/PlEnw63Ah+TGKFOyY+X5LnxaWbCSfXg==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -12993,7 +12993,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  dompurify@3.3.3:
+  dompurify@3.4.0:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
