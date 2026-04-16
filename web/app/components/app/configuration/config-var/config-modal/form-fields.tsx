@@ -103,7 +103,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.textInput && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
@@ -124,7 +124,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
             type="number"
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />

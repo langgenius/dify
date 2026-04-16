@@ -1,14 +1,20 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { TFunction } from 'i18next'
-import type { ComponentType, ReactNode } from 'react'
-import type { OverviewOperationKey } from './app-card-utils'
+import type { ChangeEvent, ComponentType, FormEvent, ReactNode } from 'react'
+import type {
+  OverviewOperationKey,
+  WorkflowHiddenStartVariable,
+  WorkflowLaunchInputValue,
+} from './app-card-utils'
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
+import Input from '@/app/components/base/input'
 import ShareQRCode from '@/app/components/base/qrcode'
+import Textarea from '@/app/components/base/textarea'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,10 +26,24 @@ import {
 } from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/app/components/base/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/base/ui/select'
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/app/components/base/ui/tooltip'
+import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
@@ -46,6 +66,12 @@ type AppCardOperation = {
   key: OverviewOperationKey
   label: string
   Icon: OperationIcon
+  disabled: boolean
+  onClick: () => void
+}
+
+type LaunchConfigAction = {
+  label: string
   disabled: boolean
   onClick: () => void
 }
@@ -93,6 +119,138 @@ const MaybeTooltip = ({
         {content}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+export const WorkflowLaunchDialog = ({
+  t,
+  open,
+  hiddenVariables,
+  unsupportedVariables,
+  values,
+  onOpenChange,
+  onValueChange,
+  onSubmit,
+}: {
+  t: TFunction
+  open: boolean
+  hiddenVariables: WorkflowHiddenStartVariable[]
+  unsupportedVariables: WorkflowHiddenStartVariable[]
+  values: Record<string, WorkflowLaunchInputValue>
+  onOpenChange: (open: boolean) => void
+  onValueChange: (variable: string, value: WorkflowLaunchInputValue) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) => {
+  const renderField = (variable: WorkflowHiddenStartVariable) => {
+    const fieldId = `workflow-launch-hidden-input-${variable.variable}`
+    const fieldValue = values[variable.variable]
+    const label = typeof variable.label === 'string' ? variable.label : variable.variable
+
+    if (variable.type === InputVarType.select) {
+      return (
+        <Select
+          value={typeof fieldValue === 'string' ? fieldValue : ''}
+          onValueChange={value => onValueChange(variable.variable, value ?? '')}
+        >
+          <SelectTrigger className="w-full" aria-label={label}>
+            <SelectValue placeholder={label} />
+          </SelectTrigger>
+          <SelectContent>
+            {(variable.options ?? []).map(option => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    }
+
+    if (variable.type === InputVarType.checkbox) {
+      return (
+        <label className="flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg bg-components-input-bg-normal px-3 py-2">
+          <input
+            id={fieldId}
+            type="checkbox"
+            checked={Boolean(fieldValue)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.checked)}
+            className="h-4 w-4 rounded border-divider-subtle"
+          />
+          <span className="system-sm-regular text-text-secondary">{label}</span>
+        </label>
+      )
+    }
+
+    if (
+      variable.type === InputVarType.paragraph
+      || variable.type === InputVarType.json
+      || variable.type === InputVarType.jsonObject
+    ) {
+      return (
+        <Textarea
+          id={fieldId}
+          value={typeof fieldValue === 'string' ? fieldValue : ''}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onValueChange(variable.variable, event.target.value)}
+          placeholder={label}
+          maxLength={variable.max_length}
+          className="min-h-24"
+        />
+      )
+    }
+
+    return (
+      <Input
+        id={fieldId}
+        type={variable.type === InputVarType.number ? 'number' : 'text'}
+        value={typeof fieldValue === 'string' ? fieldValue : ''}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(variable.variable, event.target.value)}
+        placeholder={label}
+        maxLength={variable.max_length}
+      />
+    )
+  }
+
+  if (!hiddenVariables.length && !unsupportedVariables.length)
+    return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[560px]! max-w-[calc(100vw-2rem)]! p-0!">
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            {t('overview.appInfo.workflowLaunchHiddenInputs.title', { ns: 'appOverview' })}
+          </DialogTitle>
+          <DialogDescription className="system-md-regular text-text-tertiary">
+            {t('overview.appInfo.workflowLaunchHiddenInputs.description', { ns: 'appOverview' })}
+          </DialogDescription>
+        </div>
+        <form onSubmit={onSubmit}>
+          <div className="space-y-4 px-6 pb-4">
+            {hiddenVariables.map(variable => (
+              <div key={variable.variable} className="space-y-1.5">
+                {variable.type !== InputVarType.checkbox && (
+                  <label
+                    htmlFor={`workflow-launch-hidden-input-${variable.variable}`}
+                    className="block system-sm-medium text-text-secondary"
+                  >
+                    {typeof variable.label === 'string' ? variable.label : variable.variable}
+                  </label>
+                )}
+                {renderField(variable)}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+            <Button onClick={() => onOpenChange(false)}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button type="submit" variant="primary">
+              {t('overview.appInfo.launch', { ns: 'appOverview' })}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -251,20 +409,15 @@ export const AppCardAccessControlSection = ({
 export const AppCardOperations = ({
   t,
   operations,
+  launchConfigAction,
 }: {
   t: TFunction
   operations: AppCardOperation[]
+  launchConfigAction?: LaunchConfigAction
 }) => (
   <>
-    {operations.map(({ key, label, Icon, disabled, onClick }) => (
-      <Button
-        className="mr-1 min-w-[88px]"
-        size="small"
-        variant="ghost"
-        key={key}
-        onClick={onClick}
-        disabled={disabled}
-      >
+    {operations.map(({ key, label, Icon, disabled, onClick }) => {
+      const buttonContent = (
         <MaybeTooltip
           content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
           tooltipClassName="mt-[-8px]"
@@ -275,8 +428,72 @@ export const AppCardOperations = ({
             <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
           </div>
         </MaybeTooltip>
-      </Button>
-    ))}
+      )
+
+      if (key === 'launch' && launchConfigAction) {
+        return (
+          <MaybeTooltip
+            key={key}
+            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+            tooltipClassName="mt-[-8px]"
+            show={disabled}
+          >
+            <Button
+              className="mr-1 border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+              size="small"
+              variant="secondary"
+              onClick={onClick}
+              disabled={disabled}
+            >
+              <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
+                <div className="flex items-center justify-center gap-px">
+                  <Icon className="h-3.5 w-3.5" />
+                  <div className="px-[3px] system-xs-medium">{label}</div>
+                </div>
+              </div>
+              <div
+                aria-hidden="true"
+                className="h-4 w-px shrink-0 bg-divider-regular opacity-100"
+              />
+              <div
+                className="flex h-full w-8 shrink-0 items-center justify-center rounded-r-md hover:bg-components-button-secondary-bg-hover"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  launchConfigAction.onClick()
+                }}
+                aria-label={launchConfigAction.label}
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                onKeyDown={(event) => {
+                  if (disabled)
+                    return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    launchConfigAction.onClick()
+                  }
+                }}
+              >
+                <RiEqualizer2Line className="h-3.5 w-3.5" />
+              </div>
+            </Button>
+          </MaybeTooltip>
+        )
+      }
+
+      return (
+        <Button
+          className="mr-1 min-w-[88px]"
+          size="small"
+          variant="ghost"
+          key={key}
+          onClick={onClick}
+          disabled={disabled}
+        >
+          {buttonContent}
+        </Button>
+      )
+    })}
   </>
 )
 

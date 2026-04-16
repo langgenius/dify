@@ -104,6 +104,8 @@
   "overview.appInfo.settings.workflow.subTitle": "工作流详情",
   "overview.appInfo.settings.workflow.title": "工作流",
   "overview.appInfo.title": "Web App",
+  "overview.appInfo.workflowLaunchHiddenInputs.description": "打开 web app 前，请先填写隐藏字段。",
+  "overview.appInfo.workflowLaunchHiddenInputs.title": "隐藏字段",
   "overview.disableTooltip.triggerMode": "触发节点模式下不支持{{feature}}功能。",
   "overview.status.disable": "已停用",
   "overview.status.running": "运行中",

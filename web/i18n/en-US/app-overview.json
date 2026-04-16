@@ -104,6 +104,8 @@
   "overview.appInfo.settings.workflow.subTitle": "Workflow Details",
   "overview.appInfo.settings.workflow.title": "Workflow",
   "overview.appInfo.title": "Web App",
+  "overview.appInfo.workflowLaunchHiddenInputs.description": "Please complete the hidden fields before opening the web app.",
+  "overview.appInfo.workflowLaunchHiddenInputs.title": "Hidden fields",
   "overview.disableTooltip.triggerMode": "The {{feature}} feature is not supported in Trigger Node mode.",
   "overview.status.disable": "Disabled",
   "overview.status.running": "In Service",
