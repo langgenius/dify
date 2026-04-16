@@ -4523,9 +4523,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
