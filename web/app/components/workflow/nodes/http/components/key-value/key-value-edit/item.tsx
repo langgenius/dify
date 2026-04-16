@@ -7,7 +7,15 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalSelect } from '@/app/components/base/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/base/ui/select'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
@@ -80,7 +88,7 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'h-min-7 group flex border-t border-divider-regular')}>
+    <div className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}>
       <div className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>
         {!keyNotSupportVar
           ? (
@@ -105,18 +113,28 @@ const KeyValueItem: FC<Props> = ({
       </div>
       {isSupportFile && (
         <div className="w-[70px] shrink-0 border-r border-divider-regular">
-          <PortalSelect
-            value={payload.type!}
-            onSelect={item => handleChange('type')(item.value as string)}
-            items={[
-              { name: 'text', value: 'text' },
-              { name: 'file', value: 'file' },
-            ]}
-            readonly={readonly}
-            triggerClassName="rounded-none h-7 text-text-primary"
-            triggerClassNameFn={isOpen => isOpen ? 'bg-state-base-hover' : 'bg-transparent'}
-            popupClassName="w-[80px] h-7"
-          />
+          <Select
+            value={payload.type ?? 'text'}
+            onValueChange={value => value && handleChange('type')(value)}
+            readOnly={readonly}
+          >
+            <SelectTrigger
+              aria-label={t(`${i18nPrefix}.type`, { ns: 'workflow' })}
+              className="h-7 rounded-none bg-transparent text-text-primary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
+              <SelectItem value="text">
+                <SelectItemText>text</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+              <SelectItem value="file">
+                <SelectItemText>file</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
       <div
