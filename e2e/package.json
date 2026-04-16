@@ -1,7 +1,7 @@
 {
   "name": "dify-e2e",
-  "private": true,
   "type": "module",
+  "private": true,
   "scripts": {
     "check": "vp check --fix",
     "e2e": "tsx ./scripts/run-cucumber.ts",
@@ -15,8 +15,8 @@
     "type-check": "tsc"
   },
   "devDependencies": {
-    "@dify/tsconfig": "workspace:*",
     "@cucumber/cucumber": "catalog:",
+    "@dify/tsconfig": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "tsx": "catalog:",

@@ -5,8 +5,8 @@ import {
   apiDir,
   apiEnvExampleFile,
   dockerDir,
-  e2eWebEnvOverrides,
   e2eDir,
+  e2eWebEnvOverrides,
   ensureFileExists,
   ensureLineInFile,
   getWebEnvLocalHash,
@@ -79,7 +79,8 @@ const getContainerHealth = async (containerId: string) => {
     stdio: 'pipe',
   })
 
-  if (result.exitCode !== 0) return ''
+  if (result.exitCode !== 0)
+    return ''
 
   return result.stdout.trim()
 }
@@ -105,7 +106,8 @@ const waitForDependency = async ({
 
   try {
     await wait()
-  } catch (error) {
+  }
+  catch (error) {
     await printComposeLogs(services)
     throw error
   }
@@ -134,7 +136,7 @@ export const ensureWebBuild = async () => {
         .then(() => true)
         .catch(() => false),
       readFile(webBuildEnvStampPath, 'utf8')
-        .then((value) => value.trim())
+        .then(value => value.trim())
         .catch(() => ''),
     ])
 
@@ -142,7 +144,8 @@ export const ensureWebBuild = async () => {
       console.log('Reusing existing web build artifact.')
       return
     }
-  } catch {
+  }
+  catch {
     // Fall through to rebuild when the existing build cannot be verified.
   }
 
@@ -211,7 +214,8 @@ export const resetState = async () => {
   console.log('Stopping middleware services...')
   try {
     await stopMiddleware()
-  } catch {
+  }
+  catch {
     // Reset should continue even if middleware is already stopped.
   }
 
@@ -225,7 +229,7 @@ export const resetState = async () => {
 
   console.log('Removing E2E local state...')
   await Promise.all(
-    e2eStatePaths.map((targetPath) => rm(targetPath, { force: true, recursive: true })),
+    e2eStatePaths.map(targetPath => rm(targetPath, { force: true, recursive: true })),
   )
 
   console.log('E2E state reset complete.')

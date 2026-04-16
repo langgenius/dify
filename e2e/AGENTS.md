@@ -171,10 +171,10 @@ open cucumber-report/report.html
 ### Workflow
 
 1. Create a `.feature` file under `features/<capability>/`
-2. Add step definitions under `features/step-definitions/<capability>/`
-3. Reuse existing steps from `common/` and other definition files before writing new ones
-4. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-5. Run `pnpm -C e2e check` before committing
+1. Add step definitions under `features/step-definitions/<capability>/`
+1. Reuse existing steps from `common/` and other definition files before writing new ones
+1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
+1. Run `pnpm -C e2e check` before committing
 
 ### Feature file conventions
 
@@ -202,9 +202,9 @@ Keep scenarios short and declarative. Each step should describe **what** the use
 ### Step definition conventions
 
 ```typescript
-import { When, Then } from '@cucumber/cucumber'
-import { expect } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
+import { Then, When } from '@cucumber/cucumber'
+import { expect } from '@playwright/test'
 
 When('I open the datasets page', async function (this: DifyWorld) {
   await this.getPage().goto('/datasets')

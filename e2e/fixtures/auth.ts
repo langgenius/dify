@@ -1,8 +1,8 @@
 import type { Browser, Page } from '@playwright/test'
-import { expect } from '@playwright/test'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { expect } from '@playwright/test'
 import { defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -60,7 +60,8 @@ const waitForPageState = async (page: Page, deadline: number): Promise<AuthPageS
         .waitFor({ state: 'visible', timeout: getRemainingTimeout(deadline) })
         .then(() => 'init'),
     ])
-  } catch {
+  }
+  catch {
     throw new Error(`Unable to determine auth page state for ${page.url()}`)
   }
 }
@@ -73,7 +74,8 @@ const completeInitPasswordIfNeeded = async (page: Page, deadline: number) => {
     .then(() => true)
     .catch(() => false)
 
-  if (!needsInitPassword) return false
+  if (!needsInitPassword)
+    return false
 
   await initPasswordField.fill(initPassword)
   await page.getByRole('button', { name: 'Validate' }).click()
@@ -143,7 +145,8 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
       pageState = await waitForPageState(page, deadline)
     }
 
-    if (pageState === 'install') await completeInstall(page, baseURL, deadline)
+    if (pageState === 'install')
+      await completeInstall(page, baseURL, deadline)
     else await completeLogin(page, baseURL, deadline)
 
     await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible({
@@ -160,7 +163,8 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     }
 
     await writeFile(authMetadataPath, `${JSON.stringify(metadata, null, 2)}\n`, 'utf8')
-  } finally {
+  }
+  finally {
     await context.close()
   }
 }

@@ -32,11 +32,6 @@ export default antfu(
         'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    nextjs: {
-      overrides: {
-        'next/no-img-element': 'off',
-      },
-    },
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
@@ -203,6 +198,13 @@ export default antfu(
           ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
         ],
       }],
+    },
+  },
+  {
+    settings: {
+      'better-tailwindcss': {
+        cwd: './web',
+      },
     },
   },
 )
