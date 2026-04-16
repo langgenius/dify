@@ -1,7 +1,7 @@
 from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -48,6 +48,16 @@ class RedisPubSubConfig(BaseSettings):
         ),
         default=None,
     )
+
+    @field_validator("PUBSUB_REDIS_USE_CLUSTERS", mode="before")
+    @classmethod
+    def _blank_pubsub_use_clusters_is_unset(cls, value: object) -> object:
+        # Docker Compose renders unset flags as empty strings (`${VAR:-}`). Treat
+        # an empty / whitespace-only value as "not set" so the inheritance from
+        # REDIS_USE_CLUSTERS still takes effect — otherwise Pydantic rejects "".
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded", "streams"] = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_CHANNEL_TYPE", "PUBSUB_REDIS_CHANNEL_TYPE"),

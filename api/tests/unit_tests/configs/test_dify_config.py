@@ -278,6 +278,48 @@ def test_pubsub_use_clusters_explicit_override_wins(monkeypatch: pytest.MonkeyPa
     assert config.normalized_pubsub_use_clusters is False
 
 
+def test_pubsub_use_clusters_pubsub_only_cluster(monkeypatch: pytest.MonkeyPatch):
+    """Operator can enable cluster mode for pubsub alone (main Redis standalone)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "false")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_CLUSTERS", "true")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is True
+    assert config.normalized_pubsub_use_clusters is True
+
+
+def test_pubsub_use_clusters_empty_string_behaves_as_unset(monkeypatch: pytest.MonkeyPatch):
+    """Empty env value (docker-compose `${VAR:-}` pattern) falls back to REDIS_USE_CLUSTERS (#35291)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_CLUSTERS", "")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is None
+    assert config.normalized_pubsub_use_clusters is True
+
+
 def test_pubsub_use_clusters_defaults_to_false_when_neither_set(monkeypatch: pytest.MonkeyPatch):
     """With neither flag set, clustering stays off (unchanged default for non-cluster deployments)."""
     os.environ.clear()
