@@ -12,6 +12,7 @@ class RedisConfigDefaults(Protocol):
     REDIS_PASSWORD: str | None
     REDIS_DB: int
     REDIS_USE_SSL: bool
+    REDIS_USE_CLUSTERS: bool
 
 
 def _redis_defaults(config: object) -> RedisConfigDefaults:
@@ -37,13 +38,15 @@ class RedisPubSubConfig(BaseSettings):
         default=None,
     )
 
-    PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
+    PUBSUB_REDIS_USE_CLUSTERS: bool | None = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
         description=(
             "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
+            "Defaults to `REDIS_USE_CLUSTERS` when unset so that operators running a clustered "
+            "main Redis do not also need to set this flag explicitly. "
             "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
         ),
-        default=False,
+        default=None,
     )
 
     PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded", "streams"] = Field(
@@ -104,3 +107,9 @@ class RedisPubSubConfig(BaseSettings):
             return pubsub_redis_url
 
         return self._build_default_pubsub_url()
+
+    @property
+    def normalized_pubsub_use_clusters(self) -> bool:
+        if self.PUBSUB_REDIS_USE_CLUSTERS is not None:
+            return self.PUBSUB_REDIS_USE_CLUSTERS
+        return _redis_defaults(self).REDIS_USE_CLUSTERS
