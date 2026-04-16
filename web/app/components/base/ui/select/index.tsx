@@ -30,6 +30,7 @@ export function SelectGroupLabel({
   )
 }
 
+/** @public */
 export function SelectItemIndicator({
   className,
   ...props

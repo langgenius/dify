@@ -6,7 +6,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectGroupLabel,
-  SelectItemIndicator,
   SelectItemText,
   SelectPrimitiveItem,
   SelectTrigger,
@@ -69,18 +68,17 @@ const WorkplaceSelector = () => {
               key={workspace.id}
               value={workspace.id}
               className={cn(
-                'flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 outline-hidden',
+                'flex h-8 cursor-pointer items-center gap-2 rounded-lg pr-2 pl-3 outline-hidden',
                 'data-highlighted:bg-state-base-hover',
               )}
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">
                 <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle leading-6 font-semibold text-shadow-shadow-1 uppercase opacity-90">{workspace.name[0]?.toLocaleUpperCase()}</span>
               </div>
-              <SelectItemText className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+              <SelectItemText className="min-w-0 grow truncate system-md-regular text-text-secondary">
                 {workspace.name}
               </SelectItemText>
               <PlanBadge plan={workspace.plan as Plan} />
-              <SelectItemIndicator />
             </SelectPrimitiveItem>
           ))}
         </SelectGroup>
