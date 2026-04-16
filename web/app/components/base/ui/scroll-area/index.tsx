@@ -1,12 +1,12 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import './scroll-area.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
-type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
+type ScrollAreaRootProps = BaseScrollArea.Root.Props
 
 export const ScrollAreaContent = BaseScrollArea.Content
 
@@ -17,7 +17,7 @@ type ScrollAreaSlotClassNames = {
 }
 
 type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: React.ReactNode
+  children: ReactNode
   orientation?: 'vertical' | 'horizontal'
   slotClassNames?: ScrollAreaSlotClassNames
   label?: string
@@ -45,7 +45,7 @@ const scrollAreaViewportClassName = cn(
 
 const scrollAreaCornerClassName = 'bg-transparent'
 
-type ScrollAreaViewportProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Viewport>
+type ScrollAreaViewportProps = BaseScrollArea.Viewport.Props
 
 export function ScrollAreaViewport({
   className,
@@ -59,7 +59,7 @@ export function ScrollAreaViewport({
   )
 }
 
-type ScrollAreaScrollbarProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Scrollbar>
+type ScrollAreaScrollbarProps = BaseScrollArea.Scrollbar.Props
 
 export function ScrollAreaScrollbar({
   className,
@@ -74,7 +74,7 @@ export function ScrollAreaScrollbar({
   )
 }
 
-type ScrollAreaThumbProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Thumb>
+type ScrollAreaThumbProps = BaseScrollArea.Thumb.Props
 
 export function ScrollAreaThumb({
   className,
@@ -88,7 +88,7 @@ export function ScrollAreaThumb({
   )
 }
 
-type ScrollAreaCornerProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Corner>
+type ScrollAreaCornerProps = BaseScrollArea.Corner.Props
 
 export function ScrollAreaCorner({
   className,
