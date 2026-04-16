@@ -538,6 +538,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bidict"
+version = "0.23.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/6e/026678aa5a830e07cd9498a05d3e7e650a4f56a42f267a53d22bcda1bdc9/bidict-0.23.1.tar.gz", hash = "sha256:03069d763bc387bbd20e7d49914e75fc4132a41937fa3405417e1a5a2d006d71", size = 29093, upload-time = "2024-02-18T19:09:05.748Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/37/e8730c3587a65eb5645d4aba2d27aae48e8003614d6aaf15dda67f702f1f/bidict-0.23.1-py3-none-any.whl", hash = "sha256:5dae8d4d79b552a71cbabc7deb25dfe8ce710b17ff41711e13010ead2abfc3e5", size = 32764, upload-time = "2024-02-18T19:09:04.156Z" },
+]
+
+[[package]]
 name = "billiard"
 version = "4.2.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1312,6 +1321,7 @@ dependencies = [
     { name = "opik" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
+    { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
     { name = "resend" },
@@ -1565,6 +1575,7 @@ requires-dist = [
     { name = "opik", specifier = "~=1.11.2" },
     { name = "psycogreen", specifier = ">=1.0.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
+    { name = "python-socketio", specifier = ">=5.13.0" },
     { name = "readabilipy", specifier = ">=0.3.0,<1.0.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
@@ -5328,6 +5339,18 @@ wheels = [
 ]
 
 [[package]]
+name = "python-engineio"
+version = "4.13.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "simple-websocket" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/12/bdef9dbeedbe2cdeba2a2056ad27b1fb081557d34b69a97f574843462cae/python_engineio-4.13.1.tar.gz", hash = "sha256:0a853fcef52f5b345425d8c2b921ac85023a04dfcf75d7b74696c61e940fd066", size = 92348, upload-time = "2026-02-06T23:38:06.12Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/54/0cce26da03a981f949bb8449c9778537f75f5917c172e1d2992ff25cb57d/python_engineio-4.13.1-py3-none-any.whl", hash = "sha256:f32ad10589859c11053ad7d9bb3c9695cdf862113bfb0d20bc4d890198287399", size = 59847, upload-time = "2026-02-06T23:38:04.861Z" },
+]
+
+[[package]]
 name = "python-http-client"
 version = "3.3.7"
 source = { registry = "https://pypi.org/simple" }
@@ -5381,6 +5404,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/52/a9/0c0db8d37b2b8a645666f7fd8accea4c6224e013c42b1d5c17c93590cd06/python_pptx-1.0.2.tar.gz", hash = "sha256:479a8af0eaf0f0d76b6f00b0887732874ad2e3188230315290cd1f9dd9cc7095", size = 10109297, upload-time = "2024-08-07T17:33:37.772Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/4f/00be2196329ebbff56ce564aa94efb0fbc828d00de250b1980de1a34ab49/python_pptx-1.0.2-py3-none-any.whl", hash = "sha256:160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba", size = 472788, upload-time = "2024-08-07T17:33:28.192Z" },
+]
+
+[[package]]
+name = "python-socketio"
+version = "5.16.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bidict" },
+    { name = "python-engineio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/81/cf8284f45e32efa18d3848ed82cdd4dcc1b657b082458fbe01ad3e1f2f8d/python_socketio-5.16.1.tar.gz", hash = "sha256:f863f98eacce81ceea2e742f6388e10ca3cdd0764be21d30d5196470edf5ea89", size = 128508, upload-time = "2026-02-06T23:42:07Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/c7/deb8c5e604404dbf10a3808a858946ca3547692ff6316b698945bb72177e/python_socketio-5.16.1-py3-none-any.whl", hash = "sha256:a3eb1702e92aa2f2b5d3ba00261b61f062cce51f1cfb6900bf3ab4d1934d2d35", size = 82054, upload-time = "2026-02-06T23:42:05.772Z" },
 ]
 
 [[package]]
@@ -5761,6 +5797,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
+name = "simple-websocket"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wsproto" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b0/d4/bfa032f961103eba93de583b161f0e6a5b63cebb8f2c7d0c6e6efe1e3d2e/simple_websocket-1.1.0.tar.gz", hash = "sha256:7939234e7aa067c534abdab3a9ed933ec9ce4691b0713c78acb195560aa52ae4", size = 17300, upload-time = "2024-10-10T22:39:31.412Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/59/0782e51887ac6b07ffd1570e0364cf901ebc36345fea669969d2084baebb/simple_websocket-1.1.0-py3-none-any.whl", hash = "sha256:4af6069630a38ed6c561010f0e11a5bc0d4ca569b36306eb257cd9a192497c8c", size = 13842, upload-time = "2024-10-10T22:39:29.645Z" },
 ]
 
 [[package]]
@@ -7197,6 +7245,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/5b/4660897233eb2c8c4de3dc7cefed114c61bacb3c28327e64150dc44ee2f6/wrapt-1.16.0-cp312-cp312-win32.whl", hash = "sha256:685f568fa5e627e93f3b52fda002c7ed2fa1800b50ce51f6ed1d572d8ab3e7fc", size = 35568, upload-time = "2023-11-09T06:32:22.715Z" },
     { url = "https://files.pythonhosted.org/packages/5c/cc/8297f9658506b224aa4bd71906447dea6bb0ba629861a758c28f67428b91/wrapt-1.16.0-cp312-cp312-win_amd64.whl", hash = "sha256:dcdba5c86e368442528f7060039eda390cc4091bfd1dca41e8046af7c910dda8", size = 37653, upload-time = "2023-11-09T06:32:24.533Z" },
     { url = "https://files.pythonhosted.org/packages/ff/21/abdedb4cdf6ff41ebf01a74087740a709e2edb146490e4d9beea054b0b7a/wrapt-1.16.0-py3-none-any.whl", hash = "sha256:6906c4100a8fcbf2fa735f6059214bb13b97f75b1a61777fcf6432121ef12ef1", size = 23362, upload-time = "2023-11-09T06:33:28.271Z" },
+]
+
+[[package]]
+name = "wsproto"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "h11" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c7/79/12135bdf8b9c9367b8701c2c19a14c913c120b882d50b014ca0d38083c2c/wsproto-1.3.2.tar.gz", hash = "sha256:b86885dcf294e15204919950f666e06ffc6c7c114ca900b060d6e16293528294", size = 50116, upload-time = "2025-11-20T18:18:01.871Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl", hash = "sha256:61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584", size = 24405, upload-time = "2025-11-20T18:18:00.454Z" },
 ]
 
 [[package]]

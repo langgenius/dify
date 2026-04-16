@@ -17,6 +17,7 @@ dependencies = [
     "gunicorn>=25.3.0",
     "psycogreen>=1.0.2",
     "psycopg2-binary>=2.9.11",
+    "python-socketio>=5.13.0",
     "redis[hiredis]>=7.4.0",
     "sendgrid>=6.12.5",
 
