@@ -316,7 +316,7 @@ class RetrievalService:
                 # vector retrieval time uses embedding similarity, which is not comparable to
                 # reranked or fused scores and incorrectly drops high-quality chunks (#35233).
                 embedding_score_threshold = (
-                    None if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
+                    0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
                 )
                 if query_type == QueryType.TEXT_QUERY:
                     documents.extend(
