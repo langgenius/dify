@@ -368,9 +368,11 @@ class ValkeyVector(BaseVector):
     # ------------------------------------------------------------------
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
-        if not texts:
+        if not texts or not embeddings:
             return
         vector_size = len(embeddings[0])
+        if vector_size == 0:
+            raise ValueError("First embedding is empty — cannot determine vector dimensions")
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             cache_key = f"vector_indexing_{self._collection_name}"
@@ -414,11 +416,6 @@ class ValkeyVector(BaseVector):
                 raise
             added_ids.append(doc_id)
 
-        logger.debug(
-            "Added %d documents to collection %s",
-            len(added_ids),
-            self._collection_name,
-        )
         return added_ids
 
     def text_exists(self, id: str) -> bool:
