@@ -363,8 +363,8 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify segments were deleted from database
         # Re-query segments from database using captured IDs to avoid stale ORM instances
         for seg_id in segment_ids:
-            deleted_segment = (
-                db_session_with_containers.scalar(select(DocumentSegment).where(DocumentSegment.id == seg_id).limit(1))
+            deleted_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == seg_id).limit(1)
             )
             assert deleted_segment is None
 

@@ -222,7 +222,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load method was called
@@ -323,7 +325,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "update")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor clean and load methods were called
@@ -432,7 +436,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify that no index processor load was called since no segments exist
@@ -565,7 +571,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to error
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Test exception during indexing" in updated_document.error
 
@@ -636,7 +644,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
@@ -712,7 +722,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
@@ -816,7 +828,9 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify all documents were processed
         for document in documents:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+            updated_document = db_session_with_containers.scalar(
+                select(Document).where(Document.id == document.id).limit(1)
+            )
             assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times
@@ -918,7 +932,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify final document status
-        updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
     def test_deal_dataset_vector_index_task_with_disabled_documents(
@@ -1028,12 +1044,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only enabled document was processed
-        updated_enabled_document = db_session_with_containers.scalar(select(Document).where(Document.id == enabled_document.id).limit(1))
+        updated_enabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == enabled_document.id).limit(1)
+        )
         assert updated_enabled_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify disabled document status remains unchanged
-        updated_disabled_document = (
-            db_session_with_containers.scalar(select(Document).where(Document.id == disabled_document.id).limit(1))
+        updated_disabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == disabled_document.id).limit(1)
         )
         assert updated_disabled_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1149,12 +1167,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only active document was processed
-        updated_active_document = db_session_with_containers.scalar(select(Document).where(Document.id == active_document.id).limit(1))
+        updated_active_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == active_document.id).limit(1)
+        )
         assert updated_active_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify archived document status remains unchanged
-        updated_archived_document = (
-            db_session_with_containers.scalar(select(Document).where(Document.id == archived_document.id).limit(1))
+        updated_archived_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == archived_document.id).limit(1)
         )
         assert updated_archived_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1270,14 +1290,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only completed document was processed
-        updated_completed_document = (
-            db_session_with_containers.scalar(select(Document).where(Document.id == completed_document.id).limit(1))
+        updated_completed_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == completed_document.id).limit(1)
         )
         assert updated_completed_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify incomplete document status remains unchanged
-        updated_incomplete_document = (
-            db_session_with_containers.scalar(select(Document).where(Document.id == incomplete_document.id).limit(1))
+        updated_incomplete_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == incomplete_document.id).limit(1)
         )
         assert updated_incomplete_document.indexing_status == IndexingStatus.INDEXING  # Should not change
 
