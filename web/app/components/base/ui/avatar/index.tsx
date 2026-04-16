@@ -1,5 +1,4 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
-import type * as React from 'react'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 
@@ -24,7 +23,7 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
+type AvatarRootProps = BaseAvatar.Root.Props & {
   size?: AvatarSize
 }
 
@@ -45,7 +44,7 @@ export function AvatarRoot({
   )
 }
 
-type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
+type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
   size?: AvatarSize
 }
 
@@ -66,7 +65,7 @@ export function AvatarFallback({
   )
 }
 
-type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
+type AvatarImageProps = BaseAvatar.Image.Props
 
 export function AvatarImage({
   className,

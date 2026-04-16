@@ -1,9 +1,9 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import {
   overlayGroupLabelClassName,
   overlayIndicatorClassName,
@@ -23,7 +23,7 @@ export const DropdownMenuRadioGroup = Menu.RadioGroup
 export function DropdownMenuRadioItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
+}: Menu.RadioItem.Props) {
   return (
     <Menu.RadioItem
       className={cn(overlayRowClassName, className)}
@@ -35,7 +35,7 @@ export function DropdownMenuRadioItem({
 export function DropdownMenuRadioItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Menu.RadioItemIndicator>, 'children'>) {
+}: Omit<Menu.RadioItemIndicator.Props, 'children'>) {
   return (
     <Menu.RadioItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -49,7 +49,7 @@ export function DropdownMenuRadioItemIndicator({
 export function DropdownMenuCheckboxItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>) {
+}: Menu.CheckboxItem.Props) {
   return (
     <Menu.CheckboxItem
       className={cn(overlayRowClassName, className)}
@@ -61,7 +61,7 @@ export function DropdownMenuCheckboxItem({
 export function DropdownMenuCheckboxItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Menu.CheckboxItemIndicator>, 'children'>) {
+}: Omit<Menu.CheckboxItemIndicator.Props, 'children'>) {
   return (
     <Menu.CheckboxItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -75,7 +75,7 @@ export function DropdownMenuCheckboxItemIndicator({
 export function DropdownMenuGroupLabel({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.GroupLabel>) {
+}: Menu.GroupLabel.Props) {
   return (
     <Menu.GroupLabel
       className={cn(overlayGroupLabelClassName, className)}
@@ -85,18 +85,18 @@ export function DropdownMenuGroupLabel({
 }
 
 type DropdownMenuContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   className?: string
   popupClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof Menu.Positioner>,
+    Menu.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof Menu.Popup>,
+    Menu.Popup.Props,
     'children' | 'className'
   >
 }
@@ -170,7 +170,7 @@ export function DropdownMenuContent({
   })
 }
 
-type DropdownMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof Menu.SubmenuTrigger> & {
+type DropdownMenuSubTriggerProps = Menu.SubmenuTrigger.Props & {
   destructive?: boolean
 }
 
@@ -192,7 +192,7 @@ export function DropdownMenuSubTrigger({
 }
 
 type DropdownMenuSubContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -224,7 +224,7 @@ export function DropdownMenuSubContent({
   })
 }
 
-type DropdownMenuItemProps = React.ComponentPropsWithoutRef<typeof Menu.Item> & {
+type DropdownMenuItemProps = Menu.Item.Props & {
   destructive?: boolean
 }
 
@@ -241,7 +241,7 @@ export function DropdownMenuItem({
   )
 }
 
-type DropdownMenuLinkItemProps = React.ComponentPropsWithoutRef<typeof Menu.LinkItem> & {
+type DropdownMenuLinkItemProps = Menu.LinkItem.Props & {
   destructive?: boolean
 }
 
@@ -263,7 +263,7 @@ export function DropdownMenuLinkItem({
 export function DropdownMenuSeparator({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.Separator>) {
+}: Menu.Separator.Props) {
   return (
     <Menu.Separator
       className={cn(overlaySeparatorClassName, className)}

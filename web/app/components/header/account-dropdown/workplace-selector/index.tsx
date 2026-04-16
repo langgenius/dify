@@ -29,7 +29,7 @@ const WorkplaceSelector = () => {
       location.assign(`${location.origin}${basePath}`)
     }
     catch {
-      toast.error(t('provider.saveFailed', { ns: 'common' }))
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
   }
 
