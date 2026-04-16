@@ -30,15 +30,15 @@ const Item: FC<Props> = ({
         <div className="flex items-center">
           <Variable02 className="h-3.5 w-3.5 text-text-accent-secondary" />
           <div className="ml-1 text-[13px] font-medium text-text-primary">{payload.name}</div>
-          <div className="ml-2 text-xs font-normal capitalize text-text-tertiary">{payload.type}</div>
+          <div className="ml-2 text-xs font-normal text-text-tertiary capitalize">{payload.type}</div>
         </div>
         {payload.required && (
-          <div className="text-xs font-normal uppercase leading-4 text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}</div>
+          <div className="text-xs leading-4 font-normal text-text-tertiary uppercase">{t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}</div>
         )}
       </div>
-      <div className="mt-0.5 text-xs font-normal leading-[18px] text-text-tertiary">{payload.description}</div>
+      <div className="mt-0.5 text-xs leading-[18px] font-normal text-text-tertiary">{payload.description}</div>
       <div
-        className="absolute right-0 top-0 hidden h-full w-[119px] items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 group-hover:flex"
+        className="absolute top-0 right-0 hidden h-full w-[119px] items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 group-hover:flex"
       >
         <div
           className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"

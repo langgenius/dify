@@ -41,7 +41,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   return (
     <div
       className={`
-      group inline-flex h-6 items-center rounded-[5px] border border-transparent pl-1 pr-0.5 text-[#DD2590] hover:bg-[#FCE7F6]
+      group inline-flex h-6 items-center rounded-[5px] border border-transparent pr-0.5 pl-1 text-[#DD2590] hover:bg-[#FCE7F6]
       ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'}
       ${isSelected && 'border-[#F670C7]!'}
     `}

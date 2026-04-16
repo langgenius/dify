@@ -117,8 +117,8 @@ const DocumentList: FC<DocumentListProps> = ({
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">
       <div className="relative h-0 grow overflow-x-auto">
-        <table className={`w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
-          <thead className="h-8 border-b border-divider-subtle text-xs font-medium uppercase leading-8 text-text-tertiary">
+        <table className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}>
+          <thead className="h-8 border-b border-divider-subtle text-xs leading-8 font-medium text-text-tertiary uppercase">
             <tr>
               <td className="w-12">
                 <div className="flex items-center" onClick={e => e.stopPropagation()}>

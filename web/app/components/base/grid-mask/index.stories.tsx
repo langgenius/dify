@@ -18,8 +18,8 @@ const meta = {
     gradientClassName: '',
     children: (
       <div className="relative z-10 flex flex-col gap-3 text-left text-white">
-        <span className="text-xs uppercase tracking-[0.16em] text-white/70">Grid Mask Demo</span>
-        <span className="text-2xl font-semibold leading-tight">Beautiful backgrounds for feature highlights</span>
+        <span className="text-xs tracking-[0.16em] text-white/70 uppercase">Grid Mask Demo</span>
+        <span className="text-2xl leading-tight font-semibold">Beautiful backgrounds for feature highlights</span>
         <p className="max-w-md text-sm text-white/80">
           Place any content inside the mask. On dark backgrounds the grid and soft gradient add depth without distracting from the main message.
         </p>
@@ -41,7 +41,7 @@ export const CustomBackground: Story = {
     children: (
       <div className="flex flex-col gap-2 text-white">
         <span className="text-sm font-medium text-white/80">Custom gradient</span>
-        <span className="text-3xl font-semibold leading-tight">Use your own colors</span>
+        <span className="text-3xl leading-tight font-semibold">Use your own colors</span>
         <p className="max-w-md text-sm text-white/70">
           Override gradient and canvas classes to match brand palettes while keeping the grid texture.
         </p>
