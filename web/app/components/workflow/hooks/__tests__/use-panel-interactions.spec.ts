@@ -40,7 +40,7 @@ describe('usePanelInteractions', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
       initialStoreState: {
         nodeMenu: { top: 20, left: 40, nodeId: 'n1' },
-        selectionMenu: { top: 30, left: 50 },
+        selectionMenu: { clientX: 30, clientY: 50 },
         edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
       },
     })

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
@@ -18,7 +19,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
@@ -203,19 +203,19 @@ const MoreActions: FC = () => {
                 {t('common.currentView', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png')}
               >
                 {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg')}
               >
                 {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg')}
               >
                 {t('common.exportSVG', { ns: 'workflow' })}
@@ -227,19 +227,19 @@ const MoreActions: FC = () => {
                 {t('common.currentWorkflow', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png', true)}
               >
                 {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg', true)}
               >
                 {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg', true)}
               >
                 {t('common.exportSVG', { ns: 'workflow' })}

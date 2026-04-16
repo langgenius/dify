@@ -2,14 +2,14 @@
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
 import type { Member } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiContactsBookLine,
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -53,7 +53,7 @@ const MemberSelector: FC<Props> = ({
           <div className="">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <MemberList
           searchValue={searchValue}
           list={list}

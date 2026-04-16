@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -8,13 +9,12 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
-import { cn } from '@/utils/classnames'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
-export type IItemOperationProps = {
+type IItemOperationProps = {
   className?: string
   isItemHovering?: boolean
   isPinned: boolean
@@ -54,7 +54,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
         onClick={() => setOpen(v => !v)}
       >
         <div
-          className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} !bg-components-actionbar-bg !shadow-none`)}
+          className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
           data-testid="item-operation-trigger"
         >
         </div>

@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { Slider } from '@/app/components/base/ui/slider'
 import {
   NumberField,
   NumberFieldControls,
@@ -37,13 +37,13 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             <Switch
               size="md"
               className="mr-2"
-              value={enable}
-              onChange={async (val) => {
+              checked={enable}
+              onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
+          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName="w-4 h-4 shrink-0"
@@ -78,7 +78,8 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            aria-label={name}
           />
         </div>
       </div>

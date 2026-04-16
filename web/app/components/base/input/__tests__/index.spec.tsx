@@ -14,21 +14,21 @@ describe('Input component', () => {
     it('should return correct classes for regular size', () => {
       const result = inputVariants({ size: 'regular' })
       expect(result).toContain('px-3')
-      expect(result).toContain('radius-md')
+      expect(result).toContain('rounded-lg')
       expect(result).toContain('system-sm-regular')
     })
 
     it('should return correct classes for large size', () => {
       const result = inputVariants({ size: 'large' })
       expect(result).toContain('px-4')
-      expect(result).toContain('radius-lg')
+      expect(result).toContain('rounded-[10px]')
       expect(result).toContain('system-md-regular')
     })
 
     it('should use regular size as default', () => {
       const result = inputVariants({})
       expect(result).toContain('px-3')
-      expect(result).toContain('radius-md')
+      expect(result).toContain('rounded-lg')
       expect(result).toContain('system-sm-regular')
     })
   })
@@ -99,7 +99,7 @@ describe('Input component', () => {
     render(<Input className={customClass} styleCss={customStyle} />)
     const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass(customClass)
-    expect(input).toHaveStyle({ color: 'rgb(255, 0, 0)' })
+    expect(input).toHaveStyle({ color: 'red' })
   })
 
   it('applies large size variant correctly', () => {
@@ -189,7 +189,7 @@ describe('Input component', () => {
       expect(changedValue).toBe('00042')
     })
 
-    it('normalizes value and triggers change on blur when leading zeros exist', () => {
+    it('normalizes value and triggers change on blur-sm when leading zeros exist', () => {
       const onChange = vi.fn()
       const onBlur = vi.fn()
       render(<Input type="number" defaultValue="0012" onChange={onChange} onBlur={onBlur} />)
@@ -204,7 +204,7 @@ describe('Input component', () => {
       expect(onBlur.mock.calls[0][0].target.value).toBe('12')
     })
 
-    it('does not trigger change on blur when value is already normalized', () => {
+    it('does not trigger change on blur-sm when value is already normalized', () => {
       const onChange = vi.fn()
       const onBlur = vi.fn()
       render(<Input type="number" defaultValue="12" onChange={onChange} onBlur={onBlur} />)

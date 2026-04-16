@@ -1,15 +1,24 @@
 'use client'
 
-import type { IConfirm } from '@/app/components/base/confirm'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useNotionBinding } from '@/service/use-common'
 
-export type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>
+type ConfirmType = {
+  type: 'info' | 'warning'
+  title: string
+}
 
-export const useAnthropicCheckPay = () => {
+const useAnthropicCheckPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -28,7 +37,7 @@ export const useAnthropicCheckPay = () => {
   return confirm
 }
 
-export const useBillingPay = () => {
+const useBillingPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -47,7 +56,7 @@ export const useBillingPay = () => {
   return confirm
 }
 
-export const useCheckNotion = () => {
+const useCheckNotion = () => {
   const router = useRouter()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const [canBinding, setCanBinding] = useState(false)
@@ -96,16 +105,32 @@ export const CheckModal = () => {
   if (!confirmInfo || !showPayStatusModal)
     return null
 
+  const description = (confirmInfo as { desc?: string }).desc || ''
+
   return (
-    <Confirm
-      isShow
-      onCancel={handleCancelShowPayStatusModal}
-      onConfirm={handleCancelShowPayStatusModal}
-      showCancel={false}
-      type={confirmInfo.type === 'info' ? 'info' : 'warning'}
-      title={confirmInfo.title}
-      content={(confirmInfo as unknown as { desc: string }).desc || ''}
-      confirmText={(confirmInfo.type === 'info' && t('operation.ok', { ns: 'common' })) || ''}
-    />
+    <AlertDialog open={showPayStatusModal} onOpenChange={open => !open && handleCancelShowPayStatusModal()}>
+      <AlertDialogContent>
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            {confirmInfo.title}
+          </AlertDialogTitle>
+          {description && (
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {description}
+            </AlertDialogDescription>
+          )}
+        </div>
+        <AlertDialogActions>
+          <AlertDialogConfirmButton
+            tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}
+            onClick={handleCancelShowPayStatusModal}
+          >
+            {confirmInfo.type === 'info'
+              ? t('operation.ok', { ns: 'common' })
+              : t('operation.confirm', { ns: 'common' })}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

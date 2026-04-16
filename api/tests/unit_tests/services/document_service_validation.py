@@ -109,10 +109,11 @@ This test suite follows a comprehensive testing strategy that covers:
 from unittest.mock import Mock, patch
 
 import pytest
+from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -122,10 +123,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     KnowledgeConfig,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     ProcessRule,
-    Rule,
-    Segmentation,
     WebsiteInfo,
 )
 
@@ -431,7 +429,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager):
@@ -580,7 +578,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_embedding_model_setting_success(self, mock_model_manager):
@@ -702,7 +700,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_reranking_model_setting_success(self, mock_model_manager):

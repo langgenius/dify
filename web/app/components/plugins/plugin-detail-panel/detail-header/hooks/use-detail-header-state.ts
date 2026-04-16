@@ -29,7 +29,7 @@ export type ModalStates = {
   hideDeleting: () => void
 }
 
-export type VersionPickerState = {
+type VersionPickerState = {
   isShow: boolean
   setIsShow: (show: boolean) => void
   targetVersion: VersionTarget
@@ -38,7 +38,7 @@ export type VersionPickerState = {
   setIsDowngrade: (downgrade: boolean) => void
 }
 
-export type UseDetailHeaderStateReturn = {
+type UseDetailHeaderStateReturn = {
   modalStates: ModalStates
   versionPicker: VersionPickerState
   hasNewVersion: boolean

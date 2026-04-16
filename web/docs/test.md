@@ -8,7 +8,7 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 
 - **Framework**: Next.js 15 + React 19 + TypeScript
 - **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
-- **Test Environment**: jsdom
+- **Test Environment**: happy-dom
 - **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
 - **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 
@@ -30,7 +30,7 @@ pnpm test path/to/file.spec.tsx
 
 ## Project Test Setup
 
-- **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **Configuration**: `vite.config.ts` sets the `happy-dom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
@@ -283,16 +283,6 @@ Reserve snapshots for static, deterministic fragments (icons, badges, layout chr
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
 
-### 12. Mock API
-
-Use Nock to mock API calls. Example:
-
-```ts
-const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
-  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
-}
-```
-
 ## Code Style
 
 ### Example Structure
@@ -530,7 +520,6 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts] - Utility function tests
 - [index.spec.tsx] - Component tests
 
 ## Resources
@@ -550,5 +539,4 @@ Test examples in the project:
 [Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
 [Vitest Documentation]: https://vitest.dev/guide
 [Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
-[classnames.spec.ts]: ../utils/classnames.spec.ts
 [index.spec.tsx]: ../app/components/base/button/index.spec.tsx

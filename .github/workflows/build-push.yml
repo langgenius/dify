@@ -24,27 +24,39 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.runs_on }}
     if: github.repository == 'langgenius/dify'
     strategy:
       matrix:
         include:
           - service_name: "build-api-amd64"
             image_name_env: "DIFY_API_IMAGE_NAME"
-            context: "api"
+            artifact_context: "api"
+            build_context: "{{defaultContext}}:api"
+            file: "Dockerfile"
             platform: linux/amd64
+            runs_on: ubuntu-latest
           - service_name: "build-api-arm64"
             image_name_env: "DIFY_API_IMAGE_NAME"
-            context: "api"
+            artifact_context: "api"
+            build_context: "{{defaultContext}}:api"
+            file: "Dockerfile"
             platform: linux/arm64
+            runs_on: ubuntu-24.04-arm
           - service_name: "build-web-amd64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
+            artifact_context: "web"
+            build_context: "{{defaultContext}}"
+            file: "web/Dockerfile"
             platform: linux/amd64
+            runs_on: ubuntu-latest
           - service_name: "build-web-arm64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
+            artifact_context: "web"
+            build_context: "{{defaultContext}}"
+            file: "web/Dockerfile"
             platform: linux/arm64
+            runs_on: ubuntu-24.04-arm
 
     steps:
       - name: Prepare
@@ -53,13 +65,10 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
@@ -72,9 +81,10 @@ jobs:
 
       - name: Build Docker image
         id: build
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
-          context: "{{defaultContext}}:${{ matrix.context }}"
+          context: ${{ matrix.build_context }}
+          file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -91,9 +101,9 @@ jobs:
           touch "/tmp/digests/${sanitized_digest}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: digests-${{ matrix.context }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ matrix.artifact_context }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -120,7 +130,7 @@ jobs:
           merge-multiple: true
 
       - name: Login to Docker Hub
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}

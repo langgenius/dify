@@ -9,6 +9,7 @@ import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useCallback,
   useState,
@@ -35,7 +36,6 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils/workflow-init'
-import { cn } from '@/utils/classnames'
 import CustomEdge from './components/custom-edge'
 import CustomNode from './components/nodes'
 import IterationStartNode from './components/nodes/iteration-start'
@@ -99,9 +99,9 @@ const WorkflowPreview = ({
             height: 72,
           }}
           maskColor="var(--color-workflow-minimap-bg)"
-          className={cn('!absolute !bottom-14 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px] !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5', miniMapToRight ? '!right-4' : '!left-4')}
+          className={cn('absolute! bottom-14! z-9 m-0! h-[72px]! w-[102px]! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!', miniMapToRight ? 'right-4!' : 'left-4!')}
         />
-        <div className="absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2">
+        <div className="absolute bottom-4 left-4 z-9 mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>

@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -43,9 +43,9 @@ const Field: FC<Props> = ({
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
-          <div className={cn('relative', isSubTitle ? 'text-text-tertiary system-xs-medium-uppercase' : 'text-text-secondary system-sm-semibold-uppercase')}>
+          <div className={cn('relative', isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
             {warningDot && (
-              <span className="absolute -left-[9px] top-1/2 size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span className="absolute top-1/2 -left-[9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
             )}
             {title}
             {' '}

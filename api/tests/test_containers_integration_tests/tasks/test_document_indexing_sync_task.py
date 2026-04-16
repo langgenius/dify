@@ -12,10 +12,11 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete, func, select, update
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
@@ -30,12 +31,12 @@ class DocumentIndexingSyncTaskTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=f"tenant-{account.id}", status="normal")
+        tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 
@@ -254,8 +255,8 @@ class TestDocumentIndexingSyncTask:
         """Test that task raises error when data_source_info is empty."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers, data_source_info=None)
-        db_session_with_containers.query(Document).where(Document.id == context["document"].id).update(
-            {"data_source_info": None}
+        db_session_with_containers.execute(
+            update(Document).where(Document.id == context["document"].id).values(data_source_info=None)
         )
         db_session_with_containers.commit()
 
@@ -274,8 +275,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR
@@ -294,13 +295,13 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
@@ -319,13 +320,13 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
 
         assert updated_document is not None
@@ -354,7 +355,7 @@ class TestDocumentIndexingSyncTask:
         context = self._create_notion_sync_context(db_session_with_containers)
 
         def _delete_dataset_before_clean() -> str:
-            db_session_with_containers.query(Dataset).where(Dataset.id == context["dataset"].id).delete()
+            db_session_with_containers.execute(delete(Dataset).where(Dataset.id == context["dataset"].id))
             db_session_with_containers.commit()
             return "2024-01-02T00:00:00Z"
 
@@ -367,8 +368,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
@@ -386,13 +387,13 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
@@ -410,8 +411,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
@@ -428,8 +429,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR

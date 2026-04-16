@@ -4,16 +4,18 @@ from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from contextlib import ExitStack
 from typing import Any, Literal, cast
-from uuid import UUID
 
 import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
@@ -28,8 +30,6 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
@@ -71,9 +71,6 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
-# NOTE: Keep constants near the top of the module for discoverability.
-DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
-
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 dataset_model = get_or_create_model("Dataset", dataset_fields)
@@ -108,12 +105,6 @@ class DocumentRenamePayload(BaseModel):
 
 class GenerateSummaryPayload(BaseModel):
     document_list: list[str]
-
-
-class DocumentBatchDownloadZipPayload(BaseModel):
-    """Request payload for bulk downloading documents as a zip archive."""
-
-    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
 
 
 class DocumentDatasetListParam(BaseModel):
@@ -280,7 +271,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_tenant_id)
+        query = select(Document).where(Document.dataset_id == str(dataset_id), Document.tenant_id == current_tenant_id)
 
         if status:
             query = DocumentService.apply_display_status_filter(query, status)
@@ -454,7 +445,7 @@ class DatasetInitApi(Resource):
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=knowledge_config.embedding_model_provider,
@@ -1035,7 +1026,7 @@ class DocumentMetadataApi(DocumentResource):
 
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
-        metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
+        metadata_schema: dict[str, Any] = cast(dict[str, Any], DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
         document.doc_metadata = {}
         if doc_type == "others":

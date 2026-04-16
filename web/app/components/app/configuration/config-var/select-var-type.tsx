@@ -60,7 +60,7 @@ const SelectVarType: FC<Props> = ({
         <OperationBtn type="add" />
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className="min-w-[192px] rounded-lg border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+        <div className="min-w-[192px] rounded-lg border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
             <SelectItem type={InputVarType.textInput} value="string" text={t('variableConfig.string', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.paragraph} value="paragraph" text={t('variableConfig.paragraph', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>

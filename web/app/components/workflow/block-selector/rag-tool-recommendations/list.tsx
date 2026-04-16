@@ -2,9 +2,9 @@ import type { BlockEnum, ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useRef } from 'react'
 import { useGetLanguage } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import { groupItems } from '../index-bar'
 import ToolListFlatView from '../tool/tool-list-flat-view/list'
 import ToolListTreeView from '../tool/tool-list-tree-view/list'
@@ -65,7 +65,7 @@ const List = ({
   }, [onSelect])
 
   return (
-    <div className={cn('max-w-[100%] p-1', className)}>
+    <div className={cn('max-w-full p-1', className)}>
       {!!tools.length && (
         isFlatView
           ? (

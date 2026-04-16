@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftRightLine, RiExternalLinkLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
@@ -14,10 +15,9 @@ import PluginMutationModel from '@/app/components/plugins/plugin-mutation-model'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import Link from '@/next/link'
 import { useCheckInstalled, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 
-export type SwitchPluginVersionProps = {
+type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: ReactNode
   onChange?: (version: string) => void

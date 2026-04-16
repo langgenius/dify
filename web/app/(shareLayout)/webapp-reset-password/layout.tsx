@@ -1,8 +1,8 @@
 'use client'
-import Header from '@/app/signin/_header'
+import { cn } from '@langgenius/dify-ui/cn'
 
+import Header from '@/app/signin/_header'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()
@@ -24,7 +24,7 @@ export default function SignInLayout({ children }: any) {
             </div>
           </div>
           {!systemFeatures.branding.enabled && (
-            <div className="system-xs-regular px-8 py-6 text-text-tertiary">
+            <div className="px-8 py-6 system-xs-regular text-text-tertiary">
               ©
               {' '}
               {new Date().getFullYear()}

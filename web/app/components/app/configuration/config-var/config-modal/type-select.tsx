@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
@@ -12,7 +13,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: InputVarType
@@ -67,9 +67,9 @@ const TypeSelector: FC<Props> = ({
         </div>
 
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[61]">
+      <PortalToFollowElemContent className="z-61">
         <div
-          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

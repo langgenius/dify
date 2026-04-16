@@ -7,11 +7,11 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, NotRequired, Optional
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 from urllib.parse import unquote, urlparse
 
 import httpx
-from typing_extensions import TypedDict
+from sqlalchemy import select
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
@@ -117,11 +117,12 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional["ModelInstance"],
+        embedding_model_instance: "ModelInstance | None",
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
@@ -147,7 +148,7 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
     def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
         """
@@ -200,7 +201,7 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.query(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids)).all()
+        upload_files = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -312,7 +313,7 @@ class BaseIndexProcessor(ABC):
         """
         from services.file_service import FileService
 
-        tool_file = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
+        tool_file = db.session.get(ToolFile, tool_file_id)
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

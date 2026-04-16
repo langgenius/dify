@@ -8,27 +8,30 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
-from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import (
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base import LLMUsageTrackingMixin
-from dify_graph.nodes.base.node import Node
-from dify_graph.variables import (
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base import LLMUsageTrackingMixin
+from graphon.nodes.base.node import Node
+from graphon.variables import (
     ArrayFileSegment,
     FileSegment,
     StringSegment,
 )
-from dify_graph.variables.segments import ArrayObjectSegment
+from graphon.variables.segments import ArrayObjectSegment
+
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import parse_file_reference
 
 from .entities import (
     Condition,
@@ -42,8 +45,8 @@ from .exc import (
 from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.file import File
+    from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +163,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -254,7 +257,13 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_model_config=node_data.metadata_model_config,
                     metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
-                    attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
+                    attachment_ids=[
+                        parsed_reference.record_id
+                        for attachment in attachments
+                        if (parsed_reference := parse_file_reference(attachment.reference)) is not None
+                    ]
+                    if attachments
+                    else None,
                 )
             )
 

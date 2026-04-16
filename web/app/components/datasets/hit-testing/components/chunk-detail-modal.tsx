@@ -1,6 +1,7 @@
 'use client'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { Markdown } from '@/app/components/base/markdown'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
-import { cn } from '@/utils/classnames'
 import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
@@ -33,7 +33,7 @@ const ChunkDetailModal = ({
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
+  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
   const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
@@ -57,7 +57,7 @@ const ChunkDetailModal = ({
       isShow
       closable
       onClose={onHide}
-      className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[800px]')}
+      className={cn(isParentChildRetrieval ? 'min-w-[1200px]!' : 'min-w-[800px]!')}
     >
       <div className="mt-4 flex">
         <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
@@ -81,7 +81,7 @@ const ChunkDetailModal = ({
           <div className="relative">
             {!answer && (
               <Markdown
-                className={cn('!mt-2 !text-text-secondary', heighClassName)}
+                className={cn('mt-2! text-text-secondary!', heighClassName)}
                 content={sign_content || content}
                 customDisallowedElements={['input']}
               />
@@ -89,14 +89,14 @@ const ChunkDetailModal = ({
             {answer && (
               <div className="break-all">
                 <div className="flex gap-x-1">
-                  <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</div>
-                  <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
+                  <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
+                  <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
                     {content}
                   </div>
                 </div>
                 <div className="flex gap-x-1">
-                  <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</div>
-                  <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
+                  <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
+                  <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
                     {answer}
                   </div>
                 </div>
@@ -115,7 +115,7 @@ const ChunkDetailModal = ({
               )}
               {showKeywords && (
                 <div className="flex flex-col gap-y-1">
-                  <div className="text-xs font-medium uppercase text-text-tertiary">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
+                  <div className="text-xs font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
                   <div className="flex flex-wrap gap-x-2">
                     {keywords.map(keyword => (
                       <Tag key={keyword} text={keyword} />

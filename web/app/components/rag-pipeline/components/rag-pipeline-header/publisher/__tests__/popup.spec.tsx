@@ -5,7 +5,24 @@ import Popup from '../popup'
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 const mockPush = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
@@ -57,12 +74,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
     <button
       onClick={onClick as () => void}
       disabled={disabled as boolean}
@@ -72,24 +85,6 @@ vi.mock('@/app/components/base/button', () => ({
       {children as React.ReactNode}
     </button>
   ),
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-  }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <span>{title}</span>
-            <button data-testid="publish-confirm" onClick={onConfirm}>OK</button>
-            <button data-testid="publish-cancel" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -170,7 +165,7 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
 }))
 

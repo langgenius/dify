@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -6,7 +7,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import Menu from './menu'
 
 type DropdownProps = {
@@ -52,7 +52,7 @@ const Dropdown = ({
           <RiMoreFill className="size-4 text-text-tertiary" />
         </button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <Menu
           breadcrumbs={breadcrumbs}
           startIndex={startIndex}

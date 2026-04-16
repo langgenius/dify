@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
-import { cn } from '@/utils/classnames'
 import {
   NumberField,
   NumberFieldControls,
@@ -44,10 +44,10 @@ const FieldLabel = ({
   helperText,
 }: Pick<DemoFieldProps, 'label' | 'helperText'> & { inputId: string }) => (
   <div className="space-y-1">
-    <label htmlFor={inputId} className="text-text-secondary system-sm-medium">
+    <label htmlFor={inputId} className="system-sm-medium text-text-secondary">
       {label}
     </label>
-    <p className="text-text-tertiary system-xs-regular">{helperText}</p>
+    <p className="system-xs-regular text-text-tertiary">{helperText}</p>
   </div>
 )
 
@@ -97,7 +97,7 @@ const DemoField = ({
         </NumberFieldGroup>
       </NumberField>
       {showCurrentValue && (
-        <p className="text-text-quaternary system-xs-regular">
+        <p className="system-xs-regular text-text-quaternary">
           Current value:
           {' '}
           {formatValue ? formatValue(value) : formatNumericValue(value, unit)}

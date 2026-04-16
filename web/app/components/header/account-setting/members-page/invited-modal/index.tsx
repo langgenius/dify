@@ -1,14 +1,14 @@
 import type { InvitationResult } from '@/models/common'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 
 export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
-export type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
+type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
 
 type IInvitedModalProps = {
   invitationResults: InvitationResult[]
@@ -35,7 +35,7 @@ const InvitedModal = ({
         backdropProps={{ forceRender: true }}
         className="w-[480px] p-8"
       >
-        <DialogCloseButton className="right-8 top-8" />
+        <DialogCloseButton className="top-8 right-8" />
         <div className="mb-3 flex justify-between">
           <div className="
             flex h-12 w-12 items-center justify-center rounded-xl

@@ -1,12 +1,13 @@
 'use client'
 
 import type { MouseEventHandler, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { Avatar } from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
@@ -19,7 +20,6 @@ import { env } from '@/env'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Indicator from '../indicator'
@@ -144,21 +144,21 @@ export default function AppSelector() {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           sideOffset={6}
-          popupClassName="w-60 max-w-80 !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+          popupClassName="w-60 max-w-80 bg-components-panel-bg-blur! py-0! backdrop-blur-xs"
         >
           <DropdownMenuGroup className="py-1">
-            <div className="mx-1 flex flex-nowrap items-center py-2 pl-3 pr-2">
+            <div className="mx-1 flex flex-nowrap items-center py-2 pr-2 pl-3">
               <div className="grow">
-                <div className="break-all text-text-primary system-md-medium">
+                <div className="system-md-medium break-all text-text-primary">
                   {userProfile.name}
                   {isEducationAccount && (
-                    <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                      <span aria-hidden className="i-ri-graduation-cap-fill mr-1 h-3 w-3" />
+                    <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
+                      <span aria-hidden className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
                       <span className="system-2xs-medium">EDU</span>
                     </PremiumBadge>
                   )}
                 </div>
-                <div className="break-all text-text-tertiary system-xs-regular">{userProfile.email}</div>
+                <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
               </div>
               <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             </div>
@@ -174,7 +174,7 @@ export default function AppSelector() {
               onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
             />
           </DropdownMenuGroup>
-          <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+          <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
           {!systemFeatures.branding.enabled && (
             <>
               <AccountMenuSection>
@@ -187,7 +187,7 @@ export default function AppSelector() {
                 <Support closeAccountDropdown={() => setIsAccountMenuOpen(false)} />
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </AccountMenuSection>
-              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+              <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
               <AccountMenuSection>
                 <AccountMenuExternalItem
                   href="https://roadmap.dify.ai"
@@ -202,7 +202,7 @@ export default function AppSelector() {
                   trailing={(
                     <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
                       <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
-                      <GithubStar className="text-text-tertiary system-2xs-medium-uppercase" />
+                      <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
                     </div>
                   )}
                 />
@@ -217,7 +217,7 @@ export default function AppSelector() {
                       }}
                       trailing={(
                         <div className="flex shrink-0 items-center">
-                          <div className="mr-2 text-text-tertiary system-xs-regular">{langGeniusVersionInfo.current_version}</div>
+                          <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
                           <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                         </div>
                       )}
@@ -225,13 +225,13 @@ export default function AppSelector() {
                   )
                 }
               </AccountMenuSection>
-              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+              <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
             </>
           )}
           <AccountMenuSection>
             <DropdownMenuItem
               closeOnClick={false}
-              className="cursor-default data-[highlighted]:bg-transparent"
+              className="cursor-default data-highlighted:bg-transparent"
             >
               <MenuItemContent
                 iconClassName="i-ri-t-shirt-2-line"
@@ -240,7 +240,7 @@ export default function AppSelector() {
               />
             </DropdownMenuItem>
           </AccountMenuSection>
-          <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+          <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
           <AccountMenuSection>
             <AccountMenuActionItem
               iconClassName="i-ri-logout-box-r-line"

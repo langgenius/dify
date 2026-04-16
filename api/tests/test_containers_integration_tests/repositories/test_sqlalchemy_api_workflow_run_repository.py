@@ -2,30 +2,27 @@
 
 from __future__ import annotations
 
-import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from graphon.entities import WorkflowExecution
+from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.entities import WorkflowExecution
-from dify_graph.entities.pause_reason import HumanInputRequired, PauseReasonType
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import FormDefinition, FormInput, UserAction
-from dify_graph.nodes.human_input.enums import DeliveryMethodType, FormInputType, HumanInputFormStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (
-    BackstageRecipientPayload,
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
-    RecipientType,
 )
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -223,7 +220,6 @@ class TestDeleteRunsWithRelated:
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -283,7 +279,6 @@ class TestCountRunsWithRelated:
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -547,7 +542,6 @@ class TestPrivateWorkflowPauseEntity:
             status=WorkflowExecutionStatus.RUNNING,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -577,7 +571,6 @@ class TestPrivateWorkflowPauseEntity:
         )
         state_key = f"workflow-state-{uuid4()}.json"
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
@@ -609,7 +602,6 @@ class TestPrivateWorkflowPauseEntity:
         )
         state_key = f"workflow-state-{uuid4()}.json"
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
@@ -636,12 +628,12 @@ class TestPrivateWorkflowPauseEntity:
 class TestBuildHumanInputRequiredReason:
     """Integration tests for _build_human_input_required_reason using real DB models."""
 
-    def test_prefers_backstage_token_when_available(
+    def test_builds_reason_from_form_definition(
         self,
         db_session_with_containers: Session,
         test_scope: _TestScope,
     ) -> None:
-        """Use backstage token when multiple recipient types may exist."""
+        """Build the graph pause reason from the stored form definition."""
 
         expiration_time = naive_utc_now()
         form_definition = FormDefinition(
@@ -668,25 +660,6 @@ class TestBuildHumanInputRequiredReason:
         db_session_with_containers.add(form_model)
         db_session_with_containers.flush()
 
-        delivery = HumanInputDelivery(
-            form_id=form_model.id,
-            delivery_method_type=DeliveryMethodType.WEBAPP,
-            channel_payload="{}",
-        )
-        db_session_with_containers.add(delivery)
-        db_session_with_containers.flush()
-
-        access_token = secrets.token_urlsafe(8)
-        recipient = HumanInputFormRecipient(
-            form_id=form_model.id,
-            delivery_id=delivery.id,
-            recipient_type=RecipientType.BACKSTAGE,
-            recipient_payload=BackstageRecipientPayload().model_dump_json(),
-            access_token=access_token,
-        )
-        db_session_with_containers.add(recipient)
-        db_session_with_containers.flush()
-
         # Create a pause so the reason has a valid pause_id
         workflow_run = _create_workflow_run(
             db_session_with_containers,
@@ -694,7 +667,6 @@ class TestBuildHumanInputRequiredReason:
             status=WorkflowExecutionStatus.RUNNING,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -716,13 +688,12 @@ class TestBuildHumanInputRequiredReason:
         # Refresh to ensure we have DB-round-tripped objects
         db_session_with_containers.refresh(form_model)
         db_session_with_containers.refresh(reason_model)
-        db_session_with_containers.refresh(recipient)
 
-        reason = _build_human_input_required_reason(reason_model, form_model, [recipient])
+        reason = _build_human_input_required_reason(reason_model, form_model)
 
         assert isinstance(reason, HumanInputRequired)
-        assert reason.form_token == access_token
         assert reason.node_title == "Ask Name"
         assert reason.form_content == "content"
         assert reason.inputs[0].output_variable_name == "name"
         assert reason.actions[0].id == "approve"
+        assert reason.resolved_default_values == {"name": "Alice"}

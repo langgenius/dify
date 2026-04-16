@@ -6,9 +6,20 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     MCPServerParameterType,
     PluginParameter,
@@ -18,9 +29,17 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+
+
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
+emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
 
 
 class ToolLabelEnum(StrEnum):
@@ -130,7 +149,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict | list
+        json_object: dict[str, Any] | list[Any]
         suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
@@ -318,7 +337,7 @@ class ToolParameter(PluginParameter):
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: str | None = None
     # MCP object and array type parameters use this field to store the schema
-    input_schema: dict | None = None
+    input_schema: dict[str, Any] | None = None
 
     @classmethod
     def get_simple_instance(
@@ -410,15 +429,6 @@ class ToolEntity(BaseModel):
         return value or {}
 
 
-class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
-    )
-    credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
-    )
-
-
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: str | None = None
@@ -440,6 +450,12 @@ class WorkflowToolParameterConfiguration(BaseModel):
     form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
 
 
+class ToolInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class ToolInvokeMeta(BaseModel):
     """
     Tool invoke meta
@@ -447,7 +463,7 @@ class ToolInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> ToolInvokeMeta:
@@ -463,12 +479,13 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> ToolInvokeMetaDict:
+        result: ToolInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class ToolLabel(BaseModel):

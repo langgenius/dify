@@ -2,6 +2,7 @@ import uuid
 
 from flask import request
 from flask_restx import Resource, marshal
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -9,6 +10,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -27,7 +29,6 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
@@ -80,14 +81,6 @@ class SegmentUpdatePayload(BaseModel):
 
 class BatchImportPayload(BaseModel):
     upload_file_id: str
-
-
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 class ChildChunkBatchUpdatePayload(BaseModel):
@@ -283,7 +276,7 @@ class DatasetDocumentSegmentApi(Resource):
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -336,7 +329,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         # check embedding model setting
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -387,7 +380,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -572,7 +565,7 @@ class ChildChunkAddApi(Resource):
         # check embedding model setting
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,

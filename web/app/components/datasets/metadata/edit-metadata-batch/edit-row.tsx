@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { UpdateType } from '../types'
 import EditedBeacon from './edited-beacon'
 import InputCombined from './input-combined'
@@ -49,7 +49,7 @@ const EditMetadatabatchItem: FC<Props> = ({
         className={
           cn(
             'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
-            isDeleted && 'cursor-default bg-state-destructive-hover  text-text-destructive',
+            isDeleted && 'cursor-default bg-state-destructive-hover text-text-destructive',
           )
         }
         onClick={() => onRemove(payload.id)}

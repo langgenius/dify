@@ -254,7 +254,7 @@ def test_workflow_trace_full(mock_db, mock_repo_factory, mock_sessionmaker, trac
     node1.id = "n1"
     node1.error = None
 
-    repo.get_by_workflow_run.return_value = [node1]
+    repo.get_by_workflow_execution.return_value = [node1]
 
     with patch.object(trace_instance, "get_service_account_with_tenant"):
         trace_instance.workflow_trace(info)

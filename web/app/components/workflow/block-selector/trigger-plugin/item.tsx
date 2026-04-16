@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useRef } from 'react'
@@ -11,7 +12,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import TriggerPluginActionItem from './action-item'
 
@@ -94,7 +94,7 @@ const TriggerPluginItem: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
+          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
               setFold(!isFold)
@@ -133,7 +133,7 @@ const TriggerPluginItem: FC<Props> = ({
             />
             <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
               <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className="system-xs-regular ml-2 truncate text-text-quaternary">{groupName}</span>
+              <span className="ml-2 truncate system-xs-regular text-text-quaternary">{groupName}</span>
             </div>
           </div>
 

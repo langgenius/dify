@@ -1,5 +1,6 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -12,7 +13,6 @@ import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { cn } from '@/utils/classnames'
 
 type NodeVariableItemProps = {
   node: Node
@@ -80,7 +80,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
+          'ml-0.5 shrink truncate system-xs-medium text-text-accent',
           isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',
@@ -94,7 +94,7 @@ const NodeVariableItem = ({
   return (
     <div className={cn(
       'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
-      showBorder && '!bg-state-base-hover',
+      showBorder && 'bg-state-base-hover!',
       className,
     )}
     >
@@ -102,14 +102,14 @@ const NodeVariableItem = ({
         {
           node && (
             <>
-              <div className="shrink-0 p-[1px]">
+              <div className="shrink-0 p-px">
                 <VarBlockIcon
-                  className="!text-text-primary"
+                  className="text-text-primary!"
                   type={node.data.type}
                 />
               </div>
               <div
-                className="mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary"
+                className="mx-0.5 shrink-1000 truncate text-xs font-medium text-text-secondary"
                 title={node?.data.title}
               >
                 {node?.data.title}

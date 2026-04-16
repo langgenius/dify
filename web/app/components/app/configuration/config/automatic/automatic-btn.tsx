@@ -5,9 +5,9 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 
-export type IAutomaticBtnProps = {
+type IAutomaticBtnProps = {
   onClick: () => void
 }
 const AutomaticBtn: FC<IAutomaticBtnProps> = ({

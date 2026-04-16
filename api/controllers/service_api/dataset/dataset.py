@@ -2,6 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -14,18 +15,24 @@ from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
 )
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
+from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
-from services.tag_service import TagService
+from services.tag_service import (
+    SaveTagPayload,
+    TagBindingCreatePayload,
+    TagBindingDeletePayload,
+    TagService,
+    UpdateTagPayload,
+)
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -140,10 +147,10 @@ class DatasetListApi(DatasetApiResource):
             query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -259,10 +266,10 @@ class DatasetApi(DatasetApiResource):
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -513,7 +520,7 @@ class DatasetTagsApi(DatasetApiResource):
             raise Forbidden()
 
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
-        tag = TagService.save_tags({"name": payload.name, "type": "knowledge"})
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE))
 
         response = DataSetTag.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
@@ -536,9 +543,8 @@ class DatasetTagsApi(DatasetApiResource):
             raise Forbidden()
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
-        params = {"name": payload.name, "type": "knowledge"}
         tag_id = payload.tag_id
-        tag = TagService.update_tags(params, tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -585,7 +591,9 @@ class DatasetTagBindingApi(DatasetApiResource):
             raise Forbidden()
 
         payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
-        TagService.save_tag_binding({"tag_ids": payload.tag_ids, "target_id": payload.target_id, "type": "knowledge"})
+        TagService.save_tag_binding(
+            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+        )
 
         return "", 204
 
@@ -609,7 +617,9 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             raise Forbidden()
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
-        TagService.delete_tag_binding({"tag_id": payload.tag_id, "target_id": payload.target_id, "type": "knowledge"})
+        TagService.delete_tag_binding(
+            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+        )
 
         return "", 204
 

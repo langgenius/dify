@@ -7,10 +7,10 @@ import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
+import { Button } from '@/app/components/base/ui/button'
 import AutoDisabledDocument from '@/app/components/datasets/common/document-status-with-action/auto-disabled-document'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import StatusWithAction from '@/app/components/datasets/common/document-status-with-action/status-with-action'
@@ -144,7 +144,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           <Input
             showLeftIcon
             showClearIcon
-            wrapperClassName="!w-[200px]"
+            wrapperClassName="w-[200px]!"
             value={inputValue}
             onChange={e => onInputChange(e.target.value)}
             onClear={() => onInputChange('')}
@@ -159,7 +159,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex !h-8 items-center justify-center gap-2">
+        <div className="flex h-8! items-center justify-center gap-2">
           {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
           <IndexFailed datasetId={datasetId} />
           {!embeddingAvailable && (

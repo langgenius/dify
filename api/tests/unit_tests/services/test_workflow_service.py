@@ -12,22 +12,23 @@ This test suite covers:
 import json
 import uuid
 from typing import Any, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
-
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import (
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.errors import WorkflowNodeRunFailedError
-from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from dify_graph.variables.input_entities import VariableEntityType
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.node_events import NodeRunResult
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.variables.input_entities import VariableEntityType
+
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -93,8 +94,8 @@ class TestWorkflowAssociatedDataFactory:
         app_id: str = "app-123",
         version: str = Workflow.VERSION_DRAFT,
         workflow_type: str = WorkflowType.WORKFLOW.value,
-        graph: dict | None = None,
-        features: dict | None = None,
+        graph: dict[str, Any] | None = None,
+        features: dict[str, Any] | None = None,
         unique_hash: str | None = None,
         **kwargs,
     ) -> MagicMock:
@@ -267,7 +268,7 @@ class TestWorkflowService:
         Provides mock implementations of:
         - session.add(): Adding new records
         - session.commit(): Committing transactions
-        - session.query(): Querying database
+        - session.scalar(): Scalar queries
         - session.execute(): Executing SQL statements
         """
         with patch("services.workflow_service.db") as mock_db:
@@ -275,7 +276,7 @@ class TestWorkflowService:
             mock_db.session = mock_session
             mock_session.add = MagicMock()
             mock_session.commit = MagicMock()
-            mock_session.query = MagicMock()
+            mock_session.scalar = MagicMock()
             mock_session.execute = MagicMock()
             yield mock_db
 
@@ -337,10 +338,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_draft_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_draft_workflow(app)
 
@@ -350,10 +349,8 @@ class TestWorkflowService:
         """Test get_draft_workflow returns None when no draft exists."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
 
-        # Mock database query to return None
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        # Mock db.session.scalar() to return None
+        mock_db_session.session.scalar.return_value = None
 
         result = workflow_service.get_draft_workflow(app)
 
@@ -365,10 +362,8 @@ class TestWorkflowService:
         workflow_id = "workflow-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id)
 
@@ -383,10 +378,8 @@ class TestWorkflowService:
         workflow_id = "workflow-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_published_workflow_by_id(app, workflow_id)
 
@@ -405,10 +398,8 @@ class TestWorkflowService:
             workflow_id=workflow_id, version=Workflow.VERSION_DRAFT
         )
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with pytest.raises(IsDraftWorkflowError):
             workflow_service.get_published_workflow_by_id(app, workflow_id)
@@ -418,10 +409,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         workflow_id = "nonexistent-workflow"
 
-        # Mock database query to return None
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        # Mock db.session.scalar() to return None
+        mock_db_session.session.scalar.return_value = None
 
         result = workflow_service.get_published_workflow_by_id(app, workflow_id)
 
@@ -433,10 +422,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_published_workflow(app)
 
@@ -465,11 +452,9 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
 
-        # Mock get_draft_workflow to return None (no existing draft)
+        # Mock db.session.scalar() to return None (no existing draft)
         # This simulates the first time a workflow is created for an app
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        mock_db_session.session.scalar.return_value = None
 
         with (
             patch.object(workflow_service, "validate_features_structure"),
@@ -503,12 +488,10 @@ class TestWorkflowService:
         features = {"file_upload": {"enabled": False}}
         unique_hash = "test-hash-123"
 
-        # Mock existing draft workflow
+        # Mock existing draft workflow via db.session.scalar()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(unique_hash=unique_hash)
 
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with (
             patch.object(workflow_service, "validate_features_structure"),
@@ -544,12 +527,10 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {}
 
-        # Mock existing draft workflow with different hash
+        # Mock existing draft workflow with different hash via db.session.scalar()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(unique_hash="old-hash")
 
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with pytest.raises(WorkflowHashNotEqualError):
             workflow_service.sync_draft_workflow(
@@ -731,6 +712,79 @@ class TestWorkflowService:
 
         with pytest.raises(ValueError, match="Invalid app mode"):
             workflow_service.validate_features_structure(app, features)
+
+    # ==================== Draft Workflow Variable Update Tests ====================
+    # These tests verify updating draft workflow environment/conversation variables
+
+    def test_update_draft_workflow_environment_variables_updates_workflow(self, workflow_service, mock_db_session):
+        """Test update_draft_workflow_environment_variables updates draft fields."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
+        variables = [Mock()]
+
+        with (
+            patch.object(workflow_service, "get_draft_workflow", return_value=workflow),
+            patch("services.workflow_service.naive_utc_now", return_value="now"),
+        ):
+            workflow_service.update_draft_workflow_environment_variables(
+                app_model=app,
+                environment_variables=variables,
+                account=account,
+            )
+
+        assert workflow.environment_variables == variables
+        assert workflow.updated_by == account.id
+        assert workflow.updated_at == "now"
+        mock_db_session.session.commit.assert_called_once()
+
+    def test_update_draft_workflow_environment_variables_raises_when_missing(self, workflow_service):
+        """Test update_draft_workflow_environment_variables raises when draft missing."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+
+        with patch.object(workflow_service, "get_draft_workflow", return_value=None):
+            with pytest.raises(ValueError, match="No draft workflow found."):
+                workflow_service.update_draft_workflow_environment_variables(
+                    app_model=app,
+                    environment_variables=[],
+                    account=account,
+                )
+
+    def test_update_draft_workflow_conversation_variables_updates_workflow(self, workflow_service, mock_db_session):
+        """Test update_draft_workflow_conversation_variables updates draft fields."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
+        variables = [Mock()]
+
+        with (
+            patch.object(workflow_service, "get_draft_workflow", return_value=workflow),
+            patch("services.workflow_service.naive_utc_now", return_value="now"),
+        ):
+            workflow_service.update_draft_workflow_conversation_variables(
+                app_model=app,
+                conversation_variables=variables,
+                account=account,
+            )
+
+        assert workflow.conversation_variables == variables
+        assert workflow.updated_by == account.id
+        assert workflow.updated_at == "now"
+        mock_db_session.session.commit.assert_called_once()
+
+    def test_update_draft_workflow_conversation_variables_raises_when_missing(self, workflow_service):
+        """Test update_draft_workflow_conversation_variables raises when draft missing."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+
+        with patch.object(workflow_service, "get_draft_workflow", return_value=None):
+            with pytest.raises(ValueError, match="No draft workflow found."):
+                workflow_service.update_draft_workflow_conversation_variables(
+                    app_model=app,
+                    conversation_variables=[],
+                    account=account,
+                )
 
     # ==================== Publish Workflow Tests ====================
     # These tests verify creating published versions from draft workflows
@@ -988,8 +1042,7 @@ class TestWorkflowService:
         # 1. Workflow exists
         # 2. No app is currently using it
         # 3. Not published as a tool
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = None  # no tool provider
+        mock_session.scalar.side_effect = [mock_workflow, None, None]  # workflow, no app using it, no tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
@@ -1064,8 +1117,7 @@ class TestWorkflowService:
         mock_tool_provider = MagicMock()
 
         mock_session = MagicMock()
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = mock_tool_provider
+        mock_session.scalar.side_effect = [mock_workflow, None, mock_tool_provider]  # workflow, no app, tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
@@ -1545,7 +1597,10 @@ class TestWorkflowServiceCredentialValidation:
     def test_validate_llm_model_config_should_raise_value_error_on_failure(self, service: WorkflowService) -> None:
         """If ModelManager raises any exception it must be wrapped into ValueError."""
         # Arrange
-        with patch("core.model_manager.ModelManager.get_model_instance", side_effect=RuntimeError("no key")):
+        assembly = MagicMock()
+        assembly.model_manager.get_model_instance.side_effect = RuntimeError("no key")
+
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act + Assert
             with pytest.raises(ValueError, match="Failed to validate LLM model configuration"):
                 service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
@@ -1558,30 +1613,30 @@ class TestWorkflowServiceCredentialValidation:
 
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = [mock_model]
+        assembly = MagicMock()
+        assembly.provider_manager.get_configurations.return_value = mock_configs
 
-        with (
-            patch("core.model_manager.ModelManager.get_model_instance"),
-            patch("core.provider_manager.ProviderManager") as mock_pm_cls,
-        ):
-            mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act
             service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
             # Assert
             mock_model.raise_for_status.assert_called_once()
+            assembly.model_manager.get_model_instance.assert_called_once_with(
+                tenant_id="tenant-1",
+                provider="openai",
+                model_type=ModelType.LLM,
+                model="gpt-4",
+            )
 
     def test_validate_llm_model_config_model_not_found(self, service: WorkflowService) -> None:
         """Test ValueError when model is not found in provider configurations."""
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = []  # No models
+        assembly = MagicMock()
+        assembly.provider_manager.get_configurations.return_value = mock_configs
 
-        with (
-            patch("core.model_manager.ModelManager.get_model_instance"),
-            patch("core.provider_manager.ProviderManager") as mock_pm_cls,
-        ):
-            mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act + Assert
             with pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"):
                 service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
@@ -1704,7 +1759,7 @@ class TestWorkflowServiceCredentialValidation:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
         workflow = self._make_workflow([])
-        node_data: dict = {}  # no model key
+        node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
         service._validate_load_balancing_credentials(workflow, node_data, "node-1")
@@ -2053,22 +2108,37 @@ class TestSetupVariablePool:
         workflow = self._make_workflow()
 
         # Act
-        with patch("services.workflow_service.VariablePool") as MockPool:
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
+        ):
             _setup_variable_pool(
                 query="hello",
                 files=[],
                 user_id="u-1",
                 user_inputs={"k": "v"},
                 workflow=workflow,
+                node_id="start-node",
                 node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
 
-        # Assert — VariablePool should be called with a SystemVariable (non-default)
-        MockPool.assert_called_once()
-        call_kwargs = MockPool.call_args.kwargs
-        assert call_kwargs["user_inputs"] == {"k": "v"}
+        # Assert — start nodes should build bootstrap variables and attach node inputs.
+        MockPool.assert_called_once_with()
+        mock_build_system_variables.assert_called_once()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            node_id="start-node",
+            inputs={"k": "v"},
+        )
 
     def test_setup_variable_pool_should_use_default_system_variables_for_non_start_node(
         self,
@@ -2079,7 +2149,10 @@ class TestSetupVariablePool:
         # Act
         with (
             patch("services.workflow_service.VariablePool") as MockPool,
-            patch("services.workflow_service.SystemVariable.default") as mock_default,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
         ):
             _setup_variable_pool(
                 query="",
@@ -2087,14 +2160,20 @@ class TestSetupVariablePool:
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
+                node_id="llm-node",
                 node_type=BuiltinNodeTypes.LLM,  # not a start/trigger node
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
 
-        # Assert — SystemVariable.default() should be used for non-start nodes
-        mock_default.assert_called_once()
-        MockPool.assert_called_once()
+        # Assert — default system variables should be used and node inputs should not be added.
+        mock_default_system_variables.assert_called_once()
+        MockPool.assert_called_once_with()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_not_called()
 
     def test_setup_variable_pool_should_set_chatflow_specifics_for_non_workflow_type(
         self,
@@ -2106,20 +2185,31 @@ class TestSetupVariablePool:
         workflow = self._make_workflow(workflow_type=WorkflowType.CHAT.value)
 
         # Act
-        with patch("services.workflow_service.VariablePool") as MockPool:
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables"),
+            patch("services.workflow_service.add_variables_to_pool"),
+            patch("services.workflow_service.add_node_inputs_to_pool"),
+        ):
             _setup_variable_pool(
                 query="what is AI?",
                 files=[],
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
+                node_id="start-node",
                 node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-abc",
                 conversation_variables=[],
             )
 
-        # Assert — we just verify VariablePool was called (chatflow path executed)
-        MockPool.assert_called_once()
+        # Assert — chatflow system variables should include query, conversation_id and dialogue_count.
+        MockPool.assert_called_once_with()
+        system_variable_values = mock_build_system_variables.call_args.args[0]
+        assert system_variable_values["query"] == "what is AI?"
+        assert system_variable_values["conversation_id"] == "conv-abc"
+        assert system_variable_values["dialogue_count"] == 1
 
 
 class TestRebuildSingleFile:
@@ -2142,7 +2232,7 @@ class TestRebuildSingleFile:
 
         # Assert
         assert result is mock_file
-        mock_build.assert_called_once_with(mapping=value, tenant_id=tenant_id)
+        mock_build.assert_called_once_with(mapping=value, tenant_id=tenant_id, access_controller=ANY)
 
     def test_rebuild_single_file_should_raise_when_file_value_not_dict(
         self,
@@ -2165,7 +2255,7 @@ class TestRebuildSingleFile:
 
         # Assert
         assert result is mock_files
-        mock_build.assert_called_once_with(mappings=value, tenant_id=tenant_id)
+        mock_build.assert_called_once_with(mappings=value, tenant_id=tenant_id, access_controller=ANY)
 
     def test_rebuild_single_file_should_raise_when_file_list_value_not_list(
         self,
@@ -2252,7 +2342,7 @@ class TestRebuildFileForUserInputsInStartNode:
         # Arrange
         file_var = self._make_variable("attachment", VariableEntityType.FILE)
         start_data = self._make_start_node_data([file_var])
-        user_inputs: dict = {}  # attachment not provided
+        user_inputs: dict[str, Any] = {}  # attachment not provided
 
         # Act
         result = _rebuild_file_for_user_inputs_in_start_node(
@@ -2279,13 +2369,12 @@ class TestWorkflowServiceResolveDeliveryMethod:
         # Arrange
         method_a = self._make_method("method-1")
         method_b = self._make_method("method-2")
-        node_data = MagicMock()
-        node_data.delivery_methods = [method_a, method_b]
 
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="method-2"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a, method_b]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-2"
+            )
 
         # Assert
         assert result is method_b
@@ -2293,26 +2382,22 @@ class TestWorkflowServiceResolveDeliveryMethod:
     def test_resolve_delivery_method_should_return_none_when_no_match(self) -> None:
         # Arrange
         method_a = self._make_method("method-1")
-        node_data = MagicMock()
-        node_data.delivery_methods = [method_a]
 
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="does-not-exist"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="does-not-exist"
+            )
 
         # Assert
         assert result is None
 
     def test_resolve_delivery_method_should_return_none_for_empty_methods(self) -> None:
-        # Arrange
-        node_data = MagicMock()
-        node_data.delivery_methods = []
-
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="method-1"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-1"
+            )
 
         # Assert
         assert result is None
@@ -2435,6 +2520,9 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.Session"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
             patch("services.workflow_service.DifyCoreRepositoryFactory"),
@@ -2475,10 +2563,16 @@ class TestWorkflowServiceDraftExecution:
             )
 
             # Assert
-            # For non-start nodes, VariablePool should be initialized with environment_variables
-            mock_pool_cls.assert_called_once()
-            args, kwargs = mock_pool_cls.call_args
-            assert "environment_variables" in kwargs
+            # For non-start nodes, bootstrap variables should be loaded into an empty pool.
+            mock_pool_cls.assert_called_once_with()
+            mock_default_system_variables.assert_called_once()
+            mock_build_bootstrap_variables.assert_called_once_with(
+                system_variables=mock_default_system_variables.return_value,
+                environment_variables=draft_workflow.environment_variables,
+            )
+            mock_add_variables_to_pool.assert_called_once_with(
+                mock_pool_cls.return_value, mock_build_bootstrap_variables.return_value
+            )
 
 
 # ===========================================================================
@@ -2588,7 +2682,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
-            patch("services.workflow_service.apply_debug_email_recipient"),
+            patch("services.workflow_service.apply_dify_debug_email_recipient"),
             patch.object(service, "_build_human_input_variable_pool"),
             patch.object(service, "_build_human_input_node"),
             patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
@@ -2708,7 +2802,7 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
         with patch(
-            "dify_graph.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
+            "graphon.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
         ):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
@@ -2730,13 +2824,28 @@ class TestWorkflowServiceFreeNodeExecution:
         variable_pool = MagicMock()
 
         with (
-            patch("services.workflow_service.GraphInitParams"),
+            patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
             patch("services.workflow_service.GraphRuntimeState"),
+            patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
+            patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
-            patch("services.workflow_service.HumanInputFormRepositoryImpl"),
         ):
             node = service._build_human_input_node(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value
             mock_node_cls.assert_called_once()
+            mock_graph_init_context_cls.assert_called_once_with(
+                workflow_id="wf-1",
+                graph_config=workflow.graph_dict,
+                run_context=mock_build_dify_run_context.return_value,
+                call_depth=0,
+            )
+            mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_node_cls.assert_called_once_with(
+                id="n-1",
+                config=node_config,
+                graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
+                graph_runtime_state=ANY,
+                runtime=mock_runtime_cls.return_value,
+            )

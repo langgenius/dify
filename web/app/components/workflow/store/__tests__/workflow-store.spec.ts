@@ -109,7 +109,7 @@ describe('createWorkflowStore', () => {
       ['showInputsPanel', 'setShowInputsPanel', true],
       ['showDebugAndPreviewPanel', 'setShowDebugAndPreviewPanel', true],
       ['panelMenu', 'setPanelMenu', { top: 10, left: 20 }],
-      ['selectionMenu', 'setSelectionMenu', { top: 50, left: 60 }],
+      ['selectionMenu', 'setSelectionMenu', { clientX: 50, clientY: 60 }],
       ['edgeMenu', 'setEdgeMenu', { clientX: 320, clientY: 180, edgeId: 'e1' }],
       ['showVariableInspectPanel', 'setShowVariableInspectPanel', true],
       ['initShowLastRunTab', 'setInitShowLastRunTab', true],
@@ -186,9 +186,9 @@ describe('createWorkflowStore', () => {
       expect(store.getState().controlMode).toBe('pointer')
     })
 
-    it('should default controlMode to hand when localStorage has no value', () => {
+    it('should default controlMode to pointer when localStorage has no value', () => {
       const store = createStore()
-      expect(store.getState().controlMode).toBe('hand')
+      expect(store.getState().controlMode).toBe('pointer')
     })
 
     it('should read panelWidth from localStorage', () => {

@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
+from graphon.file import File
 from pydantic import BaseModel, Field
-
-from dify_graph.file import File
 
 
 class ChildDocument(BaseModel):

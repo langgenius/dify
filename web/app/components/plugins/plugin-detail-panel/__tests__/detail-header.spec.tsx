@@ -103,12 +103,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 // Auto upgrade settings mock
 let mockAutoUpgradeInfo: {
@@ -142,7 +144,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string>) => obj?.en_US || '',
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 

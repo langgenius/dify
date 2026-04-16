@@ -3,10 +3,17 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import Toast from '@/app/components/base/toast'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -72,18 +79,12 @@ const EditAnnotationModal: FC<Props> = ({
         onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
       }
 
-      Toast.notify({
-        message: t('api.actionSuccess', { ns: 'common' }) as string,
-        type: 'success',
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
     }
     catch (error) {
       const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
-      Toast.notify({
-        message,
-        type: 'error',
-      })
+      toast.error(message)
       // Re-throw to preserve edit mode behavior for UI components
       throw error
     }
@@ -95,7 +96,7 @@ const EditAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName="!max-w-[480px]"
+        maxWidthClassName="max-w-[480px]!"
         title={t('editModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div>
@@ -112,16 +113,33 @@ const EditAnnotationModal: FC<Props> = ({
                 readonly={isAdd && isAnnotationFull}
                 onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
               />
-              <Confirm
-                isShow={showModal}
-                onCancel={() => setShowModal(false)}
-                onConfirm={() => {
-                  onRemove()
-                  setShowModal(false)
-                  onHide()
-                }}
-                title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
-              />
+              <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+                <AlertDialogContent>
+                  <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                    <AlertDialogTitle
+                      title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                      className="w-full truncate title-2xl-semi-bold text-text-primary"
+                    >
+                      {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                    </AlertDialogTitle>
+                  </div>
+                  <AlertDialogActions>
+                    <AlertDialogCancelButton>
+                      {t('operation.cancel', { ns: 'common' })}
+                    </AlertDialogCancelButton>
+                    <AlertDialogConfirmButton
+                      tone="destructive"
+                      onClick={() => {
+                        onRemove()
+                        setShowModal(false)
+                        onHide()
+                      }}
+                    >
+                      {t('operation.confirm', { ns: 'common' })}
+                    </AlertDialogConfirmButton>
+                  </AlertDialogActions>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         )}

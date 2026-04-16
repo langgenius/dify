@@ -65,8 +65,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.filterCondition`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.filter_by?.enabled}
-              onChange={handleFilterEnabledChange}
+              checked={inputs.filter_by?.enabled}
+              onCheckedChange={handleFilterEnabledChange}
               size="md"
               disabled={readOnly}
             />
@@ -90,8 +90,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.extractsCondition`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.extract_by?.enabled}
-              onChange={handleExtractsEnabledChange}
+              checked={inputs.extract_by?.enabled}
+              onCheckedChange={handleExtractsEnabledChange}
               size="md"
               disabled={readOnly}
             />
@@ -123,8 +123,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.orderBy`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.order_by?.enabled}
-              onChange={handleOrderByEnabledChange}
+              checked={inputs.order_by?.enabled}
+              onCheckedChange={handleOrderByEnabledChange}
               size="md"
               disabled={readOnly}
             />

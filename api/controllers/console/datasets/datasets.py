@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -10,10 +11,7 @@ import services
 from configs import dify_config
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import (
-    api_key_item_model,
-    api_key_list_model,
-)
+from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -25,13 +23,12 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
@@ -332,7 +329,7 @@ class DatasetListApi(Resource):
             )
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -446,7 +443,7 @@ class DatasetApi(Resource):
             data.update({"partial_member_list": part_users_list})
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -785,23 +782,23 @@ class DatasetApiKeyApi(Resource):
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
+    @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @marshal_with(api_key_item_model)
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -828,7 +825,7 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 200
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

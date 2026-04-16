@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from sqlalchemy import select
 
@@ -19,7 +20,7 @@ class ApiKeyAuthService:
         return data_source_api_key_bindings
 
     @staticmethod
-    def create_provider_auth(tenant_id: str, args: dict):
+    def create_provider_auth(tenant_id: str, args: dict[str, Any]):
         auth_result = ApiKeyAuthFactory(args["provider"], args["credentials"]).validate_credentials()
         if auth_result:
             # Encrypt the api key
@@ -35,15 +36,13 @@ class ApiKeyAuthService:
 
     @staticmethod
     def get_auth_credentials(tenant_id: str, category: str, provider: str):
-        data_source_api_key_bindings = (
-            db.session.query(DataSourceApiKeyAuthBinding)
-            .where(
+        data_source_api_key_bindings = db.session.scalar(
+            select(DataSourceApiKeyAuthBinding).where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
                 DataSourceApiKeyAuthBinding.category == category,
                 DataSourceApiKeyAuthBinding.provider == provider,
                 DataSourceApiKeyAuthBinding.disabled.is_(False),
             )
-            .first()
         )
         if not data_source_api_key_bindings:
             return None
@@ -54,10 +53,11 @@ class ApiKeyAuthService:
 
     @staticmethod
     def delete_provider_auth(tenant_id: str, binding_id: str):
-        data_source_api_key_binding = (
-            db.session.query(DataSourceApiKeyAuthBinding)
-            .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.id == binding_id)
-            .first()
+        data_source_api_key_binding = db.session.scalar(
+            select(DataSourceApiKeyAuthBinding).where(
+                DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
+                DataSourceApiKeyAuthBinding.id == binding_id,
+            )
         )
         if data_source_api_key_binding:
             db.session.delete(data_source_api_key_binding)

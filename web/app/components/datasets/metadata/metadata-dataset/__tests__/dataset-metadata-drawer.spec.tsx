@@ -23,9 +23,15 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
+  },
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 
@@ -278,12 +284,7 @@ describe('DatasetMetadataDrawer', () => {
       fireEvent.change(inputs[0], { target: { value: 'renamed_field' } })
 
       // Find and click save button
-      const saveBtns = screen.getAllByText(/save/i)
-      const primaryBtn = saveBtns.find(btn =>
-        btn.closest('button')?.classList.contains('btn-primary'),
-      )
-      if (primaryBtn)
-        fireEvent.click(primaryBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { ConfigurationMethodEnum } from '../declarations'
 
 type ConfigurationButtonProps = {
@@ -12,7 +12,7 @@ const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationBu
   return (
     <Button
       size="small"
-      className="z-[100]"
+      className="z-100"
       onClick={(e) => {
         e.stopPropagation()
         handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)

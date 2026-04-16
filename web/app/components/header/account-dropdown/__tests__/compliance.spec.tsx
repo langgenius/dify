@@ -2,13 +2,13 @@ import type { ModalContextState } from '@/context/modal-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
 import { downloadUrl } from '@/utils/download'
-import Toast from '../../../base/toast'
 import Compliance from '../compliance'
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
@@ -38,10 +38,14 @@ vi.mock('@/utils/download', () => ({
 describe('Compliance', () => {
   const mockSetShowPricingModal = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
+  const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
+  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
   let queryClient: QueryClient
 
   beforeEach(() => {
     vi.clearAllMocks()
+    toastSuccessSpy.mockClear()
+    toastErrorSpy.mockClear()
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -59,8 +63,6 @@ describe('Compliance', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -85,6 +87,10 @@ describe('Compliance', () => {
   const openMenuAndRender = () => {
     renderCompliance()
     fireEvent.click(screen.getByText('common.userProfile.compliance'))
+  }
+
+  const getComplianceMenuItem = (label: string) => {
+    return screen.getByText(label).closest('[role="menuitem"]')
   }
 
   describe('Rendering', () => {
@@ -158,10 +164,7 @@ describe('Compliance', () => {
       await waitFor(() => {
         expect(getDocDownloadUrl).toHaveBeenCalled()
         expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          message: 'common.operation.downloadSuccess',
-        }))
+        expect(toastSuccessSpy).toHaveBeenCalledWith('common.operation.downloadSuccess')
       })
     })
 
@@ -185,10 +188,7 @@ describe('Compliance', () => {
       // Assert
       await waitFor(() => {
         expect(getDocDownloadUrl).toHaveBeenCalled()
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-          message: 'common.operation.downloadFailed',
-        }))
+        expect(toastErrorSpy).toHaveBeenCalledWith('common.operation.downloadFailed')
       })
       expect(consoleSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()
@@ -243,15 +243,16 @@ describe('Compliance', () => {
 
       // Act
       openMenuAndRender()
-      const downloadButtons = screen.getAllByText('common.operation.download')
-      fireEvent.click(downloadButtons[0])
+      const menuItem = getComplianceMenuItem('common.compliance.soc2Type1')
+      expect(menuItem).not.toBeNull()
+      fireEvent.click(menuItem!)
 
-      // Assert - btn-disabled class and spinner should appear while mutation is pending
+      // Assert - button should become busy while mutation is pending
       await waitFor(() => {
-        const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
-        expect(menuItem).not.toBeNull()
-        const disabledBtn = menuItem!.querySelector('.cursor-not-allowed')
-        expect(disabledBtn).not.toBeNull()
+        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
+        expect(busyButton).not.toBeNull()
+        expect(busyButton).toBeDisabled()
+        expect(busyButton!.querySelector('.animate-spin')).not.toBeNull()
       }, { timeout: 10000 })
 
       // Cleanup: resolve the pending promise
@@ -275,21 +276,22 @@ describe('Compliance', () => {
       })
 
       openMenuAndRender()
-      const downloadButtons = screen.getAllByText('common.operation.download')
+      const menuItem = getComplianceMenuItem('common.compliance.soc2Type1')
+      expect(menuItem).not.toBeNull()
 
       // First click starts download
-      fireEvent.click(downloadButtons[0])
+      fireEvent.click(menuItem!)
 
       // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(() => {
-        const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
-        const el = menuItem!.querySelector('.cursor-not-allowed')
-        expect(el).not.toBeNull()
+        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
+        expect(busyButton).not.toBeNull()
+        expect(busyButton).toBeDisabled()
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
       }, { timeout: 10000 })
 
       // Second click while pending - should be guarded by isPending check
-      fireEvent.click(downloadButtons[0])
+      fireEvent.click(menuItem!)
 
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
       await waitFor(() => {

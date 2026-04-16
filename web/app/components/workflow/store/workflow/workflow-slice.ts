@@ -14,6 +14,13 @@ type PreviewRunningData = WorkflowRunningData & {
   extraContentAndFormData?: Record<string, any>
 }
 
+type MousePosition = {
+  pageX: number
+  pageY: number
+  elementX: number
+  elementY: number
+}
+
 export type WorkflowSliceShape = {
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
@@ -36,8 +43,16 @@ export type WorkflowSliceShape = {
   setSelection: (selection: WorkflowSliceShape['selection']) => void
   bundleNodeSize: { width: number, height: number } | null
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
-  controlMode: 'pointer' | 'hand'
+  controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
+  pendingComment: MousePosition | null
+  setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
+  isCommentPlacing: boolean
+  setCommentPlacing: (isCommentPlacing: boolean) => void
+  isCommentQuickAdd: boolean
+  setCommentQuickAdd: (isCommentQuickAdd: boolean) => void
+  isCommentPreviewHovering: boolean
+  setCommentPreviewHovering: (hovering: boolean) => void
   mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number }
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
   showConfirm?: { title: string, desc?: string, onConfirm: () => void }
@@ -77,13 +92,27 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,
   setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+  controlMode: (() => {
+    const storedControlMode = localStorage.getItem('workflow-operation-mode')
+    if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
+      return storedControlMode
+
+    return 'pointer'
+  })(),
   setControlMode: (controlMode) => {
     set(() => ({ controlMode }))
     localStorage.setItem('workflow-operation-mode', controlMode)
   },
+  pendingComment: null,
+  setPendingComment: pendingComment => set(() => ({ pendingComment })),
+  isCommentPlacing: false,
+  setCommentPlacing: isCommentPlacing => set(() => ({ isCommentPlacing })),
+  isCommentQuickAdd: false,
+  setCommentQuickAdd: isCommentQuickAdd => set(() => ({ isCommentQuickAdd })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
   setMousePosition: mousePosition => set(() => ({ mousePosition })),
+  isCommentPreviewHovering: false,
+  setCommentPreviewHovering: hovering => set(() => ({ isCommentPreviewHovering: hovering })),
   showConfirm: undefined,
   setShowConfirm: showConfirm => set(() => ({ showConfirm })),
   controlPromptEditorRerenderKey: 0,

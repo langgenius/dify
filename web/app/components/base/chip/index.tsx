@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import {
@@ -6,7 +7,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: number | string
@@ -53,9 +53,9 @@ const Chip: FC<Props> = ({
         >
           <div className={cn(
             'flex min-h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-            open && !value && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
-            !open && !!value && '!border-components-button-secondary-border !bg-components-button-secondary-bg shadow-xs hover:border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover',
-            open && !!value && '!border-components-button-secondary-border-hover !bg-components-button-secondary-bg-hover shadow-xs hover:border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover',
+            open && !value && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
+            !open && !!value && 'border-components-button-secondary-border! bg-components-button-secondary-bg! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
+            open && !!value && 'border-components-button-secondary-border-hover! bg-components-button-secondary-bg-hover! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
           >
@@ -74,7 +74,7 @@ const Chip: FC<Props> = ({
             {!value && <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />}
             {!!value && (
               <div
-                className="group/clear cursor-pointer p-[1px]"
+                className="group/clear cursor-pointer p-px"
                 onClick={(e) => {
                   e.stopPropagation()
                   onClear()
@@ -85,7 +85,7 @@ const Chip: FC<Props> = ({
             )}
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PortalToFollowElemContent className="z-1002">
           <div className={cn('relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg', panelClassName)}>
             <div className="max-h-72 overflow-auto p-1">
               {items.map(item => (
@@ -97,7 +97,7 @@ const Chip: FC<Props> = ({
                     setOpen(false)
                   }}
                 >
-                  <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
+                  <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
                   {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                 </div>
               ))}

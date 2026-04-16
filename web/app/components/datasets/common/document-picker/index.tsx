@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -16,7 +17,6 @@ import {
 import SearchInput from '@/app/components/base/search-input'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
-import { cn } from '@/utils/classnames'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
@@ -83,9 +83,9 @@ const DocumentPicker: FC<Props> = ({
       placement="bottom-start"
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('ml-1 flex cursor-pointer select-none items-center rounded-lg px-2 py-0.5 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+        <div className={cn('ml-1 flex cursor-pointer items-center rounded-lg px-2 py-0.5 select-none hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           <FileIcon name={name} extension={extension} size="xl" />
-          <div className="ml-1 mr-0.5 flex flex-col items-start">
+          <div className="mr-0.5 ml-1 flex flex-col items-start">
             <div className="flex items-center space-x-0.5">
               <span className={cn('system-md-semibold text-text-primary')}>
                 {' '}
@@ -104,7 +104,7 @@ const DocumentPicker: FC<Props> = ({
           </div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pt-2 shadow-lg backdrop-blur-[5px]">
           <SearchInput value={query} onChange={setQuery} className="mx-1" />
           {documentsList

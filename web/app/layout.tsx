@@ -6,9 +6,10 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { ToastProvider } from './components/base/toast'
 import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
+import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
+import CreateAppAttributionBootstrap from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -47,6 +48,7 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
+        <CreateAppAttributionBootstrap />
         {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
@@ -67,13 +69,12 @@ const LocaleLayout = async ({
                 <TanstackQueryInitializer>
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
-                    <ToastProvider>
-                      <GlobalPublicStoreProvider>
-                        <TooltipProvider delay={300} closeDelay={200}>
-                          {children}
-                        </TooltipProvider>
-                      </GlobalPublicStoreProvider>
-                    </ToastProvider>
+                    <PartnerStackCookieRecorder />
+                    <GlobalPublicStoreProvider>
+                      <TooltipProvider delay={300} closeDelay={200}>
+                        {children}
+                      </TooltipProvider>
+                    </GlobalPublicStoreProvider>
                   </I18nServerProvider>
                 </TanstackQueryInitializer>
               </NuqsAdapter>

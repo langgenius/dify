@@ -1,11 +1,38 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { ApiKeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WebhookTriggerResponse, WorkflowDailyConversationsResponse } from '@/models/app'
+import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse, WorkflowOnlineUser } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
+import { consoleClient } from './client'
 
 export const fetchAppList = ({ url, params }: { url: string, params?: Record<string, any> }): Promise<AppListResponse> => {
   return get<AppListResponse>(url, { params })
+}
+
+export const fetchWorkflowOnlineUsers = async ({ appIds }: { appIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
+  if (!appIds.length)
+    return {}
+
+  const response = await consoleClient.apps.workflowOnlineUsers({
+    query: { app_ids: appIds.join(',') },
+  })
+
+  if (!response?.data)
+    return {}
+
+  if (Array.isArray(response.data)) {
+    return response.data.reduce<Record<string, WorkflowOnlineUser[]>>((acc, item) => {
+      if (item?.app_id)
+        acc[item.app_id] = item.users || []
+      return acc
+    }, {})
+  }
+
+  return Object.entries(response.data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [appId, users]) => {
+    if (appId)
+      acc[appId] = users || []
+    return acc
+  }, {})
 }
 
 export const fetchAppDetail = ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
@@ -14,10 +41,6 @@ export const fetchAppDetail = ({ url, id }: { url: string, id: string }): Promis
 
 export const fetchAppDetailDirect = async ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
-}
-
-export const fetchAppTemplates = ({ url }: { url: string }): Promise<AppTemplatesResponse> => {
-  return get<AppTemplatesResponse>(url)
 }
 
 export const createApp = ({
@@ -112,15 +135,6 @@ export const updateAppSiteStatus = ({ url, body }: { url: string, body: Record<s
   return post<AppDetailResponse>(url, { body })
 }
 
-export const updateAppApiStatus = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(url, { body })
-}
-
-// path: /apps/{appId}/rate-limit
-export const updateAppRateLimit = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(url, { body })
-}
-
 export const updateAppSiteAccessToken = ({ url }: { url: string }): Promise<UpdateAppSiteCodeResponse> => {
   return post<UpdateAppSiteCodeResponse>(url)
 }
@@ -129,41 +143,8 @@ export const updateAppSiteConfig = ({ url, body }: { url: string, body: Record<s
   return post<AppDetailResponse>(url, { body })
 }
 
-export const getAppDailyMessages = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyMessagesResponse> => {
-  return get<AppDailyMessagesResponse>(url, { params })
-}
-
-export const getAppDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyConversationsResponse> => {
-  return get<AppDailyConversationsResponse>(url, { params })
-}
-
-export const getWorkflowDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<WorkflowDailyConversationsResponse> => {
-  return get<WorkflowDailyConversationsResponse>(url, { params })
-}
-
-export const getAppStatistics = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppStatisticsResponse> => {
-  return get<AppStatisticsResponse>(url, { params })
-}
-
-export const getAppDailyEndUsers = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyEndUsersResponse> => {
-  return get<AppDailyEndUsersResponse>(url, { params })
-}
-
-export const getAppTokenCosts = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppTokenCostsResponse> => {
-  return get<AppTokenCostsResponse>(url, { params })
-}
-
 export const updateAppModelConfig = ({ url, body }: { url: string, body: Record<string, any> }): Promise<UpdateAppModelConfigResponse> => {
   return post<UpdateAppModelConfigResponse>(url, { body })
-}
-
-// For temp testing
-export const fetchAppListNoMock = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppListResponse> => {
-  return get<AppListResponse>(url, params)
-}
-
-export const fetchApiKeysList = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ApiKeysListResponse> => {
-  return get<ApiKeysListResponse>(url, params)
 }
 
 export const delApikey = ({ url, params }: { url: string, params: Record<string, any> }): Promise<CommonResponse> => {
@@ -172,23 +153,6 @@ export const delApikey = ({ url, params }: { url: string, params: Record<string,
 
 export const createApikey = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CreateApiKeyResponse> => {
   return post<CreateApiKeyResponse>(url, body)
-}
-
-export const validateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<ValidateOpenAIKeyResponse> => {
-  return post<ValidateOpenAIKeyResponse>(url, { body })
-}
-
-export const updateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<UpdateOpenAIKeyResponse> => {
-  return post<UpdateOpenAIKeyResponse>(url, { body })
-}
-
-export const generationIntroduction = ({ url, body }: { url: string, body: { prompt_template: string } }): Promise<GenerationIntroductionResponse> => {
-  return post<GenerationIntroductionResponse>(url, { body })
-}
-
-export const fetchAppVoices = ({ appId, language }: { appId: string, language?: string }): Promise<AppVoicesListResponse> => {
-  language = language || 'en-US'
-  return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }
 
 // Tracing

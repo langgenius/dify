@@ -4,6 +4,7 @@ import type {
 import type {
   NodeProps,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -25,7 +26,6 @@ import {
 import {
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type SimpleNodeProps = NodeProps
 
@@ -53,7 +53,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px]',
+        'flex rounded-2xl border-2',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
       )}
@@ -68,11 +68,11 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           'rounded-[15px] border border-transparent',
           'w-[240px] bg-workflow-block-bg',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && '!border-state-accent-solid',
-          showSuccessBorder && '!border-state-success-solid',
-          showFailedBorder && '!border-state-destructive-solid',
-          showExceptionBorder && '!border-state-warning-solid',
-          data._isBundled && '!shadow-lg',
+          showRunningBorder && 'border-state-accent-solid!',
+          showSuccessBorder && 'border-state-success-solid!',
+          showFailedBorder && 'border-state-destructive-solid!',
+          showExceptionBorder && 'border-state-warning-solid!',
+          data._isBundled && 'shadow-lg!',
         )}
       >
         {
@@ -80,7 +80,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
             <NodeTargetHandle
               id={id}
               data={data}
-              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleClassName="top-4! -left-[9px]! translate-y-0!"
               handleId="target"
             />
           )
@@ -94,7 +94,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           )
         }
         <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
         )}
         >
           <BlockIcon
@@ -104,7 +104,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>
               {data.title}

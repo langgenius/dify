@@ -8,6 +8,7 @@ from collections.abc import Generator
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app_factory import create_app
@@ -47,7 +48,7 @@ os.environ["OPENDAL_FS_ROOT"] = "/tmp/dify-storage"
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 os.environ.setdefault("OPENDAL_SCHEME", "fs")
 
-_CACHED_APP = create_app()
+_SIO_APP, _CACHED_APP = create_app()
 
 
 @pytest.fixture(scope="session")
@@ -83,15 +84,15 @@ def setup_account(request) -> Generator[Account, None, None]:
 
     with _CACHED_APP.test_request_context():
         with Session(bind=db.engine, expire_on_commit=False) as session:
-            account = session.query(Account).filter_by(email=email).one()
+            account = session.scalars(select(Account).filter_by(email=email)).one()
 
     yield account
 
     with _CACHED_APP.test_request_context():
-        db.session.query(DifySetup).delete()
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Account).delete()
-        db.session.query(Tenant).delete()
+        db.session.execute(delete(DifySetup))
+        db.session.execute(delete(TenantAccountJoin))
+        db.session.execute(delete(Account))
+        db.session.execute(delete(Tenant))
         db.session.commit()
 
 

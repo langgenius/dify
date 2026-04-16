@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Tooltip from '../../tooltip'
 
 export type LabelProps = {
@@ -30,8 +30,8 @@ const Label = ({
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className="system-xs-regular ml-1 text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
-      {isRequired && <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>}
+      {!isRequired && showOptional && <div className="ml-1 system-xs-regular text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
+      {isRequired && <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>}
       {tooltip && (
         <Tooltip
           popupContent={

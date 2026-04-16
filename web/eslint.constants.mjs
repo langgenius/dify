@@ -54,20 +54,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   },
   {
     group: [
-      '**/base/confirm',
-      '**/base/confirm/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/popover',
-      '**/base/popover/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/dropdown',
       '**/base/dropdown/index',
     ],
@@ -79,15 +65,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/dialog/index',
     ],
     message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/toast',
-      '**/base/toast/index',
-      '**/base/toast/context',
-      '**/base/toast/context/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/toast instead. See issue #32811.',
   },
 ]
 

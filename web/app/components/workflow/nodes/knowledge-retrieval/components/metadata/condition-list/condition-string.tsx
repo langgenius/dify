@@ -45,7 +45,7 @@ const ConditionString = ({
         valueMethod={valueMethod}
         onValueMethodChange={onValueMethodChange}
       />
-      <div className="ml-1 mr-1.5 h-4 w-[1px] bg-divider-regular"></div>
+      <div className="ml-1 mr-1.5 h-4 w-px bg-divider-regular"></div>
       {
         valueMethod === 'variable' && !isCommonVariable && (
           <ConditionVariableSelector
@@ -70,7 +70,7 @@ const ConditionString = ({
       {
         valueMethod === 'constant' && (
           <Input
-            className="border-none bg-transparent outline-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
+            className="border-none bg-transparent outline-hidden hover:bg-transparent focus:bg-transparent focus:shadow-none"
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={t('nodes.knowledgeRetrieval.metadata.panel.placeholder', { ns: 'workflow' })}
