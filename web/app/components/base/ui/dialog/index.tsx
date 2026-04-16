@@ -42,14 +42,14 @@ export function DialogCloseButton({
 type DialogContentProps = {
   children: ReactNode
   className?: string
-  overlayClassName?: string
-  backdropProps?: BaseDialog.Backdrop.Props
+  backdropClassName?: string
+  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
 }
 
 export function DialogContent({
   children,
   className,
-  overlayClassName,
+  backdropClassName,
   backdropProps,
 }: DialogContentProps) {
   return (
@@ -59,8 +59,7 @@ export function DialogContent({
         className={cn(
           'fixed inset-0 z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
-          overlayClassName,
-          backdropProps?.className,
+          backdropClassName,
         )}
       />
       <BaseDialog.Popup
