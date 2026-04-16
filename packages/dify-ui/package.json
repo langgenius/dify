@@ -6,19 +6,31 @@
   "exports": {
     "./styles.css": "./src/styles/styles.css",
     "./tailwind-preset": {
-      "import": "./src/tailwind-preset.ts",
-      "types": "./src/tailwind-preset.ts"
+      "types": "./src/tailwind-preset.ts",
+      "import": "./src/tailwind-preset.ts"
     },
     "./cn": {
-      "import": "./src/cn.ts",
-      "types": "./src/cn.ts"
+      "types": "./src/cn.ts",
+      "import": "./src/cn.ts"
     }
+  },
+  "scripts": {
+    "check": "vp check --fix",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "type-check": "tsgo --noEmit"
   },
   "dependencies": {
     "clsx": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:"
+    "@antfu/eslint-config": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "eslint": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

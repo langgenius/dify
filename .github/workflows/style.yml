@@ -120,6 +120,16 @@ jobs:
         working-directory: ./web
         run: vp run knip
 
+      - name: dify-ui lint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./packages/dify-ui
+        run: vp run lint
+
+      - name: dify-ui type check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./packages/dify-ui
+        run: vp run type-check
+
       - name: Save ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4

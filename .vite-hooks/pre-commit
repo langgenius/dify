@@ -6,6 +6,7 @@ files=$(git diff --cached --name-only)
 
 api_modified=false
 web_modified=false
+packages_modified=false
 skip_web_checks=false
 
 git_path() {
@@ -30,8 +31,10 @@ do
             api_modified=true
             ;;
         web/*)
-            # set web_modified flag to true
             web_modified=true
+            ;;
+        packages/*)
+            packages_modified=true
             ;;
     esac
 done
@@ -96,4 +99,15 @@ if $web_modified; then
     fi
 
     cd ../
+fi
+
+if $packages_modified; then
+    if $skip_web_checks; then
+        echo "Git operation in progress, skipping packages checks"
+    else
+        echo "Running staged checks on packages/dify-ui"
+        cd ./packages/dify-ui || exit 1
+        vp staged
+        cd ../../
+    fi
 fi
