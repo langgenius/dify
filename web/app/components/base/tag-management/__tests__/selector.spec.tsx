@@ -1,7 +1,6 @@
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { act } from 'react'
 import TagSelector from '../selector'
 import { useStore as useTagStore } from '../store'
@@ -38,54 +37,6 @@ vi.mock('@/service/tag', () => ({
   unBindTag,
 }))
 
-// Mock popover for deterministic open/close behavior in unit tests.
-vi.mock('@/app/components/base/popover', () => {
-  type PopoverContentProps = {
-    open?: boolean
-    onClose?: () => void
-  }
-  type MockPopoverProps = {
-    htmlContent: React.ReactNode
-    btnElement?: React.ReactNode
-    btnClassName?: string | ((open: boolean) => string)
-  }
-
-  const MockPopover = ({ htmlContent, btnElement, btnClassName }: MockPopoverProps) => {
-    const [isOpen, setIsOpen] = React.useState(false)
-    const computedClassName = typeof btnClassName === 'function'
-      ? btnClassName(isOpen)
-      : btnClassName
-
-    const content = React.isValidElement(htmlContent)
-      // eslint-disable-next-line react/no-clone-element
-      ? React.cloneElement(htmlContent as React.ReactElement<PopoverContentProps>, {
-          open: isOpen,
-          onClose: () => setIsOpen(false),
-        })
-      : htmlContent
-
-    return (
-      <div data-testid="custom-popover">
-        <button
-          type="button"
-          aria-expanded={isOpen}
-          className={computedClassName}
-          onClick={() => setIsOpen(prev => !prev)}
-        >
-          {btnElement}
-        </button>
-        {isOpen && (
-          <div data-testid="popover-content">
-            {content}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return { __esModule: true, default: MockPopover }
-})
-
 // i18n keys rendered in "ns.key" format
 const i18n = {
   addTag: 'common.tag.addTag',
@@ -109,6 +60,12 @@ const defaultProps = {
 }
 
 describe('TagSelector', () => {
+  const getPanelTagRow = (tagName: string) => {
+    const row = screen.getAllByTestId('tag-row').find(tagRow => within(tagRow).queryByText(tagName))
+    expect(row).toBeDefined()
+    return row as HTMLElement
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(fetchTagList).mockResolvedValue(appTags)
@@ -223,8 +180,8 @@ describe('TagSelector', () => {
       const triggerButton = screen.getByRole('button', { name: /Frontend/i })
       await user.click(triggerButton)
 
-      const popoverContent = await screen.findByTestId('popover-content')
-      await user.click(within(popoverContent).getByText('Backend'))
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Backend'))
 
       // Close panel to trigger unmount side effects.
       await user.click(triggerButton)
@@ -244,8 +201,8 @@ describe('TagSelector', () => {
       const triggerButton = screen.getByRole('button', { name: /Frontend/i })
       await user.click(triggerButton)
 
-      const popoverContent = await screen.findByTestId('popover-content')
-      await user.click(within(popoverContent).getByText('Frontend'))
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Frontend'))
 
       // Close panel to trigger unmount side effects.
       await user.click(triggerButton)
