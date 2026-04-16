@@ -1,8 +1,8 @@
 {
   "name": "migrate-no-unchecked-indexed-access",
-  "private": true,
-  "version": "0.0.0-private",
   "type": "module",
+  "version": "0.0.0-private",
+  "private": true,
   "bin": {
     "migrate-no-unchecked-indexed-access": "./bin/migrate-no-unchecked-indexed-access.js"
   },

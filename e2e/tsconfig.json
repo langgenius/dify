@@ -2,8 +2,8 @@
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM"],
-    "allowJs": false,
     "types": ["node", "@playwright/test", "@cucumber/cucumber"],
+    "allowJs": false,
     "verbatimModuleSyntax": true
   },
   "include": ["./**/*.ts"],
