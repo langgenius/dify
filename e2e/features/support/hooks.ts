@@ -1,11 +1,12 @@
-import { After, AfterAll, Before, BeforeAll, Status, setDefaultTimeout } from '@cucumber/cucumber'
-import { chromium, type Browser } from '@playwright/test'
+import type { Browser } from '@playwright/test'
+import type { DifyWorld } from './world'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
+import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
-import type { DifyWorld } from './world'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
@@ -15,7 +16,7 @@ let browser: Browser | undefined
 setDefaultTimeout(60_000)
 
 const sanitizeForPath = (value: string) =>
-  value.replaceAll(/[^a-zA-Z0-9_-]+/g, '-').replaceAll(/^-+|-+$/g, '')
+  value.replaceAll(/[^\w-]+/g, '-').replaceAll(/^-+|-+$/g, '')
 
 const writeArtifact = async (
   scenarioName: string,
@@ -44,16 +45,18 @@ BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
 })
 
 Before(async function (this: DifyWorld, { pickle }) {
-  if (!browser) throw new Error('Shared Playwright browser is not available.')
+  if (!browser)
+    throw new Error('Shared Playwright browser is not available.')
 
-  const isUnauthenticatedScenario = pickle.tags.some((tag) => tag.name === '@unauthenticated')
+  const isUnauthenticatedScenario = pickle.tags.some(tag => tag.name === '@unauthenticated')
 
-  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(browser)
+  if (isUnauthenticatedScenario)
+    await this.startUnauthenticatedSession(browser)
   else await this.startAuthenticatedSession(browser)
 
   this.scenarioStartedAt = Date.now()
 
-  const tags = pickle.tags.map((tag) => tag.name).join(' ')
+  const tags = pickle.tags.map(tag => tag.name).join(' ')
   console.log(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 

@@ -17,7 +17,7 @@ const ApiServer: FC<ApiServerProps> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-y-2">
-      <div className="mr-2 flex h-8 items-center rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-normal pl-1.5 pr-1 leading-5">
+      <div className="mr-2 flex h-8 items-center rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-normal pr-1 pl-1.5 leading-5">
         <div className="mr-0.5 h-5 shrink-0 rounded-md border border-divider-subtle px-1.5 text-[11px] text-text-tertiary">{t('apiServer', { ns: 'appApi' })}</div>
         <div className="w-fit truncate px-1 text-[13px] font-medium text-text-secondary sm:w-[248px]">{apiBaseUrl}</div>
         <div className="mx-1 h-[14px] w-px bg-divider-regular"></div>

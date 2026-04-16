@@ -22,7 +22,7 @@ const HeadersSection: FC<HeadersSectionProps> = ({
       <div className="mb-1 flex h-6 items-center">
         <span className="system-sm-medium text-text-secondary">{t('mcp.modal.headers', { ns: 'tools' })}</span>
       </div>
-      <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.modal.headersTip', { ns: 'tools' })}</div>
+      <div className="mb-2 body-xs-regular text-text-tertiary">{t('mcp.modal.headersTip', { ns: 'tools' })}</div>
       <HeadersInput
         headersItems={headers}
         onChange={onHeadersChange}

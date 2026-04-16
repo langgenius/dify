@@ -94,7 +94,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">{t('comments.filter.all', { ns: 'workflow' })}</span>
-                {!showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
+                {!showOnlyMine && <RiCheckLine className="h-4 w-4 text-primary-600" />}
               </button>
               <button
                 className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
@@ -104,7 +104,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">{t('comments.filter.onlyYourThreads', { ns: 'workflow' })}</span>
-                {showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
+                {showOnlyMine && <RiCheckLine className="h-4 w-4 text-primary-600" />}
               </button>
               <Divider type="horizontal" className="my-1" />
               <div

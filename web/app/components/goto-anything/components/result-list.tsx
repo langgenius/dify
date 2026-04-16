@@ -32,7 +32,7 @@ const ResultList: FC<ResultListProps> = ({ groupedResults, onSelect }) => {
         <Command.Group
           key={type}
           heading={getGroupHeading(type)}
-          className="p-2 capitalize text-text-secondary"
+          className="p-2 text-text-secondary capitalize"
         >
           {results.map(result => (
             <ResultItem

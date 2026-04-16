@@ -1,6 +1,6 @@
+import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
 
 When('I open the apps console', async function (this: DifyWorld) {
   await this.getPage().goto('/apps')

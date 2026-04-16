@@ -23,7 +23,7 @@ const Card: FC<CardProps> = ({
           <div>
             {
               log.map((item, index) => (
-                <div key={index} className="group/card mb-2 rounded-xl px-4 pb-4 pt-2 last-of-type:mb-0 hover:bg-state-base-hover">
+                <div key={index} className="group/card mb-2 rounded-xl px-4 pt-2 pb-4 last-of-type:mb-0 hover:bg-state-base-hover">
                   <div className="flex h-8 items-center justify-between">
                     <div className="font-semibold text-[#2D31A6]">{item.role.toUpperCase()}</div>
                     <CopyFeedbackNew className="hidden h-6 w-6 group-hover/card:block" content={item.text} />

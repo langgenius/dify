@@ -29,7 +29,7 @@ export const LoopStartNodeDumb = () => {
   const { t } = useTranslation()
 
   return (
-    <div className="nodrag relative left-[17px] top-[21px] z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
+    <div className="nodrag relative top-[21px] left-[17px] z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
       <Tooltip popupContent={t('blocks.loop-start', { ns: 'workflow' })} asChild={false}>
         <div className="flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500">
           <RiHome5Fill className="h-3 w-3 text-text-primary-on-surface" />

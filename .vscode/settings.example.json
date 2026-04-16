@@ -1,12 +1,16 @@
 {
-  // Disable the default formatter, use eslint instead
-  "prettier.enable": false,
-  "editor.formatOnSave": false,
+  "cucumber.features": [
+    "e2e/features/**/*.feature",
+  ],
+  "cucumber.glue": [
+    "e2e/features/**/*.ts",
+  ],
+
+  "tailwindCSS.experimental.configFile": "web/app/styles/globals.css",
 
   // Auto fix
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "never"
   },
 
   // Silent the stylistic rules in your IDE, but still auto fix them

@@ -22,7 +22,7 @@ const OperationItem = ({
       }}
     >
       <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
-      <span className="system-md-regular px-1 text-text-secondary">
+      <span className="px-1 system-md-regular text-text-secondary">
         {name}
       </span>
     </div>
