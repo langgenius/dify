@@ -116,6 +116,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_SITE_ABOUT: z.string().optional(),
+  NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
   NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: z.email().optional(),
   NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: coercedBoolean.default(false),
   /**
@@ -186,6 +187,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('publicApiPrefix'),
     NEXT_PUBLIC_SENTRY_DSN: isServer ? process.env.NEXT_PUBLIC_SENTRY_DSN : getRuntimeEnvFromBody('sentryDsn'),
     NEXT_PUBLIC_SITE_ABOUT: isServer ? process.env.NEXT_PUBLIC_SITE_ABOUT : getRuntimeEnvFromBody('siteAbout'),
+    NEXT_PUBLIC_SOCKET_URL: isServer ? process.env.NEXT_PUBLIC_SOCKET_URL : getRuntimeEnvFromBody('socketUrl'),
     NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS : getRuntimeEnvFromBody('supportEmailAddress'),
     NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN : getRuntimeEnvFromBody('supportMailLogin'),
     NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS : getRuntimeEnvFromBody('textGenerationTimeoutMs'),

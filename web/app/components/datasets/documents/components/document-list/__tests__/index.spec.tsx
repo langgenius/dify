@@ -21,6 +21,16 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: { doc_form: ChunkingMode.text } }),
 }))
 
+vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
+  default: () => ({
+    isShowEditModal: false,
+    showEditModal: vi.fn(),
+    hideEditModal: vi.fn(),
+    originalList: [],
+    handleSave: vi.fn(),
+  }),
+}))
+
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: { retry: false, gcTime: 0 },
