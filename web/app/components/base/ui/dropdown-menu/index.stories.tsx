@@ -28,7 +28,7 @@ const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
 )
 
 const meta = {
-  title: 'Base/Navigation/DropdownMenu',
+  title: 'Base/UI/DropdownMenu',
   component: DropdownMenu,
   parameters: {
     layout: 'centered',

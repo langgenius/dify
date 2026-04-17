@@ -16,7 +16,7 @@ import {
 const triggerWidth = 'w-64'
 
 const meta = {
-  title: 'Base/Form/Select',
+  title: 'Base/UI/Select',
   component: Select,
   parameters: {
     layout: 'centered',

@@ -14,7 +14,7 @@ import { Button } from '../button'
 const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 
 const meta = {
-  title: 'Base/Overlays/Popover',
+  title: 'Base/UI/Popover',
   component: Popover,
   parameters: {
     layout: 'centered',

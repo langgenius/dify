@@ -12,7 +12,7 @@ const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-compo
 const iconButtonClassName = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs hover:bg-state-base-hover'
 
 const meta = {
-  title: 'Base/Overlays/Tooltip',
+  title: 'Base/UI/Tooltip',
   component: Tooltip,
   decorators: [
     Story => (
