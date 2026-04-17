@@ -13,7 +13,7 @@ import {
 } from '.'
 
 const meta = {
-  title: 'Base/Layout/ScrollArea',
+  title: 'Base/UI/ScrollArea',
   component: ScrollAreaRoot,
   parameters: {
     layout: 'padded',
