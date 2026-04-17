@@ -33,7 +33,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/tooltip',
       '**/base/tooltip/index',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/tooltip instead. See issue #32767.',
   },
   {
     group: [
@@ -50,7 +50,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/select/custom',
       '**/base/select/pure',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/select instead. See issue #32767.',
   },
   {
     group: [

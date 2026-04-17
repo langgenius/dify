@@ -57,7 +57,7 @@ vi.mock('@/app/components/base/badge', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/tooltip', () => ({
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

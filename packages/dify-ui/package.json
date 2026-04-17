@@ -13,14 +13,6 @@
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
     },
-    "./placement": {
-      "types": "./src/placement.ts",
-      "import": "./src/placement.ts"
-    },
-    "./overlay-shared": {
-      "types": "./src/overlay-shared.ts",
-      "import": "./src/overlay-shared.ts"
-    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
@@ -33,17 +25,33 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./context-menu": {
+      "types": "./src/context-menu/index.tsx",
+      "import": "./src/context-menu/index.tsx"
+    },
     "./dialog": {
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
+    },
+    "./dropdown-menu": {
+      "types": "./src/dropdown-menu/index.tsx",
+      "import": "./src/dropdown-menu/index.tsx"
     },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
     },
+    "./popover": {
+      "types": "./src/popover/index.tsx",
+      "import": "./src/popover/index.tsx"
+    },
     "./scroll-area": {
       "types": "./src/scroll-area/index.tsx",
       "import": "./src/scroll-area/index.tsx"
+    },
+    "./select": {
+      "types": "./src/select/index.tsx",
+      "import": "./src/select/index.tsx"
     },
     "./slider": {
       "types": "./src/slider/index.tsx",
@@ -56,6 +64,10 @@
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
+    },
+    "./tooltip": {
+      "types": "./src/tooltip/index.tsx",
+      "import": "./src/tooltip/index.tsx"
     }
   },
   "scripts": {

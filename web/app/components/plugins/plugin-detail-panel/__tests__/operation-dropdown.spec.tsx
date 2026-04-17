@@ -14,7 +14,7 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children, open }: { children: ReactNode, open: boolean }) => (
     <div data-testid="dropdown-menu" data-open={open}>{children}</div>
   ),

@@ -1,6 +1,4 @@
 import type { Plan } from '@/app/components/billing/type'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
@@ -9,7 +7,9 @@ import {
   SelectItemText,
   SelectLabel,
   SelectTrigger,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useTranslation } from 'react-i18next'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'

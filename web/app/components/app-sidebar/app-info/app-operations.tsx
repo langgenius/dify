@@ -1,15 +1,15 @@
 import type { JSX } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiMoreLine } from '@remixicon/react'
-import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../../base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { RiMoreLine } from '@remixicon/react'
+import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type Operation = {
   id: string

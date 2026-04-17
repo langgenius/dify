@@ -1,19 +1,18 @@
 'use client'
 
-import type { Placement } from '@langgenius/dify-ui/placement'
 import type { VariantProps } from 'class-variance-authority'
 import type { ReactNode } from 'react'
+import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cva } from 'class-variance-authority'
+import { cn } from '../cn'
 import {
   overlayLabelClassName,
   overlaySeparatorClassName,
-} from '@langgenius/dify-ui/overlay-shared'
-import { parsePlacement } from '@langgenius/dify-ui/placement'
-import { cva } from 'class-variance-authority'
+} from '../overlay-shared'
+import { parsePlacement } from '../placement'
 
 /** @public */
-// eslint-disable-next-line no-barrel-files/no-barrel-files
 export type { Placement }
 
 export const Select = BaseSelect.Root

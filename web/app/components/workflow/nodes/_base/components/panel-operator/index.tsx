@@ -1,15 +1,15 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Node } from '@/app/components/workflow/types'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import PanelOperatorPopup from './panel-operator-popup'
 
 type PanelOperatorProps = {

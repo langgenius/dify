@@ -3,11 +3,6 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
-import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
-import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import {
   Select,
   SelectContent,
@@ -16,7 +11,12 @@ import {
   SelectItemText,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import * as React from 'react'
+import Checkbox from '@/app/components/base/checkbox'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

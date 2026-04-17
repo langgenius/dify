@@ -1,10 +1,10 @@
 'use client'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
 
 type Props = {

@@ -190,7 +190,7 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   type DropdownMenuContextValue = {
     isOpen: boolean
     setOpen: (open: boolean) => void

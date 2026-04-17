@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiMoreFill } from '@remixicon/react'
-import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { RiMoreFill } from '@remixicon/react'
+import * as React from 'react'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import MenuItem from './menu-item'
 import useContextMenu from './use-context-menu'

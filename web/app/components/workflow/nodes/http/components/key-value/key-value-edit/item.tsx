@@ -3,10 +3,6 @@ import type { FC } from 'react'
 import type { KeyValue } from '../../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { produce } from 'immer'
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
@@ -15,7 +11,11 @@ import {
   SelectItemText,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'

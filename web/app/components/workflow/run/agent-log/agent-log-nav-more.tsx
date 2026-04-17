@@ -1,13 +1,13 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiMoreLine } from '@remixicon/react'
-import { useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { RiMoreLine } from '@remixicon/react'
+import { useState } from 'react'
 
 type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]

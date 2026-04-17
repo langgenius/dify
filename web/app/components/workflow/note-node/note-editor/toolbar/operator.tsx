@@ -1,17 +1,17 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { Switch } from '@langgenius/dify-ui/switch'
-import {
-  memo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { Switch } from '@langgenius/dify-ui/switch'
+import {
+  memo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 export type OperatorProps = {

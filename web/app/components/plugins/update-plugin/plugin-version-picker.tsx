@@ -1,16 +1,16 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
-import type { Placement } from '@/app/components/base/ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'

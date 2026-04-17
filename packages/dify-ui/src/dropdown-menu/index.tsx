@@ -1,10 +1,10 @@
 'use client'
 
-import type { OverlayItemVariant } from '@langgenius/dify-ui/overlay-shared'
-import type { Placement } from '@langgenius/dify-ui/placement'
 import type { ReactNode } from 'react'
+import type { OverlayItemVariant } from '../overlay-shared'
+import type { Placement } from '../placement'
 import { Menu } from '@base-ui/react/menu'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '../cn'
 import {
   overlayDestructiveClassName,
   overlayIndicatorClassName,
@@ -13,10 +13,9 @@ import {
   overlayPopupBaseClassName,
   overlayRowClassName,
   overlaySeparatorClassName,
-} from '@langgenius/dify-ui/overlay-shared'
-import { parsePlacement } from '@langgenius/dify-ui/placement'
+} from '../overlay-shared'
+import { parsePlacement } from '../placement'
 
-// eslint-disable-next-line no-barrel-files/no-barrel-files
 export type { Placement }
 
 export const DropdownMenu = Menu.Root

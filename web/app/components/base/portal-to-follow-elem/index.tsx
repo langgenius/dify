@@ -5,11 +5,11 @@
  * See: https://github.com/langgenius/dify/issues/32767
  *
  * Migration guide:
- * - Tooltip → `@/app/components/base/ui/tooltip`
- * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
- * - Popover → `@/app/components/base/ui/popover`
+ * - Tooltip → `@langgenius/dify-ui/tooltip`
+ * - Menu/Dropdown → `@langgenius/dify-ui/dropdown-menu`
+ * - Popover → `@langgenius/dify-ui/popover`
  * - Dialog/Modal → `@langgenius/dify-ui/dialog`
- * - Select → `@/app/components/base/ui/select`
+ * - Select → `@langgenius/dify-ui/select`
  */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
