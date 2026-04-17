@@ -1,10 +1,6 @@
+import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@/app/components/base/ui/number-field'
-import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -13,7 +9,11 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
   NumberFieldUnit,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Tooltip from '@/app/components/base/tooltip'
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {

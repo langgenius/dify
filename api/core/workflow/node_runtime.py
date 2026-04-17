@@ -4,6 +4,32 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.file_access import DatabaseFileAccessController
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.model_manager import ModelInstance
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
+from core.plugin.impl.plugin import PluginInstaller
+from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+)
+from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
+from core.tools.errors import ToolInvokeError
+from core.tools.tool_engine import ToolEngine
+from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.workflow.file_reference import build_file_reference
+from extensions.ext_database import db
+from factories import file_factory
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
@@ -34,32 +60,6 @@ from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.app.file_access import DatabaseFileAccessController
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_manager import ModelInstance
-from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
-from core.plugin.impl.plugin import PluginInstaller
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormRepository,
-    HumanInputFormRepositoryImpl,
-)
-from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
-from core.tools.errors import ToolInvokeError
-from core.tools.tool_engine import ToolEngine
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.file_reference import build_file_reference
-from extensions.ext_database import db
-from factories import file_factory
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -76,12 +76,11 @@ from .human_input_compat import (
 from .system_variables import SystemVariableKey, get_system_text
 
 if TYPE_CHECKING:
+    from core.tools.__base.tool import Tool
+    from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.file import File
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
-
-    from core.tools.__base.tool import Tool
-    from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
 
 
 _file_access_controller = DatabaseFileAccessController()

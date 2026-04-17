@@ -77,7 +77,7 @@ describe('Filter', () => {
     it('should render filter components', () => {
       render(<Filter {...defaultProps} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
     })
 
     it('should return null when loading', () => {
@@ -89,13 +89,13 @@ describe('Filter', () => {
     it('should render sort component in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
     })
 
     it('should not render sort component when not in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode={false} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
     })
   })
 
@@ -105,23 +105,23 @@ describe('Filter', () => {
     })
 
     it('should have today period with value 0', () => {
-      expect(TIME_PERIOD_MAPPING['1'].value).toBe(0)
-      expect(TIME_PERIOD_MAPPING['1'].name).toBe('today')
+      expect(TIME_PERIOD_MAPPING['1']!.value).toBe(0)
+      expect(TIME_PERIOD_MAPPING['1']!.name).toBe('today')
     })
 
     it('should have last7days period with value 7', () => {
-      expect(TIME_PERIOD_MAPPING['2'].value).toBe(7)
-      expect(TIME_PERIOD_MAPPING['2'].name).toBe('last7days')
+      expect(TIME_PERIOD_MAPPING['2']!.value).toBe(7)
+      expect(TIME_PERIOD_MAPPING['2']!.name).toBe('last7days')
     })
 
     it('should have last4weeks period with value 28', () => {
-      expect(TIME_PERIOD_MAPPING['3'].value).toBe(28)
-      expect(TIME_PERIOD_MAPPING['3'].name).toBe('last4weeks')
+      expect(TIME_PERIOD_MAPPING['3']!.value).toBe(28)
+      expect(TIME_PERIOD_MAPPING['3']!.name).toBe('last4weeks')
     })
 
     it('should have allTime period with value -1', () => {
-      expect(TIME_PERIOD_MAPPING['9'].value).toBe(-1)
-      expect(TIME_PERIOD_MAPPING['9'].name).toBe('allTime')
+      expect(TIME_PERIOD_MAPPING['9']!.value).toBe(-1)
+      expect(TIME_PERIOD_MAPPING['9']!.name).toBe('allTime')
     })
   })
 
@@ -158,25 +158,25 @@ describe('Filter', () => {
     it('should update and clear period, annotation, and sort filters', () => {
       render(<Filter {...defaultProps} isChatMode />)
 
-      fireEvent.click(screen.getAllByText('select-9')[0])
+      fireEvent.click(screen.getAllByText('select-9')[0]!)
       expect(mockSetQueryParams).toHaveBeenCalledWith({
         ...defaultQueryParams,
         period: '9',
       })
 
-      fireEvent.click(screen.getAllByText('clear-chip')[0])
+      fireEvent.click(screen.getAllByText('clear-chip')[0]!)
       expect(mockSetQueryParams).toHaveBeenCalledWith({
         ...defaultQueryParams,
         period: '9',
       })
 
-      fireEvent.click(screen.getAllByText('select-not_annotated')[0])
+      fireEvent.click(screen.getAllByText('select-not_annotated')[0]!)
       expect(mockSetQueryParams).toHaveBeenCalledWith({
         ...defaultQueryParams,
         annotation_status: 'not_annotated',
       })
 
-      fireEvent.click(screen.getAllByText('clear-chip')[1])
+      fireEvent.click(screen.getAllByText('clear-chip')[1]!)
       expect(mockSetQueryParams).toHaveBeenCalledWith({
         ...defaultQueryParams,
         annotation_status: 'all',
@@ -200,7 +200,8 @@ describe('Filter', () => {
       render(<Filter {...propsWithPeriod} />)
 
       // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
-      expect(screen.getByText('filter.period.today')).toBeInTheDocument()
+      // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
+      expect(screen.getByText('filter.period.today'))!.toBeInTheDocument()
     })
 
     it('should display "last7days" when period is set to 2', () => {
@@ -211,14 +212,15 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithPeriod} />)
 
-      expect(screen.getByText('filter.period.last7days')).toBeInTheDocument()
+      expect(screen.getByText('filter.period.last7days'))!.toBeInTheDocument()
     })
 
     it('should display "allTime" when period is set to 9', () => {
       render(<Filter {...defaultProps} />)
 
       // Default period is '9' which maps to 'allTime'
-      expect(screen.getByText('filter.period.allTime')).toBeInTheDocument()
+      // Default period is '9' which maps to 'allTime'
+      expect(screen.getByText('filter.period.allTime'))!.toBeInTheDocument()
     })
 
     it('should display annotated status with count when annotation_status is annotated', () => {
@@ -230,7 +232,8 @@ describe('Filter', () => {
       render(<Filter {...propsWithAnnotation} />)
 
       // The mock returns count: 10, so the text should include the count
-      expect(screen.getByText('filter.annotation.annotated (10)')).toBeInTheDocument()
+      // The mock returns count: 10, so the text should include the count
+      expect(screen.getByText('filter.annotation.annotated (10)'))!.toBeInTheDocument()
     })
 
     it('should display not_annotated status when annotation_status is not_annotated', () => {
@@ -241,14 +244,15 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithNotAnnotated} />)
 
-      expect(screen.getByText('filter.annotation.not_annotated')).toBeInTheDocument()
+      expect(screen.getByText('filter.annotation.not_annotated'))!.toBeInTheDocument()
     })
 
     it('should display all annotation status when annotation_status is all', () => {
       render(<Filter {...defaultProps} />)
 
       // Default annotation_status is 'all'
-      expect(screen.getByText('filter.annotation.all')).toBeInTheDocument()
+      // Default annotation_status is 'all'
+      expect(screen.getByText('filter.annotation.all'))!.toBeInTheDocument()
     })
 
     it('should return null when annotation count data is unavailable', () => {
@@ -269,7 +273,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithSort} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
     })
 
     it('should handle descending sort order', () => {
@@ -281,7 +285,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithDescSort} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
     })
   })
 })

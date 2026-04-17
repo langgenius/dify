@@ -18,7 +18,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -404,7 +404,7 @@ describe('useLocalFileUpload', () => {
 
       // Should only process first 5 files (batch_count_limit)
       const firstCall = mockSetLocalFileList.mock.calls[0]
-      expect(firstCall[0].length).toBeLessThanOrEqual(5)
+      expect(firstCall![0].length).toBeLessThanOrEqual(5)
     })
   })
 
@@ -591,7 +591,8 @@ describe('useLocalFileUpload', () => {
       })
 
       // dragover should not throw
-      expect(dropzone).toBeInTheDocument()
+      // dragover should not throw
+      expect(dropzone)!.toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {
@@ -715,7 +716,7 @@ describe('useLocalFileUpload', () => {
       await waitFor(() => {
         expect(mockSetLocalFileList).toHaveBeenCalled()
         // Should only have 1 file (limited by supportBatchUpload: false)
-        const callArgs = mockSetLocalFileList.mock.calls[0][0]
+        const callArgs = mockSetLocalFileList.mock.calls[0]![0]
         expect(callArgs.length).toBe(1)
       })
     })
@@ -873,7 +874,7 @@ describe('useLocalFileUpload', () => {
       })
 
       await waitFor(() => {
-        const callArgs = mockSetLocalFileList.mock.calls[0][0]
+        const callArgs = mockSetLocalFileList.mock.calls[0]![0]
         expect(callArgs[0].progress).toBe(PROGRESS_NOT_STARTED)
       })
     })
@@ -899,7 +900,7 @@ describe('useLocalFileUpload', () => {
 
       await waitFor(() => {
         const calls = mockSetLocalFileList.mock.calls
-        const lastCall = calls[calls.length - 1][0]
+        const lastCall = calls[calls.length - 1]![0]
         expect(lastCall.some((f: FileItem) => f.progress === PROGRESS_ERROR)).toBe(true)
       })
     })

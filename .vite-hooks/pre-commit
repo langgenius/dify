@@ -56,44 +56,9 @@ if $api_modified; then
     fi
 fi
 
-if $web_modified; then
-    if $skip_web_checks; then
-        echo "Git operation in progress, skipping web checks"
-        exit 0
-    fi
-
-    echo "Running ESLint on web module"
-
-    if git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'; then
-        web_ts_modified=false
-    else
-        ts_diff_status=$?
-        if [ $ts_diff_status -eq 1 ]; then
-            web_ts_modified=true
-        else
-            echo "Unable to determine staged TypeScript changes (git exit code: $ts_diff_status)."
-            exit $ts_diff_status
-        fi
-    fi
-
-    cd ./web || exit 1
-    vp staged
-
-    if $web_ts_modified; then
-        echo "Running TypeScript type-check:tsgo"
-        if ! npm run type-check:tsgo; then
-            echo "Type check failed. Please run 'npm run type-check:tsgo' to fix the errors."
-            exit 1
-        fi
-    else
-        echo "No staged TypeScript changes detected, skipping type-check:tsgo"
-    fi
-
-    echo "Running knip"
-    if ! npm run knip; then
-        echo "Knip check failed. Please run 'npm run knip' to fix the errors."
-        exit 1
-    fi
-
-    cd ../
+if $skip_web_checks; then
+    echo "Git operation in progress, skipping web checks"
+    exit 0
 fi
+
+vp staged

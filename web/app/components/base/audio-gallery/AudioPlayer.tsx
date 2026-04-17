@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -95,7 +95,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       for (let i = 0; i < samples; i++) {
         let sum = 0
         for (let j = 0; j < blockSize; j++)
-          sum += Math.abs(channelData[i * blockSize + j])
+          sum += Math.abs(channelData[i * blockSize + j]!)
         // Apply nonlinear scaling to enhance small amplitudes
         waveformData.push((sum / blockSize) * 5)
       }
@@ -145,7 +145,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     e.preventDefault()
     const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
       if ('touches' in event)
-        return event.touches[0].clientX
+        return event.touches[0]!.clientX
       return event.clientX
     }
     const updateProgress = (clientX: number) => {

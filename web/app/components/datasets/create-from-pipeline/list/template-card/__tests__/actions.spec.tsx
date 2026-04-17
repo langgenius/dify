@@ -37,14 +37,12 @@ describe('Actions', () => {
 
     it('should render add icon', () => {
       const { container } = render(<Actions {...defaultProps} />)
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-add-line')).toBeInTheDocument()
     })
 
     it('should render arrow icon for details', () => {
       const { container } = render(<Actions {...defaultProps} />)
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThan(1)
+      expect(container.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
     })
   })
 
@@ -82,6 +80,16 @@ describe('Actions', () => {
       fireEvent.click(detailsButton!)
 
       expect(defaultProps.handleShowTemplateDetails).toHaveBeenCalledTimes(1)
+    })
+
+    it('should open more operations menu and close it after selecting edit', async () => {
+      render(<Actions {...defaultProps} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const editButton = await screen.findByText(/operations\.editInfo/i)
+      fireEvent.click(editButton)
+
+      expect(defaultProps.openEditModal).toHaveBeenCalledTimes(1)
     })
   })
 

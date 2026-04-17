@@ -58,7 +58,7 @@ vi.mock('lexical', () => ({
   COMMAND_PRIORITY_LOW: 1,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

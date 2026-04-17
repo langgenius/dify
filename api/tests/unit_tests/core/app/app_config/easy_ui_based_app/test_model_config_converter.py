@@ -2,8 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.entities.model_entities import ModelStatus
@@ -12,6 +10,8 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 class TestModelConfigConverter:

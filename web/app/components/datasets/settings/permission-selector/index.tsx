@@ -1,4 +1,5 @@
 import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
@@ -133,8 +133,8 @@ const PermissionSelector = ({
                     {
                       selectedMembers.length === 1 && (
                         <Avatar
-                          avatar={selectedMembers[0].avatar_url}
-                          name={selectedMembers[0].name}
+                          avatar={selectedMembers[0]!.avatar_url}
+                          name={selectedMembers[0]!.name}
                           size="xs"
                         />
                       )
@@ -143,14 +143,14 @@ const PermissionSelector = ({
                       selectedMembers.length >= 2 && (
                         <>
                           <Avatar
-                            avatar={selectedMembers[0].avatar_url}
-                            name={selectedMembers[0].name}
+                            avatar={selectedMembers[0]!.avatar_url}
+                            name={selectedMembers[0]!.name}
                             className="absolute top-0 left-0 z-0"
                             size="xxs"
                           />
                           <Avatar
-                            avatar={selectedMembers[1].avatar_url}
-                            name={selectedMembers[1].name}
+                            avatar={selectedMembers[1]!.avatar_url}
+                            name={selectedMembers[1]!.name}
                             className="absolute right-0 bottom-0 z-10"
                             size="xxs"
                           />

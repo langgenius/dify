@@ -2,6 +2,9 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useKeyPress } from 'ahooks'
 import {
   memo,
@@ -15,12 +18,6 @@ import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
@@ -35,7 +32,6 @@ import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { toast } from '../../base/ui/toast'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import {
@@ -182,20 +178,18 @@ const AppPublisher = ({
     catch { }
   }, [onRestore])
 
-  const handleTrigger = useCallback(() => {
-    const state = !open
-
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (disabled) {
       setOpen(false)
       return
     }
 
-    onToggle?.(state)
-    setOpen(state)
+    onToggle?.(nextOpen)
+    setOpen(nextOpen)
 
-    if (state)
+    if (nextOpen)
       setPublished(false)
-  }, [disabled, onToggle, open])
+  }, [disabled, onToggle])
 
   const handleOpenInExplore = useCallback(async () => {
     await openAsyncWindow(async () => {
@@ -203,7 +197,7 @@ const AppPublisher = ({
         throw new Error('App not found')
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0].id}`
+        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
@@ -267,26 +261,28 @@ const AppPublisher = ({
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={open}
-        onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: crossAxisOffset,
-        }}
+        onOpenChange={handleOpenChange}
       >
-        <PortalToFollowElemTrigger onClick={handleTrigger}>
-          <Button
-            variant="primary"
-            className="py-2 pr-2 pl-3"
-            disabled={disabled}
-          >
-            {t('common.publish', { ns: 'workflow' })}
-            <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-11">
+        <PopoverTrigger
+          render={(
+            <Button
+              variant="primary"
+              className="py-2 pr-2 pl-3"
+              disabled={disabled}
+            >
+              {t('common.publish', { ns: 'workflow' })}
+              <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
+            </Button>
+          )}
+        />
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={4}
+          alignOffset={crossAxisOffset}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <PublisherSummarySection
               debugWithMultipleModel={debugWithMultipleModel}
@@ -308,7 +304,10 @@ const AppPublisher = ({
               isAppAccessSet={isAppAccessSet}
               isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
               accessMode={appDetail?.access_mode}
-              onClick={() => setShowAppAccessControl(true)}
+              onClick={() => {
+                handleOpenChange(false)
+                setShowAppAccessControl(true)
+              }}
             />
             <PublisherActionsSection
               appDetail={appDetail}
@@ -317,9 +316,12 @@ const AppPublisher = ({
               disabledFunctionTooltip={disabledFunctionTooltip}
               handleEmbed={() => {
                 setEmbeddingModalOpen(true)
-                handleTrigger()
+                handleOpenChange(false)
               }}
-              handleOpenInExplore={handleOpenInExplore}
+              handleOpenInExplore={() => {
+                handleOpenChange(false)
+                handleOpenInExplore()
+              }}
               handlePublish={handlePublish}
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
@@ -334,7 +336,7 @@ const AppPublisher = ({
               workflowToolMessage={workflowToolMessage}
             />
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
         <EmbeddedModal
           siteInfo={appDetail?.site}
           isShow={embeddingModalOpen}
@@ -343,7 +345,7 @@ const AppPublisher = ({
           accessToken={accessToken}
         />
         {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
-      </PortalToFollowElem>
+      </Popover>
     </>
   )
 }

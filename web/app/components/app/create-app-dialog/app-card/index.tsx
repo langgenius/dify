@@ -1,13 +1,14 @@
 'use client'
 import type { App } from '@/models/explore'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { Button } from '@/app/components/base/ui/button'
 import AppListContext from '@/context/app-list-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
@@ -28,11 +29,16 @@ const AppCard = ({
   const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
-  const showTryAPPPanel = useCallback((appId: string) => {
-    return () => {
-      setShowTryAppPanel?.(true, { appId, app })
-    }
-  }, [setShowTryAppPanel, app.category])
+  const handleShowTryAppPanel = useCallback(() => {
+    trackEvent('preview_template', {
+      template_id: app.app_id,
+      template_name: appBasicInfo.name,
+      template_mode: appBasicInfo.mode,
+      template_category: app.category,
+      page: 'studio',
+    })
+    setShowTryAppPanel?.(true, { appId: app.app_id, app })
+  }, [setShowTryAppPanel, app, appBasicInfo])
   return (
     <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
@@ -71,7 +77,7 @@ const AppCard = ({
                 <span className="text-xs">{t('newApp.useTemplate', { ns: 'app' })}</span>
               </Button>
             )}
-            <Button onClick={showTryAPPPanel(app.app_id)}>
+            <Button onClick={handleShowTryAppPanel}>
               <RiInformation2Line className="mr-1 size-4" />
               <span>{t('appCard.try', { ns: 'explore' })}</span>
             </Button>

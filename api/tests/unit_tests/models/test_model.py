@@ -2,9 +2,9 @@ import importlib
 import types
 
 import pytest
-from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 
 from core.workflow.file_reference import build_file_reference
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models.model import Conversation, Message
 
 

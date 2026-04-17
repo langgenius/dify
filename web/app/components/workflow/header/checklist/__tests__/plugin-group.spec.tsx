@@ -1,7 +1,7 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Popover, PopoverContent } from '@/app/components/base/ui/popover'
 import { useStore as usePluginDependencyStore } from '../../../plugin-dependency/store'
 import { BlockEnum } from '../../../types'
 import { ChecklistPluginGroup } from '../plugin-group'

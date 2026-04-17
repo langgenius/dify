@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.nodes.base.entities import VariableSelector
@@ -8,8 +10,6 @@ from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.runtime import GraphRuntimeState
 from graphon.template_rendering import TemplateRenderError
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

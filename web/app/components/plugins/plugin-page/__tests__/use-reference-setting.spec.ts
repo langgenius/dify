@@ -1,7 +1,7 @@
+// Import mocks for assertions
+import { toast } from '@langgenius/dify-ui/toast'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// Import mocks for assertions
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 

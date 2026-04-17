@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'

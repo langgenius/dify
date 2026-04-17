@@ -1,5 +1,5 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Button } from '@/app/components/base/ui/button'
 import PoweredByBrand from './powered-by-brand'
 
 type ChatPreviewCardProps = {

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowRightLine,
   RiLoader2Fill,
@@ -9,7 +10,6 @@ import {
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
