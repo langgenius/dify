@@ -27,7 +27,8 @@ from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
+from services.quota_service import unlimited
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
