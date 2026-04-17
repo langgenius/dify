@@ -1,10 +1,16 @@
 import { render } from 'vitest-browser-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../index'
 
+const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
+    {ui}
+  </div>,
+)
+
 describe('TooltipContent', () => {
   describe('Placement and offsets', () => {
     it('should use default top placement when placement is not provided', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent role="tooltip" aria-label="default tooltip">
@@ -13,13 +19,13 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-align', 'center')
       await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveTextContent('Tooltip body')
     })
 
     it('should apply custom placement when placement props are provided', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent

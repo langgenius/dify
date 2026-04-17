@@ -11,10 +11,16 @@ import {
   DropdownMenuTrigger,
 } from '../index'
 
+const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
+    {ui}
+  </div>,
+)
+
 describe('dropdown-menu wrapper', () => {
   describe('DropdownMenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent positionerProps={{ 'role': 'group', 'aria-label': 'content positioner' }}>
@@ -23,13 +29,13 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-align', 'end')
       await expect.element(screen.getByRole('menuitem', { name: 'Content action' })).toBeInTheDocument()
     })
 
     it('should apply custom placement when custom positioning props are provided', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent
@@ -43,8 +49,8 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-align', 'start')
       await expect.element(screen.getByRole('menuitem', { name: 'Custom content' })).toBeInTheDocument()
     })
 
@@ -85,7 +91,7 @@ describe('dropdown-menu wrapper', () => {
 
   describe('DropdownMenuSubContent', () => {
     it('should position sub-content at left-start with default placement when props are omitted', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -99,8 +105,8 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-side', 'left')
+      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-align', 'start')
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
 

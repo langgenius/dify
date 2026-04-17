@@ -2,6 +2,11 @@ import { render } from 'vitest-browser-react'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
+    {ui}
+  </div>,
+)
 
 const renderOpenSelect = ({
   rootProps = {},
@@ -14,7 +19,7 @@ const renderOpenSelect = ({
   contentProps?: Record<string, unknown>
   onValueChange?: (value: string | null) => void
 } = {}) => {
-  return render(
+  return renderWithSafeViewport(
     <Select open defaultValue="seattle" onValueChange={onValueChange} {...rootProps}>
       <SelectTrigger aria-label="city select" {...triggerProps}>
         <SelectValue />
@@ -171,8 +176,8 @@ describe('Select wrappers', () => {
     it('should use positioning attributes when placement is not provided', async () => {
       const screen = await renderOpenSelect()
 
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'start')
     })
 
     it('should preserve positioning attributes when placement props are provided', async () => {
@@ -184,8 +189,8 @@ describe('Select wrappers', () => {
         },
       })
 
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'end')
     })
 
     it('should forward passthrough props to positioner popup and list when passthrough props are provided', async () => {

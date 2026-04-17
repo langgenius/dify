@@ -5,10 +5,16 @@ import {
   PopoverTrigger,
 } from '..'
 
+const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
+    {ui}
+  </div>,
+)
+
 describe('PopoverContent', () => {
   describe('Placement', () => {
     it('should use bottom placement and default offsets when placement props are not provided', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
@@ -26,7 +32,7 @@ describe('PopoverContent', () => {
     })
 
     it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
-      const screen = await render(
+      const screen = await renderWithSafeViewport(
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
@@ -41,8 +47,8 @@ describe('PopoverContent', () => {
         </Popover>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-side')
-      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-align', 'end')
       await expect.element(screen.getByRole('dialog', { name: 'custom popover' })).toHaveTextContent('Custom placement content')
     })
   })
