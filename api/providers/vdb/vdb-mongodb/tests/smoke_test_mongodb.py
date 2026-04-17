@@ -222,7 +222,10 @@ def main() -> None:
         traceback.print_exc()
         sys.exit(1)
     finally:
-        cleanup()
+        try:
+            cleanup()
+        except Exception as e:
+            print(f"\nWARNING: cleanup failed: {e}")
 
 
 if __name__ == "__main__":
