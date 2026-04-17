@@ -15,8 +15,6 @@ This package provides shared design tokens (colors, shadows, typography), the `c
 
 ## Border Radius: Figma Token → Tailwind Class Mapping
 
-## Border Radius: Figma Token → Tailwind Class Mapping
-
 The Figma design system uses `--radius/*` tokens whose scale is **offset by one step** from Tailwind CSS v4 defaults. When translating Figma specs to code, always use this mapping — never use `radius-*` as a CSS class, and never extend `borderRadius` in the preset.
 
 | Figma Token     | Value | Tailwind Class   |
