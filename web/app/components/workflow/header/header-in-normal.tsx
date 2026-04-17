@@ -77,7 +77,7 @@ const HeaderInNormal = ({
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
-        <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
+        <div className="flex h-8 shrink-0 items-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
           {components?.chatVariableTrigger}
           <EnvButton disabled={nodesReadOnly} />
           <GlobalVariableButton disabled={nodesReadOnly} />

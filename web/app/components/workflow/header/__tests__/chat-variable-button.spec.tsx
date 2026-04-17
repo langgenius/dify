@@ -2,18 +2,9 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import ChatVariableButton from '../chat-variable-button'
 
-let mockTheme: 'light' | 'dark' = 'light'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: mockTheme,
-  }),
-}))
-
 describe('ChatVariableButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTheme = 'light'
   })
 
   it('opens the chat variable panel and closes the other workflow panels', () => {
@@ -33,15 +24,19 @@ describe('ChatVariableButton', () => {
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
   })
 
-  it('applies the active dark theme styles when the chat variable panel is visible', () => {
-    mockTheme = 'dark'
+  it('applies the same active styles as the view history icon button when the chat variable panel is visible', () => {
     renderWorkflowComponent(<ChatVariableButton disabled={false} />, {
       initialStoreState: {
         showChatVariablePanel: true,
       },
     })
 
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
+    const button = screen.getByRole('button')
+    const icon = button.querySelector('svg')
+
+    expect(button).toHaveAttribute('aria-label', 'workflow.chatVariable.panelTitle')
+    expect(button).toHaveClass('bg-state-accent-hover')
+    expect(icon).toHaveClass('text-components-button-secondary-accent-text')
   })
 
   it('stays disabled without mutating panel state', () => {

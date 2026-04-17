@@ -3,13 +3,6 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import EnvButton from '../env-button'
 
 const mockCloseAllInputFieldPanels = vi.fn()
-let mockTheme: 'light' | 'dark' = 'light'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: mockTheme,
-  }),
-}))
 
 vi.mock('@/app/components/rag-pipeline/hooks', () => ({
   useInputFieldPanel: () => ({
@@ -20,7 +13,6 @@ vi.mock('@/app/components/rag-pipeline/hooks', () => ({
 describe('EnvButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTheme = 'light'
   })
 
   it('should open the environment panel and close the other panels when clicked', () => {
@@ -41,15 +33,19 @@ describe('EnvButton', () => {
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
   })
 
-  it('should apply the active dark theme styles when the environment panel is visible', () => {
-    mockTheme = 'dark'
+  it('should apply the same active styles as the view history icon button when the environment panel is visible', () => {
     renderWorkflowComponent(<EnvButton disabled={false} />, {
       initialStoreState: {
         showEnvPanel: true,
       },
     })
 
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
+    const button = screen.getByRole('button')
+    const icon = button.querySelector('svg')
+
+    expect(button).toHaveAttribute('aria-label', 'workflow.env.envPanelTitle')
+    expect(button).toHaveClass('bg-state-accent-hover')
+    expect(icon).toHaveClass('text-components-button-secondary-accent-text')
   })
 
   it('should keep the button disabled when the disabled prop is true', () => {

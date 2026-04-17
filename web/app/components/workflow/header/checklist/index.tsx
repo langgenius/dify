@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   useChecklist,
@@ -39,6 +40,7 @@ const WorkflowChecklist = ({
 }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const label = t('panel.checklist', { ns: 'workflow' })
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
   const needWarningNodes = useChecklist(nodes, edges)
@@ -66,31 +68,42 @@ const WorkflowChecklist = ({
 
   return (
     <Popover open={open} onOpenChange={newOpen => !disabled && setOpen(newOpen)}>
-      <PopoverTrigger
-        render={(
-          <button
-            type="button"
-            className={cn(
-              'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              disabled && 'cursor-not-allowed opacity-50',
-            )}
-            disabled={disabled || undefined}
-          >
-            <span
-              className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
-            >
-              <span
-                className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
-              />
-            </span>
-            {!!needWarningNodes.length && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
-                {needWarningNodes.length}
-              </span>
-            )}
-          </button>
-        )}
-      />
+      <Tooltip>
+        <TooltipTrigger
+          delay={0}
+          render={(
+            <PopoverTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={label}
+                  className={cn(
+                    'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    disabled && 'cursor-not-allowed opacity-50',
+                  )}
+                  disabled={disabled || undefined}
+                >
+                  <span
+                    className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+                  >
+                    <span
+                      className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
+                    />
+                  </span>
+                  {!!needWarningNodes.length && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                      {needWarningNodes.length}
+                    </span>
+                  )}
+                </button>
+              )}
+            />
+          )}
+        />
+        <TooltipContent className="bg-components-tooltip-bg">
+          {label}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         placement="bottom-start"
         sideOffset={12}
