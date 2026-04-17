@@ -275,8 +275,13 @@ class MongoDBVector(BaseVector):
         ]
 
         results = self._collection.aggregate(pipeline)
-        return self._results_to_documents(results)
+        documents = self._results_to_documents(results)
 
+        score_threshold = kwargs.get("score_threshold")
+        if score_threshold is None:
+            return documents
+
+        return [doc for doc in documents if doc.metadata.get("score", 0.0) >= score_threshold]
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # Atlas Search full-text is not yet implemented; return empty results.
         return []
