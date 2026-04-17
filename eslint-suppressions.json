@@ -4679,11 +4679,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/node-control.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/node-handle.tsx": {
     "react/set-state-in-effect": {
       "count": 1
