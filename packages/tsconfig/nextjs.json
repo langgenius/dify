@@ -1,0 +1,10 @@
+{
+  "extends": "./web.json",
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  }
+}

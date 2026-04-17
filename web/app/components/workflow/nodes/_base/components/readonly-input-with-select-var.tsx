@@ -41,7 +41,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
-      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
+      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]!))?.data
       const isShowAPart = value.length > 2
 
       return (

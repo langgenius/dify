@@ -129,7 +129,7 @@ describe('WorkflowVariableBlockComponent', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'label' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'label' }))!.toBeInTheDocument()
     expect(mockHasNodes).toHaveBeenCalledWith([WorkflowVariableBlockNode])
     expect(mockRegisterCommand).toHaveBeenCalledWith(
       UPDATE_WORKFLOW_NODES_MAP,
@@ -188,7 +188,7 @@ describe('WorkflowVariableBlockComponent', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'label' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'label' }))!.toBeInTheDocument()
   })
 
   it('should pass computed varType when getVarType is provided', () => {
@@ -489,7 +489,7 @@ describe('WorkflowVariableBlockComponent', () => {
       />,
     )
 
-    const updateHandler = mockRegisterCommand.mock.calls[0][1] as (payload: UpdateWorkflowNodesMapPayload) => boolean
+    const updateHandler = mockRegisterCommand.mock.calls[0]![1] as (payload: UpdateWorkflowNodesMapPayload) => boolean
     let result = false
     act(() => {
       result = updateHandler({

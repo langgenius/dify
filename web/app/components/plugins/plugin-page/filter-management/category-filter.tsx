@@ -61,7 +61,7 @@ const CategoriesFilter = ({
               !selectedTagsLength && t('allCategories', { ns: 'plugin' })
             }
             {
-              !!selectedTagsLength && value.map(val => categoriesMap[val].label).slice(0, 2).join(',')
+              !!selectedTagsLength && value.map(val => categoriesMap[val]!.label).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (

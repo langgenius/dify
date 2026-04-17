@@ -53,7 +53,7 @@ const Prompt: FC<IPromptProps> = ({
 
   const handleMessageTypeChange = (index: number, role: PromptRole) => {
     const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
-      draft[index].role = role
+      draft[index]!.role = role
     })
     setCurrentAdvancedPrompt(newPrompt)
   }
@@ -61,7 +61,7 @@ const Prompt: FC<IPromptProps> = ({
   const handleValueChange = (value: string, index?: number) => {
     if (modelModeType === ModelModeType.chat) {
       const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
-        draft[index as number].text = value
+        draft[index as number]!.text = value
       })
       setCurrentAdvancedPrompt(newPrompt, true)
     }

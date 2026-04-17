@@ -26,7 +26,7 @@ export type PanelProps = {
  */
 const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number => {
   if (entry.borderBoxSize?.length > 0)
-    return entry.borderBoxSize[0].inlineSize
+    return entry.borderBoxSize[0]!.inlineSize
 
   if (entry.contentRect.width > 0)
     return entry.contentRect.width

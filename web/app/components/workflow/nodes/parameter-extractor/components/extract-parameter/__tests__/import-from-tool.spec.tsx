@@ -94,7 +94,7 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
         human_description: { en_US: 'Internal', zh_Hans: 'Internal' },
       }),
     ] satisfies ToolWithProvider['tools'][number]['parameters']
-    provider.tools[0].parameters = builtInParameters
+    provider.tools[0]!.parameters = builtInParameters
     mockToolCollections.builtIn = [provider]
 
     renderWorkflowComponent(
@@ -133,7 +133,7 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
         human_description: { en_US: 'Summary', zh_Hans: 'Summary' },
       }),
     ] satisfies ToolWithProvider['tools'][number]['parameters']
-    provider.tools[0].parameters = workflowParameters
+    provider.tools[0]!.parameters = workflowParameters
     mockToolCollections.workflow = [provider]
 
     renderWorkflowComponent(

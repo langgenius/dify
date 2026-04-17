@@ -51,7 +51,7 @@ const InputsPanel = ({ onRun }: Props) => {
         if (variable.default)
           result[variable.variable] = variable.default
         if (inputs[variable.variable] !== undefined)
-          result[variable.variable] = inputs[variable.variable]
+          result[variable.variable] = inputs[variable.variable]!
       })
     }
     return result

@@ -1,16 +1,12 @@
 {
+  "extends": "@dify/tsconfig/base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
+    "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
+    "noEmit": false,
     "outDir": "dist",
-    "rootDir": "src",
+    "sourceMap": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },

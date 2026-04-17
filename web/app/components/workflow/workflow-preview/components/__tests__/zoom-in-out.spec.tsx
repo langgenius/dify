@@ -35,9 +35,9 @@ const getZoomControls = () => {
     throw new Error('Missing zoom controls')
 
   return {
-    zoomOutTrigger: icons[0].parentElement as HTMLElement,
+    zoomOutTrigger: icons[0]!.parentElement as HTMLElement,
     label,
-    zoomInTrigger: icons[1].parentElement as HTMLElement,
+    zoomInTrigger: icons[1]!.parentElement as HTMLElement,
   }
 }
 

@@ -110,7 +110,7 @@ const VarGroupItem: FC<Props> = ({
                 <Folder className="mr-0.5 h-3.5 w-3.5" />
                 {(!isEditGroupName)
                   ? (
-                      <div className="system-sm-semibold flex h-6 cursor-text items-center rounded-lg px-1 text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
+                      <div className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
                         {payload.group_name}
                       </div>
                     )
@@ -133,7 +133,7 @@ const VarGroupItem: FC<Props> = ({
               </div>
               {canRemove && (
                 <div
-                  className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block"
+                  className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={onRemove}
                 >
                   <RiDeleteBinLine
@@ -145,9 +145,9 @@ const VarGroupItem: FC<Props> = ({
           )
         : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
       operations={(
-        <div className="flex h-6 items-center  space-x-2">
+        <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">{payload.output_type}</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">{payload.output_type}</div>
           )}
           {
             !readOnly

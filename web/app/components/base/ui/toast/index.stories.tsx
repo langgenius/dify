@@ -298,7 +298,7 @@ const ToastDocsDemo = () => {
 }
 
 const meta = {
-  title: 'Base/Feedback/UI Toast',
+  title: 'Base/UI/Toast',
   component: ToastDocsDemo,
   parameters: {
     layout: 'fullscreen',
