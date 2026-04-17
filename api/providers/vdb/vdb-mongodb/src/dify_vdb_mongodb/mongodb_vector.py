@@ -48,8 +48,6 @@ def _sanitize_uri_for_logging(uri: str | None) -> str:
         sanitized = f"{parsed.scheme}://{netloc}"
         if parsed.path:
             sanitized += parsed.path
-        if parsed.query:
-            sanitized += f"?{parsed.query}"
         return sanitized
     except (ValueError, AttributeError, TypeError):
         return "***"
