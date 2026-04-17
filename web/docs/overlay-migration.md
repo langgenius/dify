@@ -1,6 +1,8 @@
 # Overlay Migration Guide
 
-This document tracks the migration away from legacy overlay APIs.
+This document tracks the Dify-web migration away from legacy overlay APIs.
+
+> **See also:** [`packages/dify-ui/README.md`] for the permanent overlay / portal / z-index contract of the replacement primitives. This document covers the one-off migration mechanics (allowlist, deprecated import paths, coexistence z-index strategy) and is expected to shrink and eventually be removed once the legacy overlays are gone.
 
 ## Scope
 
@@ -95,3 +97,5 @@ Once all legacy overlays are removed:
 1. Reduce `z-1002` back to `z-50` across all `@langgenius/dify-ui` primitives.
 1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
+
+[`packages/dify-ui/README.md`]: ../../packages/dify-ui/README.md
