@@ -3,14 +3,18 @@ import type { WriteMode } from '../types'
 import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
@@ -64,7 +68,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
           </span>
         </div>
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary', disabled && 'text-components-input-text-placeholder', open && 'text-text-secondary')} />
+        <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary ${disabled && 'text-components-input-text-placeholder'} ${open && 'text-text-secondary'}`} />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -73,7 +77,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         popupClassName={cn('w-[140px]', popupClassName)}
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('nodes.assigner.operations.title', { ns: 'workflow' })}</DropdownMenuLabel>
+          <DropdownMenuGroupLabel>{t('nodes.assigner.operations.title', { ns: 'workflow' })}</DropdownMenuGroupLabel>
           {items.map(item => (
             !isOperationItem(item)
               ? (
@@ -90,7 +94,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                     </div>
                     {item.value === value && (
                       <div className="flex items-center justify-center">
-                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                        <RiCheckLine className="h-4 w-4 text-text-accent" />
                       </div>
                     )}
                   </DropdownMenuItem>

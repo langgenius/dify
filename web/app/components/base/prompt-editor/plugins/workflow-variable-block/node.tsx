@@ -19,11 +19,11 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   __getVarType?: GetVarType
   __availableVariables?: NodeOutPutVar[]
 
-  static override getType(): string {
+  static getType(): string {
     return 'workflow-variable-block'
   }
 
-  static override clone(node: WorkflowVariableBlockNode): WorkflowVariableBlockNode {
+  static clone(node: WorkflowVariableBlockNode): WorkflowVariableBlockNode {
     return new WorkflowVariableBlockNode(
       node.__variables,
       node.__workflowNodesMap,
@@ -33,7 +33,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     )
   }
 
-  override isInline(): boolean {
+  isInline(): boolean {
     return true
   }
 
@@ -52,17 +52,17 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     this.__availableVariables = availableVariables
   }
 
-  override createDOM(): HTMLElement {
+  createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  override updateDOM(): false {
+  updateDOM(): false {
     return false
   }
 
-  override decorate(): React.JSX.Element {
+  decorate(): React.JSX.Element {
     return (
       <WorkflowVariableBlockComponent
         nodeKey={this.getKey()}
@@ -74,7 +74,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     )
   }
 
-  static override importJSON(serializedNode: SerializedNode): WorkflowVariableBlockNode {
+  static importJSON(serializedNode: SerializedNode): WorkflowVariableBlockNode {
     const node = $createWorkflowVariableBlockNode(
       serializedNode.variables,
       serializedNode.workflowNodesMap,
@@ -85,7 +85,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  exportJSON(): SerializedNode {
     const json: SerializedNode = {
       type: 'workflow-variable-block',
       version: 1,
@@ -119,7 +119,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return self.__availableVariables
   }
 
-  override getTextContent(): string {
+  getTextContent(): string {
     return `{{#${this.getVariables().join('.')}#}}`
   }
 }

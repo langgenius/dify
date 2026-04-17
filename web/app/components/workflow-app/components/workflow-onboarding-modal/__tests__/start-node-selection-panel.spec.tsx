@@ -2,7 +2,20 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppTypeEnum } from '@/types/app'
 import StartNodeSelectionPanel from '../start-node-selection-panel'
+
+const mockAppType = vi.hoisted<{ current?: string }>(() => ({
+  current: 'workflow',
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: mockAppType.current,
+    },
+  }),
+}))
 
 // Mock NodeSelector component
 vi.mock('@/app/components/workflow/block-selector', () => ({
@@ -61,6 +74,7 @@ describe('StartNodeSelectionPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppType.current = AppTypeEnum.WORKFLOW
   })
 
   // Helper function to render component
@@ -94,6 +108,15 @@ describe('StartNodeSelectionPanel', () => {
       // Assert
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
+    })
+
+    it('should hide the trigger option in evaluation workflows', () => {
+      mockAppType.current = AppTypeEnum.EVALUATION
+
+      renderComponent()
+
+      expect(screen.queryByText('workflow.onboarding.trigger')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('node-selector')).not.toBeInTheDocument()
     })
 
     it('should render node selector component', () => {

@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from graphon.variables.types import SegmentType
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -37,7 +38,6 @@ from controllers.service_api.app.conversation import (
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
-from graphon.variables.types import SegmentType
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import (

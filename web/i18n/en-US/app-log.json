@@ -54,6 +54,7 @@
   "table.empty.noOutput": "No output",
   "table.header.adminRate": "Op. Rate",
   "table.header.endUser": "End User or Account",
+  "table.header.evaluation": "EVALUATION",
   "table.header.input": "Input",
   "table.header.messageCount": "Message Count",
   "table.header.output": "Output",

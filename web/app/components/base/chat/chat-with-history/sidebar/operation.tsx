@@ -105,7 +105,7 @@ const Operation: FC<Props> = ({
         )}
         {isShowDelete && (
           <DropdownMenuItem
-            variant="destructive"
+            destructive
             className="gap-2 px-2 system-md-regular"
             onClick={(e) => {
               e.stopPropagation()

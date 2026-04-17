@@ -137,7 +137,7 @@ const ImagePreviewer = ({
       return {
         ...prev,
         [image.url]: {
-          ...prev[image.url]!,
+          ...prev[image.url],
           status: 'loading',
         },
       }
@@ -168,15 +168,15 @@ const ImagePreviewer = ({
           Esc
         </span>
       </div>
-      {cachedImages[currentImage!.url]!.status === 'loading' && (
+      {cachedImages[currentImage.url].status === 'loading' && (
         <Loading type="app" />
       )}
-      {cachedImages[currentImage!.url]!.status === 'error' && (
+      {cachedImages[currentImage.url].status === 'error' && (
         <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
-          <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
+          <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
           <Button
             variant="secondary"
-            onClick={() => retryImage(currentImage!)}
+            onClick={() => retryImage(currentImage)}
             className="size-9 rounded-full p-0"
             size="large"
           >
@@ -184,19 +184,19 @@ const ImagePreviewer = ({
           </Button>
         </div>
       )}
-      {cachedImages[currentImage!.url]!.status === 'loaded' && (
+      {cachedImages[currentImage.url].status === 'loaded' && (
         <div className="flex size-full flex-col items-center justify-center gap-y-2">
           <img
-            alt={currentImage!.name}
-            src={cachedImages[currentImage!.url]!.blobUrl}
+            alt={currentImage.name}
+            src={cachedImages[currentImage.url].blobUrl}
             className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
           />
           <div className="flex shrink-0 gap-x-2 pt-3 pb-1 system-sm-regular text-text-tertiary">
-            <span>{currentImage!.name}</span>
+            <span>{currentImage.name}</span>
             <span>·</span>
-            <span>{`${cachedImages[currentImage!.url]!.width} ×  ${cachedImages[currentImage!.url]!.height}`}</span>
+            <span>{`${cachedImages[currentImage.url].width} ×  ${cachedImages[currentImage.url].height}`}</span>
             <span>·</span>
-            <span>{formatFileSize(currentImage!.size)}</span>
+            <span>{formatFileSize(currentImage.size)}</span>
           </div>
         </div>
       )}

@@ -1715,7 +1715,7 @@ class SegmentAttachmentBinding(TypeBase):
     )
 
 
-class DocumentSegmentSummary(TypeBase):
+class DocumentSegmentSummary(Base):
     __tablename__ = "document_segment_summaries"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
@@ -1725,40 +1725,25 @@ class DocumentSegmentSummary(TypeBase):
         sa.Index("document_segment_summaries_status_idx", "status"),
     )
 
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
-        insert_default=lambda: str(uuid4()),
-        default_factory=lambda: str(uuid4()),
-        init=False,
-    )
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # corresponds to DocumentSegment.id or parent chunk id
     chunk_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    summary_content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    summary_index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    summary_index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
-    status: Mapped[SummaryStatus] = mapped_column(
-        EnumText(SummaryStatus, length=32),
-        nullable=False,
-        server_default=sa.text("'generating'"),
-        default=SummaryStatus.GENERATING,
+    summary_content: Mapped[str] = mapped_column(LongText, nullable=True)
+    summary_index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
+    summary_index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    status: Mapped[str] = mapped_column(
+        EnumText(SummaryStatus, length=32), nullable=False, server_default=sa.text("'generating'")
     )
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
-    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
+    error: Mapped[str] = mapped_column(LongText, nullable=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    disabled_by = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-        init=False,
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
     def __repr__(self):

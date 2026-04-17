@@ -452,7 +452,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setOriginConversationList(produce((draft) => {
         const index = originConversationList.findIndex(item => item.id === conversationId)
-        const item = draft[index]!
+        const item = draft[index]
         draft[index] = {
           ...item,
           name: newName,

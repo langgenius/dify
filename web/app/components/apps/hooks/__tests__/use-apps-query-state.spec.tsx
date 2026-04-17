@@ -23,6 +23,7 @@ describe('useAppsQueryState', () => {
       const { result } = renderWithAdapter()
 
       expect(result.current.query.tagIDs).toBeUndefined()
+      expect(result.current.query.creatorIDs).toBeUndefined()
       expect(result.current.query.keywords).toBeUndefined()
       expect(result.current.query.isCreatedByMe).toBe(false)
     })
@@ -41,6 +42,12 @@ describe('useAppsQueryState', () => {
       expect(result.current.query.keywords).toBe('search term')
     })
 
+    it('should parse creatorIDs when URL includes creatorIDs', () => {
+      const { result } = renderWithAdapter('?creatorIDs=user-1;user-2')
+
+      expect(result.current.query.creatorIDs).toEqual(['user-1', 'user-2'])
+    })
+
     it('should parse isCreatedByMe when URL includes true value', () => {
       const { result } = renderWithAdapter('?isCreatedByMe=true')
 
@@ -49,10 +56,11 @@ describe('useAppsQueryState', () => {
 
     it('should parse all params when URL includes multiple filters', () => {
       const { result } = renderWithAdapter(
-        '?tagIDs=tag1;tag2&keywords=test&isCreatedByMe=true',
+        '?tagIDs=tag1;tag2&creatorIDs=user-1;user-2&keywords=test&isCreatedByMe=true',
       )
 
       expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
+      expect(result.current.query.creatorIDs).toEqual(['user-1', 'user-2'])
       expect(result.current.query.keywords).toBe('test')
       expect(result.current.query.isCreatedByMe).toBe(true)
     })
@@ -77,6 +85,16 @@ describe('useAppsQueryState', () => {
       })
 
       expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
+    })
+
+    it('should update creatorIDs when setQuery receives creatorIDs', () => {
+      const { result } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ creatorIDs: ['user-1', 'user-2'] })
+      })
+
+      expect(result.current.query.creatorIDs).toEqual(['user-1', 'user-2'])
     })
 
     it('should update isCreatedByMe when setQuery receives true', () => {
@@ -131,6 +149,18 @@ describe('useAppsQueryState', () => {
       expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
     })
 
+    it('should sync creatorIDs to URL when creatorIDs change', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ creatorIDs: ['user-1', 'user-2'] })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.get('creatorIDs')).toBe('user-1;user-2')
+    })
+
     it('should sync isCreatedByMe to URL when enabled', async () => {
       const { result, onUrlUpdate } = renderWithAdapter()
 
@@ -165,6 +195,18 @@ describe('useAppsQueryState', () => {
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('tagIDs')).toBe(false)
+    })
+
+    it('should remove creatorIDs from URL when creatorIDs are empty', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter('?creatorIDs=user-1;user-2')
+
+      act(() => {
+        result.current.setQuery({ creatorIDs: [] })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('creatorIDs')).toBe(false)
     })
 
     it('should remove isCreatedByMe from URL when disabled', async () => {
@@ -213,11 +255,16 @@ describe('useAppsQueryState', () => {
       })
 
       act(() => {
+        result.current.setQuery(prev => ({ ...prev, creatorIDs: ['user-1'] }))
+      })
+
+      act(() => {
         result.current.setQuery(prev => ({ ...prev, isCreatedByMe: true }))
       })
 
       expect(result.current.query.keywords).toBe('first')
       expect(result.current.query.tagIDs).toEqual(['tag1'])
+      expect(result.current.query.creatorIDs).toEqual(['user-1'])
       expect(result.current.query.isCreatedByMe).toBe(true)
     })
   })

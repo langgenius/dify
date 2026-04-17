@@ -2,6 +2,7 @@ import logging
 from typing import Literal
 
 from flask import request
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -24,7 +25,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.login import current_account_with_tenant
 from models.enums import FeedbackRating

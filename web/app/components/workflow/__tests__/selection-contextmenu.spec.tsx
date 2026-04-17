@@ -11,20 +11,53 @@ let latestNodes: Node[] = []
 let latestHistoryEvent: string | undefined
 const mockGetNodesReadOnly = vi.fn()
 const mockHandleNodesCopy = vi.fn()
-const mockHandleNodesDuplicate = vi.fn()
 const mockHandleNodesDelete = vi.fn()
+const mockHandleNodesDuplicate = vi.fn()
+const mockPush = vi.fn()
+const mockToastSuccess = vi.fn()
+const mockToastError = vi.fn()
+const mockCreateSnippetMutateAsync = vi.fn()
+const mockSyncDraftWorkflow = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+    error: (...args: unknown[]) => mockToastError(...args),
+  },
+}))
+
+vi.mock('@/service/use-snippets', () => ({
+  useCreateSnippetMutation: () => ({
+    mutateAsync: mockCreateSnippetMutateAsync,
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    snippets: {
+      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+    },
+  },
+}))
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
   return {
     ...actual,
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: mockGetNodesReadOnly,
-    }),
     useNodesInteractions: () => ({
       handleNodesCopy: mockHandleNodesCopy,
-      handleNodesDuplicate: mockHandleNodesDuplicate,
       handleNodesDelete: mockHandleNodesDelete,
+      handleNodesDuplicate: mockHandleNodesDuplicate,
+    }),
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: mockGetNodesReadOnly,
     }),
   }
 })
@@ -82,8 +115,13 @@ describe('SelectionContextmenu', () => {
     mockGetNodesReadOnly.mockReset()
     mockGetNodesReadOnly.mockReturnValue(false)
     mockHandleNodesCopy.mockReset()
-    mockHandleNodesDuplicate.mockReset()
     mockHandleNodesDelete.mockReset()
+    mockHandleNodesDuplicate.mockReset()
+    mockPush.mockReset()
+    mockToastSuccess.mockReset()
+    mockToastError.mockReset()
+    mockCreateSnippetMutateAsync.mockReset()
+    mockSyncDraftWorkflow.mockReset()
   })
 
   it('should not render when selectionMenu is absent', () => {
@@ -98,6 +136,19 @@ describe('SelectionContextmenu', () => {
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
     ]
     const { store } = renderSelectionMenu({ nodes })
+    const container = document.querySelector('#workflow-container') as HTMLDivElement
+
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
+      x: 16,
+      y: 24,
+      left: 16,
+      top: 24,
+      right: 816,
+      bottom: 624,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    })
 
     act(() => {
       store.setState({ selectionMenu: { clientX: 780, clientY: 590 } })
@@ -194,6 +245,107 @@ describe('SelectionContextmenu', () => {
     expect(hooksStoreProps.doSyncWorkflowDraft).toHaveBeenCalled()
     expect(latestHistoryEvent).toBe('NodeDragStop')
     vi.useRealTimers()
+  })
+
+  it('should render selection actions and delegate copy, duplicate, and delete', () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+    ]
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+
+    expect(screen.getByTestId('selection-contextmenu-item-copy')).toHaveTextContent('workflow.common.copy')
+    expect(screen.getByTestId('selection-contextmenu-item-duplicate')).toHaveTextContent('workflow.common.duplicate')
+    expect(screen.getByTestId('selection-contextmenu-item-delete')).toHaveTextContent('common.operation.delete')
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-copy'))
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-duplicate'))
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-delete'))
+
+    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
+    expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
+    expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('should create a snippet with the selected graph and redirect to the snippet detail page', async () => {
+    mockCreateSnippetMutateAsync.mockResolvedValue({ id: 'snippet-123' })
+    mockSyncDraftWorkflow.mockResolvedValue({ result: 'success' })
+
+    const nodes = [
+      createNode({ id: 'n1', selected: true, position: { x: 120, y: 60 }, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 260, y: 120 }, width: 60, height: 30 }),
+      createNode({ id: 'n3', selected: false, position: { x: 500, y: 300 }, width: 40, height: 20 }),
+    ]
+    const edges = [
+      createEdge({ id: 'e1', source: 'n1', target: 'n2' }),
+      createEdge({ id: 'e2', source: 'n2', target: 'n3' }),
+    ]
+
+    const { store } = renderSelectionMenu({ nodes, edges })
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-createSnippet'))
+    fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
+      target: { value: 'My snippet' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /workflow\.snippet\.confirm/i }))
+
+    await waitFor(() => {
+      expect(mockCreateSnippetMutateAsync).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          name: 'My snippet',
+        }),
+      })
+    })
+
+    expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
+      params: { snippetId: 'snippet-123' },
+      body: {
+        graph: {
+          nodes: [
+            expect.objectContaining({
+              id: 'n1',
+              position: { x: 0, y: 0 },
+              selected: false,
+              data: expect.objectContaining({ selected: false }),
+            }),
+            expect.objectContaining({
+              id: 'n2',
+              position: { x: 140, y: 60 },
+              selected: false,
+              data: expect.objectContaining({ selected: false }),
+            }),
+          ],
+          edges: [
+            expect.objectContaining({
+              id: 'e1',
+              source: 'n1',
+              target: 'n2',
+              selected: false,
+            }),
+          ],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+      },
+    })
+    expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
+    expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
   })
 
   it('should distribute selected nodes horizontally', async () => {

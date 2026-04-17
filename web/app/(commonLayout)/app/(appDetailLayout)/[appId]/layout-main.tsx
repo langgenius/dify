@@ -8,6 +8,8 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
+  RiFlaskFill,
+  RiFlaskLine,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -25,6 +27,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -50,6 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -67,42 +71,51 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }>>([])
 
   const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
-    const navConfig = [
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
-            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-            icon: RiTerminalWindowLine,
-            selectedIcon: RiTerminalWindowFill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
-            href: `/app/${appId}/logs`,
-            icon: RiFileList3Line,
-            selectedIcon: RiFileList3Fill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
-    ]
+    const navConfig = []
+
+    if (isCurrentWorkspaceEditor) {
+      navConfig.push({
+        name: t('appMenus.promptEng', { ns: 'common' }),
+        href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
+        icon: RiTerminalWindowLine,
+        selectedIcon: RiTerminalWindowFill,
+      })
+      if (canAccessSnippetsAndEvaluation) {
+        navConfig.push({
+          name: t('appMenus.evaluation', { ns: 'common' }),
+          href: `/app/${appId}/evaluation`,
+          icon: RiFlaskLine,
+          selectedIcon: RiFlaskFill,
+        })
+      }
+    }
+
+    navConfig.push({
+      name: t('appMenus.apiAccess', { ns: 'common' }),
+      href: `/app/${appId}/develop`,
+      icon: RiTerminalBoxLine,
+      selectedIcon: RiTerminalBoxFill,
+    })
+
+    if (isCurrentWorkspaceEditor) {
+      navConfig.push({
+        name: mode !== AppModeEnum.WORKFLOW
+          ? t('appMenus.logAndAnn', { ns: 'common' })
+          : t('appMenus.logs', { ns: 'common' }),
+        href: `/app/${appId}/logs`,
+        icon: RiFileList3Line,
+        selectedIcon: RiFileList3Fill,
+      })
+    }
+
+    navConfig.push({
+      name: t('appMenus.overview', { ns: 'common' }),
+      href: `/app/${appId}/overview`,
+      icon: RiDashboard2Line,
+      selectedIcon: RiDashboard2Fill,
+    })
     return navConfig
-  }, [t])
+  }, [canAccessSnippetsAndEvaluation, t])
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 

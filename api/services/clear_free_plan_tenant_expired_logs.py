@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -13,7 +14,6 @@ from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Tenant
 from models.model import (
     App,

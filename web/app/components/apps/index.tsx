@@ -13,14 +13,24 @@ import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import List from './list'
 
+export type StudioPageType = 'apps' | 'snippets'
+
+type AppsProps = {
+  pageType?: StudioPageType
+}
+
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
 const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 
-const Apps = () => {
+const Apps = ({
+  pageType = 'apps',
+}: AppsProps) => {
   const { t } = useTranslation()
 
-  useDocumentTitle(t('menus.apps', { ns: 'common' }))
+  useDocumentTitle(pageType === 'apps'
+    ? t('menus.apps', { ns: 'common' })
+    : t('tabs.snippets', { ns: 'workflow' }))
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
@@ -116,7 +126,7 @@ const Apps = () => {
     }}
     >
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List controlRefreshList={controlRefreshList} />
+        <List controlRefreshList={controlRefreshList} pageType={pageType} />
         {isShowTryAppPanel && (
           <TryApp
             appId={currentTryAppParams?.appId || ''}

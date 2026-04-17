@@ -33,7 +33,6 @@ const PluginTasks = () => {
     handleClearErrorPlugin,
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
-  const canOpenMenu = isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
 
   // Generate tooltip text based on status
   const tip = useMemo(() => {
@@ -86,6 +85,11 @@ const PluginTasks = () => {
     [clearPluginsAndClose],
   )
 
+  const handleTriggerClick = useCallback(() => {
+    if (isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess)
+      setOpen(v => !v)
+  }, [isFailed, isInstalling, isInstallingWithSuccess, isInstallingWithError, isSuccess])
+
   // Hide when no plugin tasks
   if (totalPluginsLength === 0)
     return null
@@ -98,7 +102,7 @@ const PluginTasks = () => {
       >
         <DropdownMenuTrigger
           render={<div />}
-          disabled={!canOpenMenu}
+          onClick={handleTriggerClick}
         >
           <TaskStatusIndicator
             tip={tip}
@@ -116,7 +120,7 @@ const PluginTasks = () => {
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={4}
-          popupClassName="[scrollbar-width:none] overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&::-webkit-scrollbar]:hidden"
+          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none overflow-visible"
         >
           <PluginTaskList
             runningPlugins={runningPlugins}

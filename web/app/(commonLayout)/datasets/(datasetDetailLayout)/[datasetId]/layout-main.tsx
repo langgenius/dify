@@ -7,6 +7,8 @@ import {
   RiEqualizer2Line,
   RiFileTextFill,
   RiFileTextLine,
+  RiFlaskFill,
+  RiFlaskLine,
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
@@ -23,6 +25,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 
@@ -49,6 +52,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setHideHeader(v.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -56,6 +60,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId)
+  const isRagPipelineDataset = datasetRes?.runtime_mode === 'rag_pipeline'
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -86,24 +91,36 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
-        name: t('datasetMenus.pipeline', { ns: 'common' }),
-        href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
-        disabled: false,
-      })
-      baseNavigation.unshift({
-        name: t('datasetMenus.documents', { ns: 'common' }),
-        href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
-        disabled: isButtonDisabledWithPipeline,
-      })
+      return [
+        {
+          name: t('datasetMenus.documents', { ns: 'common' }),
+          href: `/datasets/${datasetId}/documents`,
+          icon: RiFileTextLine,
+          selectedIcon: RiFileTextFill,
+          disabled: isButtonDisabledWithPipeline,
+        },
+        {
+          name: t('datasetMenus.pipeline', { ns: 'common' }),
+          href: `/datasets/${datasetId}/pipeline`,
+          icon: PipelineLine as RemixiconComponentType,
+          selectedIcon: PipelineFill as RemixiconComponentType,
+          disabled: false,
+        },
+        ...(isRagPipelineDataset && canAccessSnippetsAndEvaluation
+          ? [{
+              name: t('datasetMenus.evaluation', { ns: 'common' }),
+              href: `/datasets/${datasetId}/evaluation`,
+              icon: RiFlaskLine,
+              selectedIcon: RiFlaskFill,
+              disabled: isButtonDisabledWithPipeline,
+            }]
+          : []),
+        ...baseNavigation,
+      ]
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+  }, [canAccessSnippetsAndEvaluation, t, datasetId, isButtonDisabledWithPipeline, isRagPipelineDataset, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 

@@ -1,5 +1,6 @@
-from core.workflow.human_input_compat import EmailDeliveryConfig, EmailRecipients
 from graphon.runtime import VariablePool
+
+from core.workflow.human_input_compat import EmailDeliveryConfig, EmailRecipients
 
 
 def test_render_body_template_replaces_variable_values():

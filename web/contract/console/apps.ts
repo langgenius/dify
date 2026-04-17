@@ -1,4 +1,5 @@
 import type { WorkflowOnlineUsersResponse } from '@/models/app'
+import type { WorkflowTypeConversionTarget } from '@/types/workflow'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -14,6 +15,20 @@ export const appDeleteContract = base
   }>())
   .output(type<unknown>())
 
+export const appWorkflowTypeConvertContract = base
+  .route({
+    path: '/apps/{appId}/workflows/convert-type',
+    method: 'POST',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+    query: {
+      target_type: WorkflowTypeConversionTarget
+    }
+  }>())
+  .output(type<unknown>())
 export const workflowOnlineUsersContract = base
   .route({
     path: '/apps/workflows/online-users',

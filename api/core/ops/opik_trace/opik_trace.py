@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, cast
 
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +25,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunTriggeredFrom } from '@/models/log'
 import type { App } from '@/types/app'
-import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -14,6 +13,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
 import DetailPanel from './detail'
+import EvaluationCell from './evaluation-cell'
 import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
@@ -118,22 +118,21 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+      <table className={cn('mt-2 w-full min-w-[560px] border-collapse border-0')}>
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
               <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={handleSort}>
                 {t('table.header.startTime', { ns: 'appLog' })}
-                <ArrowDownIcon
-                  className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')}
-                />
+                <span className={cn('i-heroicons-arrow-down', 'ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')} />
               </div>
             </td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.runtime', { ns: 'appLog' })}</td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.tokens', { ns: 'appLog' })}</td>
-            <td className={cn('bg-background-section-burn py-1.5 pl-3 whitespace-nowrap', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.user', { ns: 'appLog' })}</td>
+            <td className={cn('bg-background-section-burn py-1.5 px-3 whitespace-nowrap text-center', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.evaluation', { ns: 'appLog' })}</td>
             {isWorkflow && <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
           </tr>
         </thead>
@@ -171,6 +170,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   <div className={cn(endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary', 'overflow-hidden text-ellipsis whitespace-nowrap')}>
                     {endUser}
                   </div>
+                </td>
+                <td className="p-2 pr-2" onClick={event => event.stopPropagation()}>
+                  <EvaluationCell evaluation={log.evaluation} />
                 </td>
                 {isWorkflow && (
                   <td className="p-3 pr-2">

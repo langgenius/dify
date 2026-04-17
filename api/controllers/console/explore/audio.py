@@ -1,6 +1,7 @@
 import logging
 
 from flask import request
+from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
 import services
@@ -19,7 +20,6 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,

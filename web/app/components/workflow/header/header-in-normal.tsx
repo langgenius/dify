@@ -29,10 +29,15 @@ export type HeaderInNormalProps = {
     middle?: React.ReactNode
     chatVariableTrigger?: React.ReactNode
   }
+  controls?: {
+    showEnvButton?: boolean
+    showGlobalVariableButton?: boolean
+  }
   runAndHistoryProps?: RunAndHistoryProps
 }
 const HeaderInNormal = ({
   components,
+  controls,
   runAndHistoryProps,
 }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
@@ -48,6 +53,9 @@ const HeaderInNormal = ({
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
+  const showEnvButton = controls?.showEnvButton !== false
+  const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
+  const showContextButtons = !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
@@ -77,11 +85,13 @@ const HeaderInNormal = ({
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
-        <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
-          {components?.chatVariableTrigger}
-          <EnvButton disabled={nodesReadOnly} />
-          <GlobalVariableButton disabled={nodesReadOnly} />
-        </div>
+        {showContextButtons && (
+          <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
+            {components?.chatVariableTrigger}
+            {showEnvButton && <EnvButton disabled={nodesReadOnly} />}
+            {showGlobalVariableButton && <GlobalVariableButton disabled={nodesReadOnly} />}
+          </div>
+        )}
         {components?.middle}
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>

@@ -53,7 +53,7 @@ export const TitleInput = memo(({
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       className={`
-        mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary
+        system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
         outline-hidden focus:shadow-xs
       `}
       placeholder={t('common.addTitle', { ns: 'workflow' }) || ''}
@@ -83,8 +83,8 @@ export const DescriptionInput = memo(({
   return (
     <div
       className={`
-        group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg px-2
-        py-[5px] leading-0
+        leading-0 group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg
+        px-2 py-[5px]
         ${focus && 'shadow-xs!'}
       `}
     >

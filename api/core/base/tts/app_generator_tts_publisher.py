@@ -6,6 +6,9 @@ import re
 import threading
 from collections.abc import Iterable
 
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
+
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAgentMessageEvent,
@@ -15,8 +18,6 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:

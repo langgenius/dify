@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react'
 
 type AppsQuery = {
   tagIDs?: string[]
+  creatorIDs?: string[]
   keywords?: string
   isCreatedByMe?: boolean
 }
@@ -13,6 +14,7 @@ function useAppsQueryState() {
   const [urlQuery, setUrlQuery] = useQueryStates(
     {
       tagIDs: parseAsArrayOf(parseAsString, ';'),
+      creatorIDs: parseAsArrayOf(parseAsString, ';'),
       keywords: parseAsString,
       isCreatedByMe: parseAsBoolean,
     },
@@ -23,15 +25,18 @@ function useAppsQueryState() {
 
   const query = useMemo<AppsQuery>(() => ({
     tagIDs: urlQuery.tagIDs ?? undefined,
+    creatorIDs: urlQuery.creatorIDs ?? undefined,
     keywords: normalizeKeywords(urlQuery.keywords),
     isCreatedByMe: urlQuery.isCreatedByMe ?? false,
-  }), [urlQuery.isCreatedByMe, urlQuery.keywords, urlQuery.tagIDs])
+  }), [urlQuery.creatorIDs, urlQuery.isCreatedByMe, urlQuery.keywords, urlQuery.tagIDs])
 
   const setQuery = useCallback((next: AppsQuery | ((prev: AppsQuery) => AppsQuery)) => {
     const buildPatch = (patch: AppsQuery) => {
       const result: Partial<typeof urlQuery> = {}
       if ('tagIDs' in patch)
         result.tagIDs = patch.tagIDs && patch.tagIDs.length > 0 ? patch.tagIDs : null
+      if ('creatorIDs' in patch)
+        result.creatorIDs = patch.creatorIDs && patch.creatorIDs.length > 0 ? patch.creatorIDs : null
       if ('keywords' in patch)
         result.keywords = patch.keywords ? patch.keywords : null
       if ('isCreatedByMe' in patch)
@@ -42,6 +47,7 @@ function useAppsQueryState() {
     if (typeof next === 'function') {
       setUrlQuery(prev => buildPatch(next({
         tagIDs: prev.tagIDs ?? undefined,
+        creatorIDs: prev.creatorIDs ?? undefined,
         keywords: normalizeKeywords(prev.keywords),
         isCreatedByMe: prev.isCreatedByMe ?? false,
       })))

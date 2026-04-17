@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from celery import shared_task
+from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -28,8 +29,6 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums.quota_type import QuotaType
-from services.quota_service import unlimited
-from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
@@ -43,6 +42,7 @@ from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom,
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -299,10 +299,10 @@ def dispatch_triggered_workflow(
                 icon_dark_filename=trigger_entity.identity.icon_dark or "",
             )
 
-            # consume quota before invoking trigger
+            # reserve quota before invoking trigger
             quota_charge = unlimited()
             try:
-                quota_charge = QuotaType.TRIGGER.consume(subscription.tenant_id)
+                quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
             except QuotaExceededError:
                 AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
                 logger.info(
@@ -388,6 +388,7 @@ def dispatch_triggered_workflow(
                     raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
 
                 AsyncWorkflowService.trigger_workflow_async(session=session, user=end_user, trigger_data=trigger_data)
+                quota_charge.commit()
                 dispatched_count += 1
                 logger.info(
                     "Triggered workflow for app %s with trigger event %s",

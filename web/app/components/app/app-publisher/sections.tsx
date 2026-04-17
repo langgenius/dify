@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import Loading from '@/app/components/base/loading'
 import { Button } from '@/app/components/base/ui/button'
 import {
@@ -21,6 +21,8 @@ import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
 
+type WorkflowTypeSwitchLabelKey = I18nKeysWithPrefix<'workflow', 'common.'>
+
 type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
   | 'draftUpdatedAt'
   | 'multipleModelConfigs'
@@ -31,9 +33,18 @@ type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
     handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
     handleRestore: () => Promise<void>
     isChatApp: boolean
+    onWorkflowTypeSwitch: () => Promise<void>
     published: boolean
     publishShortcut: string[]
     upgradeHighlightStyle: CSSProperties
+    workflowTypeSwitchConfig?: {
+      targetType: WorkflowTypeConversionTarget
+      publishLabelKey: WorkflowTypeSwitchLabelKey
+      switchLabelKey: WorkflowTypeSwitchLabelKey
+      tipKey: WorkflowTypeSwitchLabelKey
+    }
+    workflowTypeSwitchDisabled: boolean
+    workflowTypeSwitchDisabledReason?: string
   }
 
 type AccessSectionProps = {
@@ -90,6 +101,28 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
   )
 }
 
+const ActionTooltip = ({
+  disabled,
+  tooltip,
+  children,
+}: {
+  disabled: boolean
+  tooltip?: ReactNode
+  children: ReactNode
+}) => {
+  if (!disabled || !tooltip)
+    return <>{children}</>
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div className="flex">{children}</div>} />
+      <TooltipContent>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 export const PublisherSummarySection = ({
   debugWithMultipleModel = false,
   draftUpdatedAt,
@@ -98,12 +131,16 @@ export const PublisherSummarySection = ({
   handleRestore,
   isChatApp,
   multipleModelConfigs = [],
+  onWorkflowTypeSwitch,
   publishDisabled = false,
   published,
   publishedAt,
   publishShortcut,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
+  workflowTypeSwitchConfig,
+  workflowTypeSwitchDisabled,
+  workflowTypeSwitchDisabledReason,
 }: SummarySectionProps) => {
   const { t } = useTranslation()
 
@@ -164,6 +201,47 @@ export const PublisherSummarySection = ({
                       </div>
                     )}
               </Button>
+              {workflowTypeSwitchConfig && (
+                <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
+                  <button
+                    type="button"
+                    className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void onWorkflowTypeSwitch()}
+                    disabled={workflowTypeSwitchDisabled}
+                  >
+                    <span className="px-0.5">
+                      {t(
+                        publishedAt
+                          ? workflowTypeSwitchConfig.switchLabelKey
+                          : workflowTypeSwitchConfig.publishLabelKey,
+                        { ns: 'workflow' },
+                      )}
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <span
+                            className="flex h-4 w-4 items-center justify-center text-text-quaternary hover:text-text-tertiary"
+                            aria-label={t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                          >
+                            <span className="i-ri-question-line h-3.5 w-3.5" />
+                          </span>
+                        )}
+                      />
+                      <TooltipContent
+                        placement="top"
+                        className="w-[180px]"
+                      >
+                        {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                      </TooltipContent>
+                    </Tooltip>
+                  </button>
+                </ActionTooltip>
+              )}
               {startNodeLimitExceeded && (
                 <div className="mt-3 flex flex-col items-stretch">
                   <p
@@ -227,28 +305,6 @@ export const PublisherAccessSection = ({
   )
 }
 
-const ActionTooltip = ({
-  disabled,
-  tooltip,
-  children,
-}: {
-  disabled: boolean
-  tooltip?: ReactNode
-  children: ReactNode
-}) => {
-  if (!disabled || !tooltip)
-    return <>{children}</>
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={<div className="flex">{children}</div>} />
-      <TooltipContent>
-        {tooltip}
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
 export const PublisherActionsSection = ({
   appDetail,
   appURL,
@@ -305,7 +361,7 @@ export const PublisherActionsSection = ({
             <SuggestedAction
               onClick={handleEmbed}
               disabled={!publishedAt}
-              icon={<CodeBrowser className="h-4 w-4" />}
+              icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
             >
               {t('common.embedIntoSite', { ns: 'workflow' })}
             </SuggestedAction>

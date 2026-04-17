@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -53,7 +54,6 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, EvaluationRun, EvaluationTargetType, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum

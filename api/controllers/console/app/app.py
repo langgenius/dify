@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
+from graphon.enums import WorkflowExecutionStatus
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,7 +30,6 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
@@ -568,7 +568,7 @@ class AppApi(Resource):
             row = db.session.execute(
                 select(Workflow.type).where(Workflow.id == app_model.workflow_id)
             ).scalar()
-            app_model.workflow_type = row if row else None
+            app_model.workflow_type = row or None
         else:
             app_model.workflow_type = None
 

@@ -1,7 +1,7 @@
 import type { ShortcutMapping } from './test-run-menu-helpers'
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuGroupLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
 export enum TriggerType {
@@ -155,9 +155,9 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
         popupClassName="w-[284px] p-1"
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">
+          <DropdownMenuGroupLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">
             {t('common.chooseStartNodeToRun', { ns: 'workflow' })}
-          </DropdownMenuLabel>
+          </DropdownMenuGroupLabel>
           <div>
             {hasUserInput && renderOption(options.userInput!)}
 
