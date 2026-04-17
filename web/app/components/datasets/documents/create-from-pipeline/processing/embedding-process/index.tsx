@@ -2,6 +2,8 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -16,7 +18,6 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -28,7 +29,6 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { cn } from '@/utils/classnames'
 import RuleDetail from './rule-detail'
 
 type EmbeddingProcessProps = {
@@ -81,7 +81,7 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument.id)
+  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {

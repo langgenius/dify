@@ -1,5 +1,8 @@
 'use client'
 
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -11,9 +14,6 @@ import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -151,7 +151,7 @@ export default function OAuthAuthorize() {
             return (
               <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
-                {Icon.label}
+                {Icon!.label}
               </div>
             )
           })}

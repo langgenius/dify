@@ -1,4 +1,6 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiFontSize,
 } from '@remixicon/react'
@@ -10,8 +12,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'nodes.humanInput'

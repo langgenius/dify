@@ -10,6 +10,8 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Line,
   RiPlayCircleLine,
@@ -18,13 +20,11 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { Button } from '@/app/components/base/ui/button'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import Textarea from './textarea'
 
 type QueryInputProps = {
@@ -203,7 +203,7 @@ const QueryInput = ({
 
   return (
     <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
-      <div className="flex h-full flex-col overflow-hidden radius-lg bg-background-section-burn">
+      <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('input.title', { ns: 'datasetHitTesting' })}

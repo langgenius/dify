@@ -208,7 +208,7 @@ export const getPlainValue = (value: Record<string, { value: unknown }>) => {
   const plainValue: Record<string, unknown> = {}
   Object.keys(value).forEach((key) => {
     plainValue[key] = {
-      ...(value[key].value as object),
+      ...(value[key]!.value as object),
     }
   })
   return plainValue
@@ -260,7 +260,7 @@ export const generateAgentToolValue = (value: Record<string, { value?: unknown, 
           value: itemValue?.value,
         },
       }
-      newValues[formSchema.variable].value = correctInitialData(formSchema.type, newValues[formSchema.variable].value!, itemValue?.value)
+      newValues[formSchema.variable]!.value = correctInitialData(formSchema.type, newValues[formSchema.variable]!.value!, itemValue?.value)
     })
   }
   else {

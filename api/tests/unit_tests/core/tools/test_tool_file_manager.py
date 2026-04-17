@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import httpx
 import pytest
-from graphon.file import FileTransferMethod
 
 from core.tools.tool_file_manager import ToolFileManager
+from graphon.file import FileTransferMethod
 
 
 def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:

@@ -4,6 +4,7 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import {
   useCallback,
@@ -15,7 +16,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 
 type ConditionAddProps = {

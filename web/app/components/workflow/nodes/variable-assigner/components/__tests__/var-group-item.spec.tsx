@@ -1,12 +1,12 @@
 import type { ComponentProps } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { createNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import VarGroupItem from '../var-group-item'
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

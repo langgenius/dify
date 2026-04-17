@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiBookmark3Line,
   RiClipboardLine,
@@ -16,7 +17,6 @@ import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import { toast } from '@/app/components/base/ui/toast'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { getCopyContent, MAX_GENERATION_DEPTH } from './utils'
 
@@ -72,7 +72,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   return (
     <>
       {!isInWebApp && (appSourceType !== AppSourceTypeEnum.installedApp) && !isResponding && (
-        <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
           <ActionButton
             aria-label={t('operation.log', { ns: 'common' })}
             disabled={isError || !messageId}
@@ -83,7 +83,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
           </ActionButton>
         </div>
       )}
-      <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+      <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
         {moreLikeThis && !isTryApp && (
           <ActionButton
             aria-label={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
@@ -139,7 +139,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
         )}
       </div>
       {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
-        <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
           {!feedback?.rating && (
             <>
               <ActionButton

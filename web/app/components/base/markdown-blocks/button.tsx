@@ -1,6 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { isValidUrl } from './utils'
 
 const MarkdownButton = ({ node }: any) => {

@@ -2,6 +2,8 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -13,7 +15,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -23,7 +24,6 @@ import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'

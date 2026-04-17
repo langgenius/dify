@@ -1,8 +1,8 @@
 import type { SortableItem } from '../types'
 import type { InputVar } from '@/models/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from '../field-item'
 import FieldListContainer from '../field-list-container'
@@ -110,7 +110,7 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText('my_field')).toBeInTheDocument()
+      expect(screen.getByText('my_field'))!.toBeInTheDocument()
     })
 
     it('should render field item with label when provided', () => {
@@ -125,7 +125,7 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText('Field Label')).toBeInTheDocument()
+      expect(screen.getByText('Field Label'))!.toBeInTheDocument()
     })
 
     it('should not render label when empty', () => {
@@ -155,7 +155,7 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText(/required/i)).toBeInTheDocument()
+      expect(screen.getByText(/required/i))!.toBeInTheDocument()
     })
 
     it('should not render required badge when required is false', () => {
@@ -259,7 +259,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0]) // Edit button
+      fireEvent.click(buttons[0]!) // Edit button
 
       expect(onClickEdit).toHaveBeenCalledWith('test_var')
     })
@@ -278,7 +278,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1]) // Delete button
+      fireEvent.click(buttons[1]!) // Delete button
 
       expect(onRemove).toHaveBeenCalledWith(5)
     })
@@ -328,7 +328,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
 
       expect(onClickEdit).toHaveBeenCalled()
       expect(parentClick).not.toHaveBeenCalled()
@@ -351,7 +351,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1])
+      fireEvent.click(buttons[1]!)
 
       expect(onRemove).toHaveBeenCalled()
       expect(parentClick).not.toHaveBeenCalled()
@@ -373,7 +373,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
 
       rerender(
         <FieldItem
@@ -385,7 +385,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttonsAfterRerender = screen.getAllByRole('button')
-      fireEvent.click(buttonsAfterRerender[0])
+      fireEvent.click(buttonsAfterRerender[0]!)
 
       expect(onClickEdit).toHaveBeenCalledTimes(2)
     })
@@ -406,7 +406,7 @@ describe('FieldItem', () => {
       )
 
       const varElement = screen.getByTitle(longVariable)
-      expect(varElement).toHaveClass('truncate')
+      expect(varElement)!.toHaveClass('truncate')
     })
 
     it('should handle very long label names with truncation', () => {
@@ -423,7 +423,7 @@ describe('FieldItem', () => {
       )
 
       const labelElement = screen.getByTitle(longLabel)
-      expect(labelElement).toHaveClass('truncate')
+      expect(labelElement)!.toHaveClass('truncate')
     })
 
     it('should handle special characters in variable and label', () => {
@@ -441,8 +441,8 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText('<test>&"var\'')).toBeInTheDocument()
-      expect(screen.getByText('<label>&"test\'')).toBeInTheDocument()
+      expect(screen.getByText('<test>&"var\''))!.toBeInTheDocument()
+      expect(screen.getByText('<label>&"test\''))!.toBeInTheDocument()
     })
 
     it('should handle unicode characters', () => {
@@ -460,8 +460,8 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText('变量_🎉')).toBeInTheDocument()
-      expect(screen.getByText('标签_😀')).toBeInTheDocument()
+      expect(screen.getByText('变量_🎉'))!.toBeInTheDocument()
+      expect(screen.getByText('标签_😀'))!.toBeInTheDocument()
     })
 
     it('should render different input types correctly', () => {
@@ -487,7 +487,7 @@ describe('FieldItem', () => {
           />,
         )
 
-        expect(screen.getByText('test_variable')).toBeInTheDocument()
+        expect(screen.getByText('test_variable'))!.toBeInTheDocument()
         unmount()
       })
     })
@@ -517,7 +517,7 @@ describe('FieldItem', () => {
         />,
       )
 
-      expect(screen.getByText('test_variable')).toBeInTheDocument()
+      expect(screen.getByText('test_variable'))!.toBeInTheDocument()
     })
   })
 
@@ -553,7 +553,7 @@ describe('FieldItem', () => {
       )
       fireEvent.mouseEnter(container.firstChild!)
 
-      expect(screen.getByText(/required/i)).toBeInTheDocument()
+      expect(screen.getByText(/required/i))!.toBeInTheDocument()
     })
 
     it('should apply cursor-default class when readonly', () => {
@@ -611,8 +611,8 @@ describe('FieldListContainer', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
-      expect(screen.getByText('var_1')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
+      expect(screen.getByText('var_1'))!.toBeInTheDocument()
     })
 
     it('should render all field items', () => {
@@ -627,9 +627,9 @@ describe('FieldListContainer', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
-      expect(screen.getByText('var_1')).toBeInTheDocument()
-      expect(screen.getByText('var_2')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
+      expect(screen.getByText('var_1'))!.toBeInTheDocument()
+      expect(screen.getByText('var_2'))!.toBeInTheDocument()
     })
 
     it('should render empty list without errors', () => {
@@ -643,7 +643,8 @@ describe('FieldListContainer', () => {
       )
 
       // ReactSortable renders a wrapper div even for empty lists
-      expect(container.firstChild).toBeInTheDocument()
+      // ReactSortable renders a wrapper div even for empty lists
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should apply custom className', () => {
@@ -698,7 +699,7 @@ describe('FieldListContainer', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0]) // Edit button
+      fireEvent.click(buttons[0]!) // Edit button
 
       expect(onEditField).toHaveBeenCalledWith('var_0')
     })
@@ -717,7 +718,7 @@ describe('FieldListContainer', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1]) // Delete button
+      fireEvent.click(buttons[1]!) // Delete button
 
       expect(onRemoveField).toHaveBeenCalledWith(0)
     })
@@ -735,12 +736,12 @@ describe('FieldListContainer', () => {
       }))
 
       expect(converted).toHaveLength(2)
-      expect(converted[0].id).toBe('var_0')
-      expect(converted[0].chosen).toBe(false)
-      expect(converted[0].selected).toBe(false)
-      expect(converted[0].variable).toBe('var_0')
-      expect(converted[0].type).toBe(PipelineInputVarType.textInput)
-      expect(converted[1].id).toBe('var_1')
+      expect(converted[0]!.id).toBe('var_0')
+      expect(converted[0]!.chosen).toBe(false)
+      expect(converted[0]!.selected).toBe(false)
+      expect(converted[0]!.variable).toBe('var_0')
+      expect(converted[0]!.type).toBe(PipelineInputVarType.textInput)
+      expect(converted[1]!.id).toBe('var_1')
     })
   })
 
@@ -767,7 +768,7 @@ describe('FieldListContainer', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
     })
 
     it('should be memoized with React.memo', () => {
@@ -791,7 +792,7 @@ describe('FieldListContainer', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
     })
   })
 
@@ -808,8 +809,8 @@ describe('FieldListContainer', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
-      expect(screen.getByText('var_99')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
+      expect(screen.getByText('var_99'))!.toBeInTheDocument()
     })
 
     it('should throw error when inputFields is undefined', () => {
@@ -847,8 +848,8 @@ describe('FieldList', () => {
         />,
       )
 
-      expect(screen.getByText('Label Content')).toBeInTheDocument()
-      expect(screen.getByText('var_0')).toBeInTheDocument()
+      expect(screen.getByText('Label Content'))!.toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
     })
 
     it('should render add button', () => {
@@ -867,7 +868,7 @@ describe('FieldList', () => {
       const addButton = screen.getAllByRole('button').find(btn =>
         btn.querySelector('svg'),
       )
-      expect(addButton).toBeInTheDocument()
+      expect(addButton)!.toBeInTheDocument()
     })
 
     it('should disable add button when readonly', () => {
@@ -887,7 +888,7 @@ describe('FieldList', () => {
       const addButton = screen.getAllByRole('button').find(btn =>
         btn.querySelector('svg'),
       )
-      expect(addButton).toBeDisabled()
+      expect(addButton)!.toBeDisabled()
     })
 
     it('should apply custom labelClassName', () => {
@@ -905,7 +906,7 @@ describe('FieldList', () => {
       )
 
       const labelContainer = container.querySelector('.custom-label-class')
-      expect(labelContainer).toBeInTheDocument()
+      expect(labelContainer)!.toBeInTheDocument()
     })
   })
 
@@ -974,7 +975,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
@@ -998,10 +999,10 @@ describe('FieldList', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
     })
 
@@ -1022,10 +1023,10 @@ describe('FieldList', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('confirm-cancel'))
@@ -1053,10 +1054,10 @@ describe('FieldList', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('confirm-ok'))
@@ -1085,7 +1086,7 @@ describe('FieldList', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(screen.queryByTestId('remove-var-confirm')).not.toBeInTheDocument()
       expect(handleInputFieldsChange).toHaveBeenCalled()
@@ -1105,7 +1106,8 @@ describe('FieldList', () => {
       )
 
       // Component renders without errors even with no fields
-      expect(container.firstChild).toBeInTheDocument()
+      // Component renders without errors even with no fields
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle null LabelRightContent', () => {
@@ -1119,7 +1121,7 @@ describe('FieldList', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
     })
 
     it('should handle complex LabelRightContent', () => {
@@ -1140,8 +1142,8 @@ describe('FieldList', () => {
         />,
       )
 
-      expect(screen.getByTestId('complex-content')).toBeInTheDocument()
-      expect(screen.getByText('Part 1')).toBeInTheDocument()
+      expect(screen.getByTestId('complex-content'))!.toBeInTheDocument()
+      expect(screen.getByText('Part 1'))!.toBeInTheDocument()
     })
   })
 
@@ -1170,7 +1172,7 @@ describe('FieldList', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
     })
 
     it('should maintain stable onInputFieldsChange callback', () => {
@@ -1203,7 +1205,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
@@ -1230,8 +1232,8 @@ describe('useFieldList Hook', () => {
         />,
       )
 
-      expect(screen.getByText('var_0')).toBeInTheDocument()
-      expect(screen.getByText('var_1')).toBeInTheDocument()
+      expect(screen.getByText('var_0'))!.toBeInTheDocument()
+      expect(screen.getByText('var_1'))!.toBeInTheDocument()
     })
 
     it('should initialize with empty inputFields', () => {
@@ -1246,7 +1248,8 @@ describe('useFieldList Hook', () => {
       )
 
       // Component renders without errors even with no fields
-      expect(container.firstChild).toBeInTheDocument()
+      // Component renders without errors even with no fields
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -1264,8 +1267,8 @@ describe('useFieldList Hook', () => {
 
       // Simulate sort change by calling handleListSortChange directly
       const reorderedList: SortableItem[] = [
-        createSortableItem(initialFields[1]),
-        createSortableItem(initialFields[0]),
+        createSortableItem(initialFields[1]!),
+        createSortableItem(initialFields[0]!),
       ]
 
       act(() => {
@@ -1290,14 +1293,14 @@ describe('useFieldList Hook', () => {
       }))
 
       const sortableList: SortableItem[] = [
-        createSortableItem(initialFields[0], { chosen: true, selected: true }),
+        createSortableItem(initialFields[0]!, { chosen: true, selected: true }),
       ]
 
       act(() => {
         result.current.handleListSortChange(sortableList)
       })
 
-      const updatedFields = onInputFieldsChange.mock.calls[0][0]
+      const updatedFields = onInputFieldsChange.mock.calls[0]![0]
       expect(updatedFields[0]).not.toHaveProperty('id')
       expect(updatedFields[0]).not.toHaveProperty('chosen')
       expect(updatedFields[0]).not.toHaveProperty('selected')
@@ -1323,10 +1326,10 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
     })
 
@@ -1348,7 +1351,7 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(screen.queryByTestId('remove-var-confirm')).not.toBeInTheDocument()
       expect(handleInputFieldsChange).toHaveBeenCalled()
@@ -1372,10 +1375,10 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
       expect(handleInputFieldsChange).not.toHaveBeenCalled()
     })
@@ -1397,7 +1400,7 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(mockIsVarUsedInNodes).toHaveBeenCalledWith(['rag', 'test-node-123', 'my_test_var'])
     })
@@ -1420,7 +1423,7 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(mockIsVarUsedInNodes).toHaveBeenCalledWith(['rag', 'node-1', ''])
     })
@@ -1444,10 +1447,10 @@ describe('useFieldList Hook', () => {
 
       const allFieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (allFieldItemButtons.length >= 4)
-        fireEvent.click(allFieldItemButtons[3])
+        fireEvent.click(allFieldItemButtons[3]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('confirm-ok'))
@@ -1455,7 +1458,7 @@ describe('useFieldList Hook', () => {
       await waitFor(() => {
         expect(handleInputFieldsChange).toHaveBeenCalled()
       })
-      const calledFields = handleInputFieldsChange.mock.calls[0][1]
+      const calledFields = handleInputFieldsChange.mock.calls[0]![1]
       expect(calledFields.length).toBe(2) // 3 - 1 = 2 items remaining
       expect(calledFields.map((f: InputVar) => f.variable)).toEqual(['var_0', 'var_2'])
     })
@@ -1503,7 +1506,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 1)
-        fireEvent.click(fieldItemButtons[0])
+        fireEvent.click(fieldItemButtons[0]!)
 
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1535,10 +1538,10 @@ describe('useFieldList Hook', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('remove-var-confirm')).toBeInTheDocument()
+        expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('confirm-ok'))
@@ -1574,7 +1577,7 @@ describe('handleSubmitField', () => {
     fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
     expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
     expect(editorProps).toHaveProperty('onSubmit')
 
     const newFieldData = createInputVar({ variable: 'new_var', label: 'New Label' })
@@ -1606,9 +1609,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
     editorProps.onSubmit(updatedFieldData)
@@ -1619,7 +1622,7 @@ describe('handleSubmitField', () => {
         expect.objectContaining({ variable: 'var_0', label: 'Updated Label' }),
       ]),
     )
-    const calledFields = handleInputFieldsChange.mock.calls[0][1]
+    const calledFields = handleInputFieldsChange.mock.calls[0]![1]
     expect(calledFields.length).toBe(1) // Should still be 1, not 2
   })
 
@@ -1640,9 +1643,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'new_var_name', label: 'Label 0' })
     editorProps.onSubmit(updatedFieldData, {
@@ -1674,9 +1677,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
     editorProps.onSubmit(updatedFieldData)
@@ -1702,9 +1705,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
     editorProps.onSubmit(updatedFieldData, { type: 'otherType' as never })
@@ -1730,9 +1733,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'new_var' })
     editorProps.onSubmit(updatedFieldData, {
@@ -1764,9 +1767,9 @@ describe('handleSubmitField', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'new_var' })
     editorProps.onSubmit(updatedFieldData, {
@@ -1797,7 +1800,7 @@ describe('handleSubmitField', () => {
 
     fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const newFieldData = createInputVar({ variable: 'new_var' })
     editorProps.onSubmit(newFieldData)
@@ -1821,7 +1824,7 @@ describe('handleSubmitField', () => {
 
     fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
     expect(editorProps).toHaveProperty('onClose')
 
     editorProps.onClose()
@@ -1852,7 +1855,7 @@ describe('Duplicate Variable Name Handling', () => {
 
     fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const duplicateFieldData = createInputVar({ variable: 'existing_var' })
     editorProps.onSubmit(duplicateFieldData)
@@ -1878,9 +1881,9 @@ describe('Duplicate Variable Name Handling', () => {
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
     if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0])
+      fireEvent.click(fieldItemButtons[0]!)
 
-    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+    const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'New Label' })
     editorProps.onSubmit(updatedFieldData)
@@ -1941,12 +1944,12 @@ describe('Integration Tests', () => {
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
       if (fieldItemButtons.length >= 1) {
-        fireEvent.click(fieldItemButtons[0])
+        fireEvent.click(fieldItemButtons[0]!)
         expect(mockToggleInputFieldEditPanel).toHaveBeenCalledTimes(2)
       }
 
       if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1])
+        fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalled()
     })
@@ -1970,7 +1973,7 @@ describe('Integration Tests', () => {
       const addButton = screen.getAllByRole('button').find(btn =>
         btn.querySelector('svg'),
       )
-      expect(addButton).toBeDisabled()
+      expect(addButton)!.toBeDisabled()
     })
   })
 })

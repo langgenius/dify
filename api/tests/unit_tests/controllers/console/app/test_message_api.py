@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from controllers.console.app import message as message_module
@@ -120,3 +122,24 @@ def test_suggested_questions_response(app, monkeypatch: pytest.MonkeyPatch) -> N
     response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])
     assert len(response.data) == 2
     assert response.data[0] == "What is AI?"
+
+
+def test_message_detail_response_normalizes_aliases_and_timestamp(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test MessageDetailResponse normalizes alias fields and datetime timestamps."""
+    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    response = message_module.MessageDetailResponse.model_validate(
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+            "inputs": {"foo": "bar"},
+            "query": "hello",
+            "re_sign_file_url_answer": "world",
+            "from_source": "user",
+            "status": "normal",
+            "created_at": created_at,
+            "message_metadata_dict": {"token_usage": 3},
+        }
+    )
+    assert response.answer == "world"
+    assert response.metadata == {"token_usage": 3}
+    assert response.created_at == int(created_at.timestamp())

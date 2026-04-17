@@ -2,6 +2,8 @@ import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -9,13 +11,11 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'

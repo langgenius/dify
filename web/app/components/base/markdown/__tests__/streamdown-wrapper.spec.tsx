@@ -37,7 +37,9 @@ describe('StreamdownWrapper', () => {
 
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
       // The content should contain the tilde as literal text
-      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
+      // Assert - check that ~ is rendered as text, not as strikethrough (del element)
+      // The content should contain the tilde as literal text
+      expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
       expect(document.querySelector('del')).toBeNull()
     })
 
@@ -65,10 +67,11 @@ describe('StreamdownWrapper', () => {
       // Only double tildes should create strikethrough
       const delElements = document.querySelectorAll('del')
       expect(delElements).toHaveLength(1)
-      expect(delElements[0].textContent).toBe('removed feature')
+      expect(delElements[0]!.textContent).toBe('removed feature')
 
       // Single tilde should remain as literal text
-      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
+      // Single tilde should remain as literal text
+      expect(screen.getByText(TILDE_RANGE_RE))!.toBeInTheDocument()
     })
   })
 
@@ -81,7 +84,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
-      expect(screen.getByText('Hello World')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Hello World'))!.toBeInTheDocument()
     })
 
     it('should render bold text', () => {
@@ -92,7 +96,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
-      expect(screen.getByText('bold text')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('bold text'))!.toBeInTheDocument()
       expect(document.querySelector('[data-streamdown="strong"]')).not.toBeNull()
     })
 
@@ -104,7 +109,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
-      expect(screen.getByText('italic text')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('italic text'))!.toBeInTheDocument()
       expect(document.querySelector('em')).not.toBeNull()
     })
 
@@ -113,7 +119,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent="![standard-img](https://example.com/img.png)" />)
 
       // Assert
-      expect(screen.getByTestId('img')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('img'))!.toBeInTheDocument()
     })
 
     it('should render a CodeBlock component for code markdown', async () => {
@@ -126,7 +133,7 @@ describe('StreamdownWrapper', () => {
       // Assert
       // We mocked code block to return <code>{children}</code>
       const codeElement = await screen.findByText('console.log("hello")')
-      expect(codeElement).toBeInTheDocument()
+      expect(codeElement)!.toBeInTheDocument()
     })
   })
 
@@ -140,7 +147,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent={content} pluginInfo={pluginInfo} />)
 
       // Assert
-      expect(screen.getByTestId('plugin-img')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('plugin-img'))!.toBeInTheDocument()
       expect(screen.queryByTestId('img')).toBeNull()
 
       expect(screen.getAllByTestId('plugin-paragraph').length).toBeGreaterThan(0)
@@ -159,7 +167,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent="[link](https://example.com)" customComponents={customComponents} />)
 
       // Assert
-      expect(screen.getByTestId('custom-link')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('custom-link'))!.toBeInTheDocument()
     })
 
     it('should disallow customDisallowedElements', () => {
@@ -177,7 +186,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent={'<div ref="someRef">content</div>'} />)
 
       // Assert - ref attribute should be removed
-      expect(screen.getByText('content')).toBeInTheDocument()
+      // Assert - ref attribute should be removed
+      expect(screen.getByText('content'))!.toBeInTheDocument()
       expect(document.querySelector('[ref="someRef"]')).toBeNull()
     })
 
@@ -186,7 +196,8 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent="<custom-element>content</custom-element>" />)
 
       // Assert - rehype-sanitize strips the tag but keeps inner text
-      expect(screen.getByText('content')).toBeInTheDocument()
+      // Assert - rehype-sanitize strips the tag but keeps inner text
+      expect(screen.getByText('content'))!.toBeInTheDocument()
       expect(document.querySelector('custom-element')).toBeNull()
     })
   })

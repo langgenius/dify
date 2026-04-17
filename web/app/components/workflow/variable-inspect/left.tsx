@@ -1,11 +1,11 @@
 import type { currentVarType } from './panel'
 
 import type { VarInInspect } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useStore } from '../store'

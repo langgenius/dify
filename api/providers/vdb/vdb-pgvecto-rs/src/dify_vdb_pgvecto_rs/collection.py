@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from numpy import ndarray
@@ -8,5 +9,5 @@ class CollectionORM(DeclarativeBase):
     __tablename__: str
     id: Mapped[UUID]
     text: Mapped[str]
-    meta: Mapped[dict]
+    meta: Mapped[dict[str, Any]]
     vector: Mapped[ndarray]

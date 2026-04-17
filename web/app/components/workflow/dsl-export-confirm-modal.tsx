@@ -1,5 +1,7 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -8,8 +10,6 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]
@@ -42,7 +42,7 @@ const DSLExportConfirmModal = ({
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="relative">
-        <table className="w-full border-separate border-spacing-0 radius-md border border-divider-regular shadow-xs">
+        <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">{t('env.export.name', { ns: 'workflow' })}</td>

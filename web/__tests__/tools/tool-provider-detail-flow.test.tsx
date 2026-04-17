@@ -112,7 +112,7 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllWorkflowTools: () => vi.fn(),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -133,7 +133,7 @@ vi.mock('@/app/components/base/drawer', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
   toast: {
     success: vi.fn(),

@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
@@ -10,7 +11,6 @@ import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
-import { Button } from '@/app/components/base/ui/button'
 import { TransferMethod } from '../../base/text-generation/types'
 import { useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -51,7 +51,7 @@ const InputsPanel = ({ onRun }: Props) => {
         if (variable.default)
           result[variable.variable] = variable.default
         if (inputs[variable.variable] !== undefined)
-          result[variable.variable] = inputs[variable.variable]
+          result[variable.variable] = inputs[variable.variable]!
       })
     }
     return result

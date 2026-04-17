@@ -1,17 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { useBoolean, useHover } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Drawer from '@/app/components/base/drawer'
-import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,10 +9,21 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { useBoolean, useHover } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Drawer from '@/app/components/base/drawer'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { cn } from '@/utils/classnames'
 import { getIcon } from '../utils/get-icon'
 import Field from './field'
 
@@ -211,8 +211,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
         <div className="mt-3 flex h-6 items-center">
           <Switch
-            value={isBuiltInEnabled}
-            onChange={onIsBuiltInEnabledChange}
+            checked={isBuiltInEnabled}
+            onCheckedChange={onIsBuiltInEnabledChange}
           />
           <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />

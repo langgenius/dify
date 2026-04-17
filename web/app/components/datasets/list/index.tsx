@@ -1,17 +1,16 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean, useDebounceFn } from 'ahooks'
 // Libraries
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 // Hooks
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import { Button } from '@/app/components/base/ui/button'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
@@ -85,11 +84,11 @@ const List = () => {
           }
           <div className="h-4 w-px bg-divider-regular" />
           <Button
-            className="shadows-shadow-xs gap-0.5"
+            className="gap-0.5 shadow-xs"
             onClick={() => setShowExternalApiPanel(true)}
           >
-            <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <span className="i-custom-vender-solid-development-api-connection-mod h-4 w-4 text-components-button-secondary-text" />
+            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
           </Button>
         </div>
       </div>

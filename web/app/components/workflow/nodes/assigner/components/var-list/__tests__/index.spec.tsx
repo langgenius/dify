@@ -7,6 +7,19 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../../types'
 import VarList from '../index'
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+    getCurrentVariableType: () => undefined,
+  }),
+}))
+
 const sourceNode = createNode({
   id: 'node-a',
   data: {

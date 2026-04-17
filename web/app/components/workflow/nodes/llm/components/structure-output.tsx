@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot, StructuredOutput } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { cn } from '@/utils/classnames'
 import { Type } from '../types'
 import JsonSchemaConfigModal from './json-schema-config-modal'
 
@@ -58,7 +58,7 @@ const StructureOutput: FC<Props> = ({
             />
           )
         : (
-            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center radius-lg bg-background-section system-xs-regular text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
+            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
           )}
 
       {showConfig && (

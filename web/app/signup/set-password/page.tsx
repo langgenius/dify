@@ -1,16 +1,17 @@
 'use client'
 import type { MailRegisterResponse } from '@/service/use-common'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
+import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 
 const parseUtmInfo = () => {
@@ -68,6 +69,7 @@ const ChangePasswordForm = () => {
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
         const utmInfo = parseUtmInfo()
+        rememberCreateAppExternalAttribution({ utmInfo })
         trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,

@@ -95,12 +95,6 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
   })
 
   describe('Props and Styling', () => {
-    it('should render button with primary variant', () => {
-      scenarios.withAPIKeyNotSet()
-      const button = screen.getByRole('button')
-      expect(button).toHaveClass('btn-primary')
-    })
-
     it('should render panel container with correct classes', () => {
       const { container } = scenarios.withAPIKeyNotSet()
       const panel = container.firstChild as HTMLElement

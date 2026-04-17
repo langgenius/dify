@@ -1,10 +1,10 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
-import { cn } from '@/utils/classnames'
 
 type PlaceholderProps = {
   disableVariableInsertion?: boolean
@@ -38,9 +38,9 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
         {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
         {(!disableVariableInsertion) && (
           <>
-            <div className="system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray text-text-placeholder">/</div>
+            <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
             <div
-              className="system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
+              className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
               onMouseDown={((e) => {
                 e.preventDefault()
                 e.stopPropagation()

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -7,7 +8,6 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
 import KeyValueItem from '../base/key-value-item'

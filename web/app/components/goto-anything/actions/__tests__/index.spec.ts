@@ -81,20 +81,20 @@ describe('createActions', () => {
     const actions = createActions(true, false) as Record<string, ActionItem>
 
     expect(actions).toHaveProperty('node')
-    expect(actions.node.title).toBe('Workflow Nodes')
+    expect(actions.node!.title).toBe('Workflow Nodes')
   })
 
   it('includes rag-pipeline nodes action on rag-pipeline pages', () => {
     const actions = createActions(false, true) as Record<string, ActionItem>
 
     expect(actions).toHaveProperty('node')
-    expect(actions.node.title).toBe('RAG Pipeline Nodes')
+    expect(actions.node!.title).toBe('RAG Pipeline Nodes')
   })
 
   it('rag-pipeline page takes priority over workflow page', () => {
     const actions = createActions(true, true) as Record<string, ActionItem>
 
-    expect(actions.node.title).toBe('RAG Pipeline Nodes')
+    expect(actions.node!.title).toBe('RAG Pipeline Nodes')
   })
 })
 
@@ -180,7 +180,7 @@ describe('searchAnything', () => {
 
     const results = await searchAnything('en', 'my query', undefined, dynamicActions)
 
-    expect(dynamicActions.slash.search).not.toHaveBeenCalled()
+    expect(dynamicActions.slash!.search).not.toHaveBeenCalled()
     expect(results).toHaveLength(2)
     expect(results).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'a1' }),
@@ -206,7 +206,7 @@ describe('searchAnything', () => {
     const results = await searchAnything('en', 'query', undefined, dynamicActions)
 
     expect(results).toHaveLength(1)
-    expect(results[0].id).toBe('k1')
+    expect(results[0]!.id).toBe('k1')
     expect(warnSpy).toHaveBeenCalled()
     warnSpy.mockRestore()
   })

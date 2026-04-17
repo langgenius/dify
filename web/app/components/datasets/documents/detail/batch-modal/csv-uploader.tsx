@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -8,13 +11,10 @@ import { useTranslation } from 'react-i18next'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   file: FileItem | undefined
