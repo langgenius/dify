@@ -12,10 +12,11 @@ from models.model import AppMode
 
 
 class FakeSubscription:
-    def __init__(self, message_queue: queue.Queue[bytes], state: dict[str, bool]) -> None:
+    def __init__(self, message_queue: queue.Queue[bytes], state: dict[str, bool], replay: bool = False) -> None:
         self._queue = message_queue
         self._state = state
         self._closed = False
+        self._replay = replay
 
     def __enter__(self):
         self._state["subscribed"] = True
@@ -43,8 +44,8 @@ class FakeTopic:
         self._queue: queue.Queue[bytes] = queue.Queue()
         self._state = {"subscribed": False}
 
-    def subscribe(self) -> FakeSubscription:
-        return FakeSubscription(self._queue, self._state)
+    def subscribe(self, replay: bool = False) -> FakeSubscription:
+        return FakeSubscription(self._queue, self._state, replay)
 
     def publish(self, payload: bytes) -> None:
         self._queue.put(payload)
