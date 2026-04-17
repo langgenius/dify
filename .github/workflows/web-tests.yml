@@ -110,7 +110,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run dify-ui tests
-        run: vp test run --passWithNoTests --coverage --silent=passed-only
+        run: vp test run --coverage --silent=passed-only
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
