@@ -25,6 +25,7 @@ from dify_vdb_valkey.valkey_vector import (
     _parse_vector_search_results,
     _to_str,
 )
+from pydantic import ValidationError
 
 # ===================================================================
 # Float vector serialisation
@@ -125,6 +126,10 @@ class TestDistanceToSimilarity:
 
     def test_case_insensitive(self):
         assert _distance_to_similarity(0.4, "cosine") == pytest.approx(0.8)
+
+    def test_invalid_metric_raises(self):
+        with pytest.raises(ValueError, match="Unsupported distance metric"):
+            _distance_to_similarity(0.5, "HAMMING")
 
 
 # ===================================================================
@@ -235,3 +240,7 @@ class TestValkeyVectorConfig:
         assert c.host == "h"
         assert c.port == 6380
         assert c.distance_metric == "L2"
+
+    def test_invalid_distance_metric_rejected(self):
+        with pytest.raises(ValidationError):
+            ValkeyVectorConfig(distance_metric="HAMMING")

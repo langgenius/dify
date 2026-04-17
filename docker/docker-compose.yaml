@@ -206,7 +206,7 @@ x-shared-env: &shared-api-worker-env
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
   QDRANT_REPLICATION_FACTOR: ${QDRANT_REPLICATION_FACTOR:-1}
-  VALKEY_HOST: ${VALKEY_HOST:-localhost}
+  VALKEY_HOST: ${VALKEY_HOST:-valkey}
   VALKEY_PORT: ${VALKEY_PORT:-6379}
   VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
   VALKEY_DB: ${VALKEY_DB:-0}
@@ -1276,6 +1276,18 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+
+  # Valkey vector store (with valkey-search module for vector similarity search).
+  # (if used, you need to set VECTOR_STORE to valkey in the api & worker service.)
+  # Requires valkey-search module >= 1.2.0, included in valkey-bundle 9.1.0-rc1+.
+  # Use valkey/valkey-bundle:unstable or valkey/valkey-bundle:9.1.0-rc1 until a stable release ships.
+  valkey:
+    image: valkey/valkey-bundle:9.1.0-rc1
+    profiles:
+      - valkey
+    restart: always
+    volumes:
+      - ./volumes/valkey:/data
 
   # The Couchbase vector store.
   couchbase-server:

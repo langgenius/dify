@@ -25,7 +25,7 @@ import json
 import logging
 import struct
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -47,7 +47,8 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 # Distance metrics supported by valkey-search.
-_VALID_DISTANCE_METRICS = frozenset({"COSINE", "L2", "IP"})
+DistanceMetric = Literal["COSINE", "L2", "IP"]
+_VALID_DISTANCE_METRICS: frozenset[str] = frozenset({"COSINE", "L2", "IP"})
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +127,7 @@ def _distance_to_similarity(distance: float, metric: str) -> float:
         return 1.0 / (1.0 + distance)
     if metric_upper == "IP":
         return 1.0 - distance
-    # Fallback — treat as raw distance inversion.
-    return 1.0 - distance
+    raise ValueError(f"Unsupported distance metric: {metric!r}. Must be one of: COSINE, L2, IP.")
 
 
 def _parse_vector_search_results(
@@ -211,7 +211,7 @@ class ValkeyVectorConfig(BaseModel):
     password: str = ""
     db: int = 0
     use_ssl: bool = False
-    distance_metric: str = "COSINE"
+    distance_metric: DistanceMetric = "COSINE"
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +287,30 @@ class ValkeyVector(BaseVector):
     def _run(self, coro: Any) -> Any:
         """Run an async coroutine on this instance's event loop."""
         return self._loop.run_until_complete(coro)
+
+    def close(self) -> None:
+        """Shut down the glide client and close the event loop."""
+        try:
+            self._run(self._client.close())
+        except Exception:
+            logger.debug("Error closing glide client", exc_info=True)
+        finally:
+            if not self._loop.is_closed():
+                self._loop.close()
+
+    def __enter__(self) -> ValkeyVector:
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        # Best-effort cleanup if close() was never called explicitly.
+        try:
+            if not self._loop.is_closed():
+                self.close()
+        except Exception:
+            logger.debug("Error during __del__ cleanup", exc_info=True)
 
     def get_type(self) -> str:
         return VectorType.VALKEY
@@ -370,6 +394,8 @@ class ValkeyVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         if not texts or not embeddings:
             return
+        if len(texts) != len(embeddings):
+            raise ValueError(f"Number of documents ({len(texts)}) must match number of embeddings ({len(embeddings)})")
         vector_size = len(embeddings[0])
         if vector_size == 0:
             raise ValueError("First embedding is empty — cannot determine vector dimensions")
@@ -385,6 +411,10 @@ class ValkeyVector(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         if not documents:
             return []
+        if len(documents) != len(embeddings):
+            raise ValueError(
+                f"Number of documents ({len(documents)}) must match number of embeddings ({len(embeddings)})"
+            )
 
         # Validate all embeddings have consistent dimensions.
         expected_dim = len(embeddings[0])
@@ -394,15 +424,16 @@ class ValkeyVector(BaseVector):
 
         added_ids: list[str] = []
         for doc, embedding in zip(documents, embeddings):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4())) if doc.metadata else str(uuid.uuid4())
+            metadata = dict(doc.metadata or {})
+            doc_id = metadata.get("doc_id") or str(uuid.uuid4())
+            metadata["doc_id"] = doc_id
             key = f"{self._prefix}{doc_id}"
-            metadata = doc.metadata or {}
             fields: dict[str, str | bytes] = {
                 "vector": _float_vector_to_bytes(embedding),
                 Field.CONTENT_KEY: doc.page_content,
                 Field.METADATA_KEY: json.dumps(metadata),
                 "group_id": self._group_id,
-                "doc_id": metadata.get("doc_id", ""),
+                "doc_id": doc_id,
                 "document_id": metadata.get("document_id", ""),
             }
             try:
@@ -430,11 +461,14 @@ class ValkeyVector(BaseVector):
         self._run(self._client.delete(keys))
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
-        """Delete documents matching a metadata TAG field value."""
-        if key == "document_id":
-            query = f"@document_id:{{{_escape_tag(value)}}}"
-        else:
-            query = f"@doc_id:{{{_escape_tag(value)}}}"
+        """Delete documents matching a supported metadata TAG field value."""
+        supported_keys = {"document_id", "doc_id"}
+        if key not in supported_keys:
+            raise ValueError(
+                f"Unsupported metadata field for deletion: {key!r}. "
+                f"Supported fields are: {', '.join(sorted(supported_keys))}."
+            )
+        query = f"@{key}:{{{_escape_tag(value)}}}"
         self._delete_by_query(query)
 
     def delete(self) -> None:
