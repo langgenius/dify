@@ -108,7 +108,7 @@ const DemoField = ({
 }
 
 const meta = {
-  title: 'Base/Form/NumberField',
+  title: 'Base/UI/NumberField',
   component: NumberField,
   parameters: {
     layout: 'centered',

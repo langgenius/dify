@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Slider } from '.'
 
 const meta = {
-  title: 'Base UI/Data Entry/Slider',
+  title: 'Base/UI/Slider',
   component: Slider,
   parameters: {
     layout: 'centered',
