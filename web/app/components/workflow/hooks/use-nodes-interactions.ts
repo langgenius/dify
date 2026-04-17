@@ -13,6 +13,7 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,7 +22,6 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { toast } from '@/app/components/base/ui/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
