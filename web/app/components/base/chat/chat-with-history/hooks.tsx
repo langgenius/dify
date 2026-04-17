@@ -438,7 +438,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (conversationId === currentConversationId)
       handleNewConversation()
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, t, handleUpdateConversationList, handleNewConversation, currentConversationId, conversationDeleting])
+  }, [conversationDeleting, currentConversationId, handleNewConversation, handleUpdateConversationList, appSourceType, appId, t])
   const [conversationRenaming, setConversationRenaming] = useState(false)
   const handleRenameConversation = useCallback(async (conversationId: string, newName: string, { onSuccess }: Callback) => {
     if (conversationRenaming)
@@ -464,7 +464,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     finally {
       setConversationRenaming(false)
     }
-  }, [isInstalledApp, appId, t, conversationRenaming, originConversationList])
+  }, [conversationRenaming, t, appSourceType, appId, originConversationList])
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
