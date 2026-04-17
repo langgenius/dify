@@ -1,6 +1,6 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/placement'
 import type { FC } from 'react'
+import type { Placement } from '@/app/components/base/ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'

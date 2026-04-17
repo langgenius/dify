@@ -12,6 +12,16 @@ This package provides shared design tokens (colors, shadows, typography), the `c
 - Icons: keep using the Tailwind `i-ri-*` / `i-heroicons-*` utilities. The `@egoist/tailwindcss-icons` plugin is configured at the host-app level; any component moved here will be picked up automatically because `web/tailwind.config.ts` already scans `packages/dify-ui/src/**`.
 - Each component owns its folder: `src/<name>/index.tsx`, plus optional `index.stories.tsx` and `__tests__/index.spec.tsx`.
 - Add a matching subpath to `package.json#exports`: `"./<name>": { "types": "./src/<name>/index.tsx", "import": "./src/<name>/index.tsx" }`.
+- When a component exposes a prop typed from a shared internal module (e.g. `placement?: Placement`), `export type { Placement }` from the component's own `index.tsx`. Consumers MUST import the type from the component they are already using (`import type { Placement } from '@langgenius/dify-ui/popover'`), NOT from a standalone type subpath. This keeps the public API surface = components only.
+
+## API Debt (scheduled for removal)
+
+The following `package.json#exports` entries are **internal transition bridges** kept only while the overlay primitives live in `web/app/components/base/ui/*`. Do NOT import them from new code:
+
+- `./placement`
+- `./overlay-shared`
+
+Removal trigger: once `popover`, `tooltip`, `select`, `dropdown-menu`, and `context-menu` have all been migrated into `packages/dify-ui/src/*` and switched to relative imports (`../placement`, `../overlay-shared`), delete both entries from `exports`. External consumers already import `type Placement` from the component subpaths, so this removal is non-breaking at that point.
 
 ## Border Radius: Figma Token → Tailwind Class Mapping
 

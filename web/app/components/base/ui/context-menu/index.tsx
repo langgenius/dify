@@ -17,6 +17,10 @@ import {
 } from '@langgenius/dify-ui/overlay-shared'
 import { parsePlacement } from '@langgenius/dify-ui/placement'
 
+// Type-only re-export: zero runtime cost under `verbatimModuleSyntax` (compiled away).
+// eslint-disable-next-line no-barrel-files/no-barrel-files
+export type { Placement }
+
 export const ContextMenu = BaseContextMenu.Root
 export const ContextMenuTrigger = BaseContextMenu.Trigger
 export const ContextMenuSub = BaseContextMenu.SubmenuRoot

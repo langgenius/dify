@@ -12,6 +12,10 @@ import {
 import { parsePlacement } from '@langgenius/dify-ui/placement'
 import { cva } from 'class-variance-authority'
 
+// Type-only re-export: zero runtime cost under `verbatimModuleSyntax` (compiled away).
+// eslint-disable-next-line no-barrel-files/no-barrel-files
+export type { Placement }
+
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
 /** @public */

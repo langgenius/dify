@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { Placement } from '../placement'
+import type { Placement } from '.'
 import { useState } from 'react'
 import {
   Popover,

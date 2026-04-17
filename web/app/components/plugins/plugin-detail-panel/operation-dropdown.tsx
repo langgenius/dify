@@ -1,6 +1,6 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/placement'
 import type { FC } from 'react'
+import type { Placement } from '@/app/components/base/ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
