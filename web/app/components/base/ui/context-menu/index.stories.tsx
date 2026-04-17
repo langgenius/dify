@@ -29,7 +29,7 @@ const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: strin
 )
 
 const meta = {
-  title: 'Base/Navigation/ContextMenu',
+  title: 'Base/UI/ContextMenu',
   component: ContextMenu,
   parameters: {
     layout: 'centered',
