@@ -743,7 +743,7 @@ class TestApiToolManageService:
                 custom_disclaimer="New disclaimer",
                 labels=["new-label"],
             )
-            
+
         error = exc_info.value
         assert error.provider_name == missing_original_name
         assert error.tenant_id == tenant.id
