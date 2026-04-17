@@ -4,7 +4,7 @@ import { createTestApp } from '../../../support/api'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {
   const name = `E2E Test App ${Date.now()}`
-  const app = await createTestApp(name)
+  const app = await createTestApp(name, 'completion')
   this.lastCreatedAppName = app.name
   this.createdAppIds.push(app.id)
 })

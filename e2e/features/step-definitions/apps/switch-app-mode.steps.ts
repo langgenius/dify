@@ -3,12 +3,15 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api'
 
-Given('there is an existing E2E chat app available for testing', async function (this: DifyWorld) {
-  const name = `E2E Test App ${Date.now()}`
-  const app = await createTestApp(name, 'chat')
-  this.lastCreatedAppName = app.name
-  this.createdAppIds.push(app.id)
-})
+Given(
+  'there is an existing E2E completion app available for testing',
+  async function (this: DifyWorld) {
+    const name = `E2E Test App ${Date.now()}`
+    const app = await createTestApp(name, 'completion')
+    this.lastCreatedAppName = app.name
+    this.createdAppIds.push(app.id)
+  },
+)
 
 When('I confirm the app switch', async function (this: DifyWorld) {
   await this.getPage().getByRole('button', { name: 'Start switch' }).click()
