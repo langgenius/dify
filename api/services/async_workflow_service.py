@@ -89,7 +89,7 @@ class AsyncWorkflowService:
             raise WorkflowNotFoundError(f"App not found: {trigger_data.app_id}")
 
         # 2. Get workflow
-        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
+        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id, session=session)
 
         # 3. Get dispatcher based on tenant subscription
         dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
@@ -302,13 +302,21 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @staticmethod
-    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: str | None = None) -> Workflow:
+    def _get_workflow(
+        workflow_service: WorkflowService,
+        app_model: App,
+        workflow_id: str | None = None,
+        session: Session | None = None,
+    ) -> Workflow:
         """
         Get workflow for the app
 
         Args:
             app_model: App model instance
             workflow_id: Optional specific workflow ID
+            session: Reuse this SQLAlchemy session for the lookup when provided,
+                so the caller's explicit session bears the connection cost
+                instead of Flask's request-scoped ``db.session``.
 
         Returns:
             Workflow instance
@@ -318,12 +326,12 @@ class AsyncWorkflowService:
         """
         if workflow_id:
             # Get specific published workflow
-            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id)
+            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id, session=session)
             if not workflow:
                 raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
         else:
             # Get default published workflow
-            workflow = workflow_service.get_published_workflow(app_model)
+            workflow = workflow_service.get_published_workflow(app_model, session=session)
             if not workflow:
                 raise WorkflowNotFoundError(f"No published workflow found for app: {app_model.id}")
 
