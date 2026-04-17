@@ -2,7 +2,7 @@
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
     "rootDir": ".",
-    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "types": ["vite-plus/test/globals", "@testing-library/jest-dom"],
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },

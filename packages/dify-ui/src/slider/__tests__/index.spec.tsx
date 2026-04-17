@@ -1,6 +1,6 @@
-import { act, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { act } from 'react'
 import { Slider } from '../index'
 
 describe('Slider', () => {
@@ -31,36 +31,36 @@ describe('Slider', () => {
   })
 
   it('should call onValueChange when arrow keys are pressed', async () => {
-    const user = userEvent.setup()
     const onValueChange = vi.fn()
 
     render(<Slider value={20} onValueChange={onValueChange} aria-label="Value" />)
 
     const slider = getSliderInput()
-
-    await act(async () => {
+    act(() => {
       slider.focus()
-      await user.keyboard('{ArrowRight}')
+      fireEvent.keyDown(slider, { key: 'ArrowRight' })
     })
 
-    expect(onValueChange).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(onValueChange).toHaveBeenCalledTimes(1)
+    })
     expect(onValueChange).toHaveBeenLastCalledWith(21, expect.anything())
   })
 
   it('should round floating point keyboard updates to the configured step', async () => {
-    const user = userEvent.setup()
     const onValueChange = vi.fn()
 
     render(<Slider value={0.2} min={0} max={1} step={0.1} onValueChange={onValueChange} aria-label="Value" />)
 
     const slider = getSliderInput()
-
-    await act(async () => {
+    act(() => {
       slider.focus()
-      await user.keyboard('{ArrowRight}')
+      fireEvent.keyDown(slider, { key: 'ArrowRight' })
     })
 
-    expect(onValueChange).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(onValueChange).toHaveBeenCalledTimes(1)
+    })
     expect(onValueChange).toHaveBeenLastCalledWith(0.3, expect.anything())
   })
 
@@ -72,11 +72,8 @@ describe('Slider', () => {
     const slider = getSliderInput()
 
     expect(slider).toBeDisabled()
-
-    await act(async () => {
-      slider.focus()
-      await user.keyboard('{ArrowRight}')
-    })
+    await user.click(slider)
+    await user.keyboard('{ArrowRight}')
 
     expect(onValueChange).not.toHaveBeenCalled()
   })

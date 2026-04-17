@@ -1,41 +1,9 @@
-import { act, cleanup } from '@testing-library/react'
-import '@testing-library/jest-dom/vitest'
+import { cleanup } from '@testing-library/react'
+import { act } from 'react'
 
-if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
-  Element.prototype.getAnimations = () => []
+import '@testing-library/jest-dom/vitest';
 
-if (typeof document !== 'undefined' && !document.getAnimations)
-  document.getAnimations = () => []
-
-if (typeof globalThis.ResizeObserver === 'undefined') {
-  globalThis.ResizeObserver = class {
-    observe() {
-      return undefined
-    }
-
-    unobserve() {
-      return undefined
-    }
-
-    disconnect() {
-      return undefined
-    }
-  }
-}
-
-if (typeof globalThis.IntersectionObserver === 'undefined') {
-  globalThis.IntersectionObserver = class {
-    readonly root: Element | Document | null = null
-    readonly rootMargin: string = ''
-    readonly scrollMargin: string = ''
-    readonly thresholds: ReadonlyArray<number> = []
-    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
-    observe(_target: Element) { /* noop */ }
-    unobserve(_target: Element) { /* noop */ }
-    disconnect() { /* noop */ }
-    takeRecords(): IntersectionObserverEntry[] { return [] }
-  }
-}
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 afterEach(async () => {
   await act(async () => {

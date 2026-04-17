@@ -109,6 +109,9 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Install Chromium for Browser Mode
+        run: vp exec playwright install --with-deps chromium
+
       - name: Run dify-ui tests
         run: vp test run --coverage --silent=passed-only
 

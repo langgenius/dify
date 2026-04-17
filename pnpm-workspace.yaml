@@ -46,6 +46,7 @@ catalog:
   '@orpc/openapi-client': 1.13.14
   '@orpc/tanstack-query': 1.13.14
   '@playwright/test': 1.59.1
+  playwright: 1.59.1
   '@remixicon/react': 4.9.0
   '@rgrove/parse-xml': 4.2.0
   '@sentry/react': 10.48.0

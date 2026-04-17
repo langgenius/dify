@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -9,6 +8,28 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '../index'
+
+const stubElementMetric = (
+  element: HTMLElement,
+  property: 'clientHeight' | 'clientWidth' | 'scrollHeight' | 'scrollWidth',
+  value: number,
+) => {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(element, property)
+
+  Object.defineProperty(element, property, {
+    configurable: true,
+    get: () => value,
+  })
+
+  return () => {
+    if (originalDescriptor) {
+      Object.defineProperty(element, property, originalDescriptor)
+      return
+    }
+
+    delete (element as Partial<Record<typeof property, number>>)[property]
+  }
+}
 
 const renderScrollArea = (options: {
   rootClassName?: string
@@ -215,44 +236,25 @@ describe('scroll-area wrapper', () => {
 
   describe('Corner', () => {
     it('should render the corner export when both axes overflow', async () => {
-      const originalDescriptors = {
-        clientHeight: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientHeight'),
-        clientWidth: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientWidth'),
-        scrollHeight: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'scrollHeight'),
-        scrollWidth: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'scrollWidth'),
-      }
-
-      Object.defineProperties(HTMLDivElement.prototype, {
-        clientHeight: {
-          configurable: true,
-          get() {
-            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 80 : 0
-          },
-        },
-        clientWidth: {
-          configurable: true,
-          get() {
-            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 80 : 0
-          },
-        },
-        scrollHeight: {
-          configurable: true,
-          get() {
-            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 160 : 0
-          },
-        },
-        scrollWidth: {
-          configurable: true,
-          get() {
-            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 160 : 0
-          },
-        },
-      })
+      const restoreViewportMetrics: Array<() => void> = []
 
       try {
         render(
           <ScrollAreaRoot className="h-40 w-40" data-testid="scroll-area-root">
-            <ScrollAreaViewport data-testid="scroll-area-viewport">
+            <ScrollAreaViewport
+              data-testid="scroll-area-viewport"
+              ref={(node) => {
+                if (!node || restoreViewportMetrics.length > 0)
+                  return
+
+                restoreViewportMetrics.push(
+                  stubElementMetric(node, 'clientHeight', 80),
+                  stubElementMetric(node, 'clientWidth', 80),
+                  stubElementMetric(node, 'scrollHeight', 160),
+                  stubElementMetric(node, 'scrollWidth', 160),
+                )
+              }}
+            >
               <ScrollAreaContent data-testid="scroll-area-content">
                 <div className="h-48 w-48">Scrollable content</div>
               </ScrollAreaContent>
@@ -277,18 +279,7 @@ describe('scroll-area wrapper', () => {
         })
       }
       finally {
-        if (originalDescriptors.clientHeight) {
-          Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', originalDescriptors.clientHeight)
-        }
-        if (originalDescriptors.clientWidth) {
-          Object.defineProperty(HTMLDivElement.prototype, 'clientWidth', originalDescriptors.clientWidth)
-        }
-        if (originalDescriptors.scrollHeight) {
-          Object.defineProperty(HTMLDivElement.prototype, 'scrollHeight', originalDescriptors.scrollHeight)
-        }
-        if (originalDescriptors.scrollWidth) {
-          Object.defineProperty(HTMLDivElement.prototype, 'scrollWidth', originalDescriptors.scrollWidth)
-        }
+        restoreViewportMetrics.splice(0).forEach(restore => restore())
       }
     })
   })
