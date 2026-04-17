@@ -288,6 +288,37 @@ class ValkeyVector(BaseVector):
         """Run an async coroutine on this instance's event loop."""
         return self._loop.run_until_complete(coro)
 
+    def close(self) -> None:
+        """Shut down the glide client and close the event loop."""
+        try:
+            self._run(self._client.close())
+        except Exception:
+            logger.debug("Error closing glide client", exc_info=True)
+        finally:
+            if not self._loop.is_closed():
+                self._loop.close()
+
+    def __enter__(self) -> ValkeyVector:
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        # Best-effort cleanup if close() was never called explicitly.
+        try:
+            if not self._loop.is_closed():
+                self.close()
+        except Exception:
+            logger.debug("Error during __del__ cleanup", exc_info=True)
+        finally:
+            # Ensure the loop is closed even if close() failed.
+            try:
+                if not self._loop.is_closed():
+                    self._loop.close()
+            except Exception:
+                pass
+
     def get_type(self) -> str:
         return VectorType.VALKEY
 
