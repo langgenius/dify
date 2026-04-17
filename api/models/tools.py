@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
+from core.tools.entities.tool_credential_access import ToolCredentialAccessScope
 from core.tools.entities.tool_entities import (
     ApiProviderSchemaType,
     ToolProviderType,
@@ -117,12 +118,38 @@ class BuiltinToolProvider(TypeBase):
         default=CredentialType.API_KEY,
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    access_scope: Mapped[ToolCredentialAccessScope] = mapped_column(
+        EnumText(ToolCredentialAccessScope, length=32),
+        nullable=False,
+        server_default=sa.text("'workspace'"),
+        default=ToolCredentialAccessScope.WORKSPACE,
+    )
 
     @property
     def credentials(self) -> dict[str, Any]:
         if not self.encrypted_credentials:
             return {}
         return cast(dict[str, Any], json.loads(self.encrypted_credentials))
+
+
+class ToolBuiltinProviderAllowedAccount(TypeBase):
+    """
+    Additional workspace accounts allowed to use a RESTRICTED tool provider credential
+    (creator is always allowed).
+    """
+
+    __tablename__ = "tool_builtin_provider_allowed_accounts"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("credential_id", "account_id", name="tool_builtin_provider_allowed_accounts_pkey"),
+        sa.Index("tool_builtin_provider_allowed_accounts_account_id_idx", "account_id"),
+    )
+
+    credential_id: Mapped[str] = mapped_column(
+        StringUUID,
+        ForeignKey("tool_builtin_providers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
 class ApiToolProvider(TypeBase):

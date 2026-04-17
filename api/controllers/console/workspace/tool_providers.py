@@ -24,12 +24,14 @@ from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.tool_credential_access import ToolCredentialAccessScope
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
+from models.account import TenantAccountRole
 from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
@@ -68,12 +70,16 @@ class BuiltinToolAddPayload(BaseModel):
     credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
+    access_scope: Literal["workspace", "private", "restricted"] | None = None
+    allowed_account_ids: list[str] | None = None
 
 
 class BuiltinToolUpdatePayload(BaseModel):
     credential_id: str
     credentials: dict[str, Any] | None = None
     name: str | None = Field(default=None, max_length=30)
+    access_scope: Literal["workspace", "private", "restricted"] | None = None
+    allowed_account_ids: list[str] | None = None
 
 
 class ApiToolProviderBasePayload(BaseModel):
@@ -329,6 +335,12 @@ class ToolBuiltinProviderAddApi(Resource):
 
         payload = BuiltinToolAddPayload.model_validate(console_ns.payload or {})
 
+        access_scope = (
+            ToolCredentialAccessScope(payload.access_scope)
+            if payload.access_scope is not None
+            else ToolCredentialAccessScope.WORKSPACE
+        )
+
         return BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -336,6 +348,8 @@ class ToolBuiltinProviderAddApi(Resource):
             credentials=payload.credentials,
             name=payload.name,
             api_type=CredentialType.of(payload.type),
+            access_scope=access_scope,
+            allowed_account_ids=payload.allowed_account_ids,
         )
 
 
@@ -352,6 +366,10 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
         payload = BuiltinToolUpdatePayload.model_validate(console_ns.payload or {})
 
+        access_scope = (
+            ToolCredentialAccessScope(payload.access_scope) if payload.access_scope is not None else None
+        )
+
         result = BuiltinToolManageService.update_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -359,6 +377,8 @@ class ToolBuiltinProviderUpdateApi(Resource):
             credential_id=payload.credential_id,
             credentials=payload.credentials,
             name=payload.name or "",
+            access_scope=access_scope,
+            allowed_account_ids=payload.allowed_account_ids,
         )
         return result
 
@@ -369,12 +389,15 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
+        role = user.role.value if user.role else TenantAccountRole.NORMAL.value
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
+                viewer_account_id=user.id,
+                viewer_role=role,
             )
         )
 
@@ -943,12 +966,15 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
+        role = user.role.value if user.role else TenantAccountRole.NORMAL.value
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
+                viewer_account_id=user.id,
+                viewer_role=role,
             )
         )
 

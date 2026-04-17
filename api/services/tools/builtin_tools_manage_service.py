@@ -21,6 +21,7 @@ from core.tools.entities.api_entities import (
     ToolProviderCredentialApiEntity,
     ToolProviderCredentialInfoApiEntity,
 )
+from core.tools.entities.tool_credential_access import ToolCredentialAccessScope
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -32,6 +33,11 @@ from extensions.ext_redis import redis_client
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.plugin.plugin_service import PluginService
+from services.tools.tool_builtin_credential_access_service import (
+    account_may_view_credential_list,
+    load_allowed_account_ids_for_credentials,
+    sync_allowed_accounts,
+)
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -149,6 +155,8 @@ class BuiltinToolManageService:
         credential_id: str,
         credentials: dict[str, Any] | None = None,
         name: str | None = None,
+        access_scope: ToolCredentialAccessScope | None = None,
+        allowed_account_ids: list[str] | None = None,
     ):
         """
         update builtin tool provider
@@ -206,6 +214,17 @@ class BuiltinToolManageService:
 
                     db_provider.name = name
 
+                if access_scope is not None:
+                    db_provider.access_scope = access_scope
+                if access_scope is not None or allowed_account_ids is not None:
+                    sync_allowed_accounts(
+                        session,
+                        credential_id=db_provider.id,
+                        tenant_id=tenant_id,
+                        access_scope=db_provider.access_scope,
+                        allowed_account_ids=allowed_account_ids,
+                    )
+
             except Exception as e:
                 raise ValueError(str(e))
         return {"result": "success"}
@@ -219,6 +238,8 @@ class BuiltinToolManageService:
         credentials: dict[str, Any],
         expires_at: int = -1,
         name: str | None = None,
+        access_scope: ToolCredentialAccessScope = ToolCredentialAccessScope.WORKSPACE,
+        allowed_account_ids: list[str] | None = None,
     ):
         """
         add builtin tool provider
@@ -285,9 +306,18 @@ class BuiltinToolManageService:
                         credential_type=api_type,
                         name=name,
                         expires_at=expires_at if expires_at is not None else -1,
+                        access_scope=access_scope,
                     )
 
                     session.add(db_provider)
+                    session.flush()
+                    sync_allowed_accounts(
+                        session,
+                        credential_id=db_provider.id,
+                        tenant_id=tenant_id,
+                        access_scope=access_scope,
+                        allowed_account_ids=allowed_account_ids,
+                    )
             except Exception as e:
                 raise ValueError(str(e))
 
@@ -330,7 +360,10 @@ class BuiltinToolManageService:
 
     @staticmethod
     def get_builtin_tool_provider_credentials(
-        tenant_id: str, provider_name: str
+        tenant_id: str,
+        provider_name: str,
+        viewer_account_id: str,
+        viewer_role: str,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials
@@ -345,31 +378,47 @@ class BuiltinToolManageService:
             if len(providers) == 0:
                 return []
 
+            allowed_map = load_allowed_account_ids_for_credentials(db.session, [p.id for p in providers])
+
             default_provider = providers[0]
             default_provider.is_default = True
             provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
 
             credentials: list[ToolProviderCredentialApiEntity] = []
             for provider in providers:
+                extra = allowed_map.get(provider.id, set())
+                if not account_may_view_credential_list(
+                    viewer_account_id=viewer_account_id,
+                    viewer_role=viewer_role,
+                    provider=provider,
+                    extra_allowed_ids=extra,
+                ):
+                    continue
                 encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
                     tenant_id, provider, provider.provider, provider_controller
                 )
                 decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
+                extra_ids = sorted(allowed_map.get(provider.id, set()))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
                     credentials=dict(decrypt_credential),
+                    allowed_account_ids=extra_ids,
                 )
                 credentials.append(credential_entity)
             return credentials
 
     @staticmethod
-    def get_builtin_tool_provider_credential_info(tenant_id: str, provider: str) -> ToolProviderCredentialInfoApiEntity:
+    def get_builtin_tool_provider_credential_info(
+        tenant_id: str, provider: str, viewer_account_id: str, viewer_role: str
+    ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
         """
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
         supported_credential_types = provider_controller.get_supported_credential_types()
-        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(tenant_id, provider)
+        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
+            tenant_id, provider, viewer_account_id, viewer_role
+        )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,
             is_oauth_custom_client_enabled=BuiltinToolManageService.is_oauth_custom_client_enabled(tenant_id, provider),

@@ -52,6 +52,8 @@ export const useAddPluginCredential = (
       credentials: Record<string, any>
       type: CredentialTypeEnum
       name?: string
+      access_scope?: 'workspace' | 'private' | 'restricted'
+      allowed_account_ids?: string[]
     }) => {
       return post(url, { body: params })
     },
@@ -66,6 +68,8 @@ export const useUpdatePluginCredential = (
       credential_id: string
       credentials?: Record<string, any>
       name?: string
+      access_scope?: 'workspace' | 'private' | 'restricted'
+      allowed_account_ids?: string[]
     }) => {
       return post(url, { body: params })
     },

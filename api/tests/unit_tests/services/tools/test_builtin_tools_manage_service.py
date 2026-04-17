@@ -336,7 +336,7 @@ class TestGetBuiltinToolProviderCredentialInfo:
     def test_returns_credential_info(self, mock_tm, mock_creds, mock_oauth):
         mock_tm.get_builtin_provider.return_value.get_supported_credential_types.return_value = ["api-key"]
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info("t", "google", "u", "normal")
 
         assert result.credentials == []
         assert result.supported_credential_types == ["api-key"]
@@ -344,25 +344,30 @@ class TestGetBuiltinToolProviderCredentialInfo:
 
 
 class TestGetBuiltinToolProviderCredentials:
+    @patch(f"{MODULE}.load_allowed_account_ids_for_credentials", return_value={})
     @patch(f"{MODULE}.db")
-    def test_returns_empty_when_no_providers(self, mock_db):
+    def test_returns_empty_when_no_providers(self, mock_db, _mock_allowed):
         mock_db.session.no_autoflush.__enter__ = MagicMock(return_value=None)
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
         mock_db.session.scalars.return_value.all.return_value = []
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", "u", "normal")
 
         assert result == []
 
+    @patch(f"{MODULE}.load_allowed_account_ids_for_credentials", return_value={})
     @patch(f"{MODULE}.ToolTransformService")
     @patch(f"{MODULE}.BuiltinToolManageService.create_tool_encrypter")
     @patch(f"{MODULE}.ToolManager")
     @patch(f"{MODULE}.db")
-    def test_returns_credential_entities(self, mock_db, mock_tm, mock_enc, mock_transform):
+    def test_returns_credential_entities(self, mock_db, mock_tm, mock_enc, mock_transform, _mock_allowed):
         mock_db.session.no_autoflush.__enter__ = MagicMock(return_value=None)
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
 
         provider = MagicMock(provider="google", is_default=False)
+        provider.id = "cred-1"
+        provider.access_scope = MagicMock(value="workspace")
+        provider.user_id = "u"
         mock_db.session.scalars.return_value.all.return_value = [provider]
 
         mock_encrypter = MagicMock()
@@ -373,7 +378,7 @@ class TestGetBuiltinToolProviderCredentials:
         credential_entity = MagicMock()
         mock_transform.convert_builtin_provider_to_credential_entity.return_value = credential_entity
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", "u", "normal")
 
         assert len(result) == 1
         assert result[0] is credential_entity

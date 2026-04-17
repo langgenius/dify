@@ -264,6 +264,15 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
+                from services.tools.tool_builtin_credential_access_service import assert_account_may_use_tool_credential
+
+                assert_account_may_use_tool_credential(
+                    tenant_id=tenant_id,
+                    account_id=user_id,
+                    provider=builtin_provider,
+                    session=db.session,
+                )
+
                 from core.helper.credential_utils import check_credential_policy_compliance
 
                 check_credential_policy_compliance(
