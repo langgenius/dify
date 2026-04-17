@@ -104,7 +104,7 @@ const ConfigPromptItem: FC<Props> = ({
         <div className="relative left-1 flex items-center">
           {payload.role === PromptRole.system
             ? (
-                <div className="relative left-[-4px] text-xs font-semibold uppercase text-text-secondary">
+                <div className="relative left-[-4px] text-xs font-semibold text-text-secondary uppercase">
                   SYSTEM
                 </div>
               )

@@ -7,11 +7,11 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
@@ -119,19 +119,19 @@ const CreateAppModal = ({
         onClose={noop}
         className="relative max-w-[480px]! px-8"
       >
-        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
+        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         {isEditModal && (
-          <div className="mb-9 text-xl font-semibold leading-[30px] text-text-primary">{t('editAppTitle', { ns: 'app' })}</div>
+          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</div>
         )}
         {!isEditModal && (
-          <div className="mb-9 text-xl font-semibold leading-[30px] text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</div>
+          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</div>
         )}
         <div className="mb-9">
           {/* icon & name */}
           <div className="pt-2">
-            <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
             <div className="flex items-center justify-between space-x-2">
               <AppIcon
                 size="large"
@@ -152,7 +152,7 @@ const CreateAppModal = ({
           </div>
           {/* description */}
           <div className="pt-2">
-            <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
             <Textarea
               className="resize-none"
               placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
@@ -164,10 +164,10 @@ const CreateAppModal = ({
           {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
             <div className="pt-2">
               <div className="flex items-center justify-between">
-                <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  value={useIconAsAnswerIcon}
-                  onChange={v => setUseIconAsAnswerIcon(v)}
+                  checked={useIconAsAnswerIcon}
+                  onCheckedChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
               <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
@@ -175,7 +175,7 @@ const CreateAppModal = ({
           )}
           {isEditModal && (
             <div className="pt-2">
-              <div className="mb-2 mt-2 text-sm font-medium leading-[20px] text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+              <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
               <Input
                 type="number"
                 min={1}
@@ -186,7 +186,7 @@ const CreateAppModal = ({
                 }}
                 className="h-10 w-full"
               />
-              <p className="body-xs-regular mb-0 mt-2 text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
+              <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
             </div>
           )}
           {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}

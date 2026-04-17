@@ -4,8 +4,8 @@ import type {
 } from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
@@ -19,16 +19,11 @@ import {
 } from './use-interactions.helpers'
 
 export const useNodeLoopInteractions = () => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const handleNodeLoopRerender = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const childrenNodes = nodes.filter(n => n.parentId === nodeId)
     const resize = getContainerResize(currentNode, getContainerBounds(childrenNodes))
@@ -51,36 +46,33 @@ export const useNodeLoopInteractions = () => {
 
       setNodes(newNodes)
     }
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeLoopChildDrag = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
 
     return {
       restrictPosition: getRestrictedLoopPosition(node, nodes.find(n => n.id === node.parentId)),
     }
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeLoopChildSizeChange = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const parentId = currentNode.parentId
 
     if (parentId)
       handleNodeLoopRerender(parentId)
-  }, [store, handleNodeLoopRerender])
+  }, [collaborativeWorkflow, handleNodeLoopRerender])
 
   const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const childrenNodes = getLoopChildren(nodes, nodeId)
     const newIdMapping = { ...idMapping }
 
     const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
-      const { defaultValue } = nodesMetaDataMap![childNodeType]
+      const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const childCopy = buildLoopChildCopy({
         child,
@@ -103,7 +95,7 @@ export const useNodeLoopInteractions = () => {
       copyChildren,
       newIdMapping,
     }
-  }, [store, nodesMetaDataMap])
+  }, [collaborativeWorkflow, nodesMetaDataMap])
 
   return {
     handleNodeLoopRerender,

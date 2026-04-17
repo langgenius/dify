@@ -1,0 +1,6885 @@
+{
+  "e2e/features/support/hooks.ts": {
+    "no-console": {
+      "count": 3
+    },
+    "node/prefer-global/buffer": {
+      "count": 1
+    }
+  },
+  "e2e/scripts/common.ts": {
+    "node/prefer-global/buffer": {
+      "count": 2
+    }
+  },
+  "e2e/support/process.ts": {
+    "ts/no-use-before-define": {
+      "count": 2
+    }
+  },
+  "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
+    "no-console": {
+      "count": 11
+    }
+  },
+  "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/normalize.ts": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/run.ts": {
+    "no-console": {
+      "count": 9
+    }
+  },
+  "web/.storybook/main.ts": {
+    "storybook/no-uninstalled-addons": {
+      "count": 3
+    }
+  },
+  "web/__mocks__/zustand.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/__tests__/document-detail-navigation-fix.test.tsx": {
+    "no-console": {
+      "count": 10
+    }
+  },
+  "web/__tests__/document-list-sorting.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/__tests__/embedded-user-id-auth.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/__tests__/embedded-user-id-store.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/__tests__/goto-anything/command-selector.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/__tests__/i18n-upload-features.test.ts": {
+    "no-console": {
+      "count": 3
+    }
+  },
+  "web/__tests__/navigation-utils.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/__tests__/plugin-tool-workflow-error.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/__tests__/real-browser-flicker.test.tsx": {
+    "no-console": {
+      "count": 16
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/__tests__/unified-tags-logic.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/__tests__/workflow-onboarding-integration.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/long-time-range-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/range-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
+    "no-console": {
+      "count": 19
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/config-button.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/config-popup.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(humanInputLayout)/form/[token]/form.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/components/splash.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/webapp-reset-password/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/account/(commonLayout)/account-page/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/account/(commonLayout)/delete-account/components/feed-back.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/account/(commonLayout)/delete-account/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/account/oauth/authorize/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/account/oauth/authorize/page.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/app-info/app-operations.tsx": {
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "web/app/components/app-sidebar/basic.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/dataset-info/dropdown.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/toggle-button.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/annotation/header-opts/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/annotation/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/app/annotation/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 5
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/app-access-control/specific-groups-or-members.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/app-publisher/features-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/app/app-publisher/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/app/app-publisher/version-info-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/base/var-highlight/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/app/configuration/config-var/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/config-var/config-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/app/configuration/config-var/config-modal/type-select.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-var/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-var/select-var-type.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-vision/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config-vision/param-config-content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/agent/agent-setting/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/agent/agent-setting/item-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/agent/agent-tools/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/app/configuration/config/assistant-type-picker/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/instruction-editor.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/prompt-res-in-workflow.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/prompt-res.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/automatic/version-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/config/config-audio.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/config/config-document.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/context-var/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/params-config/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/app/configuration/dataset-config/settings-modal/retrieval-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/debug/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/debug/chat-user-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/debug/debug-with-multiple-model/chat-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/app/configuration/debug/debug-with-multiple-model/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/debug/debug-with-multiple-model/model-parameter-trigger.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/app/configuration/debug/debug-with-single-model/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/app/configuration/debug/hooks.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/app/configuration/debug/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "web/app/components/app/configuration/debug/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/prompt-value-panel/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/create-app-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/create-from-dsl-modal/dsl-confirm-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/create-from-dsl-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/duplicate-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/log/filter.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/log/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/log/list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 6
+    },
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/app/log/model-info.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/overview/app-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/overview/customize/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/overview/embedded/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/overview/settings/index.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/overview/trigger-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/switch-app-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/text-generate/item/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/app/text-generate/item/result-tab.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/workflow-log/detail.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/workflow-log/filter.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/workflow-log/list.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/workflow-log/trigger-by-display.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/apps/app-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/apps/list.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "web/app/components/apps/new-app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/action-button/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/agent-log-modal/detail.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/agent-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/agent-log-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/agent-log-modal/result.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/agent-log-modal/tool-call.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/amplitude/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/amplitude/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/app-icon-picker/ImageInput.tsx": {
+    "react/no-create-ref": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/audio-btn/audio.ts": {
+    "node/prefer-global/buffer": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/audio-btn/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/audio-gallery/AudioPlayer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/auto-height-textarea/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/auto-height-textarea/index.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/badge/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/block-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/block-input/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/carousel/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/context.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/header/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/hooks.tsx": {
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 18
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/answer/agent-content.tsx": {
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/answer/human-input-content/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/answer/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/answer/operation.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/citation/index.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/hooks.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "web/app/components/base/chat/chat/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/chat/type.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/base/chat/chat/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/chat/embedded-chatbot/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/base/chat/embedded-chatbot/context.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/base/chat/embedded-chatbot/header/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chat/embedded-chatbot/hooks.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/chat/types.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/chat/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "web/app/components/base/checkbox/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/chip/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/content-dialog/index.stories.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/copy-feedback/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/date-and-time-picker/date-picker/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/date-and-time-picker/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/date-and-time-picker/time-picker/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/date-and-time-picker/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/date-and-time-picker/utils/dayjs.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/dialog/index.stories.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/drawer-plus/index.stories.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/emoji-picker/Inner.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/emoji-picker/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/error-boundary/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    },
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/features/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/config-param.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/feature-bar.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/feature-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/moderation/form-generation.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/moderation/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/text-to-speech/param-config-content.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/features/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/file-uploader/file-list-in-log.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/no-missing-key": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/file-uploader/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/file-uploader/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/base/file-uploader/pdf-highlighter-adapter.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/file-uploader/pdf-preview.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/file-uploader/store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/file-uploader/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/file-uploader/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/form/components/base/base-field.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/form/components/base/base-form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/form/components/base/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/components/field/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/form/components/field/variable-or-constant-input.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/components/field/variable-selector.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/form/form-scenarios/base/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/form/form-scenarios/base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/form/form-scenarios/demo/index.tsx": {
+    "no-console": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/form-scenarios/input-field/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/form/form-scenarios/input-field/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/form-scenarios/node-panel/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/form/form-scenarios/node-panel/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/form/hooks/use-check-validated.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/form/hooks/use-get-validators.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/form/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "web/app/components/base/form/utils/secret-input/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/ga/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/public/avatar/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/public/billing/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/icons/src/public/common/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/public/education/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/public/files/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 11
+    }
+  },
+  "web/app/components/base/icons/src/public/knowledge/dataset-card/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/icons/src/public/knowledge/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/public/knowledge/online-drive/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/public/llm/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 9
+    }
+  },
+  "web/app/components/base/icons/src/public/other/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/public/thought/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/public/tracing/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 21
+    }
+  },
+  "web/app/components/base/icons/src/vender/features/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 10
+    }
+  },
+  "web/app/components/base/icons/src/vender/knowledge/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 15
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/alertsAndFeedback/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/arrows/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/communication/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/development/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/editor/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/education/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/files/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/financeAndECommerce/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/general/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 12
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/images/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/layout/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/mediaAndDevices/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/others/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 7
+    }
+  },
+  "web/app/components/base/icons/src/vender/line/time/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/vender/other/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 8
+    }
+  },
+  "web/app/components/base/icons/src/vender/pipeline/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/plugin/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/FinanceAndECommerce/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/alertsAndFeedback/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/arrows/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/communication/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/development/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/editor/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/education/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/files/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/general/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 11
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/mediaAndDevices/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/security/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/shapes/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/solid/users/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/system/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/icons/src/vender/workflow/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 30
+    }
+  },
+  "web/app/components/base/icons/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/image-uploader/__tests__/image-preview.spec.tsx": {
+    "erasable-syntax-only/parameter-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/image-uploader/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/image-uploader/image-link-input.tsx": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/image-uploader/image-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/image-uploader/image-preview.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/image-uploader/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/inline-delete-confirm/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/input-with-copy/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/input/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/logo/dify-logo.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/markdown-blocks/audio-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/base/markdown-blocks/button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/markdown-blocks/code-block.tsx": {
+    "react/set-state-in-effect": {
+      "count": 7
+    },
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "web/app/components/base/markdown-blocks/form.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/markdown-blocks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 10
+    }
+  },
+  "web/app/components/base/markdown-blocks/link.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/markdown-blocks/paragraph.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/markdown-blocks/plugin-img.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/markdown-blocks/plugin-paragraph.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/markdown-blocks/think-block.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/markdown-blocks/video-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/base/markdown/error-boundary.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/markdown/markdown-utils.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/mermaid/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 7
+    },
+    "regexp/no-super-linear-backtracking": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/mermaid/utils.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/message-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/message-log-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/modal-like-wrap/index.stories.tsx": {
+    "no-console": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/modal/index.stories.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/modal/modal.stories.tsx": {
+    "no-console": {
+      "count": 4
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/new-audio-button/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/node-status/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/notion-connector/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/notion-page-selector/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/pagination/index.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/pagination/type.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/param-item/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/portal-to-follow-elem/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
+    "erasable-syntax-only/parameter-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/context-block/component.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/context-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/current-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/draggable-plugin/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/error-message-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/history-block/component.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/history-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/hitl-input-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/hitl-input-block/variable-block.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/query-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/request-url-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/update-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/variable-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/prompt-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/prompt-log-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/qrcode/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/radio-card/index.stories.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/radio/component/group/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/radio/context/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/radio/index.stories.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/search-input/index.stories.tsx": {
+    "no-console": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/select/index.stories.tsx": {
+    "no-console": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/select/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/sort/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/svg-gallery/index.tsx": {
+    "node/prefer-global/buffer": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/switch/index.stories.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/tab-slider/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/tag-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/tag-management/__tests__/panel.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/base/tag-management/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/tag-management/tag-item-editor.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/tag-management/tag-remove-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/text-generation/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/text-generation/types.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/textarea/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/textarea/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/video-gallery/VideoPlayer.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/voice-input/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/base/voice-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/voice-input/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/base/with-input-validation/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "react/component-hook-factories": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/with-input-validation/index.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/base/zendesk/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/billing/annotation-full/modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/billing/billing-page/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/billing/plan-upgrade-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/billing/plan/assets/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/billing/plan/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/billing/pricing/assets/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 12
+    }
+  },
+  "web/app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/billing/pricing/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/billing/priority-label/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/billing/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    }
+  },
+  "web/app/components/billing/upgrade-btn/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/billing/usage-info/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/document-picker/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/document-picker/preview-document-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/image-previewer/index.tsx": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
+    "react/error-boundaries": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/image-uploader/store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/common/retrieval-method-info/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/common/retrieval-param-config/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/hooks/use-dsl-import.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/list/template-card/details/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/embedding-process/indexing-progress-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/empty-dataset-creation-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/file-preview/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/notion-page-preview/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/step-one/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/create/step-one/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/step-two/components/general-chunking-options.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/step-two/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/datasets/create/step-two/components/indexing-mode-section.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/create/step-two/components/inputs.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/step-two/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/create/step-two/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/step-two/preview-item/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/stop-embedding-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/website/base/checkbox-with-label.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/website/base/field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/website/firecrawl/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/datasets/create/website/firecrawl/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/website/jina-reader/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/create/website/jina-reader/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/create/website/watercrawl/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/datasets/create/website/watercrawl/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/components/document-list/components/document-table-row.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/components/document-list/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/documents/components/document-list/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/datasets/documents/components/documents-header.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/components/operations.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/components/rename-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/__tests__/index.spec.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/header/breadcrumbs/bucket.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 5
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/store/provider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/store/slices/online-drive.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/checkbox-with-label.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/process-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/processing/embedding-process/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/steps/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/documents/create-from-pipeline/types.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/batch-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/common/regeneration-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/common/summary-status.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/components/menu-bar.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/components/segment-list-content.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/display-toggle.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/hooks/use-search-filter.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/use-memo": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/segment-card/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/completed/status-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/context.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/embedding/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/datasets/documents/detail/embedding/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/metadata/components/doc-type-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/metadata/components/metadata-field-list.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "web/app/components/datasets/documents/detail/metadata/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/segment-add/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/documents/detail/settings/pipeline-settings/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/datasets/documents/status-item/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/external-api/external-api-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/extra-info/statistics.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/formatted-text/flavours/type.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/hit-testing/components/chunk-detail-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/hit-testing/components/query-input/textarea.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/hit-testing/components/result-item-external.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/hit-testing/components/score.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/hit-testing/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/list/dataset-card/components/dataset-card-footer.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/edit-metadata-batch/edited-beacon.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/metadata/edit-metadata-batch/modal.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/hooks/use-metadata-document.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-dataset/select-metadata-modal.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/metadata-document/info-group.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/metadata/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/rename-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/chunk-structure/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/index-method/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/index-method/keyword-number.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/permission-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/no-missing-key": {
+      "count": 1
+    }
+  },
+  "web/app/components/datasets/settings/summary-index-setting.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/develop/code.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "web/app/components/develop/md.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/develop/secret-key/input-copy.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/develop/secret-key/secret-key-generate.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/develop/secret-key/secret-key-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/explore/banner/banner-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "web/app/components/explore/banner/indicator-button.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/explore/create-app-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    },
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/explore/item-operation/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/explore/try-app/app/chat.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/explore/try-app/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/explore/try-app/tab.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/goto-anything/actions/commands/command-bus.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/goto-anything/actions/commands/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/goto-anything/actions/commands/registry.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/goto-anything/actions/commands/slash.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/goto-anything/actions/commands/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/goto-anything/actions/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/goto-anything/actions/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/goto-anything/command-selector.tsx": {
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "web/app/components/goto-anything/components/footer.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/goto-anything/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/goto-anything/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "web/app/components/goto-anything/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 4
+    }
+  },
+  "web/app/components/goto-anything/hooks/use-goto-anything-results.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-about/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-dropdown/compliance.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/api-based-extension-page/modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/api-based-extension-page/selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/configure.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/install-from-marketplace.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/data-source-page-new/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/key-validator/declarations.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/language-page/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 11
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/config-provider.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 6
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-custom-models.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-model-form-schemas.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 7
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/model-selector/feature-icon.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/__tests__/use-activate-credential.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-list-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/provider-added-card/priority-use-tip.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/account-setting/model-provider-page/utils.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/header/account-setting/plugin-page/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/header/app-nav/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/header-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/base/badges/icon-with-tooltip.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/base/key-value-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/card/index.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/plugins/install-plugin/hooks/use-fold-anim-into.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-bundle/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-from-local-package/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/marketplace/hooks.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/marketplace/search-box/tags-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorize/api-key-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorize/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorize/oauth-client-settings.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorized/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 12
+    },
+    "react-refresh/only-export-components": {
+      "count": 3
+    }
+  },
+  "web/app/components/plugins/plugin-auth/plugin-auth-in-agent.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/detail-header.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/detail-header/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/detail-header/components/plugin-source-badge.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/detail-header/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/model-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/common-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    },
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/manual-edit-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/oauth-edit-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/list-view.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-view.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/subscription-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/subscription-list/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 7
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/plugins/plugin-item/action.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-item/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-mutation-model/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/context.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/debug-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/empty/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-page/filter-management/category-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/filter-management/tag-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-page/plugin-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/plugin-tasks/components/task-status-indicator.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/readme-panel/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/readme-panel/store.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/reference-setting-modal/auto-update-setting/strategy-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/reference-setting-modal/auto-update-setting/tool-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/plugins/reference-setting-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 7
+    },
+    "ts/no-explicit-any": {
+      "count": 25
+    }
+  },
+  "web/app/components/plugins/update-plugin/from-market-place.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/input-field/label-right-content/global-inputs.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/preparation/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/result/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/rag-pipeline-header/publisher/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/rag-pipeline-header/run-mode.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/rag-pipeline-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/components/update-dsl-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/components/version-mismatch-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 9
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-DSL.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-input-fields.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/store/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/rag-pipeline/utils/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/rag-pipeline/utils/nodes.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/info-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/menu-dropdown.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/no-data/index.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/result/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/share/text-generation/run-once/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/share/text-generation/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/share/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/labels/selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/create-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/detail/content.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/tools/mcp/detail/tool-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/mcp-server-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/mcp-service-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/mcp/provider-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/tools/provider-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/provider/empty.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/setting/build-in/config-credentials.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/tools/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/tools/workflow-tool/confirm-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/workflow-tool/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/tools/workflow-tool/method-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow-app/components/workflow-children.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow-app/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 13
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-DSL.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-workflow-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow-app/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow-app/store/workflow/workflow-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/blocks.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/featured-tools.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/block-selector/featured-triggers.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/block-selector/hooks.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/index-bar.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/main.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/market-place-plugin/item.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/start-blocks.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tabs.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tool-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tool/action-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tool/tool-list-flat-view/list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tool/tool.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/trigger-plugin/item.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/block-selector/use-check-vertical-scrollbar.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/use-sticky-scroll.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/view-type-select.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/candidate-node-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/datasets-detail-store/provider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/dsl-export-confirm-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/header/run-mode.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/header/test-run-menu.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/header/version-history-button.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/header/view-history.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/header/view-workflow-history.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks-store/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/hooks-store/provider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks-store/store.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
+    "react/error-boundaries": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 27
+    }
+  },
+  "web/app/components/workflow/hooks/use-checklist.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/hooks/use-dynamic-test-run-options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/hooks/use-helpline.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/use-nodes-interactions.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/hooks/use-serial-async-callback.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-interactions.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-run-event/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 19
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-finished.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-search.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/hooks/use-workflow-variables.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/agent-strategy.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/before-run-form/form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/collapse/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/config-vision.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/entry-node-container.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/error-handle/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/form-input-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/help-link.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/layout/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 7
+    },
+    "react-refresh/only-export-components": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/mcp-tool-availability.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/memory-config.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/mixed-variable-text-input/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/node-control.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/node-handle.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/option-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/readonly-input-with-select-var.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/selector.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/setting-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/switch-plugin-version.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/constant-field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/match-schema-type.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker/field.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 32
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/var-type-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/variable/variable-label/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 7
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/_base/components/workflow-panel/tab.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 22
+    }
+  },
+  "web/app/components/workflow/nodes/_base/hooks/use-output-var-list.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/_base/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/_base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/agent/components/model-bar.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/agent/components/tool-icon.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/agent/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/agent/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/agent/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/agent/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/agent/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/agent/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/answer/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/assigner/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/assigner/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/assigner/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/assigner/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/assigner/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/code/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/code/dependency-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/code/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/code/use-config.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "regexp/no-useless-assertions": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/code/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/components.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/data-source-empty/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/hooks/use-before-run-form.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/hooks/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/data-source/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/document-extractor/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/document-extractor/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/end/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/end/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/components/authorization/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/components/curl-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/http/components/key-value/key-value-edit/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/http/use-config.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/http/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/button-style-dropdown.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/method-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/upgrade-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/form-content.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/human-input/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-add.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-list/condition-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-list/condition-operator.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-list/condition-var-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-number-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/iteration-start/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/iteration/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/iteration/node.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/iteration/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/iteration/use-config.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/chunk-structure/selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/search-method-option.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-barrel-files/no-barrel-files": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-base/utils.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/add-condition.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-operator.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-variable-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/metadata-filter-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-trigger.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/node.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/list-operator/components/filter-condition.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/list-operator/components/sub-variable-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/list-operator/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/list-operator/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/config-prompt-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/assets/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result.tsx": {
+    "style/multiline-ternary": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/prompt-editor.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/actions.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/type-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/components/structure-output.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/llm/use-config.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/llm/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "web/app/components/workflow/nodes/llm/utils.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/loop-start/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-add.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-list/condition-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-list/condition-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-list/condition-operator.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-list/condition-var-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-number-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/condition-wrap.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/loop-variables/form-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/loop-variables/input-mode-selec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/loop/components/loop-variables/variable-type-select.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/loop/use-single-run-form-params.helpers.ts": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/list.spec.tsx": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/use-config.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/components/advanced-setting.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/node.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/use-config.ts": {
+    "react/set-state-in-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/nodes/start/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/start/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/start/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/template-transform/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/template-transform/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/template-transform/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/copy-id.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/input-var-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/tool-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/tool/components/tool-form/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/tool/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/tool/hooks/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/tool/hooks/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/nodes/tool/output-schema-utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/tool/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/tool/types.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/components/trigger-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/components/trigger-form/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/node.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-plugin/utils/form-helpers.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-schedule/components/frequency-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-schedule/components/monthly-days-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-schedule/default.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-webhook/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/trigger-webhook/panel.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/nodes/variable-assigner/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/nodes/variable-assigner/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/toolbar/color-picker.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/toolbar/command.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/toolbar/font-size-selector.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/note-node/note-editor/utils.ts": {
+    "regexp/no-useless-quantifier": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/operator/add-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/operator/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/operator/tip-popup.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/operator/zoom-in-out.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/chat-record/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/panel/chat-record/user-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/array-value-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    },
+    "unicorn/prefer-number-properties": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/panel/chat-variable-panel/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/human-input-form-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/inputs-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/panel/version-history-panel/delete-confirm-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/version-history-panel/filter/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/version-history-panel/restore-confirm-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/panel/workflow-preview.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/agent-log/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/index.tsx": {
+    "react/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/iteration-log/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/loop-log/__tests__/loop-log-trigger.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/run/loop-log/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/loop-log/loop-log-trigger.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/node.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/output-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/run/result-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/app/components/workflow/run/result-text.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/retry-log/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/agent/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/graph-to-log-struct.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/iteration/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/loop/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/run/utils/format-log/parallel/index.ts": {
+    "no-console": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/store/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/store/workflow/workflow-draft-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/store/workflow/workflow-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 16
+    },
+    "ts/no-empty-object-type": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/app/components/workflow/update-dsl-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/utils/data-source.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/utils/debug.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/utils/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 9
+    }
+  },
+  "web/app/components/workflow/utils/node-navigation.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/utils/node.ts": {
+    "regexp/no-super-linear-backtracking": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/utils/tool.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/utils/workflow-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "web/app/components/workflow/utils/workflow.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/variable-inspect/display-content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/variable-inspect/group.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/variable-inspect/left.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/variable-inspect/listening.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/variable-inspect/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/variable-inspect/right.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/app/components/workflow/variable-inspect/trigger.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/variable-inspect/utils.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/variable-inspect/value-content.tsx": {
+    "react/set-state-in-effect": {
+      "count": 5
+    },
+    "regexp/no-super-linear-backtracking": {
+      "count": 1
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/components/workflow/workflow-history-store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "web/app/components/workflow/workflow-preview/components/nodes/base.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/workflow-preview/components/nodes/constants.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/workflow-preview/components/nodes/iteration-start/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/workflow-preview/components/nodes/loop-start/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/app/education-apply/expire-notice-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/education-apply/hooks.ts": {
+    "react/set-state-in-effect": {
+      "count": 5
+    }
+  },
+  "web/app/education-apply/search-input.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/education-apply/verify-state-modal.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/forgot-password/ForgotPasswordForm.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/app/init/InitPasswordPopup.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/install/installForm.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/app/layout.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/reset-password/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signin/_header.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signin/components/mail-and-password-auth.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signin/invite-settings/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/signin/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signin/one-more-step.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/signup/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/context/external-api-panel-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/context/external-knowledge-api-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/context/global-public-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    }
+  },
+  "web/context/hooks/use-trigger-events-limit-modal.ts": {
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "web/context/modal-context-provider.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/context/modal-context.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/context/modal-context.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/context/provider-context-provider.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/context/web-app-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/hooks/use-async-window-open.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/hooks/use-format-time-from-now.spec.ts": {
+    "regexp/no-dupe-disjunctions": {
+      "count": 5
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/hooks/use-metadata.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/hooks/use-mitt.ts": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/hooks/use-oauth.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/hooks/use-pay.tsx": {
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "web/i18n-config/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/i18n-config/lib.client.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "web/i18n/de-DE/billing.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/en-US/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/fr-FR/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/fr-FR/app.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/fr-FR/plugin-trigger.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/fr-FR/tools.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/fr-FR/workflow.json": {
+    "no-irregular-whitespace": {
+      "count": 2
+    }
+  },
+  "web/i18n/pt-BR/common.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/i18n/ru-RU/common.json": {
+    "no-irregular-whitespace": {
+      "count": 2
+    }
+  },
+  "web/i18n/uk-UA/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "web/models/access-control.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/models/app.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "web/models/common.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/models/datasets.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 8
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/models/debug.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/models/log.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/models/pipeline.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/models/share.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/plugins/dev-proxy/server.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/scripts/component-analyzer.js": {
+    "regexp/no-unused-capturing-group": {
+      "count": 6
+    }
+  },
+  "web/service/access-control.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/service/annotation.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/service/apps.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/service/base.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/service/client.spec.ts": {
+    "next/no-assign-module-variable": {
+      "count": 1
+    }
+  },
+  "web/service/common.ts": {
+    "ts/no-explicit-any": {
+      "count": 29
+    }
+  },
+  "web/service/datasets.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/service/debug.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/service/fetch.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/service/knowledge/use-dataset.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/service/share.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/service/try-app.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
+  "web/service/use-apps.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/service/use-common.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/service/use-endpoints.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "web/service/use-flow.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    }
+  },
+  "web/service/use-pipeline.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "web/service/use-plugins-auth.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/service/use-plugins.ts": {
+    "react/set-state-in-effect": {
+      "count": 1
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "web/service/use-tools.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/service/use-workflow.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/service/utils.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/types/app.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 9
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/types/assets.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/types/common.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "web/types/feature.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    }
+  },
+  "web/types/lamejs.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/types/pipeline.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/types/react-18-input-autosize.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/types/workflow.ts": {
+    "ts/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "web/utils/clipboard.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/utils/completion-params.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/utils/completion-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/utils/context.ts": {
+    "react/component-hook-factories": {
+      "count": 1
+    }
+  },
+  "web/utils/error-parser.ts": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/utils/get-icon.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/utils/gtag.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "web/utils/index.spec.ts": {
+    "test/no-identical-title": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "web/utils/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "web/utils/mcp.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/utils/model-config.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "web/utils/model-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "web/utils/navigation.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "web/utils/tool-call.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/utils/validators.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  }
+}

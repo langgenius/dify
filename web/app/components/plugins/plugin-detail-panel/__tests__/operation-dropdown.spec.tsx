@@ -10,7 +10,7 @@ vi.mock('@/context/global-public-context', () => ({
     selector({ systemFeatures: { enable_marketplace: true } }),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 

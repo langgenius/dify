@@ -5,8 +5,8 @@ import { AUTO_UPDATE_MODE } from '../types'
 
 const mockToolPicker = vi.fn()
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({
     children,
   }: {
     children: React.ReactNode

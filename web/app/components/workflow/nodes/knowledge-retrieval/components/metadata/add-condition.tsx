@@ -9,13 +9,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({
@@ -69,7 +69,7 @@ const AddCondition = ({
               filteredMetadataList?.map(metadata => (
                 <div
                   key={metadata.name}
-                  className="system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover"
+                  className="flex h-6 cursor-pointer items-center rounded-md px-3 system-sm-medium text-text-secondary hover:bg-state-base-hover"
                 >
                   <div className="mr-1 p-px">
                     <MetadataIcon type={metadata.type} />
@@ -81,7 +81,7 @@ const AddCondition = ({
                   >
                     {metadata.name}
                   </div>
-                  <div className="system-xs-regular shrink-0 text-text-tertiary">{metadata.type}</div>
+                  <div className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</div>
                 </div>
               ))
             }

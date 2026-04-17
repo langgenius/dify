@@ -7,7 +7,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -85,28 +85,28 @@ describe('EndpointList', () => {
     it('should render endpoint list', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.endpoints')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
     })
 
     it('should render endpoint cards', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      expect(screen.getByTestId('endpoint-card')).toBeInTheDocument()
-      expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
+      expect(screen.getByTestId('endpoint-card'))!.toBeInTheDocument()
+      expect(screen.getByText('Endpoint 1'))!.toBeInTheDocument()
     })
 
     it('should return null when no data', () => {
       mockEndpointListData = undefined
       const { container } = render(<EndpointList detail={createPluginDetail()} />)
 
-      expect(container).toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should show empty message when no endpoints', () => {
       mockEndpointListData = { endpoints: [] }
       render(<EndpointList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointsEmpty'))!.toBeInTheDocument()
     })
 
     it('should render add button', () => {
@@ -121,17 +121,17 @@ describe('EndpointList', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
       const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton)
+      fireEvent.click(addButton!)
 
-      expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
     })
 
     it('should hide modal when cancel clicked', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
       const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton)
-      expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
+      fireEvent.click(addButton!)
+      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
       expect(screen.queryByTestId('endpoint-modal')).not.toBeInTheDocument()
@@ -141,7 +141,7 @@ describe('EndpointList', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
       const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton)
+      fireEvent.click(addButton!)
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockCreateEndpoint).toHaveBeenCalled()
@@ -154,7 +154,7 @@ describe('EndpointList', () => {
       detail.declaration.tool = {} as PluginDetail['declaration']['tool']
       render(<EndpointList detail={detail} />)
 
-      expect(screen.getByText('plugin.detailPanel.endpoints')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
     })
   })
 
@@ -177,7 +177,7 @@ describe('EndpointList', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
       const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton)
+      fireEvent.click(addButton!)
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
@@ -187,7 +187,7 @@ describe('EndpointList', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
       const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton)
+      fireEvent.click(addButton!)
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockCreateEndpoint).toHaveBeenCalledWith({

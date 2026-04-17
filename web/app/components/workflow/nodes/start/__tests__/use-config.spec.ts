@@ -143,7 +143,7 @@ describe('start/use-config', () => {
   it('should block removal when the variable is still in use and confirm the deletion later', () => {
     mockIsVarUsedInNodes.mockReturnValue(true)
     const { result } = renderHook(() => useConfig('start-node', currentInputs))
-    const nextList = [currentInputs.variables[1]]
+    const nextList = [currentInputs.variables[1]!]
 
     act(() => {
       result.current.handleVarListChange(nextList, {
@@ -215,7 +215,7 @@ describe('start/use-config', () => {
         variable: 'query',
         type: InputVarType.paragraph,
       }),
-      currentInputs.variables[1],
+      currentInputs.variables[1]!,
     ]
 
     act(() => {

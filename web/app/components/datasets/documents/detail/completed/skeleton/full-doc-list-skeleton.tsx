@@ -16,7 +16,7 @@ Slice.displayName = 'Slice'
 const FullDocListSkeleton = () => {
   return (
     <div className="relative z-10 flex w-full grow flex-col gap-y-3 overflow-y-hidden">
-      <div className="absolute bottom-14 left-0 top-0 z-20 h-full w-full bg-dataset-chunk-list-mask-bg" />
+      <div className="absolute top-0 bottom-14 left-0 z-20 h-full w-full bg-dataset-chunk-list-mask-bg" />
       {Array.from({ length: 15 }).map((_, index) => <Slice key={index} />)}
     </div>
   )

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import controllers.console.explore.recommended_app as module
+from models.model import AppMode, IconType
 
 
 def unwrap(func):
@@ -90,3 +91,48 @@ class TestRecommendedAppApi:
 
         service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
         assert result == result_data
+
+
+class TestRecommendedAppResponseModels:
+    def test_recommended_app_info_response_computes_icon_url(self):
+        with patch.object(module, "build_icon_url", return_value="https://signed/icon.png"):
+            payload = module.RecommendedAppInfoResponse.model_validate(
+                {
+                    "id": "app-1",
+                    "name": "App",
+                    "mode": AppMode.CHAT,
+                    "icon": "icon.png",
+                    "icon_type": IconType.IMAGE,
+                    "icon_background": "#fff",
+                }
+            ).model_dump(mode="json")
+
+        assert payload["icon_url"] == "https://signed/icon.png"
+
+    def test_recommended_app_list_response_serialization(self):
+        response = module.RecommendedAppListResponse.model_validate(
+            {
+                "recommended_apps": [
+                    {
+                        "app": {
+                            "id": "app-1",
+                            "name": "App",
+                            "mode": "chat",
+                            "icon": "icon.png",
+                            "icon_type": "emoji",
+                            "icon_background": "#fff",
+                        },
+                        "app_id": "app-1",
+                        "description": "desc",
+                        "category": "cat",
+                        "position": 1,
+                        "is_listed": True,
+                        "can_trial": False,
+                    }
+                ],
+                "categories": ["cat"],
+            }
+        ).model_dump(mode="json")
+
+        assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["categories"] == ["cat"]

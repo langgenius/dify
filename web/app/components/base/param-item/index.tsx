@@ -37,13 +37,13 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             <Switch
               size="md"
               className="mr-2"
-              value={enable}
-              onChange={async (val) => {
+              checked={enable}
+              onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
+          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName="w-4 h-4 shrink-0"
@@ -62,11 +62,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={value}
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
-            <NumberFieldGroup size="regular">
-              <NumberFieldInput size="regular" className="w-[72px]" />
+            <NumberFieldGroup>
+              <NumberFieldInput className="w-[72px]" />
               <NumberFieldControls>
-                <NumberFieldIncrement size="regular" />
-                <NumberFieldDecrement size="regular" />
+                <NumberFieldIncrement />
+                <NumberFieldDecrement />
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>

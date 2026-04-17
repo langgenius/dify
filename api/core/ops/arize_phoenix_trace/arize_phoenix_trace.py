@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
-from graphon.enums import WorkflowNodeExecutionStatus
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceMimeTypeValues,
@@ -41,6 +40,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -778,7 +778,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.info("[Arize/Phoenix] Failed to construct project URL: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}")
 
-    def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
+    def _construct_llm_attributes(self, prompts: dict[str, Any] | list[Any] | str | None) -> dict[str, str]:
         """Construct LLM attributes with passed prompts for Arize/Phoenix."""
         attributes: dict[str, str] = {}
 
@@ -797,7 +797,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             path = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{message_index}.{key}"
             set_attribute(path, value)
 
-        def set_tool_call_attributes(message_index: int, tool_index: int, tool_call: dict | object | None) -> None:
+        def set_tool_call_attributes(
+            message_index: int, tool_index: int, tool_call: dict[str, Any] | object | None
+        ) -> None:
             """Extract and assign tool call details safely."""
             if not tool_call:
                 return

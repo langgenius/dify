@@ -1,12 +1,12 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiHistoryLine } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/app/components/base/ui/button'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
 import Tooltip from '../../base/tooltip'
 import ShortcutsName from '../shortcuts-name'
 import { getKeyboardKeyCodeBySystem } from '../utils'
@@ -21,7 +21,7 @@ const PopupContent = React.memo(() => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-x-1">
-      <div className="system-xs-medium px-0.5 text-text-secondary">
+      <div className="px-0.5 system-xs-medium text-text-secondary">
         {t('common.versionHistory', { ns: 'workflow' })}
       </div>
       <ShortcutsName keys={VERSION_HISTORY_SHORTCUT} bgColor="gray" textColor="secondary" />

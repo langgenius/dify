@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
@@ -235,6 +235,42 @@ describe('GetAutomaticRes', () => {
       variables: ['city'],
       opening_statement: 'hello there',
     }))
+  })
+
+  it('should close overwrite confirmation without applying the generated result when cancelled', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: ['city'],
+      opening_statement: 'hello there',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText('generate.generate'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
+    })
+
+    fireEvent.click(screen.getByText('apply-result'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(mockOnFinished).not.toHaveBeenCalled()
   })
 
   it('should request workflow generation and surface service errors', async () => {

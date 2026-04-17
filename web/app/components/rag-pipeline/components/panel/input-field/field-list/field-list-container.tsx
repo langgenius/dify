@@ -1,5 +1,6 @@
 import type { SortableItem } from './types'
 import type { InputVar } from '@/models/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
 import {
   memo,
@@ -7,7 +8,6 @@ import {
   useMemo,
 } from 'react'
 import { ReactSortable } from 'react-sortablejs'
-import { cn } from '@/utils/classnames'
 import FieldItem from './field-item'
 
 type FieldListContainerProps = {
