@@ -285,6 +285,10 @@ class MongoDBVector(BaseVector):
         if score_threshold is None:
             return documents
 
+        try:
+            score_threshold = float(score_threshold)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("score_threshold must be a numeric value") from exc
         return [doc for doc in documents if doc.metadata.get("score", 0.0) >= score_threshold]
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # Atlas Search full-text is not yet implemented; return empty results.
