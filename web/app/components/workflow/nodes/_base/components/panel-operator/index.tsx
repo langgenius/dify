@@ -1,5 +1,6 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import PanelOperatorPopup from './panel-operator-popup'
 
 type PanelOperatorProps = {
@@ -32,6 +34,7 @@ const PanelOperator = ({
   onOpenChange,
   showHelpLink = true,
 }: PanelOperatorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const sideOffset = typeof offset === 'number'
     ? offset
@@ -54,17 +57,16 @@ const PanelOperator = ({
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DropdownMenuTrigger render={<div />}>
-        <div
-          className={`
-            flex h-6 w-6 cursor-pointer items-center justify-center rounded-md
-            hover:bg-state-base-hover
-            ${open && 'bg-state-base-hover'}
-            ${triggerClassName}
-          `}
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </div>
+      <DropdownMenuTrigger
+        render={<button type="button" />}
+        aria-label={t('operation.more', { ns: 'common' })}
+        className={cn(
+          'nodrag nopan nowheel flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover',
+          open && 'bg-state-base-hover',
+          triggerClassName,
+        )}
+      >
+        <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

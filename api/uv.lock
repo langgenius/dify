@@ -11,6 +11,14 @@ resolution-markers = [
 [manifest]
 members = [
     "dify-api",
+    "dify-trace-aliyun",
+    "dify-trace-arize-phoenix",
+    "dify-trace-langfuse",
+    "dify-trace-langsmith",
+    "dify-trace-mlflow",
+    "dify-trace-opik",
+    "dify-trace-tencent",
+    "dify-trace-weave",
     "dify-vdb-alibabacloud-mysql",
     "dify-vdb-analyticdb",
     "dify-vdb-baidu",
@@ -1285,7 +1293,6 @@ version = "1.13.3"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
-    { name = "arize-phoenix-otel" },
     { name = "azure-identity" },
     { name = "bleach" },
     { name = "boto3" },
@@ -1308,9 +1315,6 @@ dependencies = [
     { name = "httpx", extra = ["socks"] },
     { name = "httpx-sse" },
     { name = "json-repair" },
-    { name = "langfuse" },
-    { name = "langsmith" },
-    { name = "mlflow-skinny" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-flask" },
@@ -1318,7 +1322,6 @@ dependencies = [
     { name = "opentelemetry-instrumentation-redis" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
     { name = "opentelemetry-propagator-b3" },
-    { name = "opik" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
     { name = "python-socketio" },
@@ -1327,7 +1330,6 @@ dependencies = [
     { name = "resend" },
     { name = "sendgrid" },
     { name = "sseclient-py" },
-    { name = "weave" },
 ]
 
 [package.dev-dependencies]
@@ -1409,6 +1411,40 @@ storage = [
 tools = [
     { name = "cloudscraper" },
     { name = "nltk" },
+]
+trace-aliyun = [
+    { name = "dify-trace-aliyun" },
+]
+trace-all = [
+    { name = "dify-trace-aliyun" },
+    { name = "dify-trace-arize-phoenix" },
+    { name = "dify-trace-langfuse" },
+    { name = "dify-trace-langsmith" },
+    { name = "dify-trace-mlflow" },
+    { name = "dify-trace-opik" },
+    { name = "dify-trace-tencent" },
+    { name = "dify-trace-weave" },
+]
+trace-arize-phoenix = [
+    { name = "dify-trace-arize-phoenix" },
+]
+trace-langfuse = [
+    { name = "dify-trace-langfuse" },
+]
+trace-langsmith = [
+    { name = "dify-trace-langsmith" },
+]
+trace-mlflow = [
+    { name = "dify-trace-mlflow" },
+]
+trace-opik = [
+    { name = "dify-trace-opik" },
+]
+trace-tencent = [
+    { name = "dify-trace-tencent" },
+]
+trace-weave = [
+    { name = "dify-trace-weave" },
 ]
 vdb-alibabacloud-mysql = [
     { name = "dify-vdb-alibabacloud-mysql" },
@@ -1539,7 +1575,6 @@ vdb-xinference = [
 [package.metadata]
 requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = ">=0.9.44,<1.0.0" },
-    { name = "arize-phoenix-otel", specifier = "~=0.15.0" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.3.0" },
     { name = "boto3", specifier = ">=1.42.88" },
@@ -1562,9 +1597,6 @@ requires-dist = [
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
     { name = "json-repair", specifier = "~=0.59.2" },
-    { name = "langfuse", specifier = ">=4.2.0,<5.0.0" },
-    { name = "langsmith", specifier = ">=0.7.31,<1.0.0" },
-    { name = "mlflow-skinny", specifier = ">=3.11.1,<4.0.0" },
     { name = "opentelemetry-distro", specifier = ">=0.62b0,<1.0.0" },
     { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<1.0.0" },
     { name = "opentelemetry-instrumentation-flask", specifier = ">=0.62b0,<1.0.0" },
@@ -1572,7 +1604,6 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-redis", specifier = ">=0.62b0,<1.0.0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.62b0,<1.0.0" },
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.0,<2.0.0" },
-    { name = "opik", specifier = "~=1.11.2" },
     { name = "psycogreen", specifier = ">=1.0.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "python-socketio", specifier = ">=5.13.0" },
@@ -1581,7 +1612,6 @@ requires-dist = [
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5" },
     { name = "sseclient-py", specifier = ">=1.8.0" },
-    { name = "weave", specifier = ">=0.52.36,<1.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1664,6 +1694,24 @@ tools = [
     { name = "cloudscraper", specifier = ">=1.2.71" },
     { name = "nltk", specifier = ">=3.9.1" },
 ]
+trace-aliyun = [{ name = "dify-trace-aliyun", editable = "providers/trace/trace-aliyun" }]
+trace-all = [
+    { name = "dify-trace-aliyun", editable = "providers/trace/trace-aliyun" },
+    { name = "dify-trace-arize-phoenix", editable = "providers/trace/trace-arize-phoenix" },
+    { name = "dify-trace-langfuse", editable = "providers/trace/trace-langfuse" },
+    { name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" },
+    { name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" },
+    { name = "dify-trace-opik", editable = "providers/trace/trace-opik" },
+    { name = "dify-trace-tencent", editable = "providers/trace/trace-tencent" },
+    { name = "dify-trace-weave", editable = "providers/trace/trace-weave" },
+]
+trace-arize-phoenix = [{ name = "dify-trace-arize-phoenix", editable = "providers/trace/trace-arize-phoenix" }]
+trace-langfuse = [{ name = "dify-trace-langfuse", editable = "providers/trace/trace-langfuse" }]
+trace-langsmith = [{ name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" }]
+trace-mlflow = [{ name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" }]
+trace-opik = [{ name = "dify-trace-opik", editable = "providers/trace/trace-opik" }]
+trace-tencent = [{ name = "dify-trace-tencent", editable = "providers/trace/trace-tencent" }]
+trace-weave = [{ name = "dify-trace-weave", editable = "providers/trace/trace-weave" }]
 vdb-alibabacloud-mysql = [{ name = "dify-vdb-alibabacloud-mysql", editable = "providers/vdb/vdb-alibabacloud-mysql" }]
 vdb-all = [
     { name = "dify-vdb-alibabacloud-mysql", editable = "providers/vdb/vdb-alibabacloud-mysql" },
@@ -1727,6 +1775,110 @@ vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "providers/vdb/vdb-vast
 vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "providers/vdb/vdb-vikingdb" }]
 vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "providers/vdb/vdb-weaviate" }]
 vdb-xinference = [{ name = "xinference-client", specifier = ">=2.4.0" }]
+
+[[package]]
+name = "dify-trace-aliyun"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-aliyun" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[[package]]
+name = "dify-trace-arize-phoenix"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-arize-phoenix" }
+dependencies = [
+    { name = "arize-phoenix-otel" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "arize-phoenix-otel", specifier = "~=0.15.0" }]
+
+[[package]]
+name = "dify-trace-langfuse"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-langfuse" }
+dependencies = [
+    { name = "langfuse" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "langfuse", specifier = ">=4.2.0,<5.0.0" }]
+
+[[package]]
+name = "dify-trace-langsmith"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-langsmith" }
+dependencies = [
+    { name = "langsmith" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "langsmith", specifier = "~=0.7.30" }]
+
+[[package]]
+name = "dify-trace-mlflow"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-mlflow" }
+dependencies = [
+    { name = "mlflow-skinny" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mlflow-skinny", specifier = ">=3.11.1" }]
+
+[[package]]
+name = "dify-trace-opik"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-opik" }
+dependencies = [
+    { name = "opik" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "opik", specifier = "~=1.11.2" }]
+
+[[package]]
+name = "dify-trace-tencent"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-tencent" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[[package]]
+name = "dify-trace-weave"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-weave" }
+dependencies = [
+    { name = "weave" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "weave", specifier = ">=0.52.36" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"

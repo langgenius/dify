@@ -299,7 +299,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
-                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+                tool_instance = tool_instances.get(prompt_tool.name)
+                if tool_instance:
+                    self.update_prompt_message_tool(tool_instance, prompt_tool)
 
             iteration_step += 1
 
