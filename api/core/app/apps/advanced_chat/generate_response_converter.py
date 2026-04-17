@@ -3,9 +3,9 @@ from typing import Any, cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
-    AppBlockingResponse,
     AppStreamResponse,
     ChatbotAppBlockingResponse,
+    ChatbotAppPausedBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
     MessageEndStreamResponse,
@@ -15,17 +15,34 @@ from core.app.entities.task_entities import (
 )
 
 
-class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = ChatbotAppBlockingResponse
-
+class AdvancedChatAppGenerateResponseConverter(
+    AppGenerateResponseConverter[ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse]
+):
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_full_response(
+        cls, blocking_response: ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse
+    ) -> dict[str, Any]:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        blocking_response = cast(ChatbotAppBlockingResponse, blocking_response)
+        if isinstance(blocking_response, ChatbotAppPausedBlockingResponse):
+            paused_data = blocking_response.data.model_dump(mode="json")
+            return {
+                "event": "workflow_paused",
+                "task_id": blocking_response.task_id,
+                "id": blocking_response.data.id,
+                "message_id": blocking_response.data.message_id,
+                "conversation_id": blocking_response.data.conversation_id,
+                "mode": blocking_response.data.mode,
+                "answer": blocking_response.data.answer,
+                "metadata": blocking_response.data.metadata,
+                "created_at": blocking_response.data.created_at,
+                "workflow_run_id": blocking_response.data.workflow_run_id,
+                "data": paused_data,
+            }
+
         response = {
             "event": "message",
             "task_id": blocking_response.task_id,
@@ -41,7 +58,9 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_simple_response(
+        cls, blocking_response: ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse
+    ) -> dict[str, Any]:
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -50,7 +69,8 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         response = cls.convert_blocking_full_response(blocking_response)
 
         metadata = response.get("metadata", {})
-        response["metadata"] = cls._get_simple_metadata(metadata)
+        if isinstance(metadata, dict):
+            response["metadata"] = cls._get_simple_metadata(metadata)
 
         return response
 

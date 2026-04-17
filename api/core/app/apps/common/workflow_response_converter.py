@@ -9,7 +9,9 @@ from typing import Any, NewType, TypedDict, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.apps.common.pause_reason_serializer import pause_reason_to_public_dict
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
@@ -317,7 +319,7 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+        pause_reasons = [pause_reason_to_public_dict(reason) for reason in event.reasons]
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}
@@ -336,7 +338,26 @@ class WorkflowResponseConverter:
                     except (TypeError, json.JSONDecodeError):
                         definition_payload = {}
                     display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                form_token_by_form_id = load_form_tokens_by_form_id(human_input_form_ids, session=session)
+                form_token_by_form_id = load_form_tokens_by_form_id(
+                    human_input_form_ids,
+                    session=session,
+                    surface=(
+                        HumanInputSurface.SERVICE_API
+                        if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API
+                        else None
+                    ),
+                )
+
+        # Reconnect paths must preserve the same pause-reason contract as live streams;
+        # otherwise clients see schema drift after resume.
+        pause_reasons = enrich_human_input_pause_reasons(
+            pause_reasons,
+            form_tokens_by_form_id=form_token_by_form_id,
+            expiration_times_by_form_id={
+                form_id: int(expiration_time.timestamp())
+                for form_id, expiration_time in expiration_times_by_form_id.items()
+            },
+        )
 
         responses: list[StreamResponse] = []
 

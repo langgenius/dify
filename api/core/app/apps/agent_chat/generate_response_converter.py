@@ -12,11 +12,9 @@ from core.app.entities.task_entities import (
 )
 
 
-class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = ChatbotAppBlockingResponse
-
+class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBlockingResponse]):
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -37,7 +35,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
