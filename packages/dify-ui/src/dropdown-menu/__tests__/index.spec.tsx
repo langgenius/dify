@@ -310,7 +310,10 @@ describe('dropdown-menu wrapper', () => {
               href="https://example.com/docs"
               aria-label="docs link"
               id={`menu-link-${variant}`}
-              onClick={handleClick}
+              onClick={(event) => {
+                event.preventDefault()
+                handleClick(event)
+              }}
             >
               Docs
             </DropdownMenuLinkItem>
