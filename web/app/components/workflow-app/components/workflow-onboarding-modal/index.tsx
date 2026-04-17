@@ -45,7 +45,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
         </div>
       </DialogContent>
 
-      {/* TODO: reduce z-1002 to match base/ui primitives after legacy overlay migration completes */}
+      {/* TODO: reduce z-1002 to match @langgenius/dify-ui primitives after legacy overlay migration completes */}
       <DialogPortal>
         <div className="pointer-events-none fixed top-1/2 left-1/2 z-1002 flex -translate-x-1/2 translate-y-[165px] items-center gap-1 body-xs-regular text-text-quaternary">
           <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>

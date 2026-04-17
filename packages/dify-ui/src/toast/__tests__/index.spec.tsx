@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast, ToastHost } from '../index'
 
-describe('base/ui/toast', () => {
+describe('@langgenius/dify-ui/toast', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })

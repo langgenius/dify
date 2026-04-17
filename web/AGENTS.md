@@ -5,7 +5,7 @@
 ## Overlay Components (Mandatory)
 
 - `./docs/overlay-migration.md` is the source of truth for overlay-related work.
-- In new or modified code, use only overlay primitives from `@/app/components/base/ui/*`.
+- In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
 - Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
 
 ## Query & Mutation (Mandatory)
