@@ -24,8 +24,6 @@ class ApiKeyAuthArgs(BaseModel):
     credentials: ApiKeyAuthCredentials
 
 
-
-
 class ApiKeyAuthService:
     @staticmethod
     def get_provider_auth_list(tenant_id: str):
