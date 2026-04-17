@@ -1,21 +1,65 @@
+# Validate after changes:
+#   curl -X POST --data-binary @codecov.yml https://codecov.io/validate
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
 coverage:
+  precision: 2
+  round: down
+  range: "70...100"
   status:
     project:
       default:
         target: auto
+        threshold: 1%
+        # Deleting covered code (e.g. a refactor / migration) must not count
+        # as a coverage regression against the base.
+        removed_code_behavior: adjust_base
 
-flags:
-  web:
-    paths:
-      - "web/"
-    carryforward: true
+# Files excluded from every flag's coverage denominator.
+# Each workspace's vitest/coverage config already excludes most of these at
+# the collector level; this block is the declarative safety net.
+ignore:
+  - "**/*.d.ts"
+  - "**/*.stories.@(ts|tsx|js|jsx)"
+  - "**/__tests__/**"
+  - "**/*.@(spec|test).@(ts|tsx|js|jsx)"
+  - "web/.storybook/**"
+  - "web/public/**"
+  - "web/scripts/**"
+  - "web/next.config.ts"
+  - "web/vite.config.ts"
+  - "web/vitest.setup.ts"
+  - "packages/dify-ui/tests/**"
+  - "packages/dify-ui/vite.config.ts"
+  - "api/tests/**"
+  - "api/migrations/**"
 
-  dify-ui:
-    paths:
-      - "packages/dify-ui/"
+# Modern flag management: shared rules in default_rules, per-flag overrides in individual_flags.
+flag_management:
+  default_rules:
     carryforward: true
+    statuses:
+      - type: project
+        target: auto
+        threshold: 1%
+  individual_flags:
+    - name: web
+      paths:
+        - "web/"
+    - name: dify-ui
+      paths:
+        - "packages/dify-ui/"
+    - name: api
+      paths:
+        - "api/"
 
-  api:
-    paths:
-      - "api/"
-    carryforward: true
+comment:
+  layout: "diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
