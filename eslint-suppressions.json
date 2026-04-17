@@ -3154,11 +3154,6 @@
       "count": 3
     }
   },
-  "web/app/components/header/account-setting/members-page/operation/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3444,11 +3439,6 @@
     }
   },
   "web/app/components/plugins/marketplace/search-box/tags-filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/sort-dropdown/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4689,11 +4679,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/next-step/operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/node-control.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4705,11 +4690,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/option-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/panel-operator/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5941,11 +5921,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/note-node/note-editor/toolbar/operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/note-node/note-editor/utils.ts": {
     "regexp/no-useless-quantifier": {
       "count": 1
@@ -5968,9 +5943,6 @@
   },
   "web/app/components/workflow/operator/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6365,9 +6337,6 @@
   },
   "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
