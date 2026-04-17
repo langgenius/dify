@@ -234,10 +234,10 @@ const useOneStepRun = <T>({
       const index = draft.findIndex(node => node.nodeId === nodeId)
       if (index !== -1) {
         const targetNode = draft[index]
-        if (targetNode.isSingRunRunning !== isRunning) {
-          targetNode.isSingRunRunning = isRunning
+        if (targetNode!.isSingRunRunning !== isRunning) {
+          targetNode!.isSingRunRunning = isRunning
           if (isRunning)
-            targetNode.isValueFetched = false
+            targetNode!.isValueFetched = false
           hasChanges = true
         }
       }
@@ -806,7 +806,7 @@ const useOneStepRun = <T>({
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -910,7 +910,7 @@ const useOneStepRun = <T>({
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -1109,13 +1109,13 @@ const useOneStepRun = <T>({
     })
 
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0]!)?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
           nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,
@@ -1129,7 +1129,7 @@ const useOneStepRun = <T>({
 
   const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
     return valueSelectors.filter(item => !!item).map((item) => {
-      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
+      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]!
     })
   }
 

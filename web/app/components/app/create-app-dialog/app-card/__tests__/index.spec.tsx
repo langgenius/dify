@@ -3,11 +3,17 @@ import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { trackEvent } from '@/app/components/base/amplitude'
+import AppListContext from '@/context/app-list-context'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('@heroicons/react/20/solid', () => ({
   PlusIcon: ({ className }: any) => <div data-testid="plus-icon" className={className} aria-label="Add icon">+</div>,
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
 }))
 
 const mockApp: App = {
@@ -38,10 +44,28 @@ const mockApp: App = {
 }
 
 describe('AppCard', () => {
+  const mockSetShowTryAppPanel = vi.fn()
+  const mockTrackEvent = vi.mocked(trackEvent)
   const defaultProps = {
     app: mockApp,
     canCreate: true,
     onCreate: vi.fn(),
+  }
+
+  const renderWithProvider = (ui: React.ReactElement) => {
+    return render(
+      // eslint-disable-next-line react/no-context-provider
+      <AppListContext.Provider
+        value={{
+          currentApp: undefined,
+          isShowTryAppPanel: false,
+          setShowTryAppPanel: mockSetShowTryAppPanel,
+          controlHideCreateFromTemplatePanel: 0,
+        }}
+      >
+        {ui}
+      </AppListContext.Provider>,
+    )
   }
 
   beforeEach(() => {
@@ -216,6 +240,25 @@ describe('AppCard', () => {
       await userEvent.click(card)
       // Note: Card click doesn't trigger onCreate, only the button does
       expect(mockOnCreate).not.toHaveBeenCalled()
+    })
+
+    it('should track preview event and open try app panel when detail button is clicked', async () => {
+      renderWithProvider(<AppCard {...defaultProps} />)
+
+      const button = screen.getByRole('button', { name: /explore\.appCard\.try/ })
+      await userEvent.click(button)
+
+      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
+        template_id: mockApp.app_id,
+        template_name: mockApp.app.name,
+        template_mode: mockApp.app.mode,
+        template_category: mockApp.category,
+        page: 'studio',
+      })
+      expect(mockSetShowTryAppPanel).toHaveBeenCalledWith(true, {
+        appId: mockApp.app_id,
+        app: mockApp,
+      })
     })
   })
 

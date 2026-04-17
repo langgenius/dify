@@ -4,7 +4,6 @@ from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
@@ -15,6 +14,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp

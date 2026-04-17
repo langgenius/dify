@@ -1,12 +1,12 @@
 import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type GroupLabelProps = ComponentProps<'div'>
 
 export const GroupLabel: FC<GroupLabelProps> = (props) => {
   const { children, className, ...rest } = props
   return (
-    <div {...rest} className={cn('system-2xs-medium-uppercase mb-1 text-text-tertiary', className)}>
+    <div {...rest} className={cn('mb-1 system-2xs-medium-uppercase text-text-tertiary', className)}>
       {children}
     </div>
   )

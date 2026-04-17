@@ -17,9 +17,7 @@ const config: KnipConfig = {
   ],
   ignoreDependencies: [
     '@iconify-json/*',
-
     '@storybook/addon-onboarding',
-
   ],
   /// keep-sorted
   rules: {

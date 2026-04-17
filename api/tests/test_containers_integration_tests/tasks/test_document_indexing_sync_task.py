@@ -16,7 +16,7 @@ from sqlalchemy import delete, func, select, update
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
@@ -31,12 +31,12 @@ class DocumentIndexingSyncTaskTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=f"tenant-{account.id}", status="normal")
+        tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 

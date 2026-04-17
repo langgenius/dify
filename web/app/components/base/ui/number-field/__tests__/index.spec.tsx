@@ -6,7 +6,6 @@ import type {
   NumberFieldInputProps,
   NumberFieldUnitProps,
 } from '../index'
-import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { render, screen } from '@testing-library/react'
 import {
   NumberField,
@@ -67,20 +66,9 @@ const renderNumberField = ({
 }
 
 describe('NumberField wrapper', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Export mapping should stay aligned with the Base UI primitive.
-  describe('Exports', () => {
-    it('should map NumberField to the matching base primitive root', () => {
-      expect(NumberField).toBe(BaseNumberField.Root)
-    })
-  })
-
   // Group and input wrappers should preserve the design-system variants and DOM defaults.
   describe('Group and input', () => {
-    it('should apply regular group classes by default and merge custom className', () => {
+    it('should apply medium group classes by default and merge custom className', () => {
       renderNumberField({
         groupProps: {
           className: 'custom-group',
@@ -89,7 +77,7 @@ describe('NumberField wrapper', () => {
 
       const group = screen.getByTestId('group')
 
-      expect(group).toHaveClass('radius-md')
+      expect(group).toHaveClass('rounded-lg')
       expect(group).toHaveClass('custom-group')
     })
 
@@ -106,7 +94,7 @@ describe('NumberField wrapper', () => {
       const group = screen.getByTestId('group')
       const input = screen.getByTestId('input')
 
-      expect(group).toHaveClass('radius-lg')
+      expect(group).toHaveClass('rounded-[10px]')
       expect(input).toHaveClass('px-4')
       expect(input).toHaveClass('py-2')
     })
@@ -136,7 +124,7 @@ describe('NumberField wrapper', () => {
   // Unit and controls wrappers should preserve layout tokens and HTML passthrough props.
   describe('Unit and controls', () => {
     it.each([
-      ['regular', 'pr-2'],
+      ['medium', 'pr-2'],
       ['large', 'pr-2.5'],
     ] as const)('should apply the %s unit spacing variant', (size, spacingClass) => {
       renderNumberField({
@@ -227,11 +215,11 @@ describe('NumberField wrapper', () => {
           <span id="increment-label">Increment from label</span>
           <span id="decrement-label">Decrement from label</span>
           <NumberField defaultValue={8}>
-            <NumberFieldGroup size="regular">
-              <NumberFieldInput aria-label="Amount" size="regular" />
+            <NumberFieldGroup size="medium">
+              <NumberFieldInput aria-label="Amount" size="medium" />
               <NumberFieldControls>
-                <NumberFieldIncrement aria-labelledby="increment-label" size="regular" />
-                <NumberFieldDecrement aria-labelledby="decrement-label" size="regular" />
+                <NumberFieldIncrement aria-labelledby="increment-label" size="medium" />
+                <NumberFieldDecrement aria-labelledby="decrement-label" size="medium" />
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>
@@ -246,7 +234,7 @@ describe('NumberField wrapper', () => {
     })
 
     it.each([
-      ['regular', 'pt-1', 'pb-1'],
+      ['medium', 'pt-1', 'pb-1'],
       ['large', 'pt-1.5', 'pb-1.5'],
     ] as const)('should apply the %s control button compound spacing classes', (size, incrementClass, decrementClass) => {
       renderNumberField({

@@ -1,21 +1,21 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { FloatingOverlay } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/ui/avatar'
 import { Button } from '@/app/components/base/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import { useSelector } from '@/context/app-context'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
-import { cn } from '@/utils/classnames'
 import useAccessControlStore from '../../../../context/access-control-store'
 import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
 import Loading from '../../base/loading'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 
 export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
@@ -36,7 +36,7 @@ export default function AddMemberOrGroupDialog() {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && hasMore)
           fetchNextPage()
       }, { rootMargin: '20px' })
       observer.observe(anchorRef.current)
@@ -45,15 +45,21 @@ export default function AddMemberOrGroupDialog() {
   }, [isLoading, fetchNextPage, anchorRef, data])
 
   return (
-    <PortalToFollowElem open={open} onOpenChange={setOpen} offset={{ crossAxis: 300 }} placement="bottom-end">
-      <PortalToFollowElemTrigger asChild>
-        <Button variant="ghost-accent" size="small" className="flex shrink-0 items-center gap-x-0.5" onClick={() => setOpen(!open)}>
-          <RiAddCircleFill className="h-4 w-4" />
-          <span>{t('operation.add', { ns: 'common' })}</span>
-        </Button>
-      </PortalToFollowElemTrigger>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <Button variant="ghost-accent" size="small" className="flex shrink-0 items-center gap-x-0.5">
+            <RiAddCircleFill className="h-4 w-4" />
+            <span>{t('operation.add', { ns: 'common' })}</span>
+          </Button>
+        )}
+      />
       {open && <FloatingOverlay />}
-      <PortalToFollowElemContent className="z-100">
+      <PopoverContent
+        placement="bottom-end"
+        alignOffset={300}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="relative flex max-h-[400px] w-[400px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
           <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
             <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' }) as string} />
@@ -81,8 +87,8 @@ export default function AddMemberOrGroupDialog() {
                     )
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

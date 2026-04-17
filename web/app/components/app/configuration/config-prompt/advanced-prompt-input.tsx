@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
@@ -30,7 +31,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import MessageTypeSelector from './message-type-selector'
@@ -96,8 +96,8 @@ const AdvancedPromptInput: FC<Props> = ({
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
+          if (promptVariables[i]!.key === newExternalDataTool.variable) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }

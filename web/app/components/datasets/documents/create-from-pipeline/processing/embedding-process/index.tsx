@@ -2,6 +2,7 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -28,7 +29,6 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { cn } from '@/utils/classnames'
 import RuleDetail from './rule-detail'
 
 type EmbeddingProcessProps = {
@@ -81,7 +81,7 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument.id)
+  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {

@@ -19,12 +19,12 @@ describe('IndexMethod', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should render High Quality option', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should render Economy option', () => {
@@ -34,17 +34,17 @@ describe('IndexMethod', () => {
 
     it('should render High Quality description', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodHighQualityTip/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.indexMethodHighQualityTip/))!.toBeInTheDocument()
     })
 
     it('should render Economy description', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodEconomyTip/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.indexMethodEconomyTip/))!.toBeInTheDocument()
     })
 
     it('should render recommended badge on High Quality', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.recommend/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.recommend/))!.toBeInTheDocument()
     })
   })
 
@@ -82,7 +82,7 @@ describe('IndexMethod', () => {
       // Find and click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
       const economyTitle = economyTitles[0]
-      const card = economyTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
       fireEvent.click(card!)
 
       expect(handleChange).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
@@ -114,7 +114,7 @@ describe('IndexMethod', () => {
       // Try to click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
       const economyTitle = economyTitles[0]
-      const card = economyTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
       fireEvent.click(card!)
 
       // Should not call onChange because Economy is disabled when current is QUALIFIED
@@ -125,13 +125,13 @@ describe('IndexMethod', () => {
   describe('KeywordNumber', () => {
     it('should render KeywordNumber component inside Economy option', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(getKeywordSlider()).toBeInTheDocument()
+      expect(getKeywordSlider())!.toBeInTheDocument()
     })
 
     it('should pass keywordNumber to KeywordNumber component', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={25} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('25')
+      expect(input)!.toHaveValue('25')
     })
 
     it('should call onKeywordNumberChange when KeywordNumber changes', () => {
@@ -160,13 +160,13 @@ describe('IndexMethod', () => {
     it('should show orange effect color for High Quality option', () => {
       const { container } = render(<IndexMethod {...defaultProps} />)
       const orangeEffect = container.querySelector('.bg-util-colors-orange-orange-500')
-      expect(orangeEffect).toBeInTheDocument()
+      expect(orangeEffect)!.toBeInTheDocument()
     })
 
     it('should show indigo effect color for Economy option', () => {
       const { container } = render(<IndexMethod {...defaultProps} />)
       const indigoEffect = container.querySelector('.bg-util-colors-indigo-indigo-600')
-      expect(indigoEffect).toBeInTheDocument()
+      expect(indigoEffect)!.toBeInTheDocument()
     })
   })
 
@@ -188,19 +188,20 @@ describe('IndexMethod', () => {
     it('should handle undefined currentValue', () => {
       render(<IndexMethod {...defaultProps} currentValue={undefined} />)
       // Should render without error
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+      // Should render without error
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should handle minimum keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('0')
+      expect(input)!.toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={50} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('50')
+      expect(input)!.toHaveValue('50')
     })
   })
 })

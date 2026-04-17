@@ -59,10 +59,10 @@ describe('WorkflowHistoryProvider', () => {
       </WorkflowHistoryProvider>,
     )
 
-    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:true' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:true' }))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'nodes:1 shortcuts:true' }))
-    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:false' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:false' }))!.toBeInTheDocument()
   })
 
   it('sanitizes selected flags when history state is replaced through the exposed store api', () => {
@@ -85,8 +85,8 @@ describe('WorkflowHistoryProvider', () => {
 
     result.current.store.setState(nextState)
 
-    expect(result.current.store.getState().nodes[0].data.selected).toBe(false)
-    expect(result.current.store.getState().edges[0].selected).toBe(false)
+    expect(result.current.store.getState().nodes[0]!.data.selected).toBe(false)
+    expect(result.current.store.getState().edges[0]!.selected).toBe(false)
   })
 
   it('throws when consumed outside the provider', () => {

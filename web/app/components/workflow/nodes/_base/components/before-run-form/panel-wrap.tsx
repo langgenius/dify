@@ -23,7 +23,7 @@ const PanelWrap: FC<Props> = ({
   return (
     <div className="absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt">
       <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">
-        <div className="flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3">
+        <div className="flex h-8 shrink-0 items-center justify-between pt-3 pr-3 pl-4">
           <div className="truncate text-base font-semibold text-text-primary">
             {t(`${i18nPrefix}.testRun`, { ns: 'workflow' })}
             {' '}
@@ -35,7 +35,7 @@ const PanelWrap: FC<Props> = ({
               onHide()
             }}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary " />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
         {children}

@@ -83,7 +83,7 @@ const Install: FC<Props> = ({
         onInstalled(selectedPlugins, res.map((r, i) => {
           return ({
             success: r.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[i]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
           })
         }))
         const hasInstallSuccess = res.some(r => r.status === TaskStatus.success)
@@ -101,7 +101,7 @@ const Install: FC<Props> = ({
         if (item.status !== TaskStatus.running) {
           return {
             success: item.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
           }
         }
         const { status } = await check({
@@ -110,7 +110,7 @@ const Install: FC<Props> = ({
         })
         return {
           success: status === TaskStatus.success,
-          isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+          isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
         }
       }))
       onInstalled(selectedPlugins, installStatus)

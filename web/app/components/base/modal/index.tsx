@@ -4,9 +4,9 @@
  * See: https://github.com/langgenius/dify/issues/32767
  */
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { Fragment } from 'react'
-import { cn } from '@/utils/classnames'
 // https://headlessui.com/react/dialog
 
 type IModal = {

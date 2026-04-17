@@ -2,6 +2,7 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -23,7 +24,6 @@ import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'

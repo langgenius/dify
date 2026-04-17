@@ -3,6 +3,7 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddCircleFill,
   RiAddLine,
@@ -23,7 +24,6 @@ import {
   Button,
 } from '@/app/components/base/ui/button'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'

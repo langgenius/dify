@@ -324,6 +324,7 @@ describe('AppList', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       })
+      expect(mockTrackCreateApp).not.toHaveBeenCalled()
     })
 
     it('should close create modal on successful DSL import', async () => {

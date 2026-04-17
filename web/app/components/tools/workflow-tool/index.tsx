@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiErrorWarningLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -17,7 +18,6 @@ import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
-import { cn } from '@/utils/classnames'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -84,9 +84,9 @@ const WorkflowToolAsModal: FC<Props> = ({
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
-        draft[index].description = value
+        draft[index]!.description = value
       else
-        draft[index].form = value
+        draft[index]!.form = value
     })
     setParameters(newData)
   }

@@ -4,6 +4,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -22,7 +23,6 @@ import BoolInput from '@/app/components/workflow/nodes/_base/components/before-r
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
 type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -197,7 +197,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         value={inputs[item.key] as string}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                         noWrapper
-                        className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+                        className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
                           <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }

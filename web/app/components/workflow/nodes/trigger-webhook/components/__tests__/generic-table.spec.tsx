@@ -100,8 +100,8 @@ describe('GenericTable', () => {
     expect(inputs).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
-    const blurSpy = vi.spyOn(inputs[0], 'blur')
-    fireEvent.keyDown(inputs[0], { key: 'Enter' })
+    const blurSpy = vi.spyOn(inputs[0]!, 'blur')
+    fireEvent.keyDown(inputs[0]!, { key: 'Enter' })
     expect(blurSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -120,9 +120,9 @@ describe('GenericTable', () => {
       />,
     )
 
-    expect(screen.getByText('Name')).toBeInTheDocument()
+    expect(screen.getByText('Name'))!.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
     expect(onChange).toHaveBeenCalledWith([{ name: 'alpha', enabled: true }])
 
     await user.click(screen.getByRole('button', { name: 'Delete row' }))
@@ -158,11 +158,11 @@ describe('GenericTable', () => {
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
-      expect(screen.getByRole('button', { name: 'POST' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'POST' }))!.toBeInTheDocument()
     })
 
     onChange.mockClear()
-    await user.click(screen.getAllByRole('button', { name: 'custom-render' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'custom-render' })[0]!)
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '0:post' }])
@@ -202,7 +202,7 @@ describe('GenericTable', () => {
       />,
     )
 
-    expect(screen.getByText('No data')).toBeInTheDocument()
+    expect(screen.getByText('No data'))!.toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

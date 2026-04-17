@@ -7,8 +7,6 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelFeature
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -35,6 +33,8 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 

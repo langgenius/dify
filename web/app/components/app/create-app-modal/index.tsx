@@ -1,8 +1,9 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 
+import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +24,6 @@ import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'

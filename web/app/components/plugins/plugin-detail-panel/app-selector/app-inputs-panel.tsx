@@ -1,11 +1,11 @@
 'use client'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: {
@@ -37,7 +37,7 @@ const AppInputsPanel = ({
     <div className={cn('flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
-        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">
+        <div className="mt-3 mb-2 flex h-6 shrink-0 items-center px-4 system-sm-semibold text-text-secondary">
           {t('appSelector.params', { ns: 'app' })}
         </div>
       )}

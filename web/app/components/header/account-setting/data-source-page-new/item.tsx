@@ -30,7 +30,7 @@ const Item = ({
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName="grow radius-sm"
+              wrapperClassName="grow rounded-md"
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
