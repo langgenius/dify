@@ -7,16 +7,16 @@ import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 
@@ -114,32 +114,33 @@ const RetrievalConfig: FC<Props> = ({
   }, [onMultipleRetrievalConfigChange, retrieval_mode, onRetrievalModeChange])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={rerankModalOpen}
-      onOpenChange={handleOpen}
-      placement="bottom-end"
-      offset={{
-        crossAxis: -2,
+      onOpenChange={(nextOpen) => {
+        if (readonly)
+          return
+        handleOpen(nextOpen)
       }}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => {
-          if (readonly)
-            return
-          handleOpen(!rerankModalOpen)
-        }}
+      <PopoverTrigger
+        render={(
+          <Button
+            variant="ghost"
+            size="small"
+            disabled={readonly}
+            className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
+          >
+            <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+            {t('retrievalSettings', { ns: 'dataset' })}
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={0}
+        alignOffset={-2}
+        popupClassName="border-none bg-transparent shadow-none"
       >
-        <Button
-          variant="ghost"
-          size="small"
-          disabled={readonly}
-          className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
-        >
-          <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('retrievalSettings', { ns: 'dataset' })}
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1001 }}>
         <div className="w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent
             datasetConfigs={datasetConfigs}
@@ -151,8 +152,8 @@ const RetrievalConfig: FC<Props> = ({
             onSingleRetrievalModelParamsChange={onSingleRetrievalModelParamsChange}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default React.memo(RetrievalConfig)
