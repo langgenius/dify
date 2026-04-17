@@ -3,8 +3,8 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Index, func
 import sqlalchemy as sa
+from sqlalchemy import Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .account import Account
