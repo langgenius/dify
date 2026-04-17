@@ -6209,9 +6209,6 @@
     }
   },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
