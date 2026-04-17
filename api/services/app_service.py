@@ -318,7 +318,7 @@ class AppService:
         app.icon = icon
         app.icon_background = icon_background
         if icon_type is not None:
-            app.icon_type = icon_type
+            app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
