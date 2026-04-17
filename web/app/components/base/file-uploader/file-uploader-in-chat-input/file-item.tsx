@@ -36,6 +36,7 @@ const FileItem = ({
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
+  const [typeCategory = '', typeSubtype = ''] = type?.split('/') ?? []
 
   let tmp_preview_url = url || base64Url
   if (!tmp_preview_url && file?.originalFile)
@@ -121,7 +122,7 @@ const FileItem = ({
         </div>
       </div>
       {
-        type.split('/')[0] === 'audio' && canPreview && previewUrl && (
+        typeCategory === 'audio' && canPreview && previewUrl && (
           <AudioPreview
             title={name}
             url={previewUrl}
@@ -130,7 +131,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[0] === 'video' && canPreview && previewUrl && (
+        typeCategory === 'video' && canPreview && previewUrl && (
           <VideoPreview
             title={name}
             url={previewUrl}
@@ -139,7 +140,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[1] === 'pdf' && canPreview && previewUrl && (
+        typeSubtype === 'pdf' && canPreview && previewUrl && (
           <PdfPreview url={previewUrl} onCancel={() => { setPreviewUrl('') }} />
         )
       }
