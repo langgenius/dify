@@ -1,7 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

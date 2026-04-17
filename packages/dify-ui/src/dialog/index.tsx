@@ -9,7 +9,7 @@
 
 import type { ReactNode } from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '../cn'
 
 export const Dialog = BaseDialog.Root
 /** @public */

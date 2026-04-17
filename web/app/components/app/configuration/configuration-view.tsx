@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from './hooks/use-configuration'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
@@ -24,7 +25,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'

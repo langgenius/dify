@@ -1,8 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ReactNode } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import AppIcon from '@/app/components/base/app-icon'
 import {
   ScrollAreaContent,
   ScrollAreaCorner,
@@ -11,6 +9,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '.'
+import { cn } from '../cn'
 
 const meta = {
   title: 'Base/UI/ScrollArea',
@@ -490,12 +489,13 @@ const ExploreSidebarWebAppsPane = () => {
                         )}
                       >
                         <div className="flex min-w-0 grow items-center gap-2">
-                          <AppIcon
-                            size="tiny"
-                            iconType="emoji"
-                            icon={item.icon}
-                            background={item.iconBackground}
-                          />
+                          <div
+                            aria-hidden
+                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-xs"
+                            style={{ background: item.iconBackground }}
+                          >
+                            {item.icon}
+                          </div>
                           <span className="min-w-0 truncate system-sm-regular">
                             {item.name}
                           </span>

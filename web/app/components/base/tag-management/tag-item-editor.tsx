@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +15,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { deleteTag, updateTag } from '@/service/tag'
 import { useStore as useTagStore } from './store'
 

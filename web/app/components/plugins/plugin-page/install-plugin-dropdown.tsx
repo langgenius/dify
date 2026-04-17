@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
@@ -8,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

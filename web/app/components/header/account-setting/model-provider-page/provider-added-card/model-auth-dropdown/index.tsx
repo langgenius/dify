@@ -1,8 +1,8 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import {
   Popover,
   PopoverContent,

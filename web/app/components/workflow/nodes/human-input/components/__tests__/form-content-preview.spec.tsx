@@ -35,7 +35,7 @@ vi.mock('@/app/components/base/badge', () => ({
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
     <button type="button" data-testid={`action-${variant}`}>{children}</button>
   ),

@@ -2,11 +2,11 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
 import {
   Tooltip,
   TooltipContent,

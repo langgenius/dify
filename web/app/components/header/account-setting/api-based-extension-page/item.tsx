@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -14,7 +15,6 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 

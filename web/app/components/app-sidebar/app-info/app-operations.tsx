@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiMoreLine } from '@remixicon/react'
 import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,9 +1,9 @@
 import type { ZodSchema } from 'zod'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import { toast } from '@/app/components/base/ui/toast'
 
 type OptionsProps = {
   initialData: Record<string, any>

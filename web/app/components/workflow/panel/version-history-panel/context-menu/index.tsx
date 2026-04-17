@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

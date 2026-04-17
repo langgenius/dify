@@ -9,6 +9,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,7 +17,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelList,

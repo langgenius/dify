@@ -2,10 +2,10 @@
 import type { HeaderItem } from '../headers-input'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { getDomain } from 'tldts'
 import { v4 as uuid } from 'uuid'
-import { toast } from '@/app/components/base/ui/toast'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { uploadRemoteFileInfo } from '@/service/common'
 

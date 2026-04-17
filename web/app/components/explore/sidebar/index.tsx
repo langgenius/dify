@@ -1,5 +1,7 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
@@ -14,8 +16,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { ScrollArea } from '@/app/components/base/ui/scroll-area'
-import { toast } from '@/app/components/base/ui/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { useSelectedLayoutSegments } from '@/next/navigation'

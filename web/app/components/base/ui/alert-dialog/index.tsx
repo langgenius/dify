@@ -1,10 +1,10 @@
 'use client'
 
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
-import type { ButtonProps } from '@/app/components/base/ui/button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Button } from '@/app/components/base/ui/button'
 
 export const AlertDialog = BaseAlertDialog.Root
 export const AlertDialogTrigger = BaseAlertDialog.Trigger

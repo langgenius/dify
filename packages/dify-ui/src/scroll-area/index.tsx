@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '../cn'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
 type ScrollAreaRootProps = BaseScrollArea.Root.Props

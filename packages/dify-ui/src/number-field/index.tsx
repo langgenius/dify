@@ -3,8 +3,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { HTMLAttributes } from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
-import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
+import { cn } from '../cn'
 
 export const NumberField = BaseNumberField.Root
 export type NumberFieldRootProps = BaseNumberField.Root.Props

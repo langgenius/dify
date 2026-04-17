@@ -1,3 +1,4 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -10,7 +11,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 

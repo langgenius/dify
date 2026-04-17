@@ -15,10 +15,10 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/ui/dropdown-menu`
   - `@/app/components/base/ui/context-menu`
   - `@/app/components/base/ui/popover`
-  - `@/app/components/base/ui/dialog`
+  - `@langgenius/dify-ui/dialog`
   - `@/app/components/base/ui/alert-dialog`
   - `@/app/components/base/ui/select`
-  - `@/app/components/base/ui/toast`
+  - `@langgenius/dify-ui/toast`
 - Tracking issue: <https://github.com/langgenius/dify/issues/32767>
 
 ## ESLint policy

@@ -8,7 +8,7 @@
  * - Tooltip → `@/app/components/base/ui/tooltip`
  * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
  * - Popover → `@/app/components/base/ui/popover`
- * - Dialog/Modal → `@/app/components/base/ui/dialog`
+ * - Dialog/Modal → `@langgenius/dify-ui/dialog`
  * - Select → `@/app/components/base/ui/select`
  */
 import type { OffsetOptions, Placement } from '@floating-ui/react'

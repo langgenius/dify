@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
-import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
 import { AppModeEnum } from '@/types/app'
 

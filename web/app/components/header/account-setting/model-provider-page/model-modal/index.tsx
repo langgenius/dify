@@ -9,6 +9,12 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from '@langgenius/dify-ui/dialog'
 import {
   memo,
   useCallback,
@@ -30,12 +36,6 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-} from '@/app/components/base/ui/dialog'
 import {
   useAuth,
   useCredentialData,

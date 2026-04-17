@@ -1,5 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useId, useState } from 'react'
 import {
   NumberField,
@@ -10,6 +9,7 @@ import {
   NumberFieldInput,
   NumberFieldUnit,
 } from '.'
+import { cn } from '../cn'
 
 type DemoFieldProps = {
   label: string

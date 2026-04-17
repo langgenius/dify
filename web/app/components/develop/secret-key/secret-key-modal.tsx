@@ -1,6 +1,7 @@
 'use client'
 import type { CreateApiKeyResponse } from '@/models/app'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
@@ -19,7 +20,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import {

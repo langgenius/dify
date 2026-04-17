@@ -2,12 +2,12 @@ import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

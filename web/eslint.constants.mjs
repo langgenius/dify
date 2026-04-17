@@ -41,7 +41,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/modal/index',
       '**/base/modal/modal',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
   {
     group: [
@@ -57,7 +57,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/dialog',
       '**/base/dialog/index',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
 ]
 
