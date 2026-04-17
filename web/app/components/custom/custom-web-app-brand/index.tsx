@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Switch from '@/app/components/base/switch'
 import { Button } from '@/app/components/base/ui/button'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'

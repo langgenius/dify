@@ -28,6 +28,10 @@
     "./slider": {
       "types": "./src/slider/index.tsx",
       "import": "./src/slider/index.tsx"
+    },
+    "./switch": {
+      "types": "./src/switch/index.tsx",
+      "import": "./src/switch/index.tsx"
     }
   },
   "scripts": {

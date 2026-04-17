@@ -3,11 +3,6 @@
   "compilerOptions": {
     "rootDir": ".",
     "types": ["vitest/globals", "@testing-library/jest-dom"],
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
-    "outDir": "dist",
-    "sourceMap": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },

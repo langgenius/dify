@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { ComponentProps } from 'react'
 import { useState, useTransition } from 'react'
-import Switch from '.'
-import { SwitchSkeleton } from './skeleton'
+import { Switch, SwitchSkeleton } from '.'
 
 const meta = {
   title: 'Base/Data Entry/Switch',
@@ -10,7 +10,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggle switch built on Base UI with CVA variants, Figma-aligned design tokens, loading spinner, and skeleton placeholder. Import `Switch` for the toggle and `SwitchSkeleton` from `./skeleton` for loading placeholders.',
+        component: 'Toggle switch built on Base UI with CVA variants, Figma-aligned design tokens, loading spinner, and skeleton placeholder. Import `Switch` and `SwitchSkeleton` from `@langgenius/dify-ui/switch`.',
       },
     },
   },
@@ -42,7 +42,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const SwitchDemo = (args: any) => {
+const SwitchDemo = (args: Partial<ComponentProps<typeof Switch>>) => {
   const [enabled, setEnabled] = useState(args.checked ?? false)
 
   return (
@@ -338,7 +338,7 @@ export const Skeleton: Story = {
   parameters: {
     docs: {
       description: {
-        story: '`SwitchSkeleton` renders a non-interactive placeholder with `bg-text-quaternary opacity-20`. Imported separately from `./skeleton`.',
+        story: '`SwitchSkeleton` renders a non-interactive placeholder with `bg-text-quaternary opacity-20`. Exported from `@langgenius/dify-ui/switch` alongside `Switch`.',
       },
     },
   },

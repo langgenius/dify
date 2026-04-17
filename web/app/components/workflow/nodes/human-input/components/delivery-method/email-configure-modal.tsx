@@ -3,6 +3,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiBugLine, RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { memo, useCallback, useState } from 'react'
@@ -10,7 +11,6 @@ import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'

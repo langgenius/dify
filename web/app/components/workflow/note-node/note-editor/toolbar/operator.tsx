@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
@@ -10,7 +11,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Switch from '@/app/components/base/switch'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 export type OperatorProps = {

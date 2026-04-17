@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Divider from '@/app/components/base/divider'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,

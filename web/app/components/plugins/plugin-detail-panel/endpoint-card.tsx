@@ -1,4 +1,5 @@
 import type { EndpointListItem, PluginDetail } from '../types'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -7,7 +8,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,

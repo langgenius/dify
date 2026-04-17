@@ -1,6 +1,6 @@
+import { Switch } from '@langgenius/dify-ui/switch'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,

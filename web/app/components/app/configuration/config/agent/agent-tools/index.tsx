@@ -5,6 +5,7 @@ import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/bloc
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -21,7 +22,6 @@ import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'

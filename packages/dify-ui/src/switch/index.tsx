@@ -1,10 +1,11 @@
 'use client'
 
+import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
+import type { HTMLAttributes } from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
-import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
+import { cn } from '../cn'
 
 const switchRootStateClassName = 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
 
@@ -61,46 +62,40 @@ const spinnerSizeConfig: Partial<Record<SwitchSize, {
   },
 }
 
-type SwitchProps = {
-  'checked': boolean
-  'onCheckedChange'?: (checked: boolean) => void
-  'size'?: SwitchSize
-  'disabled'?: boolean
-  'loading'?: boolean
-  'className'?: string
-  'aria-label'?: string
-  'aria-labelledby'?: string
-  'data-testid'?: string
-}
+export type SwitchProps
+  = Omit<BaseSwitchNS.Root.Props, 'className' | 'size' | 'onCheckedChange'>
+    & VariantProps<typeof switchRootVariants>
+    & {
+      /**
+       * Called with the next checked value. The underlying event is omitted
+       * on purpose so the callback matches the React setter shape (`setFoo(bool)`),
+       * which is the overwhelmingly common use case for a toggle.
+       */
+      onCheckedChange?: (checked: boolean) => void
+      loading?: boolean
+      className?: string
+    }
 
-const Switch = ({
-  ref,
+export function Switch({
   checked,
-  onCheckedChange,
   size = 'md',
-  disabled = false,
+  disabled,
   loading = false,
   className,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  'data-testid': dataTestid,
-}: SwitchProps & {
-  ref?: React.Ref<HTMLElement>
-}) => {
+  onCheckedChange,
+  ...props
+}: SwitchProps) {
   const isDisabled = disabled || loading
-  const spinner = loading ? spinnerSizeConfig[size] : undefined
+  const spinner = loading && size ? spinnerSizeConfig[size] : undefined
 
   return (
     <BaseSwitch.Root
-      ref={ref}
       checked={checked}
-      onCheckedChange={value => onCheckedChange?.(value)}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
       className={cn(switchRootVariants({ size }), className)}
-      data-testid={dataTestid}
+      onCheckedChange={value => onCheckedChange?.(value)}
+      {...props}
     >
       <BaseSwitch.Thumb
         className={switchThumbVariants({ size })}
@@ -123,6 +118,39 @@ const Switch = ({
   )
 }
 
-Switch.displayName = 'Switch'
+const switchSkeletonVariants = cva(
+  'bg-text-quaternary opacity-20',
+  {
+    variants: {
+      size: {
+        xs: 'h-2.5 w-3.5 rounded-xs',
+        sm: 'h-3 w-5 rounded-[3.5px]',
+        md: 'h-4 w-7 rounded-[5px]',
+        lg: 'h-5 w-9 rounded-md',
+      },
+    },
+    defaultVariants: {
+      size: 'md',
+    },
+  },
+)
 
-export default React.memo(Switch)
+export type SwitchSkeletonProps
+  = Omit<HTMLAttributes<HTMLDivElement>, 'className'>
+    & VariantProps<typeof switchSkeletonVariants>
+    & {
+      className?: string
+    }
+
+export function SwitchSkeleton({
+  size = 'md',
+  className,
+  ...props
+}: SwitchSkeletonProps) {
+  return (
+    <div
+      className={cn(switchSkeletonVariants({ size }), className)}
+      {...props}
+    />
+  )
+}

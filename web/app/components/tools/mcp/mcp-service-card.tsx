@@ -5,13 +5,13 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,

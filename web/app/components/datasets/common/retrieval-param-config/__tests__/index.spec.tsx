@@ -122,8 +122,8 @@ vi.mock('@/app/components/base/radio-card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
     <button
       data-testid="rerank-switch"
       data-checked={checked}

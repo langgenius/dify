@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
 import { API_PREFIX } from '@/config'
 
 type AuthenticationSectionProps = {
