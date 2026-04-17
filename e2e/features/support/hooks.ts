@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
+import { deleteTestApp } from '../../support/api'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -87,6 +88,8 @@ After(async function (this: DifyWorld, { pickle, result }) {
   console.log(
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
+
+  for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
 
   await this.closeSession()
 })
