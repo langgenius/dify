@@ -123,6 +123,19 @@ const pruneClipboardNodesWithFilteredAncestors = (
   return candidateNodes.filter(node => !filteredNodeIds.has(node.id))
 }
 
+const getUniquePastedNodeTitle = (
+  sourceTitle: string,
+  reservedTitles: Set<string>,
+) => {
+  let titleCandidate = sourceTitle
+
+  while (reservedTitles.has(titleCandidate))
+    titleCandidate = genNewNodeTitleFromOld(titleCandidate)
+
+  reservedTitles.add(titleCandidate)
+  return titleCandidate
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
@@ -1836,6 +1849,11 @@ export const useNodesInteractions = () => {
       return
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+    const reservedNodeTitles = new Set(
+      nodes
+        .map(node => node.data.title)
+        .filter((title): title is string => typeof title === 'string'),
+    )
 
     const nodesToPaste: Node[] = []
     const edgesToPaste: Edge[] = []
@@ -1964,7 +1982,7 @@ export const useNodesInteractions = () => {
             iteration_id: undefined,
             isInLoop: false,
             loop_id: undefined,
-            title: genNewNodeTitleFromOld(sourceTitle),
+            title: getUniquePastedNodeTitle(sourceTitle, reservedNodeTitles),
           },
           position: {
             x: nodeToPaste.position.x + offsetX,
@@ -2030,7 +2048,7 @@ export const useNodesInteractions = () => {
                 _connectedSourceHandleIds: [],
                 _connectedTargetHandleIds: [],
                 _dimmed: false,
-                title: genNewNodeTitleFromOld(childSourceTitle),
+                title: getUniquePastedNodeTitle(childSourceTitle, reservedNodeTitles),
                 isInIteration: true,
                 iteration_id: newNode.id,
                 isInLoop: false,
@@ -2130,7 +2148,7 @@ export const useNodesInteractions = () => {
                 _connectedSourceHandleIds: [],
                 _connectedTargetHandleIds: [],
                 _dimmed: false,
-                title: genNewNodeTitleFromOld(childSourceTitle),
+                title: getUniquePastedNodeTitle(childSourceTitle, reservedNodeTitles),
                 isInIteration: false,
                 iteration_id: undefined,
                 isInLoop: true,

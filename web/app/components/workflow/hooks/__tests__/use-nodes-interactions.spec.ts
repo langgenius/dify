@@ -674,6 +674,132 @@ describe('useNodesInteractions', () => {
     expect(rfState.setNodes).toHaveBeenCalled()
   })
 
+  // Paste title handling should preserve original names until the destination canvas conflicts.
+  describe('paste title handling', () => {
+    beforeEach(() => {
+      runtimeNodesMetaDataMap.value = {
+        [BlockEnum.Code]: {
+          defaultValue: {
+            type: BlockEnum.Code,
+            title: 'Code',
+            desc: '',
+          },
+          metaData: {
+            isSingleton: false,
+          },
+        },
+      }
+    })
+
+    it('preserves the original title when the destination canvas has no conflict', async () => {
+      currentNodes = [
+        createNode({
+          id: 'existing-node',
+          data: {
+            type: BlockEnum.Code,
+            title: 'Existing',
+            desc: '',
+          },
+        }),
+      ]
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: 'clipboard-node',
+            data: {
+              type: BlockEnum.Code,
+              title: 'Clipboard',
+              desc: '',
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+      const newNode = pastedNodes.find(node => node.id !== 'existing-node')
+
+      expect(newNode?.data.title).toBe('Clipboard')
+    })
+
+    it('renames pasted nodes only when the destination canvas already uses the title', async () => {
+      currentNodes = [
+        createNode({
+          id: 'existing-node',
+          data: {
+            type: BlockEnum.Code,
+            title: 'Clipboard',
+            desc: '',
+          },
+        }),
+        createNode({
+          id: 'existing-node-2',
+          data: {
+            type: BlockEnum.Code,
+            title: 'Clipboard (1)',
+            desc: '',
+          },
+        }),
+      ]
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: 'clipboard-node',
+            data: {
+              type: BlockEnum.Code,
+              title: 'Clipboard',
+              desc: '',
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+      const newNode = pastedNodes.find(node => !currentNodes.some(existingNode => existingNode.id === node.id))
+
+      expect(newNode?.data.title).toBe('Clipboard (2)')
+    })
+  })
+
   // Nested container paste restrictions should stay aligned with available block filtering.
   describe('nested container paste restrictions', () => {
     const disallowedNestedPasteNodeTypes = [
