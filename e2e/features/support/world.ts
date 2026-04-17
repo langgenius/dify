@@ -1,9 +1,11 @@
-import { type IWorldOptions, World, setWorldConstructor } from '@cucumber/cucumber'
+import type { IWorldOptions } from '@cucumber/cucumber'
 import type { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test'
+import type { AuthSessionMetadata } from '../../fixtures/auth'
+import { setWorldConstructor, World } from '@cucumber/cucumber'
 import {
+
   authStatePath,
   readAuthSessionMetadata,
-  type AuthSessionMetadata,
 } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
@@ -37,7 +39,8 @@ export class DifyWorld extends World {
     this.page.setDefaultTimeout(30_000)
 
     this.page.on('console', (message: ConsoleMessage) => {
-      if (message.type() === 'error') this.consoleErrors.push(message.text())
+      if (message.type() === 'error')
+        this.consoleErrors.push(message.text())
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
@@ -53,7 +56,8 @@ export class DifyWorld extends World {
   }
 
   getPage() {
-    if (!this.page) throw new Error('Playwright page has not been initialized for this scenario.')
+    if (!this.page)
+      throw new Error('Playwright page has not been initialized for this scenario.')
 
     return this.page
   }

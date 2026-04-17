@@ -37,7 +37,7 @@ const InputCopy = ({
         {children}
         <div className="relative h-full grow text-[13px]">
           <div
-            className="r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2"
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate pr-2 pl-2"
             onClick={() => {
               writeTextToClipboard(value).then(() => {
                 setIsCopied(true)

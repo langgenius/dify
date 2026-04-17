@@ -15,7 +15,7 @@
   width: 4px;
   height: 12px;
   transform: translateX(-50%);
-  background: linear-gradient(to bottom, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
+  background: linear-gradient(to bottom, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scrollbar][data-orientation='vertical']::after {
@@ -24,7 +24,7 @@
   width: 4px;
   height: 12px;
   transform: translateX(-50%);
-  background: linear-gradient(to top, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
+  background: linear-gradient(to top, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scrollbar][data-orientation='horizontal']::before {
@@ -33,7 +33,7 @@
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
-  background: linear-gradient(to right, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
+  background: linear-gradient(to right, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scrollbar][data-orientation='horizontal']::after {
@@ -42,7 +42,7 @@
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
-  background: linear-gradient(to left, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
+  background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scrollbar][data-orientation='vertical']:not([data-overflow-y-start])::before {
@@ -59,12 +59,6 @@
 
 [data-dify-scrollbar][data-orientation='horizontal']:not([data-overflow-x-end])::after {
   opacity: 1;
-}
-
-[data-dify-scrollbar][data-hovering] > [data-orientation],
-[data-dify-scrollbar][data-scrolling] > [data-orientation],
-[data-dify-scrollbar] > [data-orientation]:active {
-  background-color: var(--scroll-area-thumb-bg-active, var(--color-state-base-handle-hover));
 }
 
 @media (prefers-reduced-motion: reduce) {

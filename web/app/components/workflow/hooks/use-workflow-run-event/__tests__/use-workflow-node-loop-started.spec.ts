@@ -25,7 +25,7 @@ describe('useWorkflowNodeLoopStarted', () => {
       )
     })
 
-    expect(store.getState().workflowRunningData!.tracing![0].status).toBe(NodeRunningStatus.Running)
+    expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(NodeRunningStatus.Running)
 
     await waitFor(() => {
       const transform = result.current.reactFlowStore.getState().transform

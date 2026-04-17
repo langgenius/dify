@@ -215,7 +215,7 @@ export const useNodesInteractions = () => {
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
-          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as any) || targetNode!.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -224,7 +224,7 @@ export const useNodesInteractions = () => {
           // Therefore: current.position = target.position + target.offset - current.offset
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
-          currentNode.position.x = targetNode.position.x + targetOffset - currentOffset
+          currentNode.position.x = targetNode!.position.x + targetOffset - currentOffset
         }
         else if (restrictPosition.x !== undefined) {
           currentNode.position.x = restrictPosition.x
@@ -239,11 +239,11 @@ export const useNodesInteractions = () => {
         // Y-axis alignment with offset consideration
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
-          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as any) || targetNode!.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
-          currentNode.position.y = targetNode.position.y + targetOffset - currentOffset
+          currentNode.position.y = targetNode!.position.y + targetOffset - currentOffset
         }
         else if (restrictPosition.y !== undefined) {
           currentNode.position.y = restrictPosition.y
@@ -708,7 +708,7 @@ export const useNodesInteractions = () => {
           }
           else {
             if (iterationChildren.length === 1) {
-              handleNodeDelete(iterationChildren[0].id)
+              handleNodeDelete(iterationChildren[0]!.id)
               handleNodeDelete(nodeId)
 
               return
@@ -748,7 +748,7 @@ export const useNodesInteractions = () => {
           }
           else {
             if (loopChildren.length === 1) {
-              handleNodeDelete(loopChildren[0].id)
+              handleNodeDelete(loopChildren[0]!.id)
               handleNodeDelete(nodeId)
 
               return
@@ -891,7 +891,7 @@ export const useNodesInteractions = () => {
       if (prevNodeId && !nextNodeId) {
         const prevNodeIndex = nodes.findIndex(node => node.id === prevNodeId)
         const prevNode = nodes[prevNodeIndex]
-        const outgoers = getOutgoers(prevNode, nodes, edges).sort(
+        const outgoers = getOutgoers(prevNode!, nodes, edges).sort(
           (a, b) => a.position.y - b.position.y,
         )
         const lastOutgoer = outgoers.at(-1)
@@ -902,22 +902,22 @@ export const useNodesInteractions = () => {
         newNode.position = {
           x: lastOutgoer
             ? lastOutgoer.position.x
-            : prevNode.position.x + prevNode.width! + X_OFFSET,
+            : prevNode!.position.x + prevNode!.width! + X_OFFSET,
           y: lastOutgoer
             ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET
-            : prevNode.position.y,
+            : prevNode!.position.y,
         }
-        newNode.parentId = prevNode.parentId
-        newNode.extent = prevNode.extent
+        newNode.parentId = prevNode!.parentId
+        newNode.extent = prevNode!.extent
 
         const parentNode
-          = nodes.find(node => node.id === prevNode.parentId) || null
+          = nodes.find(node => node.id === prevNode!.parentId) || null
         const isInIteration
           = !!parentNode && parentNode.data.type === BlockEnum.Iteration
         const isInLoop
           = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-        if (prevNode.parentId) {
+        if (prevNode!.parentId) {
           newNode.data.isInIteration = isInIteration
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
@@ -958,15 +958,15 @@ export const useNodesInteractions = () => {
             target: newNode.id,
             targetHandle,
             data: {
-              sourceType: prevNode.data.type,
+              sourceType: prevNode!.data.type,
               targetType: newNode.data.type,
               isInIteration,
               isInLoop,
-              iteration_id: isInIteration ? prevNode.parentId : undefined,
-              loop_id: isInLoop ? prevNode.parentId : undefined,
+              iteration_id: isInIteration ? prevNode!.parentId : undefined,
+              loop_id: isInLoop ? prevNode!.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode.parentId
+            zIndex: prevNode!.parentId
               ? isInIteration
                 ? ITERATION_CHILDREN_Z_INDEX
                 : LOOP_CHILDREN_Z_INDEX
@@ -992,7 +992,7 @@ export const useNodesInteractions = () => {
 
             if (
               node.data.type === BlockEnum.Iteration
-              && prevNode.parentId === node.id
+              && prevNode!.parentId === node.id
             ) {
               node.data._children?.push({
                 nodeId: newNode.id,
@@ -1002,7 +1002,7 @@ export const useNodesInteractions = () => {
 
             if (
               node.data.type === BlockEnum.Loop
-              && prevNode.parentId === node.id
+              && prevNode!.parentId === node.id
             ) {
               node.data._children?.push({
                 nodeId: newNode.id,
@@ -1026,8 +1026,8 @@ export const useNodesInteractions = () => {
           const { setShowAssignVariablePopup } = workflowStore.getState()
 
           setShowAssignVariablePopup({
-            nodeId: prevNode.id,
-            nodeData: prevNode.data,
+            nodeId: prevNode!.id,
+            nodeData: prevNode!.data,
             variableAssignerNodeId: newNode.id,
             variableAssignerNodeData: newNode.data as VariableAssignerNodeType,
             variableAssignerNodeHandleId: targetHandle,
@@ -1316,7 +1316,7 @@ export const useNodesInteractions = () => {
         const nodesConnectedSourceOrTargetHandleIdsMap
           = getNodesConnectedSourceOrTargetHandleIdsMap(
             [
-              { type: 'remove', edge: edges[currentEdgeIndex] },
+              { type: 'remove', edge: edges[currentEdgeIndex]! },
               ...(newPrevEdge ? [{ type: 'add', edge: newPrevEdge }] : []),
               ...(newNextEdge ? [{ type: 'add', edge: newNextEdge }] : []),
             ],
@@ -2511,7 +2511,7 @@ export const useNodesInteractions = () => {
     const outgoers = getOutgoers(selectedNode as Node, nodes as Node[], edges)
     for (let currIdx = 0; currIdx < outgoers.length; currIdx++) {
       const node = outgoers[currIdx]
-      const outgoersForNode = getOutgoers(node, nodes as Node[], edges)
+      const outgoersForNode = getOutgoers(node!, nodes as Node[], edges)
       outgoersForNode.forEach((item) => {
         const existed = outgoers.some(v => v.id === item.id)
         if (!existed)

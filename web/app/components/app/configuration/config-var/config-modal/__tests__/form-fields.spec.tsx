@@ -178,8 +178,8 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...singleFileProps} />)
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
-    fireEvent.click(screen.getAllByText('unchecked')[0])
-    fireEvent.click(screen.getAllByText('unchecked')[1])
+    fireEvent.click(screen.getAllByText('unchecked')[0]!)
+    fireEvent.click(screen.getAllByText('unchecked')[1]!)
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
     expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
@@ -198,7 +198,7 @@ describe('ConfigModalFormFields', () => {
     }
     render(<ConfigModalFormFields {...multiFileProps} />)
     fireEvent.click(screen.getByText('multi-file-setting'))
-    fireEvent.click(screen.getAllByText('upload-file')[1])
+    fireEvent.click(screen.getAllByText('upload-file')[1]!)
     expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })
     expect(multiFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith([
       expect.objectContaining({ fileId: 'file-1' }),

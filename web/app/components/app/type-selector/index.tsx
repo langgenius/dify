@@ -148,9 +148,9 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
         'flex h-8 flex-nowrap items-center justify-between gap-1',
       )}
       >
-        <AppTypeIcon type={values[0]} />
+        <AppTypeIcon type={values[0]!} />
         <div className="line-clamp-1 flex flex-1 items-center text-center">
-          <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
+          <AppTypeLabel type={values[0]!} className="system-sm-medium text-components-menu-item-text" />
         </div>
       </div>
     )

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from graphon.enums import WorkflowExecutionStatus
-
 from controllers.console.app import workflow_app_log as workflow_app_log_module
+from graphon.enums import WorkflowExecutionStatus
 
 
 def test_workflow_app_log_query_parses_bool_and_datetime():

@@ -132,16 +132,16 @@ describe('Plugin Page Shell Flow', () => {
   it('switches from installed plugins to marketplace and syncs the active tab into the URL', async () => {
     const { onUrlUpdate } = renderPluginPage()
 
-    expect(screen.getByTestId('plugins-view')).toBeInTheDocument()
+    expect(screen.getByTestId('plugins-view'))!.toBeInTheDocument()
     expect(screen.queryByTestId('marketplace-view')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('tab-item-discover'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('marketplace-view')).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-view'))!.toBeInTheDocument()
     })
 
-    const tabUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+    const tabUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
     expect(tabUpdate.searchParams.get('tab')).toBe('discover')
   })
 
@@ -150,13 +150,13 @@ describe('Plugin Page Shell Flow', () => {
 
     await waitFor(() => {
       expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('langgenius%2Fplugin-demo')
-      expect(screen.getByTestId('install-from-marketplace-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('install-from-marketplace-modal'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'close-install-modal' }))
 
     await waitFor(() => {
-      const clearUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const clearUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(clearUpdate.searchParams.has('package-ids')).toBe(false)
     })
   })
