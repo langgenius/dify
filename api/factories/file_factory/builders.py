@@ -12,7 +12,6 @@ from sqlalchemy import select
 from core.app.file_access import FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.workflow.file_reference import build_file_reference
-from extensions.ext_database import db
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers, standardize_file_type
 from models import ToolFile, UploadFile
 
