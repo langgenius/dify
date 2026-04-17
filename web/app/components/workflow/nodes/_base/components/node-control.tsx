@@ -9,7 +9,11 @@ import { useTranslation } from 'react-i18next'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useNodesInteractions,
@@ -46,7 +50,8 @@ const NodeControl: FC<NodeControlProps> = ({
       `}
     >
       <div
-        className="flex h-6 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]"
+        className="nodrag nopan nowheel flex h-6 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]"
+        onMouseDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
       >
         {
@@ -71,11 +76,13 @@ const NodeControl: FC<NodeControlProps> = ({
                 isSingleRunning
                   ? <Stop className="h-3 w-3" />
                   : (
-                      <Tooltip
-                        popupContent={t('panel.runThisStep', { ns: 'workflow' })}
-                        asChild={false}
-                      >
-                        <span className="i-ri-play-large-line h-3 w-3" />
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={<span className="i-ri-play-large-line h-3 w-3" />}
+                        />
+                        <TooltipContent>
+                          {t('panel.runThisStep', { ns: 'workflow' })}
+                        </TooltipContent>
                       </Tooltip>
                     )
               }
