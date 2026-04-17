@@ -6,8 +6,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
 
@@ -24,13 +24,13 @@ const Item = ({
   const [renameValue, setRenameValue] = useState(credentialItem.name)
 
   return (
-    <div className="flex h-10 items-center rounded-lg bg-components-panel-on-panel-item-bg pl-3 pr-1">
+    <div className="flex h-10 items-center rounded-lg bg-components-panel-on-panel-item-bg pr-1 pl-3">
       {/* <div className='mr-2 h-5 w-5 shrink-0'></div> */}
       {
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName="grow radius-sm"
+              wrapperClassName="grow rounded-md"
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
@@ -69,7 +69,7 @@ const Item = ({
       }
       {
         !renaming && (
-          <div className="system-sm-medium grow text-text-secondary">
+          <div className="grow system-sm-medium text-text-secondary">
             {credentialItem.name}
           </div>
         )
@@ -82,7 +82,7 @@ const Item = ({
           connected
         </div>
       </div>
-      <div className="ml-3 mr-2 h-3 w-px bg-divider-regular"></div>
+      <div className="mr-2 ml-3 h-3 w-px bg-divider-regular"></div>
       <Operator
         credentialItem={credentialItem}
         onAction={onAction}

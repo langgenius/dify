@@ -115,12 +115,12 @@ describe('iteration/use-single-run-form-params', () => {
       }),
     ])
     expect(result.current.forms).toHaveLength(2)
-    expect(result.current.forms[0].inputs).toEqual([createInputVar('#start-node.answer#')])
-    expect(result.current.forms[0].values).toEqual({
+    expect(result.current.forms[0]!.inputs).toEqual([createInputVar('#start-node.answer#')])
+    expect(result.current.forms[0]!.values).toEqual({
       'query': 'hello',
       'iteration-node.input_selector': ['start-node', 'items'],
     })
-    expect(result.current.forms[1].values).toEqual({
+    expect(result.current.forms[1]!.values).toEqual({
       'iteration-node.input_selector': ['start-node', 'items'],
     })
     expect(result.current.allVarObject).toEqual({
@@ -151,8 +151,8 @@ describe('iteration/use-single-run-form-params', () => {
     }))
 
     act(() => {
-      result.current.forms[0].onChange({ query: 'new' })
-      result.current.forms[1].onChange({
+      result.current.forms[0]!.onChange({ query: 'new' })
+      result.current.forms[1]!.onChange({
         'iteration-node.input_selector': ['source-node', 'next'],
       })
     })

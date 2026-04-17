@@ -1,4 +1,5 @@
 import type { ModelItem, ModelProvider } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { memo, useCallback } from 'react'
@@ -12,7 +13,6 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
@@ -66,7 +66,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   return (
     <div
       key={`${model.model}-${model.fetch_from}`}
-      className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5', isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover', model.deprecated && 'opacity-60')}
+      className={cn('group flex h-8 items-center rounded-lg pr-2.5 pl-2', isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover', model.deprecated && 'opacity-60')}
     >
       <ModelIcon
         className="mr-2 shrink-0"
@@ -74,7 +74,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         modelName={model.model}
       />
       <ModelName
-        className="grow text-text-secondary system-md-regular"
+        className="grow system-md-regular text-text-secondary"
         modelItem={model}
         showModelType
         showMode
@@ -108,16 +108,16 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                   }
                   offset={{ mainAxis: 4 }}
                 >
-                  <Switch value={false} disabled size="md" />
+                  <Switch checked={false} disabled size="md" />
                 </Tooltip>
               )
             : (isCurrentWorkspaceManager && (
                 <Switch
                   className="ml-2"
-                  value={model?.status === ModelStatusEnum.active}
+                  checked={model?.status === ModelStatusEnum.active}
                   disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
                   size="md"
-                  onChange={onEnablingStateChange}
+                  onCheckedChange={onEnablingStateChange}
                 />
               ))
         }

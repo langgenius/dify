@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = {
@@ -25,7 +25,7 @@ const TagLabel: FC<Props> = ({
       onClick={onClick}
     >
       <Icon className="size-3.5" />
-      <div className="system-xs-medium ">{children}</div>
+      <div className="system-xs-medium">{children}</div>
     </div>
   )
 }

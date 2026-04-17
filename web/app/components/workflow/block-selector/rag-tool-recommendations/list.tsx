@@ -2,9 +2,9 @@ import type { BlockEnum, ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useRef } from 'react'
 import { useGetLanguage } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import { groupItems } from '../index-bar'
 import ToolListFlatView from '../tool/tool-list-flat-view/list'
 import ToolListTreeView from '../tool/tool-list-tree-view/list'
@@ -29,14 +29,14 @@ const List = ({
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
 
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language]![0]!)
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}
     Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
         if (!result[groupName])
           result[groupName] = []
-        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
       })
     })
     return result
@@ -45,8 +45,8 @@ const List = ({
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
     letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
           return {
             ...item,
             letter,

@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -17,7 +18,6 @@ import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { triggerEventParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field'
-import { cn } from '@/utils/classnames'
 
 type EventDetailDrawerProps = {
   eventInfo: TriggerEvent
@@ -88,16 +88,16 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <div className="relative border-b border-divider-subtle p-4 pb-3">
-        <div className="absolute right-3 top-3">
+        <div className="absolute top-3 right-3">
           <ActionButton onClick={onClose}>
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
         <div
-          className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
+          className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
           onClick={onClose}
         >
           <RiArrowLeftLine className="h-4 w-4" />
@@ -111,10 +111,10 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
             packageName={providerInfo.name.split('/').pop() || ''}
           />
         </div>
-        <div className="system-md-semibold mt-1 text-text-primary">{eventInfo?.identity?.label[language]}</div>
-        <Description className="mb-2 mt-3 h-auto" text={eventInfo.description[language]} descriptionLineRows={2}></Description>
+        <div className="mt-1 system-md-semibold text-text-primary">{eventInfo?.identity?.label[language]}</div>
+        <Description className="mt-3 mb-2 h-auto" text={eventInfo.description[language]!} descriptionLineRows={2}></Description>
       </div>
-      <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pb-2 pt-4">
+      <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pt-4 pb-2">
         <div className="system-sm-semibold-uppercase text-text-secondary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
         {parametersSchemas.length > 0
           ? (
@@ -130,7 +130,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     )}
                   </div>
                   {item.description && (
-                    <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                    <div className="mt-0.5 system-xs-regular text-text-tertiary">
                       {item.description?.[language]}
                     </div>
                   )}
@@ -138,7 +138,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
               ))
             )
           : <div className="system-xs-regular text-text-tertiary">{t('events.item.noParameters', { ns: 'pluginTrigger' })}</div>}
-        <Divider className="mb-2 mt-1 h-px" />
+        <Divider className="mt-1 mb-2 h-px" />
         <div className="flex flex-col gap-2">
           <div className="system-sm-semibold-uppercase text-text-secondary">{t('events.output', { ns: 'pluginTrigger' })}</div>
           <div className="relative left-[-7px]">

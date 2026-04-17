@@ -6,7 +6,6 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import AddButton from '@/app/components/base/button/add-button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -42,7 +41,13 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           operations={
-            !readOnly ? <AddButton onClick={handleAddEmptyVariable} /> : undefined
+            !readOnly
+              ? (
+                  <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddEmptyVariable} data-testid="add-button">
+                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+                  </div>
+                )
+              : undefined
           }
         >
           <VarList

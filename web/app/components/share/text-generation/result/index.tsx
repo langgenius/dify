@@ -8,8 +8,8 @@ import { t } from 'i18next'
 import { useCallback } from 'react'
 import * as React from 'react'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
@@ -83,8 +83,8 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button variant="secondary" disabled={runState.isStopping} onClick={runState.handleStop}>
             {runState.isStopping
-              ? <span aria-hidden className="i-ri-loader-2-line mr-[5px] h-3.5 w-3.5 animate-spin" />
-              : <span aria-hidden className="i-ri-stop-circle-fill mr-[5px] h-3.5 w-3.5" />}
+              ? <span aria-hidden className="mr-[5px] i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
+              : <span aria-hidden className="mr-[5px] i-ri-stop-circle-fill h-3.5 w-3.5" />}
             <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
           </Button>
         </div>

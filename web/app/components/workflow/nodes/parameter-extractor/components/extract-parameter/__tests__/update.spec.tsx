@@ -123,7 +123,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleSave).not.toHaveBeenCalled()
-    expect(mockToast.error).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalled()
+    })
   })
 
   it('requires options before saving a select parameter', async () => {
@@ -145,6 +147,8 @@ describe('parameter-extractor/extract-parameter/update', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleSave).not.toHaveBeenCalled()
-    expect(mockToast.error).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalled()
+    })
   })
 })

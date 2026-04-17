@@ -148,7 +148,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should render install permission section', () => {
@@ -156,7 +157,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByText('plugin.privilege.whoCanInstall')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
       })
 
       it('should render debug permission section', () => {
@@ -164,7 +166,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByText('plugin.privilege.whoCanDebug')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
       })
 
       it('should render all permission options for install', () => {
@@ -180,8 +183,9 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-        expect(screen.getByText('common.operation.save')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
+        expect(screen.getByText('common.operation.save'))!.toBeInTheDocument()
       })
 
       it('should render AutoUpdateSetting when marketplace is enabled', () => {
@@ -192,7 +196,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByTestId('auto-update-setting')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByTestId('auto-update-setting'))!.toBeInTheDocument()
       })
 
       it('should not render AutoUpdateSetting when marketplace is disabled', () => {
@@ -203,6 +208,37 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
+        // Assert
         expect(screen.queryByTestId('auto-update-setting')).not.toBeInTheDocument()
       })
 
@@ -211,7 +247,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert
-        expect(screen.getByTestId('modal-close')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
       })
     })
 
@@ -230,11 +267,11 @@ describe('reference-setting-modal', () => {
 
         // Assert - admin option should be selected for install (first one)
         const adminOptions = screen.getAllByTestId('option-card-plugin.privilege.admins')
-        expect(adminOptions[0]).toHaveAttribute('aria-pressed', 'true') // Install permission
+        expect(adminOptions[0])!.toHaveAttribute('aria-pressed', 'true') // Install permission
 
         // Assert - noOne option should be selected for debug (second one)
         const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-        expect(noOneOptions[1]).toHaveAttribute('aria-pressed', 'true') // Debug permission
+        expect(noOneOptions[1])!.toHaveAttribute('aria-pressed', 'true') // Debug permission
       })
 
       it('should update tempPrivilege when permission option is clicked', () => {
@@ -243,10 +280,11 @@ describe('reference-setting-modal', () => {
 
         // Act - click on "No One" for install permission
         const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-        fireEvent.click(noOneOptions[0]) // First one is for install permission
+        fireEvent.click(noOneOptions[0]!) // First one is for install permission
 
         // Assert - the option should now be selected
-        expect(noOneOptions[0]).toHaveAttribute('aria-pressed', 'true')
+        // Assert - the option should now be selected
+        expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should initialize with payload auto_upgrade values', () => {
@@ -261,7 +299,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByTestId('auto-update-strategy')).toHaveTextContent('latest')
+        // Assert
+        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
       })
 
       it('should use default auto_upgrade when payload.auto_upgrade is undefined', () => {
@@ -275,7 +314,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
         // Assert - should use default value (disabled)
-        expect(screen.getByTestId('auto-update-strategy')).toHaveTextContent('disabled')
+        // Assert - should use default value (disabled)
+        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled')
       })
     })
 
@@ -351,10 +391,11 @@ describe('reference-setting-modal', () => {
 
         // Click Everyone for install permission
         const everyoneOptions = screen.getAllByTestId('option-card-plugin.privilege.everyone')
-        fireEvent.click(everyoneOptions[0])
+        fireEvent.click(everyoneOptions[0]!)
 
         // Assert
-        expect(everyoneOptions[0]).toHaveAttribute('aria-pressed', 'true')
+        // Assert
+        expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should update debug permission when Admins Only option is clicked', () => {
@@ -371,10 +412,11 @@ describe('reference-setting-modal', () => {
 
         // Click Admins Only for debug permission (second set of options)
         const adminOptions = screen.getAllByTestId('option-card-plugin.privilege.admins')
-        fireEvent.click(adminOptions[1]) // Second one is for debug permission
+        fireEvent.click(adminOptions[1]!) // Second one is for debug permission
 
         // Assert
-        expect(adminOptions[1]).toHaveAttribute('aria-pressed', 'true')
+        // Assert
+        expect(adminOptions[1])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should update auto_upgrade config when changed in AutoUpdateSetting', async () => {
@@ -410,7 +452,8 @@ describe('reference-setting-modal', () => {
         rerender(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert - component should render without issues
-        expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+        // Assert - component should render without issues
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('handleSave should be memoized with useCallback', async () => {
@@ -434,10 +477,11 @@ describe('reference-setting-modal', () => {
 
         // Act - click install permission option
         const everyoneOptions = screen.getAllByTestId('option-card-plugin.privilege.everyone')
-        fireEvent.click(everyoneOptions[0])
+        fireEvent.click(everyoneOptions[0]!)
 
         // Assert - install permission should be updated
-        expect(everyoneOptions[0]).toHaveAttribute('aria-pressed', 'true')
+        // Assert - install permission should be updated
+        expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
     })
 
@@ -456,7 +500,7 @@ describe('reference-setting-modal', () => {
 
         // Act & Assert - should not crash
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
-        expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should handle undefined permission values', () => {
@@ -471,7 +515,7 @@ describe('reference-setting-modal', () => {
 
         // Assert - should use default PermissionType.noOne
         const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-        expect(noOneOptions[0]).toHaveAttribute('aria-pressed', 'true')
+        expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should handle missing install_permission', () => {
@@ -487,7 +531,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
         // Assert - should fall back to PermissionType.noOne
-        expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+        // Assert - should fall back to PermissionType.noOne
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should handle missing debug_permission', () => {
@@ -503,7 +548,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
         // Assert - should fall back to PermissionType.noOne
-        expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+        // Assert - should fall back to PermissionType.noOne
+        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
       })
 
       it('should handle slow async onSave gracefully', async () => {
@@ -555,7 +601,8 @@ describe('reference-setting-modal', () => {
             const { unmount } = render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
             // Assert - should render without crashing
-            expect(screen.getByText('plugin.privilege.title')).toBeInTheDocument()
+            // Assert - should render without crashing
+            expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
             unmount()
           })
@@ -582,7 +629,8 @@ describe('reference-setting-modal', () => {
           const { unmount } = render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
           // Assert
-          expect(screen.getByTestId('auto-update-strategy')).toHaveTextContent(strategy)
+          // Assert
+          expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent(strategy)
 
           unmount()
         })
@@ -608,7 +656,8 @@ describe('reference-setting-modal', () => {
           const { unmount } = render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
 
           // Assert
-          expect(screen.getByTestId('auto-update-mode')).toHaveTextContent(mode)
+          // Assert
+          expect(screen.getByTestId('auto-update-mode'))!.toHaveTextContent(mode)
 
           unmount()
         })
@@ -631,7 +680,7 @@ describe('reference-setting-modal', () => {
 
         // Change install permission to noOne
         const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-        fireEvent.click(noOneOptions[0])
+        fireEvent.click(noOneOptions[0]!)
 
         // Save
         fireEvent.click(screen.getByText('common.operation.save'))
@@ -662,7 +711,7 @@ describe('reference-setting-modal', () => {
 
         // Change debug permission to noOne
         const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-        fireEvent.click(noOneOptions[1]) // Second one is for debug
+        fireEvent.click(noOneOptions[1]!) // Second one is for debug
 
         // Save
         fireEvent.click(screen.getByText('common.operation.save'))
@@ -691,7 +740,7 @@ describe('reference-setting-modal', () => {
 
         // Change install permission
         const everyoneOptions = screen.getAllByTestId('option-card-plugin.privilege.everyone')
-        fireEvent.click(everyoneOptions[0])
+        fireEvent.click(everyoneOptions[0]!)
 
         // Save
         fireEvent.click(screen.getByText('common.operation.save'))
@@ -717,7 +766,7 @@ describe('reference-setting-modal', () => {
 
         // Assert
         const modal = screen.getByTestId('modal')
-        expect(modal).toHaveClass('w-[620px]', 'max-w-[620px]', 'p-0!')
+        expect(modal)!.toHaveClass('w-[620px]', 'max-w-[620px]', 'p-0!')
       })
 
       it('should pass isShow=true to Modal', () => {
@@ -725,7 +774,8 @@ describe('reference-setting-modal', () => {
         render(<ReferenceSettingModal {...defaultProps} />)
 
         // Assert - modal should be visible
-        expect(screen.getByTestId('modal')).toBeInTheDocument()
+        // Assert - modal should be visible
+        expect(screen.getByTestId('modal'))!.toBeInTheDocument()
       })
     })
 
@@ -736,8 +786,8 @@ describe('reference-setting-modal', () => {
 
         // Assert - check order by getting all section labels
         const labels = screen.getAllByText(/plugin\.privilege\.whoCan/)
-        expect(labels[0]).toHaveTextContent('plugin.privilege.whoCanInstall')
-        expect(labels[1]).toHaveTextContent('plugin.privilege.whoCanDebug')
+        expect(labels[0])!.toHaveTextContent('plugin.privilege.whoCanInstall')
+        expect(labels[1])!.toHaveTextContent('plugin.privilege.whoCanDebug')
       })
 
       it('should render three options per permission section', () => {
@@ -762,8 +812,8 @@ describe('reference-setting-modal', () => {
         const cancelButton = screen.getByText('common.operation.cancel')
         const saveButton = screen.getByText('common.operation.save')
 
-        expect(cancelButton).toBeInTheDocument()
-        expect(saveButton).toBeInTheDocument()
+        expect(cancelButton)!.toBeInTheDocument()
+        expect(saveButton)!.toBeInTheDocument()
       })
     })
   })
@@ -797,11 +847,11 @@ describe('reference-setting-modal', () => {
 
       // Change install permission to Everyone
       const everyoneOptions = screen.getAllByTestId('option-card-plugin.privilege.everyone')
-      fireEvent.click(everyoneOptions[0])
+      fireEvent.click(everyoneOptions[0]!)
 
       // Change debug permission to Admins Only
       const adminOptions = screen.getAllByTestId('option-card-plugin.privilege.admins')
-      fireEvent.click(adminOptions[1])
+      fireEvent.click(adminOptions[1]!)
 
       // Change auto-update strategy
       fireEvent.click(screen.getByTestId('auto-update-change'))
@@ -841,7 +891,7 @@ describe('reference-setting-modal', () => {
 
       // Make some changes
       const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
-      fireEvent.click(noOneOptions[0])
+      fireEvent.click(noOneOptions[0]!)
 
       // Cancel
       fireEvent.click(screen.getByText('common.operation.cancel'))
@@ -863,8 +913,9 @@ describe('reference-setting-modal', () => {
       render(<ReferenceSettingModal {...props} />)
 
       // Assert - Labels are rendered correctly
-      expect(screen.getByText('plugin.privilege.whoCanInstall')).toBeInTheDocument()
-      expect(screen.getByText('plugin.privilege.whoCanDebug')).toBeInTheDocument()
+      // Assert - Labels are rendered correctly
+      expect(screen.getByText('plugin.privilege.whoCanInstall'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.privilege.whoCanDebug'))!.toBeInTheDocument()
     })
   })
 })

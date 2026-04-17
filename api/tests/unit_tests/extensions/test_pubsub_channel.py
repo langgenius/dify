@@ -6,6 +6,7 @@ from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastCh
 
 def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch):
     monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
+    monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 
     channel = ext_redis.get_pubsub_broadcast_channel()
 
@@ -14,6 +15,7 @@ def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch):
 
 def test_get_pubsub_broadcast_channel_sharded(monkeypatch):
     monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "sharded")
+    monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 
     channel = ext_redis.get_pubsub_broadcast_channel()
 

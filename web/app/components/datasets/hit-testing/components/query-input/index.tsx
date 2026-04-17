@@ -10,6 +10,7 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Line,
   RiPlayCircleLine,
@@ -18,13 +19,12 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import Textarea from './textarea'
 
 type QueryInputProps = {
@@ -203,9 +203,9 @@ const QueryInput = ({
 
   return (
     <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
-      <div className="flex h-full flex-col overflow-hidden radius-lg bg-background-section-burn">
+      <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
-          <span className="text-text-secondary system-sm-semibold-uppercase">
+          <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('input.title', { ns: 'datasetHitTesting' })}
           </span>
           {isExternal
@@ -217,7 +217,7 @@ const QueryInput = ({
                 >
                   <RiEqualizer2Line className="h-3.5 w-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
-                    <span className="text-components-button-secondary-text system-xs-medium">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
+                    <span className="system-xs-medium text-components-button-secondary-text">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
                   </div>
                 </Button>
               )
@@ -227,7 +227,7 @@ const QueryInput = ({
                   className="flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg border-[0.5px] border-components-button-secondary-bg bg-components-button-secondary-bg px-1.5 shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover"
                 >
                   {icon}
-                  <div className="text-xs font-medium uppercase text-text-secondary">{t(`retrieval.${retrievalMethod}.title`, { ns: 'dataset' })}</div>
+                  <div className="text-xs font-medium text-text-secondary uppercase">{t(`retrieval.${retrievalMethod}.title`, { ns: 'dataset' })}</div>
                   <RiEqualizer2Line className="size-4 text-components-menu-item-text"></RiEqualizer2Line>
                 </div>
               )}

@@ -49,14 +49,14 @@ const ConfigAudio: FC = () => {
     return null
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] bg-background-section-burn p-2">
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
           <Microphone01 className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
@@ -67,10 +67,10 @@ const ConfigAudio: FC = () => {
       </div>
       {!readonly && (
         <div className="flex shrink-0 items-center">
-          <div className="ml-1 mr-3 h-3.5 w-px bg-divider-subtle"></div>
+          <div className="mr-3 ml-1 h-3.5 w-px bg-divider-subtle"></div>
           <Switch
-            value={isAudioEnabled}
-            onChange={handleChange}
+            checked={isAudioEnabled}
+            onCheckedChange={handleChange}
             size="md"
           />
         </div>

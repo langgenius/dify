@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
@@ -12,7 +13,6 @@ import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
 import { Slider } from '@/app/components/base/ui/slider'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import { cn } from '@/utils/classnames'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
@@ -94,7 +94,7 @@ const IndexMethod = ({
             >
               <div className="flex items-center">
                 <div className="flex grow items-center">
-                  <div className="truncate text-text-secondary system-xs-medium">
+                  <div className="truncate system-xs-medium text-text-secondary">
                     {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                   </div>
                   <Tooltip

@@ -1,10 +1,10 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
@@ -13,11 +13,11 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -96,7 +96,7 @@ const InstallPluginDropdown = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-1002">
           <div className="shadows-shadow-lg flex w-[200px] flex-col items-start rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 pb-2">
-            <span className="system-xs-medium-uppercase flex items-start self-stretch pb-0.5 pl-2 pr-3 pt-1 text-text-tertiary">
+            <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2 system-xs-medium-uppercase text-text-tertiary">
               {t('installFrom', { ns: 'plugin' })}
             </span>
             <input
@@ -126,7 +126,7 @@ const InstallPluginDropdown = ({
                   }}
                 >
                   <Icon className="h-4 w-4 text-text-tertiary" />
-                  <span className="system-md-regular px-1 text-text-secondary">{text}</span>
+                  <span className="px-1 system-md-regular text-text-secondary">{text}</span>
                 </div>
               ))}
             </div>

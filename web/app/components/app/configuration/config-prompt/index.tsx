@@ -10,7 +10,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { PromptRole } from '@/models/debug'
@@ -53,7 +53,7 @@ const Prompt: FC<IPromptProps> = ({
 
   const handleMessageTypeChange = (index: number, role: PromptRole) => {
     const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
-      draft[index].role = role
+      draft[index]!.role = role
     })
     setCurrentAdvancedPrompt(newPrompt)
   }
@@ -61,7 +61,7 @@ const Prompt: FC<IPromptProps> = ({
   const handleValueChange = (value: string, index?: number) => {
     if (modelModeType === ModelModeType.chat) {
       const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
-        draft[index as number].text = value
+        draft[index as number]!.text = value
       })
       setCurrentAdvancedPrompt(newPrompt, true)
     }

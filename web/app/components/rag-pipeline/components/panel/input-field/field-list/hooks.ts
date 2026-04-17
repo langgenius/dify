@@ -46,9 +46,9 @@ export const useFieldList = ({ initialInputFields, onInputFieldsChange, nodeId, 
   const handleRemoveField = useCallback((index: number) => {
     const itemToRemove = inputFieldsRef.current[index]
     // Check if the variable is used in other nodes
-    if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])) {
+    if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])) {
       showRemoveVarConfirm()
-      setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])
+      setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])
       setRemoveIndex(index as number)
       return
     }

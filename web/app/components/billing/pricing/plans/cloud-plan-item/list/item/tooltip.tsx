@@ -12,10 +12,10 @@ const Tooltip = ({
     return null
   return (
     <div className="group relative z-10 size-[18px] overflow-visible">
-      <div className="system-xs-regular absolute bottom-0 right-0 -z-10 hidden w-[260px] bg-saas-dify-blue-static px-5 py-[18px] text-text-primary-on-surface group-hover:block">
+      <div className="absolute right-0 bottom-0 -z-10 hidden w-[260px] bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface group-hover:block">
         {content}
       </div>
-      <div className="flex h-full w-full items-center justify-center radius-xs bg-state-base-hover transition-all duration-500 ease-in-out group-hover:rounded-none group-hover:bg-saas-dify-blue-static">
+      <div className="flex h-full w-full items-center justify-center rounded-sm bg-state-base-hover transition-all duration-500 ease-in-out group-hover:rounded-none group-hover:bg-saas-dify-blue-static">
         <RiInfoI className="size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" data-testid="tooltip-icon" />
       </div>
     </div>

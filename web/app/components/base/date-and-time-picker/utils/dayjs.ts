@@ -116,8 +116,8 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
-  const hours = Number.parseInt(offsetMatch[1], 10)
-  const minutes = Number.parseInt(offsetMatch[2], 10)
+  const hours = Number.parseInt(offsetMatch[1]!, 10)
+  const minutes = Number.parseInt(offsetMatch[2]!, 10)
   const sign = hours >= 0 ? '+' : ''
   // If minutes are non-zero, include them in the output (e.g., "UTC+5:30")
   // Otherwise, only show hours (e.g., "UTC+8")
