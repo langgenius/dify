@@ -181,7 +181,7 @@ describe('App Sidebar Shell Flow', () => {
     expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
   })
 
-  it('switches to the workflow fullscreen dropdown shell and opens its navigation menu', () => {
+  it('switches to the workflow fullscreen dropdown shell and opens its navigation menu', async () => {
     mockPathname = '/app/app-1/workflow'
     mockSelectedSegment = 'workflow'
     localStorage.setItem('workflow-canvas-maximize', 'true')
@@ -190,9 +190,9 @@ describe('App Sidebar Shell Flow', () => {
 
     expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'operation.more' }))
 
-    expect(screen.getByText('Demo App')).toBeInTheDocument()
+    expect(await screen.findByText('Demo App')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Overview/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Logs/i })).toBeInTheDocument()
   })
