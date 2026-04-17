@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -39,7 +39,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     dataset_id: str
     user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
-    inputs: dict
+    inputs: dict[str, Any]
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):

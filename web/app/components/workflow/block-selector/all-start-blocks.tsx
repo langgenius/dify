@@ -5,6 +5,7 @@ import type {
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import {
   useCallback,
@@ -14,14 +15,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { Button } from '@/app/components/base/ui/button'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
@@ -127,7 +127,7 @@ const AllStartBlocks = ({
   }, [enableTriggerPlugin, enable_marketplace, hasFilter, fetchPlugins, searchText, tags])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+    <div className={cn('max-w-[500px] min-w-[400px]', className)}>
       <div className="flex max-h-[640px] flex-col">
         <div
           ref={wrapElemRef}
@@ -152,7 +152,7 @@ const AllStartBlocks = ({
               </>
             )}
             {shouldShowTriggerListTitle && (
-              <div className="px-3 pb-1 pt-2">
+              <div className="px-3 pt-2 pb-1">
                 <span className="system-xs-medium text-text-primary">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
               </div>
             )}

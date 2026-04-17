@@ -14,7 +14,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   ),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -47,7 +47,7 @@ describe('CategoriesFilter', () => {
   it('should show "allCategories" when no categories selected', () => {
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
-    expect(screen.getByText('plugin.allCategories')).toBeInTheDocument()
+    expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
   })
 
   it('should show selected category labels', () => {
@@ -60,7 +60,7 @@ describe('CategoriesFilter', () => {
   it('should show +N when more than 2 selected', () => {
     render(<CategoriesFilter value={['tool', 'model', 'extension']} onChange={vi.fn()} />)
 
-    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('+1'))!.toBeInTheDocument()
   })
 
   it('should clear all selections when clear button clicked', () => {
@@ -76,9 +76,9 @@ describe('CategoriesFilter', () => {
   it('should render category options in dropdown', () => {
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
-    expect(screen.getByText('Tool')).toBeInTheDocument()
-    expect(screen.getByText('Model')).toBeInTheDocument()
-    expect(screen.getByText('Extension')).toBeInTheDocument()
+    expect(screen.getByText('Tool'))!.toBeInTheDocument()
+    expect(screen.getByText('Model'))!.toBeInTheDocument()
+    expect(screen.getByText('Extension'))!.toBeInTheDocument()
   })
 
   it('should toggle category on option click', () => {
@@ -94,7 +94,7 @@ describe('CategoriesFilter', () => {
     render(<CategoriesFilter value={['tool']} onChange={mockOnChange} />)
 
     const toolElements = screen.getAllByText('Tool')
-    fireEvent.click(toolElements[toolElements.length - 1])
+    fireEvent.click(toolElements[toolElements.length - 1]!)
     expect(mockOnChange).toHaveBeenCalledWith([])
   })
 })

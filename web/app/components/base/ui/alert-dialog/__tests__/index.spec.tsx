@@ -4,7 +4,6 @@ import {
   AlertDialog,
   AlertDialogActions,
   AlertDialogCancelButton,
-  AlertDialogClose,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
@@ -70,14 +69,16 @@ describe('AlertDialog wrapper', () => {
   })
 
   describe('User Interactions', () => {
-    it('should open and close dialog when trigger and close are clicked', async () => {
+    it('should open and close dialog when trigger and cancel button are clicked', async () => {
       render(
         <AlertDialog>
           <AlertDialogTrigger>Open Dialog</AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogTitle>Action Required</AlertDialogTitle>
             <AlertDialogDescription>Please confirm the action.</AlertDialogDescription>
-            <AlertDialogClose>Cancel</AlertDialogClose>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+            </AlertDialogActions>
           </AlertDialogContent>
         </AlertDialog>,
       )
@@ -109,8 +110,7 @@ describe('AlertDialog wrapper', () => {
 
       expect(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
       const confirmButton = screen.getByRole('button', { name: 'Confirm' })
-      expect(confirmButton).toHaveClass('btn-primary')
-      expect(confirmButton).toHaveClass('btn-destructive')
+      expect(confirmButton).toHaveClass('bg-components-button-destructive-primary-bg')
     })
 
     it('should keep dialog open after confirm click and close via cancel helper', async () => {

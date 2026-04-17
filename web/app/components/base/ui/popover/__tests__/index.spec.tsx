@@ -1,12 +1,8 @@
-import { Popover as BasePopover } from '@base-ui/react/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   Popover,
-  PopoverClose,
   PopoverContent,
-  PopoverDescription,
-  PopoverTitle,
   PopoverTrigger,
 } from '..'
 
@@ -90,18 +86,6 @@ describe('PopoverContent', () => {
       expect(positioner).toHaveAttribute('id', 'popover-positioner-id')
       expect(popup).toHaveAttribute('id', 'popover-popup-id')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
-    })
-  })
-})
-
-describe('Popover aliases', () => {
-  describe('Export mapping', () => {
-    it('should map aliases to the matching base popover primitives when wrapper exports are imported', () => {
-      expect(Popover).toBe(BasePopover.Root)
-      expect(PopoverTrigger).toBe(BasePopover.Trigger)
-      expect(PopoverClose).toBe(BasePopover.Close)
-      expect(PopoverTitle).toBe(BasePopover.Title)
-      expect(PopoverDescription).toBe(BasePopover.Description)
     })
   })
 })

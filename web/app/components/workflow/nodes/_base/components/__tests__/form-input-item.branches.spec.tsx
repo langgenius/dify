@@ -32,6 +32,18 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => mockTriggerDynamicOptionsState,
 }))
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+  }),
+}))
+
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
   default: ({ onSelect }: { onSelect: (value: string) => void }) => (
     <button onClick={() => onSelect('app-1')}>app-selector</button>

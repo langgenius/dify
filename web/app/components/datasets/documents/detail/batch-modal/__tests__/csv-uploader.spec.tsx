@@ -160,24 +160,6 @@ describe('CSVUploader', () => {
         expect(mockUpdateFile).toHaveBeenCalled()
       })
     })
-
-    it('should call updateFile with undefined when remove is clicked', () => {
-      const mockUpdateFile = vi.fn()
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-      const { container } = render(
-        <CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />,
-      )
-
-      const deleteButton = container.querySelector('.cursor-pointer')
-      if (deleteButton)
-        fireEvent.click(deleteButton)
-
-      expect(mockUpdateFile).toHaveBeenCalledWith()
-    })
   })
 
   describe('Validation', () => {

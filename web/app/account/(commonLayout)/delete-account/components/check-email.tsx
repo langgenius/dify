@@ -1,8 +1,8 @@
 'use client'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { useAppContext } from '@/context/app-context'
 import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
@@ -30,14 +30,14 @@ export default function CheckEmail(props: DeleteAccountProps) {
 
   return (
     <>
-      <div className="body-md-medium py-1 text-text-destructive">
+      <div className="py-1 body-md-medium text-text-destructive">
         {t('account.deleteTip', { ns: 'common' })}
       </div>
-      <div className="body-md-regular pb-2 pt-1 text-text-secondary">
+      <div className="pt-1 pb-2 body-md-regular text-text-secondary">
         {t('account.deletePrivacyLinkTip', { ns: 'common' })}
         <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
       </div>
-      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('account.deleteLabel', { ns: 'common' })}</label>
+      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('account.deleteLabel', { ns: 'common' })}</label>
       <Input
         placeholder={t('account.deletePlaceholder', { ns: 'common' }) as string}
         onChange={(e) => {

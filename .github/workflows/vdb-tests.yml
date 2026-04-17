@@ -81,12 +81,12 @@ jobs:
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
 #      - name: Check VDB Ready (TiDB)
-#        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+#        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: |
           uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/tests/integration_tests/vdb/chroma \
-            api/tests/integration_tests/vdb/pgvector \
-            api/tests/integration_tests/vdb/qdrant \
-            api/tests/integration_tests/vdb/weaviate
+            api/providers/vdb/vdb-chroma/tests/integration_tests \
+            api/providers/vdb/vdb-pgvector/tests/integration_tests \
+            api/providers/vdb/vdb-qdrant/tests/integration_tests \
+            api/providers/vdb/vdb-weaviate/tests/integration_tests

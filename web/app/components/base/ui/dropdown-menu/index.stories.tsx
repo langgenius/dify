@@ -6,8 +6,8 @@ import {
   DropdownMenuCheckboxItemIndicator,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuGroupLabel,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuLinkItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -28,7 +28,7 @@ const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
 )
 
 const meta = {
-  title: 'Base/Navigation/DropdownMenu',
+  title: 'Base/UI/DropdownMenu',
   component: DropdownMenu,
   parameters: {
     layout: 'centered',
@@ -80,13 +80,13 @@ export const WithGroupLabel: Story = {
       <TriggerButton />
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Actions</DropdownMenuGroupLabel>
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem>Edit</DropdownMenuItem>
           <DropdownMenuItem>Duplicate</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Export</DropdownMenuGroupLabel>
+          <DropdownMenuLabel>Export</DropdownMenuLabel>
           <DropdownMenuItem>Export as PDF</DropdownMenuItem>
           <DropdownMenuItem>Export as CSV</DropdownMenuItem>
         </DropdownMenuGroup>
@@ -103,7 +103,7 @@ export const WithDestructiveItem: Story = {
         <DropdownMenuItem>Edit</DropdownMenuItem>
         <DropdownMenuItem>Duplicate</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem destructive>Delete</DropdownMenuItem>
+        <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   ),
@@ -202,7 +202,7 @@ export const WithDisabledItems: Story = {
         <DropdownMenuItem>Archive</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>Restore</DropdownMenuItem>
-        <DropdownMenuItem destructive>Delete</DropdownMenuItem>
+        <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   ),
@@ -226,7 +226,7 @@ export const WithIcons: Story = {
           Archive
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem destructive>
+        <DropdownMenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
         </DropdownMenuItem>
@@ -260,7 +260,7 @@ const ComplexDemo = () => {
       <TriggerButton label="Actions" />
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Edit</DropdownMenuGroupLabel>
+          <DropdownMenuLabel>Edit</DropdownMenuLabel>
           <DropdownMenuItem>
             <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
             Rename
@@ -297,7 +297,7 @@ const ComplexDemo = () => {
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Sort by</DropdownMenuGroupLabel>
+          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
             <DropdownMenuRadioItem value="newest">
               Newest first
@@ -320,7 +320,7 @@ const ComplexDemo = () => {
           <DropdownMenuCheckboxItemIndicator />
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem destructive>
+        <DropdownMenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
         </DropdownMenuItem>

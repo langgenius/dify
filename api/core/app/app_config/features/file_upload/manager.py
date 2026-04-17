@@ -1,9 +1,8 @@
 from collections.abc import Mapping
 from typing import Any
 
-from graphon.file import FileUploadConfig
-
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from graphon.file import FileUploadConfig
 
 
 class FileUploadConfigManager:
@@ -30,7 +29,7 @@ class FileUploadConfigManager:
                 return FileUploadConfig.model_validate(file_upload_dict)
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for file upload feature
 

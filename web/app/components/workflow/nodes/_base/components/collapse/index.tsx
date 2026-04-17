@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { cn } from '@/utils/classnames'
 
 export { default as FieldCollapse } from './field-collapse'
 

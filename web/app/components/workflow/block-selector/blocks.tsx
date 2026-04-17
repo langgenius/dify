@@ -69,7 +69,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
-    const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
+    const list = groups[classification]!.sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
@@ -105,7 +105,7 @@ const Blocks = ({
                     className="mb-2"
                     type={block.metaData.type}
                   />
-                  <div className="system-md-medium mb-1 text-text-primary">{block.metaData.title}</div>
+                  <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
                   <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
                 </div>
               )}

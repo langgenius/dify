@@ -4,9 +4,9 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
 import ChunkStructureCard from './chunk-structure-card'
@@ -59,12 +59,12 @@ const Details = ({
       <div className="relative flex w-[360px] shrink-0 flex-col">
         <button
           type="button"
-          className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center"
+          className="absolute top-4 right-4 z-10 flex size-8 items-center justify-center"
           onClick={onClose}
         >
           <RiCloseLine className="size-4 text-text-tertiary" />
         </button>
-        <div className="flex items-start gap-x-3 pb-2 pl-4 pr-12 pt-6">
+        <div className="flex items-start gap-x-3 pt-6 pr-12 pb-2 pl-4">
           <AppIcon
             size="large"
             iconType={appIcon.type as AppIconType}
@@ -75,14 +75,14 @@ const Details = ({
           />
           <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
             <div
-              className="system-md-semibold truncate text-text-secondary"
+              className="truncate system-md-semibold text-text-secondary"
               title={pipelineTemplateInfo.name}
             >
               {pipelineTemplateInfo.name}
             </div>
             {pipelineTemplateInfo.created_by && (
               <div
-                className="system-2xs-medium-uppercase truncate text-text-tertiary"
+                className="truncate system-2xs-medium-uppercase text-text-tertiary"
                 title={pipelineTemplateInfo.created_by}
               >
                 {t('details.createdBy', {
@@ -93,7 +93,7 @@ const Details = ({
             )}
           </div>
         </div>
-        <p className="system-sm-regular px-4 pb-2 pt-1 text-text-secondary">
+        <p className="px-4 pt-1 pb-2 system-sm-regular text-text-secondary">
           {pipelineTemplateInfo.description}
         </p>
         <div className="p-3">

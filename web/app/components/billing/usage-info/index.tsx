@@ -1,9 +1,9 @@
 'use client'
 import type { ComponentType, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { NUM_INFINITE } from '../config'
 import ProgressBar from '../progress-bar'
 
@@ -71,14 +71,14 @@ const UsageInfo: FC<Props> = ({
   const renderRightInfo = () => {
     if (resetText) {
       return (
-        <div className="system-xs-regular ml-auto flex-1 text-right text-text-tertiary">
+        <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
           {resetText}
         </div>
       )
     }
     if (showUnit) {
       return (
-        <div className="system-xs-medium ml-auto text-text-tertiary">
+        <div className="ml-auto system-xs-medium text-text-tertiary">
           {unit}
         </div>
       )
@@ -193,7 +193,7 @@ const UsageInfo: FC<Props> = ({
           />
         )}
       </div>
-      <div className="system-md-semibold flex items-center gap-1 text-text-primary">
+      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
         {renderUsageWithTooltip()}
         {renderRightInfo()}
       </div>

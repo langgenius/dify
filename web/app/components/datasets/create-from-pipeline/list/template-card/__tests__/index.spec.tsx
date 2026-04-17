@@ -37,33 +37,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-// Capture Confirm callbacks
-let _capturedOnConfirm: (() => void) | undefined
-let _capturedOnCancel: (() => void) | undefined
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title, content }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    content: string
-  }) => {
-    _capturedOnConfirm = onConfirm
-    _capturedOnCancel = onCancel
-    return isShow
-      ? (
-          <div data-testid="confirm-dialog">
-            <div data-testid="confirm-title">{title}</div>
-            <div data-testid="confirm-content">{content}</div>
-            <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-            <button data-testid="confirm-submit" onClick={onConfirm}>Confirm</button>
-          </div>
-        )
-      : null
-  },
-}))
-
 // Capture Actions callbacks
 let _capturedHandleDelete: (() => void) | undefined
 let _capturedHandleExportDSL: (() => void) | undefined
@@ -182,13 +155,14 @@ describe('TemplateCard', () => {
     type: 'customized' as const,
   }
 
+  const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+  const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
     mockIsExporting = false
-    _capturedOnConfirm = undefined
-    _capturedOnCancel = undefined
     _capturedHandleDelete = undefined
     _capturedHandleExportDSL = undefined
     _capturedOpenEditModal = undefined
@@ -507,7 +481,7 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
     })
 
@@ -517,14 +491,13 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const cancelButton = screen.getByTestId('confirm-cancel')
-      fireEvent.click(cancelButton)
+      fireEvent.click(getDeleteCancelButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
       })
     })
 
@@ -539,11 +512,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
         expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
@@ -561,11 +533,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
         expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
@@ -583,14 +554,13 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
       })
     })
   })
