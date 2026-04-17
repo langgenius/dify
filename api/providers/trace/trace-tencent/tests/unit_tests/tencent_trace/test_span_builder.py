@@ -27,6 +27,8 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.rag.models.document import Document
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TestTencentSpanBuilder:

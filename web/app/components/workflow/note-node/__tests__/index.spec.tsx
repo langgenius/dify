@@ -110,6 +110,8 @@ describe('NoteNode', () => {
     await waitFor(() => {
       expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
     })
+
+    expect(screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel')).toBeInTheDocument()
   })
 
   it('should hide the toolbar for temporary notes', () => {

@@ -36,6 +36,8 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 
 class RecordingTraceClient:

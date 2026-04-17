@@ -1,12 +1,12 @@
 'use client'
 
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Modal from '@/app/components/base/modal'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 
 type TagRemoveModalProps = {
   show: boolean
@@ -24,13 +24,13 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
       isShow={show}
       onClose={noop}
     >
-      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose} data-testid="tag-remove-modal-close-button">
+      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose} data-testid="tag-remove-modal-close-button">
         <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
       </div>
       <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
         <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
       </div>
-      <div className="mt-3 text-xl font-semibold leading-[30px] text-text-primary">
+      <div className="mt-3 text-xl leading-[30px] font-semibold text-text-primary">
         {`${t('tag.delete', { ns: 'common' })} `}
         <span>{`"${tag.name}"`}</span>
       </div>
@@ -39,7 +39,7 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
       </div>
       <div className="flex items-center justify-end pt-6">
         <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button className="border-red-700" variant="warning" onClick={onConfirm}>{t('operation.delete', { ns: 'common' })}</Button>
+        <Button className="border-red-700" variant="primary" tone="destructive" onClick={onConfirm}>{t('operation.delete', { ns: 'common' })}</Button>
       </div>
     </Modal>
   )

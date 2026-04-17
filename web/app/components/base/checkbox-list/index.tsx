@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Checkbox from '@/app/components/base/checkbox'
 import SearchInput from '@/app/components/base/search-input'
+import { Button } from '@/app/components/base/ui/button'
 import SearchMenu from '@/assets/search-menu.svg'
-import { cn } from '@/utils/classnames'
-import Button from '../button'
 
 type CheckboxListOption = {
   label: string
@@ -100,12 +100,12 @@ const CheckboxList: FC<CheckboxListProps> = ({
   return (
     <div className={cn('flex w-full flex-col gap-1', containerClassName)}>
       {label && (
-        <div className="text-text-secondary system-sm-medium">
+        <div className="system-sm-medium text-text-secondary">
           {label}
         </div>
       )}
       {description && (
-        <div className="text-text-tertiary body-xs-regular">
+        <div className="body-xs-regular text-text-tertiary">
           {description}
         </div>
       )}
@@ -126,7 +126,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
               ? (
                   <div className="flex min-w-0 flex-1 items-center gap-1">
                     {title && (
-                      <span className="truncate leading-5 text-text-secondary system-xs-semibold-uppercase">
+                      <span className="truncate system-xs-semibold-uppercase leading-5 text-text-secondary">
                         {title}
                       </span>
                     )}
@@ -138,7 +138,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   </div>
                 )
               : (
-                  <div className="flex-1 leading-6 text-text-secondary system-sm-medium-uppercase">
+                  <div className="flex-1 system-sm-medium-uppercase leading-6 text-text-secondary">
                     {
                       filteredOptions.length > 0
                         ? t('operation.searchCount', { ns: 'common', count: filteredOptions.length, content: title })
@@ -169,7 +169,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                     ? (
                         <div className="flex flex-col items-center justify-center gap-2">
                           <img alt="search menu" src={SearchMenu.src} width={32} />
-                          <span className="text-text-secondary system-sm-regular">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
+                          <span className="system-sm-regular text-text-secondary">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
                           <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
                         </div>
                       )
@@ -203,7 +203,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                         id={option.value}
                       />
                       <div
-                        className="flex-1 truncate text-text-secondary system-sm-medium"
+                        className="flex-1 truncate system-sm-medium text-text-secondary"
                         title={option.label}
                       >
                         {option.label}

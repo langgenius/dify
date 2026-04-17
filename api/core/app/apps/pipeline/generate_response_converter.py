@@ -37,7 +37,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     @classmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -66,7 +66,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     @classmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response

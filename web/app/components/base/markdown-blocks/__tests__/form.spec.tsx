@@ -92,11 +92,11 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByText('Name')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter name')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter bio')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
-      expect(screen.getByText(UNSUPPORTED_TAG_ARTICLE_RE)).toBeInTheDocument()
+      expect(screen.getByText('Name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter bio'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_ARTICLE_RE))!.toBeInTheDocument()
     })
   })
 
@@ -221,7 +221,7 @@ describe('MarkdownForm', () => {
       try {
         render(<MarkdownForm node={node} />)
 
-        expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
         expect(consoleErrorSpy).toHaveBeenCalled()
       }
       finally {
@@ -413,7 +413,7 @@ describe('MarkdownForm', () => {
 
       // Click the "Now" button in the footer to select current time (calls onChange)
       const nowButtons = await screen.findAllByText('time.operation.now')
-      await user.click(nowButtons[0])
+      await user.click(nowButtons[0]!)
 
       // Submit the form
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -529,7 +529,7 @@ describe('MarkdownForm', () => {
       await user.click(button)
 
       await waitFor(() => {
-        expect(button).toBeDisabled()
+        expect(button)!.toBeDisabled()
       })
     })
 
@@ -586,7 +586,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       const button = screen.getByRole('button', { name: 'Go' })
-      expect(button).toBeInTheDocument()
+      expect(button)!.toBeInTheDocument()
     })
 
     it('should ignore invalid variant and size values', () => {
@@ -596,7 +596,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Go' }))!.toBeInTheDocument()
     })
   })
 
@@ -610,7 +610,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       const input = screen.getByPlaceholderText('Password')
-      expect(input).toHaveAttribute('type', 'password')
+      expect(input)!.toHaveAttribute('type', 'password')
     })
 
     it('should render email input', () => {
@@ -620,7 +620,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByPlaceholderText('Email')).toHaveAttribute('type', 'email')
+      expect(screen.getByPlaceholderText('Email'))!.toHaveAttribute('type', 'email')
     })
 
     it('should render number input', () => {
@@ -630,7 +630,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByPlaceholderText('Age')).toHaveAttribute('type', 'number')
+      expect(screen.getByPlaceholderText('Age'))!.toHaveAttribute('type', 'number')
     })
 
     it('should submit typed value from password input', async () => {
@@ -664,7 +664,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-      expect(screen.getByText(UNSUPPORTED_TAG_RE)).toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_RE))!.toBeInTheDocument()
     })
   })
 
@@ -689,7 +689,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByTestId('checkbox-agree')).toBeInTheDocument()
+      expect(screen.getByTestId('checkbox-agree'))!.toBeInTheDocument()
     })
 
     it('should render select with no options when dataOptions is missing', () => {
@@ -700,7 +700,8 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Select renders with empty items list
-      expect(screen.getByTestId('markdown-form')).toBeInTheDocument()
+      // Select renders with empty items list
+      expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

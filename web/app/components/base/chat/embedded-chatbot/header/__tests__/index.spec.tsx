@@ -83,6 +83,7 @@ describe('EmbeddedChatbot Header', () => {
       allow_email_code_login: false,
       allow_email_password_login: false,
     },
+    enable_collaboration_mode: false,
     enable_trial_app: false,
     enable_explore_banner: false,
   }

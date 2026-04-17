@@ -3,8 +3,8 @@ import type { FC, ReactNode } from 'react'
 import type { Plugin } from '../types'
 import * as React from 'react'
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import Card from '@/app/components/plugins/card'
 
 type Props = {
@@ -40,7 +40,7 @@ const PluginMutationModal: FC<Props> = ({
       closable
       title={modelTitle}
     >
-      <div className="system-md-regular mb-2 mt-3 text-text-secondary">
+      <div className="mt-3 mb-2 system-md-regular text-text-secondary">
         {description}
       </div>
       <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

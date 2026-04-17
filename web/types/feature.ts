@@ -42,6 +42,7 @@ export type SystemFeatures = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
+  enable_collaboration_mode: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
@@ -81,6 +82,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_email_code_login: false,
   enable_email_password_login: false,
   enable_social_oauth_login: false,
+  enable_collaboration_mode: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
   is_email_setup: false,

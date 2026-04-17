@@ -19,6 +19,8 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.opik_trace.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 from models.enums import MessageStatus
 

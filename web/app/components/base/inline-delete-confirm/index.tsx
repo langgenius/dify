@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 
 type InlineDeleteConfirmProps = {
   title?: string
@@ -35,8 +35,8 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       aria-describedby="inline-delete-confirm-description"
       className={cn(
         'flex w-[120px] flex-col justify-center gap-1.5',
-        'radius-lg border-[0.5px] border-components-panel-border-subtle',
-        'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
+        'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
+        'bg-components-panel-bg-blur px-2 pt-1.5 pb-2',
         'backdrop-blur-[10px]',
         'shadow-lg',
         className,
@@ -62,7 +62,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
         <Button
           size="small"
           variant="primary"
-          destructive={variant === 'delete'}
+          tone={variant === 'delete' ? 'destructive' : 'default'}
           onClick={onConfirm}
           aria-label={confirmTxt}
           className="flex-1"

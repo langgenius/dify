@@ -1,5 +1,6 @@
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLink,
   RiUploadCloud2Line,
@@ -8,9 +9,8 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   useCallback,
@@ -8,7 +9,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
-import { cn } from '@/utils/classnames'
 import { getHoveredParallelId } from './get-hovered-parallel-id'
 import { useLogs } from './hooks'
 import NodePanel from './node'
@@ -106,7 +106,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
                 ? <span aria-hidden className="i-ri-arrow-down-s-line h-3 w-3" />
                 : <span aria-hidden className="i-ri-menu-4-line h-3 w-3 text-text-tertiary" />}
             </button>
-            <div className="flex items-center text-text-secondary system-xs-semibold-uppercase">
+            <div className="flex items-center system-xs-semibold-uppercase text-text-secondary">
               <span>{parallelDetail.parallelTitle}</span>
             </div>
             <div
@@ -117,7 +117,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           </div>
           <div className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}>
             <div className={cn(
-              'absolute bottom-0 left-[5px] top-0 w-[2px]',
+              'absolute top-0 bottom-0 left-[5px] w-[2px]',
               isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
             )}
             >

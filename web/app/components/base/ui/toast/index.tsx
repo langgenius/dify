@@ -7,7 +7,7 @@ import type {
 } from '@base-ui/react/toast'
 import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {

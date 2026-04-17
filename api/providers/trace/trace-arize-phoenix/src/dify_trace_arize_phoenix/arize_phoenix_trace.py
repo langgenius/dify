@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
-from graphon.enums import WorkflowNodeExecutionStatus
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceMimeTypeValues,
@@ -41,6 +40,7 @@ from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 

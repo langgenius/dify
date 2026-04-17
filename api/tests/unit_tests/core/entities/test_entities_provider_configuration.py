@@ -6,17 +6,6 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FieldModelSchema,
-    FormType,
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-    ProviderEntity,
-)
 
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus
@@ -34,6 +23,17 @@ from core.entities.provider_entities import (
     RestrictModel,
     SystemConfiguration,
     SystemConfigurationStatus,
+)
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FieldModelSchema,
+    FormType,
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+    ProviderEntity,
 )
 from models.enums import CredentialSourceType
 from models.provider import ProviderType

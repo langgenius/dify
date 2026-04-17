@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 

@@ -1,4 +1,4 @@
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ProgressBarProps = {
   percent: number
@@ -15,20 +15,20 @@ const ProgressBar = ({
 }: ProgressBarProps) => {
   if (indeterminate) {
     return (
-      <div className="overflow-hidden radius-sm bg-components-progress-bar-bg">
+      <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
         <div
           data-testid="billing-progress-bar-indeterminate"
-          className={cn('h-1 radius-sm bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
+          className={cn('h-1 rounded-md bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
         />
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden radius-sm bg-components-progress-bar-bg">
+    <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
       <div
         data-testid="billing-progress-bar"
-        className={cn('h-1 radius-sm', color)}
+        className={cn('h-1 rounded-md', color)}
         style={{
           width: `${Math.min(percent, 100)}%`,
         }}

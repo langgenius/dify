@@ -2,6 +2,7 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
@@ -11,7 +12,6 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
-import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -132,15 +132,15 @@ const ModelProviderPage = ({ searchText }: Props) => {
   return (
     <div className="relative -mt-2 pt-1">
       <div className={cn('mb-2 flex items-center')}>
-        <div className="grow text-text-primary system-md-semibold">{t('modelProvider.models', { ns: 'common' })}</div>
+        <div className="grow system-md-semibold text-text-primary">{t('modelProvider.models', { ns: 'common' })}</div>
         <div className={cn(
           'relative flex shrink-0 items-center justify-end gap-2 rounded-lg border border-transparent p-px',
           showWarning && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
         )}
         >
-          {showWarning && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
+          {showWarning && <div className="absolute top-0 right-0 bottom-0 left-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {showWarning && (
-            <div className="flex items-center gap-1 text-text-primary system-xs-medium">
+            <div className="flex items-center gap-1 system-xs-medium text-text-primary">
               <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
             </div>
@@ -158,12 +158,12 @@ const ModelProviderPage = ({ searchText }: Props) => {
       </div>
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
-        <div className="mb-2 radius-lg bg-workflow-process-bg p-4">
-          <div className="flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
+        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
           </div>
-          <div className="mt-2 text-text-secondary system-sm-medium">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
-          <div className="mt-1 text-text-tertiary system-xs-regular">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
+          <div className="mt-2 system-sm-medium text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
+          <div className="mt-1 system-xs-regular text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
         </div>
       )}
       {!!filteredConfiguredProviders?.length && (
@@ -179,7 +179,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {!!filteredNotConfiguredProviders?.length && (
         <>
-          <div className="mb-2 flex items-center pt-2 text-text-primary system-md-semibold">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
+          <div className="mb-2 flex items-center pt-2 system-md-semibold text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
           <div className="relative">
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard

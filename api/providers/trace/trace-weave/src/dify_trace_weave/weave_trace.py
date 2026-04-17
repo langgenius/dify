@@ -6,7 +6,6 @@ from typing import Any, cast
 
 import wandb
 import weave
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from sqlalchemy.orm import sessionmaker
 from weave.trace_server.trace_server_interface import (
     CallEndReq,
@@ -33,6 +32,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)

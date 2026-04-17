@@ -11,7 +11,7 @@ class Embeddings(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         raise NotImplementedError
 
