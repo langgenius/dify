@@ -132,7 +132,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('keywords')).toBe('search')
       expect(update.options.history).toBe('push')
     })
@@ -145,7 +145,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
     })
 
@@ -169,7 +169,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('isCreatedByMe')).toBe('true')
     })
 
@@ -181,7 +181,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('keywords')).toBe(false)
     })
 
@@ -193,7 +193,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('tagIDs')).toBe(false)
     })
 
@@ -217,7 +217,7 @@ describe('useAppsQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('isCreatedByMe')).toBe(false)
     })
   })

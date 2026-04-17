@@ -11,13 +11,12 @@ persisting to the database) is handled by the evaluation task, not the runner.
 import logging
 from abc import ABC, abstractmethod
 
-from graphon.node_events import NodeRunResult
-
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationItemResult,
 )
+from graphon.node_events import NodeRunResult
 
 logger = logging.getLogger(__name__)
 

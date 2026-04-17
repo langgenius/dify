@@ -1,13 +1,15 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { OverlayItemVariant } from '@/app/components/base/ui/overlay-shared'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import {
   overlayBackdropClassName,
-  overlayGroupLabelClassName,
+  overlayDestructiveClassName,
   overlayIndicatorClassName,
+  overlayLabelClassName,
   overlayPopupAnimationClassName,
   overlayPopupBaseClassName,
   overlayRowClassName,
@@ -22,18 +24,18 @@ export const ContextMenuGroup = BaseContextMenu.Group
 export const ContextMenuRadioGroup = BaseContextMenu.RadioGroup
 
 type ContextMenuContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   className?: string
   popupClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseContextMenu.Positioner>,
+    BaseContextMenu.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseContextMenu.Popup>,
+    BaseContextMenu.Popup.Props,
     'children' | 'className'
   >
 }
@@ -113,36 +115,38 @@ export function ContextMenuContent({
   })
 }
 
-type ContextMenuItemProps = React.ComponentPropsWithoutRef<typeof BaseContextMenu.Item> & {
-  destructive?: boolean
+type ContextMenuItemProps = BaseContextMenu.Item.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuItem({
   className,
-  destructive,
+  variant = 'default',
   ...props
 }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     />
   )
 }
 
-type ContextMenuLinkItemProps = React.ComponentPropsWithoutRef<typeof BaseContextMenu.LinkItem> & {
-  destructive?: boolean
+type ContextMenuLinkItemProps = BaseContextMenu.LinkItem.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuLinkItem({
   className,
-  destructive,
+  variant = 'default',
   closeOnClick = true,
   ...props
 }: ContextMenuLinkItemProps) {
   return (
     <BaseContextMenu.LinkItem
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -152,7 +156,7 @@ export function ContextMenuLinkItem({
 export function ContextMenuRadioItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseContextMenu.RadioItem>) {
+}: BaseContextMenu.RadioItem.Props) {
   return (
     <BaseContextMenu.RadioItem
       className={cn(overlayRowClassName, className)}
@@ -164,7 +168,7 @@ export function ContextMenuRadioItem({
 export function ContextMenuCheckboxItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseContextMenu.CheckboxItem>) {
+}: BaseContextMenu.CheckboxItem.Props) {
   return (
     <BaseContextMenu.CheckboxItem
       className={cn(overlayRowClassName, className)}
@@ -176,7 +180,7 @@ export function ContextMenuCheckboxItem({
 export function ContextMenuCheckboxItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof BaseContextMenu.CheckboxItemIndicator>, 'children'>) {
+}: Omit<BaseContextMenu.CheckboxItemIndicator.Props, 'children'>) {
   return (
     <BaseContextMenu.CheckboxItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -190,7 +194,7 @@ export function ContextMenuCheckboxItemIndicator({
 export function ContextMenuRadioItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof BaseContextMenu.RadioItemIndicator>, 'children'>) {
+}: Omit<BaseContextMenu.RadioItemIndicator.Props, 'children'>) {
   return (
     <BaseContextMenu.RadioItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -201,19 +205,20 @@ export function ContextMenuRadioItemIndicator({
   )
 }
 
-type ContextMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof BaseContextMenu.SubmenuTrigger> & {
-  destructive?: boolean
+type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function ContextMenuSubTrigger({
   className,
-  destructive,
+  variant = 'default',
   children,
   ...props
 }: ContextMenuSubTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
-      className={cn(overlayRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     >
       {children}
@@ -223,7 +228,7 @@ export function ContextMenuSubTrigger({
 }
 
 type ContextMenuSubContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -255,13 +260,13 @@ export function ContextMenuSubContent({
   })
 }
 
-export function ContextMenuGroupLabel({
+export function ContextMenuLabel({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseContextMenu.GroupLabel>) {
+}: BaseContextMenu.GroupLabel.Props) {
   return (
     <BaseContextMenu.GroupLabel
-      className={cn(overlayGroupLabelClassName, className)}
+      className={cn(overlayLabelClassName, className)}
       {...props}
     />
   )
@@ -270,7 +275,7 @@ export function ContextMenuGroupLabel({
 export function ContextMenuSeparator({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseContextMenu.Separator>) {
+}: BaseContextMenu.Separator.Props) {
   return (
     <BaseContextMenu.Separator
       className={cn(overlaySeparatorClassName, className)}

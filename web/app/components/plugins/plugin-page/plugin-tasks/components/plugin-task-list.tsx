@@ -86,7 +86,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
               {t('task.clearAll', { ns: 'plugin' })}
             </Button>
           </div>
-          <div className="max-h-[300px] overflow-y-auto">
+          <div className="max-h-[300px] overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {errorPlugins.map(plugin => (
               <ErrorPluginItem
                 key={plugin.plugin_unique_identifier}

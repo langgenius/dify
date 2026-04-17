@@ -96,15 +96,15 @@ describe('BatchModal', () => {
 
     renderComponent()
 
-    expect(screen.getByTestId('annotation-full')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeDisabled()
+    expect(screen.getByTestId('annotation-full'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))!.toBeDisabled()
   })
 
   it('should reset uploader state when modal closes and allow manual cancellation', () => {
     const { rerender, props } = renderComponent()
 
     fireEvent.click(screen.getByTestId('mock-uploader'))
-    expect(screen.getByTestId('selected-file')).toHaveTextContent('batch.csv')
+    expect(screen.getByTestId('selected-file'))!.toHaveTextContent('batch.csv')
 
     rerender(<BatchModal {...props} isShow={false} />)
     rerender(<BatchModal {...props} isShow />)
@@ -137,7 +137,7 @@ describe('BatchModal', () => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0][0].body as FormData
+    const formData = annotationBatchImportMock.mock.calls[0]![0].body as FormData
     expect(formData.get('file')).toBe(lastUploadedFile)
 
     await waitFor(() => {

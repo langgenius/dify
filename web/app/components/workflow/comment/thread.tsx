@@ -84,7 +84,7 @@ const ThreadMessage: FC<{
           continue
 
         const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar))
+        if (searchStart > 0 && !/\s/.test(previousChar!))
           continue
 
         if (
@@ -730,7 +730,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           )}
         </div>
         {loading && (
-          <div className="inset-0 absolute z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
             {t('comments.loading', { ns: 'workflow' })}
           </div>
         )}

@@ -246,11 +246,11 @@ const RetrievalParamConfig: FC<Props> = ({
                         ...value.weights!,
                         vector_setting: {
                           ...value.weights!.vector_setting,
-                          vector_weight: v.value[0],
+                          vector_weight: v.value[0]!,
                         },
                         keyword_setting: {
                           ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1],
+                          keyword_weight: v.value[1]!,
                         },
                       },
                     })

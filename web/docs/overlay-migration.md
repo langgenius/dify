@@ -10,7 +10,6 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/modal`
   - `@/app/components/base/select` (including `custom` / `pure`)
   - `@/app/components/base/dialog`
-  - `@/app/components/base/toast` (including `context`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
@@ -40,12 +39,6 @@ This document tracks the migration away from legacy overlay APIs.
 1. Cleanup
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
-
-## Toast migration strategy
-
-- `@/app/components/base/toast` has been replaced by `@/app/components/base/ui/toast`.
-- All new toast usage must go through `@/app/components/base/ui/toast`.
-- When a file with legacy toast usage is touched, prefer migrating that call site in the same change; full-repo toast cleanup is not required in one PR.
 
 ## Allowlist maintenance
 

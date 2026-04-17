@@ -14,15 +14,14 @@ import logging
 from collections.abc import Sequence
 from typing import Any, cast
 
-from graphon.utils.condition.entities import SupportedComparisonOperator
-from graphon.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
-
 from core.evaluation.entities.judgment_entity import (
     JudgmentCondition,
     JudgmentConditionResult,
     JudgmentConfig,
     JudgmentResult,
 )
+from graphon.utils.condition.entities import SupportedComparisonOperator
+from graphon.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
 

@@ -26,8 +26,9 @@ Typical usage::
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from graphon.utils.condition.entities import SupportedComparisonOperator
 from pydantic import BaseModel, Field
+
+from graphon.utils.condition.entities import SupportedComparisonOperator
 
 
 class JudgmentCondition(BaseModel):

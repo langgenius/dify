@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from celery import shared_task
-from graphon.node_events import NodeRunResult
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -28,6 +27,7 @@ from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluat
 from core.evaluation.runners.snippet_evaluation_runner import SnippetEvaluationRunner
 from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluationRunner
 from extensions.ext_database import db
+from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus

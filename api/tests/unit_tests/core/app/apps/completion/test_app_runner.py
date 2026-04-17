@@ -2,11 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.moderation.base import ModerationError
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 
 @pytest.fixture

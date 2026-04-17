@@ -47,7 +47,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
     ...((debouncedQueryParams.period !== '9')
       ? {
-          created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+          created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
           created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
         }
       : {}),

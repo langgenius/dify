@@ -66,7 +66,7 @@ const InputFieldPanel = () => {
     const globalInputFields: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
       const inputFields = inputFieldsMap.current[key]
-      inputFields.forEach((inputField) => {
+      inputFields!.forEach((inputField) => {
         if (key === 'shared') {
           globalInputFields.push({
             ...inputField,
@@ -149,7 +149,7 @@ const InputFieldPanel = () => {
                 <FieldList
                   key={key}
                   nodeId={key}
-                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
+                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
                   inputFields={inputFields}
                   readonly={isPreviewing || isEditing}
                   labelClassName="pt-1 pb-1"

@@ -4,8 +4,6 @@ import logging
 from collections.abc import Mapping
 from typing import Any, Union
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey
-from graphon.node_events.base import NodeRunResult
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -25,6 +23,8 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.evaluation_manager import EvaluationManager
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.node_events.base import NodeRunResult
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -813,9 +813,9 @@ class EvaluationService:
         workflow_run_id: str,
     ) -> dict[str, NodeRunResult]:
         """Query all node execution records for a workflow run."""
-        from graphon.enums import WorkflowNodeExecutionStatus
         from sqlalchemy import asc, select
 
+        from graphon.enums import WorkflowNodeExecutionStatus
         from models.workflow import WorkflowNodeExecutionModel
 
         stmt = (

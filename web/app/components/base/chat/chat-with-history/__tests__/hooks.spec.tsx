@@ -497,7 +497,7 @@ describe('useChatWithHistory', () => {
       expect(mockRenameConversation).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', 'conversation-1', 'New Name')
       expect(onSuccess).toHaveBeenCalledTimes(1)
       await waitFor(() => {
-        expect(result!.current.conversationList[0].name).toBe('New Name')
+        expect(result!.current.conversationList[0]!.name).toBe('New Name')
       })
     })
 
@@ -615,7 +615,7 @@ describe('useChatWithHistory', () => {
 
       // Assert: new item with empty id prepended
       await waitFor(() => {
-        expect(result!.current.conversationList[0].id).toBe('')
+        expect(result!.current.conversationList[0]!.id).toBe('')
       })
     })
   })
@@ -1597,7 +1597,7 @@ describe('useChatWithHistory', () => {
       })
 
       // Assert
-      expect(result!.current.conversationList[0].id).toBe('conversation-1')
+      expect(result!.current.conversationList[0]!.id).toBe('conversation-1')
     })
   })
 
@@ -1857,7 +1857,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.conversationList[0].name).toBe('Updated Name')
+        expect(result!.current.conversationList[0]!.name).toBe('Updated Name')
       })
     })
   })

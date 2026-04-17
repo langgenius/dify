@@ -23,13 +23,13 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Union
 
-from graphon.file.models import File
 from sqlalchemy.orm import make_transient
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import file_factory
+from graphon.file.models import File
 from models import Account
 from models.model import AppMode, EndUser
 from models.snippet import CustomizedSnippet

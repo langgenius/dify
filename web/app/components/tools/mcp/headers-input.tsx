@@ -31,7 +31,7 @@ const HeadersInput = ({
 
   const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
     const newItems = [...headersItems]
-    newItems[index] = { ...newItems[index], [field]: value }
+    newItems[index] = { ...newItems[index]!, [field]: value }
 
     onChange(newItems)
   }

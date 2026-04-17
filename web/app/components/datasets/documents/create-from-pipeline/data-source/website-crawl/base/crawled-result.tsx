@@ -59,7 +59,7 @@ const CrawledResult = ({
   const handlePreview = useCallback((index: number) => {
     if (!onPreview)
       return
-    onPreview(list[index], index)
+    onPreview(list[index]!, index)
   }, [list, onPreview])
 
   return (

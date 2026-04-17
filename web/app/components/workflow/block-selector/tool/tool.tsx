@@ -24,7 +24,7 @@ import ActionItem from './action-item'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   if (!icon)
-    return icon
+    return icon!
   if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
     return `${basePath}${icon}`
   return icon
@@ -70,7 +70,7 @@ const Tool: FC<Props> = ({
   }, [payload.icon])
   const normalizedIconDark = useMemo(() => {
     if (!payload.icon_dark)
-      return undefined
+      return undefined!
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<ToolWithProvider['icon']>(() => {
@@ -114,14 +114,14 @@ const Tool: FC<Props> = ({
                 provider_id: payload.id,
                 provider_type: payload.type,
                 provider_name: payload.name,
-                plugin_id: payload.plugin_id,
-                plugin_unique_identifier: payload.plugin_unique_identifier,
+                plugin_id: payload.plugin_id!,
+                plugin_unique_identifier: payload.plugin_unique_identifier!,
                 provider_icon: normalizedIcon,
                 provider_icon_dark: normalizedIconDark,
                 tool_name: tool.name,
-                tool_label: tool.label[language],
+                tool_label: tool.label[language]!,
                 tool_description: tool.description[language],
-                title: tool.label[language],
+                title: tool.label[language]!,
                 is_team_authorization: payload.is_team_authorization,
                 paramSchemas: tool.parameters,
                 params,
@@ -187,8 +187,8 @@ const Tool: FC<Props> = ({
 
             const tool = actions[0]
             const params: Record<string, string> = {}
-            if (tool.parameters) {
-              tool.parameters.forEach((item) => {
+            if (tool!.parameters) {
+              tool!.parameters.forEach((item) => {
                 params[item.name] = ''
               })
             }
@@ -200,12 +200,12 @@ const Tool: FC<Props> = ({
               plugin_unique_identifier: payload.plugin_unique_identifier,
               provider_icon: normalizedIcon,
               provider_icon_dark: normalizedIconDark,
-              tool_name: tool.name,
-              tool_label: tool.label[language],
-              tool_description: tool.description[language],
-              title: tool.label[language],
+              tool_name: tool!.name,
+              tool_label: tool!.label[language]!,
+              tool_description: tool!.description[language],
+              title: tool!.label[language]!,
               is_team_authorization: payload.is_team_authorization,
-              paramSchemas: tool.parameters,
+              paramSchemas: tool!.parameters,
               params,
             })
           }}

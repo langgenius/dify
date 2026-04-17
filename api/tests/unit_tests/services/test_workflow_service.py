@@ -15,6 +15,7 @@ from typing import Any, cast
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
+
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -28,7 +29,6 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from graphon.variables.input_entities import VariableEntityType
-
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode

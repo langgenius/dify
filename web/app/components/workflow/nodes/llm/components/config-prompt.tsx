@@ -79,7 +79,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index][draft[index].edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
+        draft[index]![draft[index]!.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
       })
       onChange(newPrompt)
     }
@@ -88,7 +88,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModeEditionTypeChange = useCallback((index: number) => {
     return (editionType: EditionType) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].edition_type = editionType
+        draft[index]!.edition_type = editionType
       })
       onChange(newPrompt)
     }
@@ -97,7 +97,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModeMessageRoleChange = useCallback((index: number) => {
     return (role: PromptRole) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].role = role
+        draft[index]!.role = role
       })
       onChange(newPrompt)
     }
@@ -110,7 +110,7 @@ const ConfigPrompt: FC<Props> = ({
 
         return
       }
-      const isLastItemUser = draft[draft.length - 1].role === PromptRole.user
+      const isLastItemUser = draft[draft.length - 1]!.role === PromptRole.user
       draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '', id: uuid4() })
     })
     onChange(newPrompt)
@@ -160,7 +160,7 @@ const ConfigPrompt: FC<Props> = ({
                   className="space-y-1"
                   list={payloadWithIds}
                   setList={(list) => {
-                    if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0].p?.role !== PromptRole.system)
+                    if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0]!.p?.role !== PromptRole.system)
                       return
 
                     onChange(list.map(item => item.p))
