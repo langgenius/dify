@@ -23,30 +23,7 @@ class ApiKeyAuthArgs(BaseModel):
     provider: str = Field(..., min_length=1)
     credentials: ApiKeyAuthCredentials
 
-    @classmethod
-    def from_dict(cls, args: dict[str, Any] | None) -> None:
-        """Validate a raw dict and raise ValueError with backward-compatible messages."""
-        if not args or not isinstance(args, dict):
-            raise ValueError("category is required")
 
-        category = args.get("category")
-        if not category:
-            raise ValueError("category is required")
-
-        provider = args.get("provider")
-        if not provider:
-            raise ValueError("provider is required")
-
-        credentials = args.get("credentials")
-        if not credentials:
-            raise ValueError("credentials is required")
-
-        if not isinstance(credentials, dict):
-            raise ValueError("credentials must be a dictionary")
-
-        auth_type = credentials.get("auth_type")
-        if not auth_type:
-            raise ValueError("auth_type is required")
 
 
 class ApiKeyAuthService:
@@ -105,5 +82,5 @@ class ApiKeyAuthService:
 
     @classmethod
     def validate_api_key_auth_args(cls, args: dict[str, Any] | None) -> None:
-        """Validate API key auth args using Pydantic for type-safe validation."""
-        ApiKeyAuthArgs.from_dict(args)
+        """Validate API key auth args using Pydantic model_validate."""
+        ApiKeyAuthArgs.model_validate(args)
