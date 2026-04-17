@@ -142,42 +142,43 @@ describe('BasicInfoSection', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.nameAndIcon/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
     })
 
     it('should render name and icon section', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.nameAndIcon/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
     })
 
     it('should render description section', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.desc/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.desc/i))!.toBeInTheDocument()
     })
 
     it('should render permissions section', () => {
       render(<BasicInfoSection {...defaultProps} />)
       // Use exact match to avoid matching "permissionsOnlyMe"
-      expect(screen.getByText('datasetSettings.form.permissions')).toBeInTheDocument()
+      // Use exact match to avoid matching "permissionsOnlyMe"
+      expect(screen.getByText('datasetSettings.form.permissions'))!.toBeInTheDocument()
     })
 
     it('should render name input with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
       const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput).toBeInTheDocument()
+      expect(nameInput)!.toBeInTheDocument()
     })
 
     it('should render description textarea with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
       const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea).toBeInTheDocument()
+      expect(descriptionTextarea)!.toBeInTheDocument()
     })
 
     it('should render app icon with emoji', () => {
       const { container } = render(<BasicInfoSection {...defaultProps} />)
       // The icon section should be rendered (emoji may be in a span or SVG)
       const iconSection = container.querySelector('[class*="cursor-pointer"]')
-      expect(iconSection).toBeInTheDocument()
+      expect(iconSection)!.toBeInTheDocument()
     })
   })
 
@@ -197,7 +198,7 @@ describe('BasicInfoSection', () => {
       render(<BasicInfoSection {...defaultProps} currentDataset={datasetWithoutEmbedding} />)
 
       const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput).toBeDisabled()
+      expect(nameInput)!.toBeDisabled()
     })
 
     it('should enable name input when embedding is available', () => {
@@ -212,7 +213,7 @@ describe('BasicInfoSection', () => {
 
       // Find the name input by its structure - may be type=text or just input
       const nameInput = container.querySelector('input')
-      expect(nameInput).toHaveValue('')
+      expect(nameInput)!.toHaveValue('')
     })
   })
 
@@ -232,14 +233,14 @@ describe('BasicInfoSection', () => {
       render(<BasicInfoSection {...defaultProps} currentDataset={datasetWithoutEmbedding} />)
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea).toBeDisabled()
+      expect(descriptionTextarea)!.toBeDisabled()
     })
 
     it('should render placeholder', () => {
       render(<BasicInfoSection {...defaultProps} description="" />)
 
       const descriptionTextarea = screen.getByPlaceholderText(/form\.descPlaceholder/i)
-      expect(descriptionTextarea).toBeInTheDocument()
+      expect(descriptionTextarea)!.toBeInTheDocument()
     })
   })
 
@@ -261,12 +262,45 @@ describe('BasicInfoSection', () => {
 
       // AppIconPicker renders a modal with emoji tabs and options via portal
       // We just verify the component renders without crashing when picker is shown
-      expect(baseElement).toBeInTheDocument()
+      // AppIconPicker renders a modal with emoji tabs and options via portal
+      // We just verify the component renders without crashing when picker is shown
+      expect(baseElement)!.toBeInTheDocument()
     })
 
     it('should not render AppIconPicker when showAppIconPicker is false', () => {
       const { container } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={false} />)
 
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
+      // Check that AppIconPicker is not rendered
       // Check that AppIconPicker is not rendered
       expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
     })
@@ -283,7 +317,7 @@ describe('BasicInfoSection', () => {
       // For image type, it renders an img element
       const img = screen.queryByRole('img')
       if (img) {
-        expect(img).toHaveAttribute('src', expect.stringContaining('icon.png'))
+        expect(img)!.toHaveAttribute('src', expect.stringContaining('icon.png'))
       }
     })
   })
@@ -292,13 +326,13 @@ describe('BasicInfoSection', () => {
     it('should render with correct permission value', () => {
       render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })
 
     it('should render all team members permission', () => {
       render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
 
-      expect(screen.getByText(/form\.permissionsAllMember/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })
 
     it('should be disabled when embedding is not available', () => {
@@ -309,7 +343,7 @@ describe('BasicInfoSection', () => {
 
       // Check for disabled state via cursor-not-allowed class
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')
-      expect(disabledElement).toBeInTheDocument()
+      expect(disabledElement)!.toBeInTheDocument()
     })
 
     it('should be disabled when user is dataset operator', () => {
@@ -318,7 +352,7 @@ describe('BasicInfoSection', () => {
       )
 
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')
-      expect(disabledElement).toBeInTheDocument()
+      expect(disabledElement)!.toBeInTheDocument()
     })
 
     it('should call setPermission when permission changes', async () => {
@@ -330,7 +364,7 @@ describe('BasicInfoSection', () => {
 
       await waitFor(() => {
         const allMemberOptions = screen.getAllByText(/form\.permissionsAllMember/i)
-        fireEvent.click(allMemberOptions[0])
+        fireEvent.click(allMemberOptions[0]!)
       })
 
       expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
@@ -349,7 +383,10 @@ describe('BasicInfoSection', () => {
       // For partial members permission, the member selector should be visible
       // The exact interaction depends on the MemberSelector component
       // We verify the component renders without crashing
-      expect(container).toBeInTheDocument()
+      // For partial members permission, the member selector should be visible
+      // The exact interaction depends on the MemberSelector component
+      // We verify the component renders without crashing
+      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -358,7 +395,8 @@ describe('BasicInfoSection', () => {
       render(<BasicInfoSection {...defaultProps} currentDataset={undefined} />)
 
       // Should still render but inputs might behave differently
-      expect(screen.getByText(/form\.nameAndIcon/i)).toBeInTheDocument()
+      // Should still render but inputs might behave differently
+      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
     })
   })
 
@@ -366,31 +404,31 @@ describe('BasicInfoSection', () => {
     it('should update when name prop changes', () => {
       const { rerender } = render(<BasicInfoSection {...defaultProps} name="Initial Name" />)
 
-      expect(screen.getByDisplayValue('Initial Name')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Initial Name'))!.toBeInTheDocument()
 
       rerender(<BasicInfoSection {...defaultProps} name="Updated Name" />)
 
-      expect(screen.getByDisplayValue('Updated Name')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Updated Name'))!.toBeInTheDocument()
     })
 
     it('should update when description prop changes', () => {
       const { rerender } = render(<BasicInfoSection {...defaultProps} description="Initial Description" />)
 
-      expect(screen.getByDisplayValue('Initial Description')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Initial Description'))!.toBeInTheDocument()
 
       rerender(<BasicInfoSection {...defaultProps} description="Updated Description" />)
 
-      expect(screen.getByDisplayValue('Updated Description')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Updated Description'))!.toBeInTheDocument()
     })
 
     it('should update when permission prop changes', () => {
       const { rerender } = render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
       rerender(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
 
-      expect(screen.getByText(/form\.permissionsAllMember/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })
   })
 
@@ -406,7 +444,9 @@ describe('BasicInfoSection', () => {
 
       // For partial members, a member selector component should be rendered
       // We verify it renders without crashing
-      expect(container).toBeInTheDocument()
+      // For partial members, a member selector component should be rendered
+      // We verify it renders without crashing
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should handle empty member list', () => {
@@ -417,7 +457,7 @@ describe('BasicInfoSection', () => {
         />,
       )
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/i)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })
   })
 

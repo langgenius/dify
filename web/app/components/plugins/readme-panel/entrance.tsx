@@ -1,8 +1,8 @@
 import type { PluginDetail } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBookReadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { BUILTIN_TOOLS_ARRAY } from './constants'
 import { ReadmeShowType, useReadmePanelStore } from './store'
 
@@ -28,7 +28,7 @@ export const ReadmeEntrance = ({
     return null
 
   return (
-    <div className={cn('flex flex-col items-start justify-center gap-2 pb-4 pt-0', showType === ReadmeShowType.drawer && 'px-4', className)}>
+    <div className={cn('flex flex-col items-start justify-center gap-2 pt-0 pb-4', showType === ReadmeShowType.drawer && 'px-4', className)}>
       {!showShortTip && (
         <div className="relative h-1 w-8 shrink-0">
           <div className="h-px w-full bg-divider-regular"></div>
@@ -42,7 +42,7 @@ export const ReadmeEntrance = ({
         <div className="relative flex h-3 w-3 items-center justify-center overflow-hidden">
           <RiBookReadLine className="h-3 w-3" />
         </div>
-        <span className="text-xs font-normal leading-4">
+        <span className="text-xs leading-4 font-normal">
           {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
         </span>
       </button>

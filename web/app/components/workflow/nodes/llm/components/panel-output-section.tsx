@@ -74,8 +74,8 @@ const PanelOutputSection: FC<Props> = ({
             </Tooltip>
             <Switch
               className="ml-2"
-              value={!!inputs.structured_output_enabled}
-              onChange={handleStructureOutputEnableChange}
+              checked={!!inputs.structured_output_enabled}
+              onCheckedChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}
             />

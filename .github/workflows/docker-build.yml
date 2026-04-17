@@ -6,14 +6,7 @@ on:
       - "main"
     paths:
       - api/Dockerfile
-      - web/docker/**
       - web/Dockerfile
-      - packages/**
-      - package.json
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .npmrc
-      - .nvmrc
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}

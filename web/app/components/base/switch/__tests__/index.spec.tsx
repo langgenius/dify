@@ -7,86 +7,86 @@ import { SwitchSkeleton } from '../skeleton'
 const getThumb = (switchElement: HTMLElement) => switchElement.querySelector('span')
 
 describe('Switch', () => {
-  it('should render in unchecked state when value is false', () => {
-    render(<Switch value={false} />)
+  it('should render in unchecked state when checked is false', () => {
+    render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toBeInTheDocument()
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
     expect(switchElement).not.toHaveAttribute('data-checked')
   })
 
-  it('should render in checked state when value is true', () => {
-    render(<Switch value={true} />)
+  it('should render in checked state when checked is true', () => {
+    render(<Switch checked={true} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveAttribute('aria-checked', 'true')
     expect(switchElement).toHaveAttribute('data-checked', '')
   })
 
-  it('should call onChange with next value when clicked', async () => {
-    const onChange = vi.fn()
+  it('should call onCheckedChange with next value when clicked', async () => {
+    const onCheckedChange = vi.fn()
     const user = userEvent.setup()
-    render(<Switch value={false} onChange={onChange} />)
+    render(<Switch checked={false} onCheckedChange={onCheckedChange} />)
 
     const switchElement = screen.getByRole('switch')
 
     await user.click(switchElement)
-    expect(onChange).toHaveBeenCalledWith(true)
-    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onCheckedChange).toHaveBeenCalledWith(true)
+    expect(onCheckedChange).toHaveBeenCalledTimes(1)
 
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('should work in controlled mode with value prop', async () => {
-    const onChange = vi.fn()
+  it('should work in controlled mode with checked prop', async () => {
+    const onCheckedChange = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = render(<Switch value={false} onChange={onChange} />)
+    const { rerender } = render(<Switch checked={false} onCheckedChange={onCheckedChange} />)
     const switchElement = screen.getByRole('switch')
 
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
 
     await user.click(switchElement)
-    expect(onChange).toHaveBeenCalledWith(true)
+    expect(onCheckedChange).toHaveBeenCalledWith(true)
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
 
-    rerender(<Switch value={true} onChange={onChange} />)
+    rerender(<Switch checked={true} onCheckedChange={onCheckedChange} />)
     expect(switchElement).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('should not call onChange when disabled', async () => {
-    const onChange = vi.fn()
+  it('should not call onCheckedChange when disabled', async () => {
+    const onCheckedChange = vi.fn()
     const user = userEvent.setup()
-    render(<Switch value={false} disabled onChange={onChange} />)
+    render(<Switch checked={false} disabled onCheckedChange={onCheckedChange} />)
 
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
     expect(switchElement).toHaveAttribute('data-disabled', '')
 
     await user.click(switchElement)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onCheckedChange).not.toHaveBeenCalled()
   })
 
   it('should apply correct size classes', () => {
-    const { rerender } = render(<Switch value={false} size="xs" />)
+    const { rerender } = render(<Switch checked={false} size="xs" />)
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
+    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
 
-    rerender(<Switch value={false} size="sm" />)
+    rerender(<Switch checked={false} size="sm" />)
     expect(switchElement).toHaveClass('h-3', 'w-5')
 
-    rerender(<Switch value={false} size="md" />)
+    rerender(<Switch checked={false} size="md" />)
     expect(switchElement).toHaveClass('h-4', 'w-7')
 
-    rerender(<Switch value={false} size="lg" />)
+    rerender(<Switch checked={false} size="lg" />)
     expect(switchElement).toHaveClass('h-5', 'w-9')
   })
 
   it('should apply custom className', () => {
-    render(<Switch value={false} className="custom-test-class" />)
+    render(<Switch checked={false} className="custom-test-class" />)
     expect(screen.getByRole('switch')).toHaveClass('custom-test-class')
   })
 
   it('should expose checked state styling hooks on the root and thumb', () => {
-    const { rerender } = render(<Switch value={false} />)
+    const { rerender } = render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch')
     const thumb = getThumb(switchElement)
 
@@ -94,13 +94,13 @@ describe('Switch', () => {
     expect(thumb).toHaveClass('data-checked:translate-x-[14px]')
     expect(thumb).not.toHaveAttribute('data-checked')
 
-    rerender(<Switch value={true} />)
+    rerender(<Switch checked={true} />)
     expect(switchElement).toHaveAttribute('data-checked', '')
     expect(thumb).toHaveAttribute('data-checked', '')
   })
 
   it('should expose disabled state styling hooks instead of relying on opacity', () => {
-    const { rerender } = render(<Switch value={false} disabled />)
+    const { rerender } = render(<Switch checked={false} disabled />)
     const switchElement = screen.getByRole('switch')
 
     expect(switchElement).toHaveClass(
@@ -109,28 +109,28 @@ describe('Switch', () => {
     )
     expect(switchElement).toHaveAttribute('data-disabled', '')
 
-    rerender(<Switch value={true} disabled />)
+    rerender(<Switch checked={true} disabled />)
     expect(switchElement).toHaveAttribute('data-disabled', '')
     expect(switchElement).toHaveAttribute('data-checked', '')
   })
 
   it('should have focus-visible ring-3 styles', () => {
-    render(<Switch value={false} />)
+    render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('focus-visible:ring-2')
   })
 
   it('should respect prefers-reduced-motion', () => {
-    render(<Switch value={false} />)
+    render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('motion-reduce:transition-none')
   })
 
   describe('loading state', () => {
     it('should render as disabled when loading', async () => {
-      const onChange = vi.fn()
+      const onCheckedChange = vi.fn()
       const user = userEvent.setup()
-      render(<Switch value={false} loading onChange={onChange} />)
+      render(<Switch checked={false} loading onCheckedChange={onCheckedChange} />)
 
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
@@ -138,32 +138,32 @@ describe('Switch', () => {
       expect(switchElement).toHaveAttribute('data-disabled', '')
 
       await user.click(switchElement)
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onCheckedChange).not.toHaveBeenCalled()
     })
 
     it('should show spinner icon for md and lg sizes', () => {
-      const { rerender, container } = render(<Switch value={false} loading size="md" />)
+      const { rerender, container } = render(<Switch checked={false} loading size="md" />)
       expect(container.querySelector('span[aria-hidden="true"] i')).toBeInTheDocument()
 
-      rerender(<Switch value={false} loading size="lg" />)
+      rerender(<Switch checked={false} loading size="lg" />)
       expect(container.querySelector('span[aria-hidden="true"] i')).toBeInTheDocument()
     })
 
     it('should not show spinner for xs and sm sizes', () => {
-      const { rerender, container } = render(<Switch value={false} loading size="xs" />)
+      const { rerender, container } = render(<Switch checked={false} loading size="xs" />)
       expect(container.querySelector('span[aria-hidden="true"] i')).not.toBeInTheDocument()
 
-      rerender(<Switch value={false} loading size="sm" />)
+      rerender(<Switch checked={false} loading size="sm" />)
       expect(container.querySelector('span[aria-hidden="true"] i')).not.toBeInTheDocument()
     })
 
     it('should apply disabled data-state hooks when loading', () => {
-      const { rerender } = render(<Switch value={false} loading />)
+      const { rerender } = render(<Switch checked={false} loading />)
       const switchElement = screen.getByRole('switch')
 
       expect(switchElement).toHaveAttribute('data-disabled', '')
 
-      rerender(<Switch value={true} loading />)
+      rerender(<Switch checked={true} loading />)
       expect(switchElement).toHaveAttribute('data-disabled', '')
       expect(switchElement).toHaveAttribute('data-checked', '')
     })
@@ -186,10 +186,10 @@ describe('SwitchSkeleton', () => {
   it('should apply correct skeleton size classes', () => {
     const { rerender } = render(<SwitchSkeleton size="xs" data-testid="s" />)
     const el = screen.getByTestId('s')
-    expect(el).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
+    expect(el).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
 
     rerender(<SwitchSkeleton size="lg" data-testid="s" />)
-    expect(el).toHaveClass('h-5', 'w-9', 'radius-sm')
+    expect(el).toHaveClass('h-5', 'w-9', 'rounded-md')
   })
 
   it('should apply custom className to skeleton', () => {

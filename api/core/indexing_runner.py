@@ -9,7 +9,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import Flask, current_app
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -35,6 +34,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -735,7 +735,9 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: IndexingStatus, extra_update_params: dict | None = None
+        document_id: str,
+        after_indexing_status: IndexingStatus,
+        extra_update_params: Mapping[Any, Any] | None = None,
     ):
         """
         Update the document indexing status.
@@ -762,7 +764,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
+    def _update_segments_by_document(dataset_document_id: str, update_params: Mapping[Any, Any]):
         """
         Update the document segment by document id.
         """

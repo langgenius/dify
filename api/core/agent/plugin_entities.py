@@ -84,7 +84,7 @@ class AgentStrategyEntity(BaseModel):
     identity: AgentStrategyIdentity
     parameters: list[AgentStrategyParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The description of the agent strategy")
-    output_schema: dict | None = None
+    output_schema: dict[str, Any] | None = None
     features: list[AgentFeature] | None = None
     meta_version: str | None = None
     # pydantic configs

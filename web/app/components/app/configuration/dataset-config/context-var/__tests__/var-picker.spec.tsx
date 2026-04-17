@@ -88,8 +88,9 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      expect(screen.getByText('var1')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
     })
 
     it('should display selected variable with type icon when value is provided', () => {
@@ -100,11 +101,13 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('var1')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
       // IconTypeIcon should be rendered (check for svg icon)
-      expect(document.querySelector('svg')).toBeInTheDocument()
+      // IconTypeIcon should be rendered (check for svg icon)
+      expect(document.querySelector('svg'))!.toBeInTheDocument()
     })
 
     it('should show placeholder text when no value is selected', () => {
@@ -118,8 +121,39 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -134,7 +168,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('Select a variable')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
     })
 
     it('should render dropdown indicator icon', () => {
@@ -145,7 +180,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert - Trigger should be present
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert - Trigger should be present
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -162,7 +198,8 @@ describe('VarPicker', () => {
       const { container } = render(<VarPicker {...props} />)
 
       // Assert
-      expect(container.querySelector('.custom-class')).toBeInTheDocument()
+      // Assert
+      expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
     })
 
     it('should apply custom triggerClassName to trigger button', () => {
@@ -176,7 +213,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByTestId('portal-trigger')).toHaveClass('custom-trigger-class')
+      // Assert
+      expect(screen.getByTestId('portal-trigger'))!.toHaveClass('custom-trigger-class')
     })
 
     it('should display selected value with proper formatting', () => {
@@ -193,9 +231,10 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('customVar')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('customVar'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
   })
 
@@ -212,7 +251,8 @@ describe('VarPicker', () => {
       await user.click(screen.getByTestId('portal-trigger'))
 
       // Assert
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange and close dropdown when selecting an option', async () => {
@@ -226,12 +266,12 @@ describe('VarPicker', () => {
 
       // Open dropdown
       await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Select a different option
       const options = screen.getAllByText('var2')
       expect(options.length).toBeGreaterThan(0)
-      await user.click(options[0])
+      await user.click(options[0]!)
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
@@ -250,7 +290,7 @@ describe('VarPicker', () => {
 
       // Open dropdown
       await user.click(trigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Close dropdown
       await user.click(trigger)
@@ -268,6 +308,37 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
@@ -284,7 +355,7 @@ describe('VarPicker', () => {
 
       // Open dropdown
       await user.click(trigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
 
       // Close dropdown
       await user.click(trigger)
@@ -305,7 +376,8 @@ describe('VarPicker', () => {
       await user.click(trigger)
 
       // Assert
-      expect(screen.getByText('var1')).toBeInTheDocument() // Original value still displayed
+      // Assert
+      expect(screen.getByText('var1'))!.toBeInTheDocument() // Original value still displayed
     })
   })
 
@@ -322,8 +394,9 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle empty options array', () => {
@@ -338,8 +411,9 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -353,7 +427,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle variable names with special characters safely', () => {
@@ -370,7 +445,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('specialVar')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('specialVar'))!.toBeInTheDocument()
     })
 
     it('should handle long variable names', () => {
@@ -387,8 +463,9 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText('longVar')).toBeInTheDocument()
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('longVar'))!.toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 })

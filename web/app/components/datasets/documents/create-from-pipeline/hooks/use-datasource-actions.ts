@@ -251,7 +251,7 @@ export const useDatasourceActions = ({
     if (datasourceType === DatasourceType.onlineDocument) {
       const allIds = currentWorkspacePages?.map(page => page.page_id) || []
       if (onlineDocuments.length < allIds.length) {
-        const selectedPages = Array.from(allIds).map(pageId => PagesMapAndSelectedPagesId[pageId])
+        const selectedPages = Array.from(allIds).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
         setOnlineDocuments(selectedPages)
         setSelectedPagesId(new Set(allIds))
       }

@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.runtime import VariablePool
 from sqlalchemy.engine import Engine
 
 from configs import dify_config
@@ -16,6 +15,7 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
+from graphon.runtime import VariablePool
 from models.account import Account, TenantAccountJoin
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (

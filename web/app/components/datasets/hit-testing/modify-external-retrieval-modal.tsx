@@ -4,7 +4,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 
 type ModifyExternalRetrievalModalProps = {
@@ -42,11 +42,11 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   }
 
   return (
-    <div className="shadows-shadow-2xl absolute right-[14px] top-[36px] z-10 flex w-[320px] flex-col items-start rounded-2xl
+    <div className="shadows-shadow-2xl absolute top-[36px] right-[14px] z-10 flex w-[320px] flex-col items-start rounded-2xl
       border-[0.5px] border-components-panel-border bg-components-panel-bg"
     >
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
-        <div className="system-xl-semibold grow text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
+        <div className="grow system-xl-semibold text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
         <ActionButton className="ml-auto" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 shrink-0" />
         </ActionButton>

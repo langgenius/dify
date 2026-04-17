@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +9,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ImageLinkInput from './image-link-input'
 import Uploader from './uploader'
 
@@ -107,7 +107,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                       hovering && 'bg-primary-50',
                     )}
                   >
-                    <span className="i-custom-vender-line-general-upload-03 mr-1 h-4 w-4" />
+                    <span className="mr-1 i-custom-vender-line-general-upload-03 h-4 w-4" />
                     {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}

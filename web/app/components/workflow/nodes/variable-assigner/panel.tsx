@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import type { VariableAssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { cn } from '@/utils/classnames'
 import Field from '../_base/components/field'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import VarGroupItem from './components/var-group-item'
@@ -90,8 +90,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           tooltip={t(`${i18nPrefix}.aggregationGroupTip`, { ns: 'workflow' })!}
           operations={(
             <Switch
-              value={isEnableGroup}
-              onChange={handleGroupEnabledChange}
+              checked={isEnableGroup}
+              onCheckedChange={handleGroupEnabledChange}
               size="md"
               disabled={readOnly}
             />

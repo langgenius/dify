@@ -1,0 +1,13 @@
+[project]
+name = "dify-vdb-baidu"
+version = "0.0.1"
+dependencies = [
+    "pymochow==2.4.0",
+]
+description = "Dify vector store backend (dify-vdb-baidu)."
+
+[project.entry-points."dify.vector_backends"]
+baidu = "dify_vdb_baidu.baidu_vector:BaiduVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

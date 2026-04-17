@@ -1,9 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type BucketProps = {
   bucketName: string
@@ -55,7 +55,7 @@ const Bucket = ({
       >
         {bucketName}
       </button>
-      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
+      {showSeparator && <span className="shrink-0 system-xs-regular text-divider-deep">/</span>}
     </>
   )
 }

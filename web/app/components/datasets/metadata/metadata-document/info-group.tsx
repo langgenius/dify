@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithValue } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import AddMetadataButton from '../add-metadata-button'
 import InputCombined from '../edit-metadata-batch/input-combined'
 import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
@@ -85,7 +85,7 @@ const InfoGroup: FC<Props> = ({
               onSave={data => onAdd?.(data)}
               onManage={handleMangeMetadata}
             />
-            {list.length > 0 && <Divider className="my-3 " bgStyle="gradient" />}
+            {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
           </div>
         )}
         {list.map((item, i) => (
@@ -99,12 +99,12 @@ const InfoGroup: FC<Props> = ({
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}
                     />
-                    <div className="shrink-0 cursor-pointer rounded-md p-1  text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
+                    <div className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
                       <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
                     </div>
                   </div>
                 )
-              : (<div className="system-xs-regular py-1 text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}
+              : (<div className="py-1 system-xs-regular text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}
           </Field>
         ))}
       </div>

@@ -1,0 +1,137 @@
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+
+import { Button } from '.'
+
+const meta = {
+  title: 'Base/UI/Button',
+  component: Button,
+  parameters: {
+    layout: 'centered',
+  },
+  tags: ['autodocs'],
+  argTypes: {
+    loading: { control: 'boolean' },
+    tone: {
+      control: 'select',
+      options: ['default', 'destructive'],
+    },
+    disabled: { control: 'boolean' },
+    variant: {
+      control: 'select',
+      options: ['primary', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
+    },
+    size: {
+      control: 'select',
+      options: ['small', 'medium', 'large'],
+    },
+  },
+  args: {
+    variant: 'ghost',
+    children: 'Button',
+  },
+} satisfies Meta<typeof Button>
+
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const Default: Story = {
+  args: {
+    variant: 'primary',
+    children: 'Primary Button',
+  },
+}
+
+export const Secondary: Story = {
+  args: {
+    variant: 'secondary',
+    children: 'Secondary Button',
+  },
+}
+
+export const SecondaryAccent: Story = {
+  args: {
+    variant: 'secondary-accent',
+    children: 'Secondary Accent Button',
+  },
+}
+
+export const Ghost: Story = {
+  args: {
+    variant: 'ghost',
+    children: 'Ghost Button',
+  },
+}
+
+export const GhostAccent: Story = {
+  args: {
+    variant: 'ghost-accent',
+    children: 'Ghost Accent Button',
+  },
+}
+
+export const Tertiary: Story = {
+  args: {
+    variant: 'tertiary',
+    children: 'Tertiary Button',
+  },
+}
+
+export const Disabled: Story = {
+  args: {
+    variant: 'primary',
+    disabled: true,
+    children: 'Disabled Button',
+  },
+}
+
+export const Loading: Story = {
+  args: {
+    variant: 'primary',
+    loading: true,
+    children: 'Loading Button',
+  },
+}
+
+export const Destructive: Story = {
+  args: {
+    variant: 'primary',
+    tone: 'destructive',
+    children: 'Delete',
+  },
+}
+
+export const WithIcon: Story = {
+  args: {
+    variant: 'primary',
+    children: (
+      <>
+        <span className="mr-1.5 i-heroicons-rocket-launch-20-solid h-4 w-4" />
+        Launch
+      </>
+    ),
+  },
+}
+
+export const SmallSize: Story = {
+  args: {
+    variant: 'secondary',
+    size: 'small',
+    children: 'Small',
+  },
+}
+
+export const LargeSize: Story = {
+  args: {
+    variant: 'primary',
+    size: 'large',
+    children: 'Large Button',
+  },
+}
+
+export const AsLink: Story = {
+  args: {
+    variant: 'ghost-accent',
+    render: <a href="https://example.com" />,
+    children: 'Link Button',
+  },
+}

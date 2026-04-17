@@ -2,8 +2,8 @@ import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
+import { Button } from '@/app/components/base/ui/button'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 
@@ -49,7 +49,7 @@ const Actions = ({
     <div className="flex items-center gap-x-2 overflow-hidden">
       {showSelect && (
         <>
-          <div className="flex shrink-0 items-center gap-x-2 py-[3px] pl-4 pr-2">
+          <div className="flex shrink-0 items-center gap-x-2 py-[3px] pr-2 pl-4">
             <Checkbox
               onCheck={onSelectAll}
               indeterminate={indeterminate}
@@ -60,7 +60,7 @@ const Actions = ({
             </span>
           </div>
           {tip && (
-            <div title={tip} className="system-xs-regular max-w-full truncate text-text-tertiary">
+            <div title={tip} className="max-w-full truncate system-xs-regular text-text-tertiary">
               {tip}
             </div>
           )}

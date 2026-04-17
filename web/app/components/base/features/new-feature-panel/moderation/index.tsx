@@ -3,11 +3,11 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
+import { Button } from '@/app/components/base/ui/button'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCodeBasedExtensions } from '@/service/use-common'
@@ -139,20 +139,20 @@ const Moderation = ({
     >
       <>
         {!moderation?.enabled && (
-          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
         )}
         {!!moderation?.enabled && (
           <>
             {!isHovering && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
-                  <div className="text-text-secondary system-xs-regular">{providerContent}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
+                  <div className="system-xs-regular text-text-secondary">{providerContent}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
-                  <div className="text-text-secondary system-xs-regular">{enableContent}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
+                  <div className="system-xs-regular text-text-secondary">{enableContent}</div>
                 </div>
               </div>
             )}

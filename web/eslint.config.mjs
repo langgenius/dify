@@ -1,6 +1,7 @@
 // @ts-check
 
-import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import path from 'node:path'
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
@@ -18,23 +19,12 @@ import {
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
-// Enable Tailwind CSS IntelliSense mode for ESLint runs
-// See: tailwind-css-plugin.ts
-process.env.TAILWIND_MODE ??= 'ESLINT'
-
-const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
-
 export default antfu(
   {
     react: {
       overrides: {
         'react/set-state-in-effect': 'error',
         'react/no-unnecessary-use-prefix': 'error',
-      },
-    },
-    nextjs: {
-      overrides: {
-        'next/no-img-element': 'off',
       },
     },
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
@@ -134,7 +124,8 @@ export default antfu(
     },
     settings: {
       'better-tailwindcss': {
-        entryPoint: 'app/styles/globals.css',
+        cwd: import.meta.dirname,
+        entryPoint: path.resolve(import.meta.dirname, './app/styles/globals.css'),
       },
     },
   },
@@ -206,10 +197,3 @@ export default antfu(
     },
   },
 )
-  .disableRulesFix(disableRuleAutoFix
-    ? [
-        'tailwindcss/enforce-consistent-class-order',
-        'tailwindcss/no-duplicate-classes',
-        'tailwindcss/no-unnecessary-whitespace',
-      ]
-    : [])

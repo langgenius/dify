@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { Item } from '@/app/components/base/select'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { SimpleSelect as Select } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
 import { SUB_VARIABLES } from '../../constants'
 
 type Props = {
@@ -59,12 +59,12 @@ const SubVariablePicker: FC<Props> = ({
                   <div className="flex cursor-pointer justify-start">
                     <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
                       <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
-                      <div className="system-xs-medium ml-0.5 truncate">{item?.name}</div>
+                      <div className="ml-0.5 truncate system-xs-medium">{item?.name}</div>
                     </div>
                   </div>
                 )
               : (
-                  <div className="system-sm-regular flex pl-1 text-components-input-text-placeholder  group-hover/sub-variable-picker:text-text-tertiary">
+                  <div className="flex pl-1 system-sm-regular text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
                     <Variable02 className="mr-1 h-4 w-4 shrink-0" />
                     <span>{t('placeholder.select', { ns: 'common' })}</span>
                   </div>

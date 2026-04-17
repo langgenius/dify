@@ -25,11 +25,11 @@ const RestoringTitle = () => {
         <span className="system-sm-semibold text-text-primary">
           {versionName}
         </span>
-        <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary">
+        <span className="rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
           {t('common.viewOnly', { ns: 'workflow' })}
         </span>
       </div>
-      <div className="system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary">
+      <div className="flex h-4 items-center gap-x-1 system-xs-regular text-text-tertiary">
         {
           currentVersion && (
             <>

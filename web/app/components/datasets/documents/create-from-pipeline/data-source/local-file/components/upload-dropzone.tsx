@@ -1,7 +1,7 @@
 import type { ChangeEvent, RefObject } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type FileUploadConfig = {
   file_size_limit: number
@@ -74,7 +74,7 @@ const UploadDropzone = ({
             totalCount: fileUploadConfig.file_upload_limit,
           })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+        {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
       </div>
     </>
   )

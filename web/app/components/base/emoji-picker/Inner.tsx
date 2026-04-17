@@ -5,12 +5,12 @@ import data from '@emoji-mart/data'
 import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { init } from 'emoji-mart'
 import * as React from 'react'
 import { useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 import { searchEmoji } from '@/utils/emoji'
 
 init({ data })
@@ -92,11 +92,11 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
       </div>
       <Divider className="my-3" />
 
-      <div className="max-h-[200px] w-full overflow-y-auto overflow-x-hidden px-3">
+      <div className="max-h-[200px] w-full overflow-x-hidden overflow-y-auto px-3">
         {isSearching && (
           <>
             <div key="category-search" className="flex flex-col">
-              <p className="mb-1 text-text-primary system-xs-medium-uppercase">Search</p>
+              <p className="mb-1 system-xs-medium-uppercase text-text-primary">Search</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {searchedEmojis.map((emoji: string, index: number) => {
                   return (
@@ -121,7 +121,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {categories.map((category, index: number) => {
           return (
             <div key={`category-${index}`} className="flex flex-col">
-              <p className="mb-1 text-text-primary system-xs-medium-uppercase">{category.id}</p>
+              <p className="mb-1 system-xs-medium-uppercase text-text-primary">{category.id}</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {category.emojis.map((emoji, index: number) => {
                   return (
@@ -147,7 +147,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p className="mb-2 text-text-primary system-xs-medium-uppercase">Choose Style</p>
+        <p className="mb-2 system-xs-medium-uppercase text-text-primary">Choose Style</p>
         {showStyleColors
           ? <span className="i-heroicons-chevron-down h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />
           : <span className="i-heroicons-chevron-up h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />}

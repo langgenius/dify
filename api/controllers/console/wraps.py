@@ -20,7 +20,7 @@ from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
-from services.operation_service import OperationService
+from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
@@ -205,7 +205,7 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
                 utm_info = request.cookies.get("utm_info")
 
                 if utm_info:
-                    utm_info_dict: dict = json.loads(utm_info)
+                    utm_info_dict: UtmInfo = json.loads(utm_info)
                     OperationService.record_utm(current_tenant_id, utm_info_dict)
 
         return view(*args, **kwargs)

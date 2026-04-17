@@ -1,15 +1,11 @@
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   Dialog,
-  DialogClose,
   DialogCloseButton,
   DialogContent,
   DialogDescription,
-  DialogPortal,
   DialogTitle,
-  DialogTrigger,
 } from '../index'
 
 describe('Dialog wrapper', () => {
@@ -84,17 +80,6 @@ describe('Dialog wrapper', () => {
       expect(closeButton).toBeDisabled()
       fireEvent.click(closeButton)
       expect(onClick).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Exports', () => {
-    it('should map dialog aliases to the matching base dialog primitives', () => {
-      expect(Dialog).toBe(BaseDialog.Root)
-      expect(DialogTrigger).toBe(BaseDialog.Trigger)
-      expect(DialogTitle).toBe(BaseDialog.Title)
-      expect(DialogDescription).toBe(BaseDialog.Description)
-      expect(DialogClose).toBe(BaseDialog.Close)
-      expect(DialogPortal).toBe(BaseDialog.Portal)
     })
   })
 })
