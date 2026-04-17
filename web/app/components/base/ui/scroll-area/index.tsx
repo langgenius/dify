@@ -1,53 +1,53 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
-import * as React from 'react'
-import { cn } from '@/utils/classnames'
-import styles from './index.module.css'
+import { cn } from '@langgenius/dify-ui/cn'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
-export type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
+type ScrollAreaRootProps = BaseScrollArea.Root.Props
 
 export const ScrollAreaContent = BaseScrollArea.Content
-export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
 
-export type ScrollAreaSlotClassNames = {
+type ScrollAreaSlotClassNames = {
   viewport?: string
   content?: string
   scrollbar?: string
 }
 
-export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: React.ReactNode
+type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
+  children: ReactNode
   orientation?: 'vertical' | 'horizontal'
   slotClassNames?: ScrollAreaSlotClassNames
   label?: string
   labelledBy?: string
 }
 
-export const scrollAreaScrollbarClassName = cn(
-  styles.scrollbar,
-  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
+const scrollAreaScrollbarClassName = cn(
+  'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
   'pointer-events-none data-hovering:pointer-events-auto',
   'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
   'data-[orientation=horizontal]:absolute data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:h-3 data-[orientation=horizontal]:items-center',
 )
 
-export const scrollAreaThumbClassName = cn(
-  'shrink-0 radius-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
+const scrollAreaThumbClassName = cn(
+  'shrink-0 rounded-sm bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
+  'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+  'group-data-scrolling/scrollbar:bg-state-base-handle-hover',
+  'active:bg-state-base-handle-hover',
 )
 
-export const scrollAreaViewportClassName = cn(
+const scrollAreaViewportClassName = cn(
   'size-full min-h-0 min-w-0 outline-hidden',
-  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
+  'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset',
 )
 
-export const scrollAreaCornerClassName = 'bg-transparent'
+const scrollAreaCornerClassName = 'bg-transparent'
 
-export type ScrollAreaViewportProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Viewport>
+type ScrollAreaViewportProps = BaseScrollArea.Viewport.Props
 
 export function ScrollAreaViewport({
   className,
@@ -61,7 +61,7 @@ export function ScrollAreaViewport({
   )
 }
 
-export type ScrollAreaScrollbarProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Scrollbar>
+type ScrollAreaScrollbarProps = BaseScrollArea.Scrollbar.Props
 
 export function ScrollAreaScrollbar({
   className,
@@ -69,13 +69,14 @@ export function ScrollAreaScrollbar({
 }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
+      data-dify-scrollbar=""
       className={cn(scrollAreaScrollbarClassName, className)}
       {...props}
     />
   )
 }
 
-export type ScrollAreaThumbProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Thumb>
+type ScrollAreaThumbProps = BaseScrollArea.Thumb.Props
 
 export function ScrollAreaThumb({
   className,
@@ -89,7 +90,7 @@ export function ScrollAreaThumb({
   )
 }
 
-export type ScrollAreaCornerProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Corner>
+type ScrollAreaCornerProps = BaseScrollArea.Corner.Props
 
 export function ScrollAreaCorner({
   className,

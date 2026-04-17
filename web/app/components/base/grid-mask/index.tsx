@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import Style from './style.module.css'
 
 type GridMaskProps = {

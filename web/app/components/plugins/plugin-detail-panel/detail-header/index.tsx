@@ -1,11 +1,12 @@
 'use client'
 
 import type { PluginDetail } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -15,7 +16,6 @@ import { useAppContext } from '@/context/app-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
@@ -176,7 +176,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="i-ri-arrow-left-right-line ml-1 h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -269,7 +269,7 @@ const DetailHeader = ({
       )}
 
       {/* Description */}
-      {!isReadmeView && <Description className="mb-2 mt-3 h-auto" text={description[locale]} descriptionLineRows={2} />}
+      {!isReadmeView && <Description className="mt-3 mb-2 h-auto" text={description[locale]} descriptionLineRows={2} />}
 
       {/* Plugin Auth for Tools */}
       {category === PluginCategoryEnum.tool && !isReadmeView && (

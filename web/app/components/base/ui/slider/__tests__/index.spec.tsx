@@ -47,6 +47,23 @@ describe('Slider', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(21, expect.anything())
   })
 
+  it('should round floating point keyboard updates to the configured step', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+
+    render(<Slider value={0.2} min={0} max={1} step={0.1} onValueChange={onValueChange} aria-label="Value" />)
+
+    const slider = getSliderInput()
+
+    await act(async () => {
+      slider.focus()
+      await user.keyboard('{ArrowRight}')
+    })
+
+    expect(onValueChange).toHaveBeenCalledTimes(1)
+    expect(onValueChange).toHaveBeenLastCalledWith(0.3, expect.anything())
+  })
+
   it('should not trigger onValueChange when disabled', async () => {
     const user = userEvent.setup()
     const onValueChange = vi.fn()
@@ -69,5 +86,11 @@ describe('Slider', () => {
 
     const sliderWrapper = container.querySelector('.outer-test')
     expect(sliderWrapper).toBeInTheDocument()
+  })
+
+  it('should not render prehydration script tags', () => {
+    const { container } = render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
+
+    expect(container.querySelector('script')).not.toBeInTheDocument()
   })
 })

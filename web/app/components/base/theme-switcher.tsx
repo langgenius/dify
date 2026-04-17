@@ -1,8 +1,8 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTheme } from 'next-themes'
-import { cn } from '@/utils/classnames'
 
-export type Theme = 'light' | 'dark' | 'system'
+type Theme = 'light' | 'dark' | 'system'
 
 export default function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
@@ -12,7 +12,7 @@ export default function ThemeSwitcher() {
   }
 
   return (
-    <div className="flex items-center radius-lg bg-components-segmented-control-bg-normal p-0.5">
+    <div className="flex items-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
       <button
         type="button"
         className={cn(

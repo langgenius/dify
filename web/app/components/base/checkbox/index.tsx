@@ -1,4 +1,4 @@
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import IndeterminateIcon from './assets/indeterminate-icon'
 
 type CheckboxProps = {
@@ -29,7 +29,7 @@ const Checkbox = ({
     <div
       id={id}
       className={cn(
-        'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center radius-xs shadow-xs shadow-shadow-shadow-3',
+        'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3',
         checkClassName,
         disabled && disabledClassName,
         className,

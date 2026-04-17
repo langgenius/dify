@@ -1,26 +1,16 @@
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
-from libs.helper import UUIDStrOrEmpty
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
-
-
-class SavedMessageListQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100)
-
-
-class SavedMessageCreatePayload(BaseModel):
-    message_id: UUIDStrOrEmpty
-
 
 register_schema_models(web_ns, SavedMessageListQuery, SavedMessageCreatePayload)
 

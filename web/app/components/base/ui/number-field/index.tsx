@@ -1,14 +1,13 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type { HTMLAttributes } from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Root>
+export type NumberFieldRootProps = BaseNumberField.Root.Props
 
 export const numberFieldGroupVariants = cva(
   [
@@ -22,22 +21,22 @@ export const numberFieldGroupVariants = cva(
   {
     variants: {
       size: {
-        regular: 'radius-md',
-        large: 'radius-lg',
+        medium: 'rounded-lg',
+        large: 'rounded-[10px]',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
 export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Group> & VariantProps<typeof numberFieldGroupVariants>
+export type NumberFieldGroupProps = BaseNumberField.Group.Props & VariantProps<typeof numberFieldGroupVariants>
 
 export function NumberFieldGroup({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldGroupProps) {
   return (
@@ -58,21 +57,21 @@ export const numberFieldInputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 py-[7px] system-sm-regular',
+        medium: 'px-3 py-[7px] system-sm-regular',
         large: 'px-4 py-2 system-md-regular',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
 
-export type NumberFieldInputProps = Omit<React.ComponentPropsWithoutRef<typeof BaseNumberField.Input>, 'size'> & VariantProps<typeof numberFieldInputVariants>
+export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> & VariantProps<typeof numberFieldInputVariants>
 
 export function NumberFieldInput({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldInputProps) {
   return (
@@ -84,25 +83,25 @@ export function NumberFieldInput({
 }
 
 export const numberFieldUnitVariants = cva(
-  'flex shrink-0 items-center self-stretch text-text-tertiary system-sm-regular',
+  'flex shrink-0 items-center self-stretch system-sm-regular text-text-tertiary',
   {
     variants: {
       size: {
-        regular: 'pr-2',
+        medium: 'pr-2',
         large: 'pr-2.5',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
 
-export type NumberFieldUnitProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
 
 export function NumberFieldUnit({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldUnitProps) {
   return (
@@ -113,11 +112,11 @@ export function NumberFieldUnit({
   )
 }
 
-export const numberFieldControlsVariants = cva(
+const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = React.HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = HTMLAttributes<HTMLDivElement>
 
 export function NumberFieldControls({
   className,
@@ -131,11 +130,11 @@ export function NumberFieldControls({
   )
 }
 
-export const numberFieldControlButtonVariants = cva(
+const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation select-none items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors',
+    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
@@ -144,7 +143,7 @@ export const numberFieldControlButtonVariants = cva(
   {
     variants: {
       size: {
-        regular: '',
+        medium: '',
         large: '',
       },
       direction: {
@@ -154,12 +153,12 @@ export const numberFieldControlButtonVariants = cva(
     },
     compoundVariants: [
       {
-        size: 'regular',
+        size: 'medium',
         direction: 'increment',
         className: 'pt-1',
       },
       {
-        size: 'regular',
+        size: 'medium',
         direction: 'decrement',
         className: 'pb-1',
       },
@@ -175,7 +174,7 @@ export const numberFieldControlButtonVariants = cva(
       },
     ],
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
       direction: 'increment',
     },
   },
@@ -186,20 +185,21 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & NumberFieldButtonVariantProps
+export type NumberFieldButtonProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
+
+const incrementAriaLabel = 'Increment value'
+const decrementAriaLabel = 'Decrement value'
 
 export function NumberFieldIncrement({
   className,
   children,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Increment
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.increment', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
@@ -210,15 +210,13 @@ export function NumberFieldIncrement({
 export function NumberFieldDecrement({
   className,
   children,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Decrement
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.decrement', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}

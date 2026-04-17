@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl } from './types'
 import type { InstalledApp } from '@/models/explore'
 import type { VisionFile } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,13 +11,12 @@ import Loading from '@/app/components/base/loading'
 import { toast } from '@/app/components/base/ui/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
 import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
 import TextGenerationResultPanel from './text-generation-result-panel'
 import TextGenerationSidebar from './text-generation-sidebar'
 
-export type IMainProps = {
+type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean

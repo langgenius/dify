@@ -241,11 +241,11 @@ function analyzeFile(baseName: string): AnalysisResult {
 
   // Check for changed values
   for (const [key, oldValue] of Object.entries(mainFlat)) {
-    if (key in currentContent && !valuesEqual(currentContent[key], oldValue)) {
+    if (key in currentContent && !valuesEqual(currentContent[key]!, oldValue)) {
       result.changedValues.push({
         key,
         oldValue,
-        newValue: currentContent[key],
+        newValue: currentContent[key]!,
       })
     }
   }

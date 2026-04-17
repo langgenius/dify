@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useState,
@@ -17,7 +18,6 @@ import {
 } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import {
   useIsChatMode,
   useNodesInteractions,
@@ -82,7 +82,7 @@ const ViewHistory = ({
                   open && 'bg-components-button-secondary-bg-hover',
                 )}
               >
-                <span className="i-custom-vender-line-time-clock-play mr-1 h-4 w-4" />
+                <span className="mr-1 i-custom-vender-line-time-clock-play h-4 w-4" />
                 {t('common.showRunHistory', { ns: 'workflow' })}
               </button>
             )
@@ -140,7 +140,7 @@ const ViewHistory = ({
                   {
                     !data?.data.length && (
                       <div className="py-12">
-                        <span className="i-custom-vender-line-time-clock-play-slim mx-auto mb-2 h-8 w-8 text-text-quaternary" />
+                        <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
                           {t('common.notRunning', { ns: 'workflow' })}
                         </div>
@@ -171,23 +171,23 @@ const ViewHistory = ({
                       >
                         {
                           !isChatMode && [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(item.status) && (
-                            <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
+                            <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <span className="i-ri-error-warning-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <span className="i-ri-checkbox-circle-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>
                           <div
                             className={cn(
-                              'flex items-center text-[13px] font-medium leading-[18px] text-text-primary',
+                              'flex items-center text-[13px] leading-[18px] font-medium text-text-primary',
                               item.id === historyWorkflowData?.id && 'text-text-accent',
                             )}
                           >

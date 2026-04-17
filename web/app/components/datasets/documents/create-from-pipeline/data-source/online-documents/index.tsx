@@ -106,7 +106,7 @@ const OnlineDocuments = ({
     if (!currentCredentialId)
       return
     getOnlineDocuments()
-  }, [currentCredentialId])
+  }, [currentCredentialId, getOnlineDocuments])
 
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
@@ -115,7 +115,7 @@ const OnlineDocuments = ({
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     setOnlineDocuments(selectedPages)
   }, [dataSourceStore, PagesMapAndSelectedPagesId])
@@ -156,16 +156,16 @@ const OnlineDocuments = ({
           {documentsData?.length
             ? (
                 <PageSelector
+                  key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
                   checkedIds={selectedPagesId}
                   disabledValue={new Set()}
                   searchValue={searchValue}
-                  list={documentsData[0].pages || []}
+                  list={documentsData[0]!.pages || []}
                   pagesMap={PagesMapAndSelectedPagesId}
                   onSelect={handleSelectPages}
                   canPreview={!isInPipeline}
                   onPreview={handlePreviewPage}
                   isMultipleChoice={supportBatchUpload}
-                  currentCredentialId={currentCredentialId}
                 />
               )
             : (

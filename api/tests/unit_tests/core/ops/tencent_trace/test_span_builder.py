@@ -1,8 +1,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from opentelemetry.trace import StatusCode
 
 from core.ops.entities.trace_entity import (
@@ -27,6 +25,8 @@ from core.ops.tencent_trace.entities.semconv import (
 )
 from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.rag.models.document import Document
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TestTencentSpanBuilder:

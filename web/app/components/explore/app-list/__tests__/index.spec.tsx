@@ -15,6 +15,7 @@ let mockIsLoading = false
 let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
+const mockTrackCreateApp = vi.fn()
 
 vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => ({
@@ -44,6 +45,9 @@ vi.mock('@/hooks/use-import-dsl', () => ({
     versions: ['v1'],
     isFetching: false,
   }),
+}))
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
@@ -214,7 +218,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -235,6 +239,9 @@ describe('AppList', () => {
       fireEvent.click(screen.getByTestId('dsl-confirm'))
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          appMode: AppModeEnum.CHAT,
+        })
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
     })
@@ -307,7 +314,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
 
       renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -317,6 +324,7 @@ describe('AppList', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       })
+      expect(mockTrackCreateApp).not.toHaveBeenCalled()
     })
 
     it('should close create modal on successful DSL import', async () => {
@@ -325,7 +333,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
         options.onSuccess?.()
       })
@@ -345,7 +353,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -382,6 +390,30 @@ describe('AppList', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
+      })
+    })
+
+    it('should track preview source when creation starts from try app details', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      };
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
+        options.onSuccess?.()
+      })
+
+      renderAppList(true)
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => {
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          appMode: AppModeEnum.CHAT,
+        })
       })
     })
 

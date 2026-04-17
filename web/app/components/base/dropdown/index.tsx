@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ActionButtonProps } from '@/app/components/base/action-button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiMoreFill,
 } from '@remixicon/react'
@@ -10,7 +11,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: string | number

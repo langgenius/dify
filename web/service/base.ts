@@ -1,5 +1,5 @@
 import type { FetchOptionType, ResponseError } from './fetch'
-import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -51,7 +51,6 @@ export type IOnThought = (though: ThoughtItem) => void
 export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
-export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
@@ -171,14 +170,6 @@ function formatURL(url: string, isPublicAPI: boolean) {
     return url
   const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
-}
-
-export function format(text: string) {
-  let res = text.trim()
-  if (res.startsWith('\n'))
-    res = res.replace('\n', '')
-
-  return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
 export const handleStream = (
@@ -369,7 +360,7 @@ export const handleStream = (
             }
           }
         })
-        buffer = lines[lines.length - 1]
+        buffer = lines[lines.length - 1]!
       }
       catch (e) {
         onData('', false, {
@@ -412,7 +403,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
     },
   }
@@ -426,7 +417,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     const xhr = mergedOptions.xhr
     xhr.open(mergedOptions.method, mergedOptions.url)
     for (const key in mergedOptions.headers)
-      xhr.setRequestHeader(key, mergedOptions.headers[key])
+      xhr.setRequestHeader(key, mergedOptions.headers[key]!)
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
@@ -490,14 +481,14 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
     headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
 
@@ -642,13 +633,13 @@ export const sseGet = async (
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
   const options = Object.assign({}, baseOptions, {
     signal: abortController.signal,
     headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
 
@@ -854,10 +845,6 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
 
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
-}
-
-export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {

@@ -1,8 +1,8 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Switch from '@/app/components/base/switch'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
 import useWebAppBrand from './hooks/use-web-app-brand'
@@ -31,19 +31,19 @@ const CustomWebAppBrand = () => {
 
   return (
     <div className="py-4">
-      <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary system-md-medium">
+      <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 system-md-medium text-text-primary">
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
           size="lg"
-          value={webappBrandRemoved ?? false}
+          checked={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
-          onChange={handleSwitch}
+          onCheckedChange={handleSwitch}
         />
       </div>
       <div className={cn('flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4', webappBrandRemoved && 'opacity-30')}>
         <div>
-          <div className="text-text-primary system-md-medium">{t('webapp.changeLogo', { ns: 'custom' })}</div>
-          <div className="text-text-tertiary system-xs-regular">{t('webapp.changeLogoTip', { ns: 'custom' })}</div>
+          <div className="system-md-medium text-text-primary">{t('webapp.changeLogo', { ns: 'custom' })}</div>
+          <div className="system-xs-regular text-text-tertiary">{t('webapp.changeLogoTip', { ns: 'custom' })}</div>
         </div>
         <div className="flex items-center">
           {(!uploadDisabled && webappLogo && !webappBrandRemoved) && (
@@ -64,7 +64,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={uploadDisabled}
               >
-                <span className="i-ri-image-add-line mr-1 h-4 w-4" />
+                <span className="mr-1 i-ri-image-add-line h-4 w-4" />
                 {
                   (webappLogo || fileId)
                     ? t('change', { ns: 'custom' })
@@ -87,7 +87,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={true}
               >
-                <span className="i-ri-loader-2-line mr-1 h-4 w-4 animate-spin" />
+                <span className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
                 {t('uploading', { ns: 'custom' })}
               </Button>
             )
@@ -118,8 +118,8 @@ const CustomWebAppBrand = () => {
       {uploadProgress === -1 && (
         <div className="mt-2 text-xs text-[#D92D20]">{t('uploadedFail', { ns: 'custom' })}</div>
       )}
-      <div className="mb-2 mt-5 flex items-center gap-2">
-        <div className="shrink-0 text-text-tertiary system-xs-medium-uppercase">{t('overview.appInfo.preview', { ns: 'appOverview' })}</div>
+      <div className="mt-5 mb-2 flex items-center gap-2">
+        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('overview.appInfo.preview', { ns: 'appOverview' })}</div>
         <Divider bgStyle="gradient" className="grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">

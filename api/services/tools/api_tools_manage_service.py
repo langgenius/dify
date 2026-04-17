@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Any, TypedDict, cast
 
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
 
@@ -21,6 +20,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -92,7 +92,7 @@ class ApiToolManageService:
 
     @staticmethod
     def convert_schema_to_tool_bundles(
-        schema: str, extra_info: dict | None = None
+        schema: str, extra_info: dict[str, Any] | None = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
@@ -109,8 +109,8 @@ class ApiToolManageService:
         user_id: str,
         tenant_id: str,
         provider_name: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
@@ -244,8 +244,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         original_provider: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         _schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str | None,
@@ -356,8 +356,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         tool_name: str,
-        credentials: dict,
-        parameters: dict,
+        credentials: dict[str, Any],
+        parameters: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
     ):

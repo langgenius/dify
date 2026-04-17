@@ -158,10 +158,13 @@ class DataSourceApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, binding_id, action: Literal["enable", "disable"]):
+        _, current_tenant_id = current_account_with_tenant()
         binding_id = str(binding_id)
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter_by(id=binding_id)
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.id == binding_id, DataSourceOauthBinding.tenant_id == current_tenant_id
+                )
             ).scalar_one_or_none()
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
@@ -221,11 +224,11 @@ class DataSourceNotionListApi(Resource):
                     raise ValueError("Dataset is not notion type.")
 
                 documents = session.scalars(
-                    select(Document).filter_by(
-                        dataset_id=query.dataset_id,
-                        tenant_id=current_tenant_id,
-                        data_source_type="notion_import",
-                        enabled=True,
+                    select(Document).where(
+                        Document.dataset_id == query.dataset_id,
+                        Document.tenant_id == current_tenant_id,
+                        Document.data_source_type == "notion_import",
+                        Document.enabled.is_(True),
                     )
                 ).all()
                 if documents:

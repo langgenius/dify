@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from requests import HTTPError
 
@@ -209,7 +210,10 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/decode/from_identifier",
             PluginDecodeResponse,
-            params={"plugin_unique_identifier": plugin_unique_identifier},
+            params={
+                "plugin_unique_identifier": plugin_unique_identifier,
+                "PluginUniqueIdentifier": plugin_unique_identifier,  # compat with daemon <= 0.5.4
+            },
         )
 
     def fetch_plugin_installation_by_ids(
@@ -260,7 +264,7 @@ class PluginInstaller(BasePluginClient):
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         source: PluginInstallationSource,
-        meta: dict,
+        meta: dict[str, Any],
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.

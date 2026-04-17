@@ -7,8 +7,7 @@ import type {
 } from '@base-ui/react/toast'
 import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {
@@ -35,28 +34,31 @@ const TOAST_TONE_STYLES = {
   },
 } satisfies Record<string, ToastToneStyle>
 
-export type ToastType = keyof typeof TOAST_TONE_STYLES
+const toastCloseLabel = 'Close notification'
+const toastViewportLabel = 'Notifications'
 
-export type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+type ToastType = keyof typeof TOAST_TONE_STYLES
+
+type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-export type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-export type ToastOptions = Omit<ToastAddOptions, 'title'>
-export type TypedToastOptions = Omit<ToastOptions, 'type'>
+type ToastOptions = Omit<ToastAddOptions, 'title'>
+type TypedToastOptions = Omit<ToastOptions, 'type'>
 
 type ToastPromiseResultOption<Value> = string | ToastUpdateOptions | ((value: Value) => string | ToastUpdateOptions)
 
-export type ToastPromiseOptions<Value> = {
+type ToastPromiseOptions<Value> = {
   loading: string | ToastUpdateOptions
   success: ToastPromiseResultOption<Value>
   error: ToastPromiseResultOption<unknown>
 }
 
-export type ToastHostProps = {
+type ToastHostProps = {
   timeout?: number
   limit?: number
 }
@@ -65,7 +67,7 @@ type ToastDismiss = (toastId?: string) => void
 type ToastCall = (title: ReactNode, options?: ToastOptions) => string
 type TypedToastCall = (title: ReactNode, options?: TypedToastOptions) => string
 
-export type ToastApi = {
+type ToastApi = {
   (title: ReactNode, options?: ToastOptions): string
   success: TypedToastCall
   error: TypedToastCall
@@ -145,7 +147,6 @@ function ToastCard({
 }: {
   toast: ToastObject<ToastData>
 }) {
-  const { t } = useTranslation('common')
   const toastType = getToastType(toastItem.type)
 
   return (
@@ -200,7 +201,7 @@ function ToastCard({
           </div>
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
             <BaseToast.Close
-              aria-label={t('toast.close')}
+              aria-label={toastCloseLabel}
               className={cn(
                 'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
               )}
@@ -215,15 +216,13 @@ function ToastCard({
 }
 
 function ToastViewport() {
-  const { t } = useTranslation('common')
   const { toasts } = BaseToast.useToastManager<ToastData>()
 
   return (
     <BaseToast.Viewport
-      aria-label={t('toast.notifications')}
+      aria-label={toastViewportLabel}
       className={cn(
-        // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
-        'inset-0 group/toast-viewport pointer-events-none fixed z-1101 overflow-visible',
+        'group/toast-viewport pointer-events-none fixed inset-0 z-1003 overflow-visible',
       )}
     >
       <div

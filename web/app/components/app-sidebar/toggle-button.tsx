@@ -1,8 +1,8 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import Button from '../base/button'
+import { Button } from '@/app/components/base/ui/button'
 import Tooltip from '../base/tooltip'
 import ShortcutsName from '../workflow/shortcuts-name'
 
@@ -19,7 +19,7 @@ const TooltipContent = ({
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="px-0.5 text-text-secondary system-xs-medium">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
       <ShortcutsName keys={TOGGLE_SHORTCUT} textColor="secondary" />
     </div>
   )

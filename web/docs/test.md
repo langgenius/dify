@@ -520,7 +520,6 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts] - Utility function tests
 - [index.spec.tsx] - Component tests
 
 ## Resources
@@ -540,5 +539,4 @@ Test examples in the project:
 [Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
 [Vitest Documentation]: https://vitest.dev/guide
 [Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
-[classnames.spec.ts]: ../utils/classnames.spec.ts
 [index.spec.tsx]: ../app/components/base/button/index.spec.tsx

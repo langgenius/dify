@@ -1,9 +1,9 @@
 import type { ComponentProps, FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 const baseStyle = 'py-[3px]'
 
-export type SliceContainerProps = ComponentProps<'span'>
+type SliceContainerProps = ComponentProps<'span'>
 
 export const SliceContainer: FC<SliceContainerProps> = (
   {
@@ -16,13 +16,13 @@ export const SliceContainer: FC<SliceContainerProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn('group mr-1 select-none align-bottom text-sm', className)}
+      className={cn('group mr-1 align-bottom text-sm select-none', className)}
     />
   )
 }
 SliceContainer.displayName = 'SliceContainer'
 
-export type SliceLabelProps = ComponentProps<'span'> & { labelInnerClassName?: string }
+type SliceLabelProps = ComponentProps<'span'> & { labelInnerClassName?: string }
 
 export const SliceLabel: FC<SliceLabelProps> = (
   {
@@ -35,7 +35,7 @@ export const SliceLabel: FC<SliceLabelProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'bg-state-base-hover-alt px-1 uppercase text-text-tertiary group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface', className)}
+      className={cn(baseStyle, 'bg-state-base-hover-alt px-1 text-text-tertiary uppercase group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface', className)}
     >
       <span className={cn('text-nowrap', labelInnerClassName)}>
         {children}
@@ -45,7 +45,7 @@ export const SliceLabel: FC<SliceLabelProps> = (
 }
 SliceLabel.displayName = 'SliceLabel'
 
-export type SliceContentProps = ComponentProps<'span'>
+type SliceContentProps = ComponentProps<'span'>
 
 export const SliceContent: FC<SliceContentProps> = (
   {
@@ -58,7 +58,7 @@ export const SliceContent: FC<SliceContentProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'whitespace-pre-line break-all bg-state-base-hover px-1 leading-7 group-hover:bg-state-accent-hover-alt group-hover:text-text-primary', className)}
+      className={cn(baseStyle, 'bg-state-base-hover px-1 leading-7 break-all whitespace-pre-line group-hover:bg-state-accent-hover-alt group-hover:text-text-primary', className)}
     >
       {children}
     </span>
@@ -66,7 +66,7 @@ export const SliceContent: FC<SliceContentProps> = (
 }
 SliceContent.displayName = 'SliceContent'
 
-export type SliceDividerProps = ComponentProps<'span'>
+type SliceDividerProps = ComponentProps<'span'>
 
 export const SliceDivider: FC<SliceDividerProps> = (
   {

@@ -1,3 +1,4 @@
+import type { UpdateWorkflowNodesMapPayload } from '../workflow-variable-block'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -62,7 +63,7 @@ const HITLInputVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
-  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]!]
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
@@ -98,9 +99,8 @@ const HITLInputVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
-
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
           return true
         },
         COMMAND_PRIORITY_EDITOR,
@@ -131,7 +131,7 @@ const HITLInputVariableBlockComponent = ({
           path={variables.slice(1)}
           varType={getVarType
             ? getVarType({
-                nodeId: variables[0],
+                nodeId: variables[0]!,
                 valueSelector: variables,
               })
             : Type.string}

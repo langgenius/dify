@@ -59,18 +59,18 @@ export const DeleteConfirm = (props: Props) => {
   return (
     <AlertDialog open={isShow} onOpenChange={handleOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
-        <div className="flex flex-col gap-2 px-6 pb-4 pt-6">
-          <AlertDialogTitle title={t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })} className="w-full truncate text-text-primary title-2xl-semi-bold">
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
             {t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
+          <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
             {workflowsInUse > 0
               ? t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })
               : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}
           </AlertDialogDescription>
           {workflowsInUse > 0 && (
             <div className="mt-6">
-              <div className="mb-2 text-text-secondary system-sm-medium">
+              <div className="mb-2 system-sm-medium text-text-secondary">
                 {t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}
               </div>
               <Input

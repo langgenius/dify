@@ -3,7 +3,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
-export type PluginItemProps = {
+type PluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
   language: Locale
@@ -31,12 +31,12 @@ const PluginItem: FC<PluginItemProps> = ({
           size="small"
           src={getIconUrl(plugin.icon)}
         />
-        <div className="absolute -bottom-0.5 -right-0.5 z-10">
+        <div className="absolute -right-0.5 -bottom-0.5 z-10">
           {statusIcon}
         </div>
       </div>
       <div className="flex min-w-0 grow flex-col gap-0.5 px-1">
-        <div className="truncate text-text-secondary system-sm-medium">
+        <div className="truncate system-sm-medium text-text-secondary">
           {plugin.labels[language]}
         </div>
         <div className={`system-xs-regular ${statusClassName || 'text-text-tertiary'}`}>
@@ -47,7 +47,7 @@ const PluginItem: FC<PluginItemProps> = ({
       {onClear && (
         <button
           type="button"
-          className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-state-base-hover-alt group-hover/item:flex"
+          className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-md group-hover/item:flex hover:bg-state-base-hover-alt"
           onClick={onClear}
         >
           <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />

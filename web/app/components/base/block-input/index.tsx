@@ -1,10 +1,10 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 import VarHighlight from '../../app/configuration/base/var-highlight'
 import { toast } from '../ui/toast'
@@ -29,7 +29,7 @@ export const getInputKeys = (value: string) => {
   return res
 }
 
-export type IBlockInputProps = {
+type IBlockInputProps = {
   value: string
   className?: string // wrapper class
   highLightClassName?: string // class for the highlighted text default is text-blue-500
@@ -63,7 +63,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = cn({
-    'block h-full w-full break-all border-0 px-4 py-2 text-sm text-gray-900 outline-0': true,
+    'block h-full w-full border-0 px-4 py-2 text-sm break-all text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
 
@@ -75,7 +75,7 @@ const BlockInput: FC<IBlockInputProps> = ({
         return (
           <VarHighlight
             key={`var-${index}`}
-            name={variableMatch[1]}
+            name={variableMatch[1]!}
           />
         )
       }

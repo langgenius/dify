@@ -3,8 +3,6 @@ from typing import Literal, TypedDict, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -28,6 +26,8 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
@@ -36,7 +36,7 @@ from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowR
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
-from services.workflow_run_service import WorkflowRunService
+from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
 
 
 def _build_backstage_input_url(form_token: str | None) -> str | None:
@@ -214,7 +214,11 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         Get advanced chat app workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args = args_model.model_dump(exclude_none=True)
+        args: WorkflowRunListArgs = {"limit": args_model.limit}
+        if args_model.last_id is not None:
+            args["last_id"] = args_model.last_id
+        if args_model.status is not None:
+            args["status"] = args_model.status
 
         # Default to DEBUGGING if not specified
         triggered_from = (
@@ -356,7 +360,11 @@ class WorkflowRunListApi(Resource):
         Get workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args = args_model.model_dump(exclude_none=True)
+        args: WorkflowRunListArgs = {"limit": args_model.limit}
+        if args_model.last_id is not None:
+            args["last_id"] = args_model.last_id
+        if args_model.status is not None:
+            args["status"] = args_model.status
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (

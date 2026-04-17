@@ -1,30 +1,30 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import * as React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 type TooltipContentVariant = 'default' | 'plain'
 
-export type TooltipContentProps = {
-  children: React.ReactNode
+type TooltipContentProps = {
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
+  positionerClassName?: string
   className?: string
-  popupClassName?: string
   variant?: TooltipContentVariant
-} & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children' | 'className'>
+} & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
 
 export function TooltipContent({
   children,
   placement = 'top',
   sideOffset = 8,
   alignOffset = 0,
+  positionerClassName,
   className,
-  popupClassName,
   variant = 'default',
   ...props
 }: TooltipContentProps) {
@@ -37,13 +37,13 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-1002 outline-hidden', positionerClassName)}
       >
         <BaseTooltip.Popup
           className={cn(
-            variant === 'default' && 'max-w-[300px] wrap-break-word rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
-            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none',
-            popupClassName,
+            variant === 'default' && 'max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
+            className,
           )}
           {...props}
         >

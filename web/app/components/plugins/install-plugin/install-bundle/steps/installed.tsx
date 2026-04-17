@@ -4,7 +4,7 @@ import type { InstallStatus, Plugin } from '../../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import Card from '@/app/components/plugins/card'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import useGetIcon from '../../base/use-get-icon'
@@ -36,10 +36,10 @@ const Installed: FC<Props> = ({
                 className="w-full"
                 payload={{
                   ...plugin,
-                  icon: installStatus[index].isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon` : getIconUrl(plugin.icon),
+                  icon: installStatus[index]!.isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon` : getIconUrl(plugin.icon),
                 }}
-                installed={installStatus[index].success}
-                installFailed={!installStatus[index].success}
+                installed={installStatus[index]!.success}
+                installFailed={!installStatus[index]!.success}
                 titleLeft={plugin.version ? <Badge className="mx-1" size="s" state={BadgeState.Default}>{plugin.version}</Badge> : null}
               />
             )

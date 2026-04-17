@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { InputVarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import FormItem from './form-item'
 
 export type Props = {
@@ -61,13 +60,13 @@ const Form: FC<Props> = ({
       onChange(newValues)
     }
   }, [valuesRef, onChange, mapKeysWithSameValueSelector])
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
+  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type!)
   const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
 
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
-      const key = inputs[0].variable
+      const key = inputs[0]!.variable
       if (!draft[key])
         draft[key] = []
       draft[key].push(isContext ? RETRIEVAL_OUTPUT_STRUCT : '')
@@ -79,9 +78,11 @@ const Form: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className="mb-1 flex items-center justify-between">
-          <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">{label}</div>
+          <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">{label}</div>
           {isArrayLikeType && !isIteratorItemFile && (
-            <AddButton onClick={handleAddContext} />
+            <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddContext} data-testid="add-button">
+              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+            </div>
           )}
         </div>
       )}

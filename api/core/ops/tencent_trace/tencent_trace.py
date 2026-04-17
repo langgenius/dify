@@ -4,10 +4,6 @@ Tencent APM tracing implementation with separated concerns
 
 import logging
 
-from graphon.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from graphon.nodes import BuiltinNodeTypes
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -29,6 +25,10 @@ from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.ops.tencent_trace.utils import TencentTraceUtils
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
+from graphon.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+)
+from graphon.nodes import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
@@ -241,8 +241,10 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-                current_tenant = (
-                    session.query(TenantAccountJoin).filter_by(account_id=service_account.id, current=True).first()
+                current_tenant = session.scalar(
+                    select(TenantAccountJoin)
+                    .where(TenantAccountJoin.account_id == service_account.id, TenantAccountJoin.current.is_(True))
+                    .limit(1)
                 )
                 if not current_tenant:
                     raise ValueError(f"Current tenant not found for account {service_account.id}")

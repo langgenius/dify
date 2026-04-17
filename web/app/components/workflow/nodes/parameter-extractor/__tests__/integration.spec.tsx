@@ -22,6 +22,9 @@ import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
 
+const reasoningModeFunctionToolCallingLabel = 'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
+const reasoningModePromptLabel = 'workflow.nodes.parameterExtractor.reasoningModePrompt'
+
 type MockToolCollection = {
   id: string
   tools: Array<{
@@ -735,8 +738,8 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'Function/Tool Calling' }))
-      await user.click(screen.getByRole('button', { name: 'Prompt' }))
+      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
+      await user.click(screen.getByRole('button', { name: reasoningModePromptLabel }))
 
       expect(onChange).toHaveBeenNthCalledWith(1, ReasoningModeType.functionCall)
       expect(onChange).toHaveBeenNthCalledWith(2, ReasoningModeType.prompt)
@@ -826,7 +829,7 @@ describe('parameter-extractor path', () => {
         target: { value: 'Extract city, budget, and due date' },
       })
       await user.click(screen.getByRole('button', { name: 'memory-config' }))
-      await user.click(screen.getByRole('button', { name: 'Function/Tool Calling' }))
+      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
 
       expect(handleModelChanged).toHaveBeenCalledWith({
         provider: 'anthropic',

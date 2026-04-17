@@ -2,12 +2,12 @@ from typing import Any
 
 from flask import request
 from flask_restx import marshal
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
@@ -22,6 +22,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from services.dataset_service import DatasetService, DocumentService, SegmentService
@@ -32,25 +33,25 @@ from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingS
 from services.summary_index_service import SummaryIndexService
 
 
-def _marshal_segment_with_summary(segment, dataset_id: str) -> dict:
+def _marshal_segment_with_summary(segment, dataset_id: str) -> dict[str, Any]:
     """Marshal a single segment and enrich it with summary content."""
-    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+    segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
     summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
     segment_dict["summary"] = summary.summary_content if summary else None
     return segment_dict
 
 
-def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict]:
+def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict[str, Any]]:
     """Marshal multiple segments and enrich them with summary content (batch query)."""
     segment_ids = [segment.id for segment in segments]
-    summaries: dict = {}
+    summaries: dict[str, str | None] = {}
     if segment_ids:
         summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
         summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
 
-    result = []
+    result: list[dict[str, Any]] = []
     for segment in segments:
-        segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+        segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
         segment_dict["summary"] = summaries.get(segment.id)
         result.append(segment_dict)
     return result
@@ -69,18 +70,10 @@ class SegmentUpdatePayload(BaseModel):
     segment: SegmentUpdateArgs
 
 
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
 class ChildChunkListQuery(BaseModel):
     limit: int = Field(default=20, ge=1)
     keyword: str | None = None
     page: int = Field(default=1, ge=1)
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 register_schema_models(

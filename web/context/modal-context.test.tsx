@@ -112,7 +112,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
     expect(latestTriggerEventsModalProps).toMatchObject({
       usage: 3000,
       total: 3000,
@@ -127,7 +127,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await waitFor(() => {
       expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
     })
-    const [key, value] = setItemSpy.mock.calls[0]
+    const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [any, any]
     expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
   })
@@ -150,7 +150,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
 
     act(() => {
       latestTriggerEventsModalProps.onClose()
@@ -178,7 +178,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
 
     act(() => {
       latestTriggerEventsModalProps.onClose()

@@ -1,129 +1,98 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
+import {
+  overlayLabelClassName,
+  overlaySeparatorClassName,
+} from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
+/** @public */
 export const SelectGroup = BaseSelect.Group
-export const SelectGroupLabel = BaseSelect.GroupLabel
-export const SelectSeparator = BaseSelect.Separator
 
-export const selectTriggerVariants = cva(
-  '',
+const selectTriggerVariants = cva(
+  [
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+    'data-placeholder:text-components-input-text-placeholder',
+    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
+    'data-disabled:data-placeholder:text-components-input-text-disabled',
+  ],
   {
     variants: {
       size: {
-        small: 'h-6 gap-px rounded-md px-[5px] py-0 system-xs-regular',
-        regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
-        large: 'h-9 gap-0.5 radius-lg px-2.5 py-1 system-md-regular',
-      },
-      variant: {
-        default: '',
-        destructive: 'border border-components-input-border-destructive bg-components-input-bg-destructive shadow-xs hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive',
+        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
       },
     },
     defaultVariants: {
-      size: 'regular',
-      variant: 'default',
+      size: 'medium',
     },
   },
 )
 
-const contentPadding: Record<string, string> = {
-  small: 'px-[3px] py-1',
-  regular: 'p-1',
-  large: 'px-1.5 py-1',
-}
-
-type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
-  clearable?: boolean
-  onClear?: () => void
-  loading?: boolean
-} & VariantProps<typeof selectTriggerVariants>
+type SelectTriggerProps
+  = Omit<BaseSelect.Trigger.Props, 'className'>
+    & VariantProps<typeof selectTriggerVariants>
+    & { className?: string }
 
 export function SelectTrigger({
   className,
   children,
-  size = 'regular',
-  variant = 'default',
-  clearable = false,
-  onClear,
-  loading = false,
+  size,
   ...props
 }: SelectTriggerProps) {
-  const paddingClass = contentPadding[size ?? 'regular']
-  const isDestructive = variant === 'destructive'
-
-  let trailingIcon: React.ReactNode = null
-  if (loading) {
-    trailingIcon = (
-      <span className="shrink-0 text-text-quaternary" aria-hidden="true">
-        <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin" />
-      </span>
-    )
-  }
-  else if (isDestructive) {
-    trailingIcon = (
-      <span className="shrink-0 text-text-destructive-secondary" aria-hidden="true">
-        <span className="i-ri-error-warning-line h-4 w-4" />
-      </span>
-    )
-  }
-  else if (clearable) {
-    trailingIcon = (
-      <span
-        role="button"
-        aria-label="Clear selection"
-        tabIndex={-1}
-        className="shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary group-data-disabled:hidden group-data-readonly:hidden"
-        onClick={(e) => {
-          e.stopPropagation()
-          onClear?.()
-        }}
-        onMouseDown={e => e.stopPropagation()}
-      >
-        <span className="i-ri-close-circle-fill h-3.5 w-3.5" aria-hidden="true" />
-      </span>
-    )
-  }
-  else {
-    trailingIcon = (
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-open:text-text-secondary group-data-readonly:hidden">
-        <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
-      </BaseSelect.Icon>
-    )
-  }
-
   return (
     <BaseSelect.Trigger
-      className={cn(
-        'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-        'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
-        'data-placeholder:text-components-input-text-placeholder',
-        selectTriggerVariants({ size, variant }),
-        'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-        'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-        'data-disabled:data-placeholder:text-components-input-text-disabled',
-        className,
-      )}
+      className={cn(selectTriggerVariants({ size, className }))}
       {...props}
     >
-      <span className={cn('min-w-0 grow truncate', paddingClass)}>
+      <span className="min-w-0 grow truncate">
         {children}
       </span>
-      {trailingIcon}
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
+        <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
+      </BaseSelect.Icon>
     </BaseSelect.Trigger>
   )
 }
 
+export function SelectLabel({
+  className,
+  ...props
+}: BaseSelect.GroupLabel.Props) {
+  return (
+    <BaseSelect.GroupLabel
+      className={cn(overlayLabelClassName, className)}
+      {...props}
+    />
+  )
+}
+
+/** @public */
+export function SelectSeparator({
+  className,
+  ...props
+}: BaseSelect.Separator.Props) {
+  return (
+    <BaseSelect.Separator
+      className={cn(overlaySeparatorClassName, className)}
+      {...props}
+    />
+  )
+}
+
 type SelectContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -131,15 +100,15 @@ type SelectContentProps = {
   popupClassName?: string
   listClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Positioner>,
+    BaseSelect.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Popup>,
+    BaseSelect.Popup.Props,
     'children' | 'className'
   >
   listProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.List>,
+    BaseSelect.List.Props,
     'children' | 'className'
   >
 }
@@ -171,14 +140,14 @@ export function SelectContent({
       >
         <BaseSelect.Popup
           className={cn(
-            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
+            'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}
         >
           <BaseSelect.List
-            className={cn('max-h-80 min-w-40 overflow-auto p-1 outline-hidden', listClassName)}
+            className={cn('max-h-80 overflow-auto p-1 outline-hidden', listClassName)}
             {...listProps}
           >
             {children}
@@ -191,24 +160,42 @@ export function SelectContent({
 
 export function SelectItem({
   className,
-  children,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Item>) {
+}: BaseSelect.Item.Props) {
   return (
     <BaseSelect.Item
       className={cn(
-        'flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary outline-hidden system-sm-medium',
-        'data-disabled:cursor-not-allowed data-highlighted:bg-state-base-hover data-disabled:opacity-50',
+        'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
         className,
       )}
       {...props}
+    />
+  )
+}
+
+export function SelectItemText({
+  className,
+  ...props
+}: BaseSelect.ItemText.Props) {
+  return (
+    <BaseSelect.ItemText
+      className={cn('mr-1 min-w-0 grow truncate px-1', className)}
+      {...props}
+    />
+  )
+}
+
+export function SelectItemIndicator({
+  className,
+  ...props
+}: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
+  return (
+    <BaseSelect.ItemIndicator
+      className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}
+      {...props}
     >
-      <BaseSelect.ItemText className="mr-1 min-w-0 grow truncate px-1">
-        {children}
-      </BaseSelect.ItemText>
-      <BaseSelect.ItemIndicator className="flex shrink-0 items-center text-text-accent">
-        <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
-      </BaseSelect.ItemIndicator>
-    </BaseSelect.Item>
+      <span className="i-ri-check-line h-4 w-4" aria-hidden />
+    </BaseSelect.ItemIndicator>
   )
 }

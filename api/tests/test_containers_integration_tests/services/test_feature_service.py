@@ -274,6 +274,7 @@ class TestFeatureService:
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
             mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
+            mock_config.ENABLE_COLLABORATION_MODE = True
             mock_config.ALLOW_REGISTER = False
             mock_config.ALLOW_CREATE_WORKSPACE = False
             mock_config.MAIL_TYPE = "smtp"
@@ -298,6 +299,7 @@ class TestFeatureService:
         # Verify authentication settings
         assert result.enable_email_code_login is True
         assert result.enable_email_password_login is False
+        assert result.enable_collaboration_mode is True
         assert result.is_allow_register is False
         assert result.is_allow_create_workspace is False
 
@@ -401,6 +403,7 @@ class TestFeatureService:
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
             mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
+            mock_config.ENABLE_COLLABORATION_MODE = False
             mock_config.ALLOW_REGISTER = True
             mock_config.ALLOW_CREATE_WORKSPACE = True
             mock_config.MAIL_TYPE = "smtp"
@@ -422,6 +425,7 @@ class TestFeatureService:
             assert result.enable_email_code_login is True
             assert result.enable_email_password_login is True
             assert result.enable_social_oauth_login is False
+            assert result.enable_collaboration_mode is False
             assert result.is_allow_register is True
             assert result.is_allow_create_workspace is True
             assert result.is_email_setup is True

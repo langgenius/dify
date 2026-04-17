@@ -2,9 +2,9 @@
 import { useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import DSLConfirmModal from './dsl-confirm-modal'
 import Header from './header'
 import { CreateFromDSLModalTab, useDSLImport } from './hooks/use-dsl-import'
@@ -78,7 +78,7 @@ const CreateFromDSLModal = ({
           )}
           {currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
-              <div className="system-md-semibold leading6 mb-1 text-text-secondary">
+              <div className="leading6 mb-1 system-md-semibold text-text-secondary">
                 DSL URL
               </div>
               <Input

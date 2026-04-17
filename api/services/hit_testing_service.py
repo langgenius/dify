@@ -1,9 +1,7 @@
 import json
 import logging
 import time
-from typing import Any
-
-from graphon.model_runtime.entities import LLMMode
+from typing import Any, TypedDict
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -12,11 +10,22 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
+from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
 
 logger = logging.getLogger(__name__)
+
+
+class QueryDict(TypedDict):
+    content: str
+
+
+class RetrieveResponseDict(TypedDict):
+    query: QueryDict
+    records: list[dict[str, Any]]
+
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -34,8 +43,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: Any,  # FIXME drop this any
-        external_retrieval_model: dict,
+        retrieval_model: dict[str, Any] | None,
+        external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
     ):
@@ -44,12 +53,13 @@ class HitTestingService:
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+        assert isinstance(retrieval_model, dict)
         document_ids_filter = None
         metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions and query:
             dataset_retrieval = DatasetRetrieval()
 
-            from core.app.app_config.entities import MetadataFilteringCondition
+            from core.rag.entities import MetadataFilteringCondition
 
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
@@ -114,8 +124,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        external_retrieval_model: dict | None = None,
-        metadata_filtering_conditions: dict | None = None,
+        external_retrieval_model: dict[str, Any] | None = None,
+        metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         if dataset.provider != "external":
             return {
@@ -150,7 +160,7 @@ class HitTestingService:
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
+    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> RetrieveResponseDict:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
@@ -161,7 +171,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[Any, Any]:
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> RetrieveResponseDict:
         records = []
         if dataset.provider == "external":
             for document in documents:

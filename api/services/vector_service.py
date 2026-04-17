@@ -1,21 +1,21 @@
 import logging
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import delete, select
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 logger = logging.getLogger(__name__)
 

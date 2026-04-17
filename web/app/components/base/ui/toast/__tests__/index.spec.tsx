@@ -31,13 +31,13 @@ describe('base/ui/toast', () => {
 
     expect(await screen.findByText('Saved')).toBeInTheDocument()
     expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    const viewport = screen.getByRole('region', { name: 'common.toast.notifications' })
+    const viewport = screen.getByRole('region', { name: 'Notifications' })
     expect(viewport).toHaveAttribute('aria-live', 'polite')
-    expect(viewport).toHaveClass('z-1101')
+    expect(viewport).toHaveClass('z-1003')
     expect(viewport.firstElementChild).toHaveClass('top-4')
     expect(screen.getByRole('dialog')).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
-    expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).toBeInTheDocument()
+    expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
   })
 
   // Collapsed stacks should keep multiple toast roots mounted for smooth stack animation.
@@ -57,12 +57,12 @@ describe('base/ui/toast', () => {
 
     expect(await screen.findByText('Third toast')).toBeInTheDocument()
     expect(screen.getAllByRole('dialog')).toHaveLength(3)
-    expect(document.body.querySelectorAll('button[aria-label="common.toast.close"][aria-hidden="true"]')).toHaveLength(3)
+    expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'common.toast.notifications' }))
+    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
 
     await waitFor(() => {
-      expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).not.toBeInTheDocument()
+      expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
     })
   })
 
@@ -126,9 +126,9 @@ describe('base/ui/toast', () => {
       })
     })
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'common.toast.notifications' }))
+    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
 
-    const dismissButton = await screen.findByRole('button', { name: 'common.toast.close' })
+    const dismissButton = await screen.findByRole('button', { name: 'Close notification' })
 
     act(() => {
       dismissButton.click()
@@ -249,6 +249,32 @@ describe('base/ui/toast', () => {
     expect(screen.getByText('Done')).toBeInTheDocument()
     expect(screen.getByText('Your data is ready.')).toBeInTheDocument()
     expect(screen.queryByText('Loading')).not.toBeInTheDocument()
+  })
+
+  // Re-adding the same toast id should upsert in place instead of stacking duplicates.
+  it('should upsert an existing toast when add is called with the same id', async () => {
+    render(<ToastHost />)
+
+    act(() => {
+      toast('Syncing', {
+        id: 'sync-job',
+        description: 'Uploading changes…',
+      })
+    })
+
+    expect(await screen.findByText('Syncing')).toBeInTheDocument()
+
+    act(() => {
+      toast.success('Synced', {
+        id: 'sync-job',
+        description: 'All changes are uploaded.',
+      })
+    })
+
+    expect(screen.queryByText('Syncing')).not.toBeInTheDocument()
+    expect(screen.getByText('Synced')).toBeInTheDocument()
+    expect(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
   })
 
   // Action props should pass through to the Base UI action button.

@@ -1,8 +1,8 @@
 import type { HTMLProps, PropsWithChildren } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 
-export type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
+type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
   icon?: React.ReactNode
   link?: string
   disabled?: boolean
@@ -24,7 +24,7 @@ const SuggestedAction = ({ icon, link, disabled, children, className, onClick, .
       {...props}
     >
       <div className="relative h-4 w-4">{icon}</div>
-      <div className="system-sm-medium shrink grow basis-0">{children}</div>
+      <div className="shrink grow basis-0 system-sm-medium">{children}</div>
       <RiArrowRightUpLine className="h-3.5 w-3.5" />
     </a>
   )

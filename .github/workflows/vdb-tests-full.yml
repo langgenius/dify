@@ -36,7 +36,7 @@ jobs:
           remove_tool_cache: true
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -89,7 +89,7 @@ jobs:
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
 #      - name: Check VDB Ready (TiDB)
-#        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+#        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: uv run --project api bash dev/pytest/pytest_vdb.sh

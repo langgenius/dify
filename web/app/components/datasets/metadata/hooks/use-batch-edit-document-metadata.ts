@@ -45,7 +45,7 @@ const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds,
           }
         }
         if (itemInRes && itemInRes.value !== item.value) {
-          idNameValue[item.id].isMultipleValue = true
+          idNameValue[item.id]!.isMultipleValue = true
           itemInRes.isMultipleValue = true
           itemInRes.value = null
           return
@@ -82,7 +82,7 @@ const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds,
       // Find the document in docList to get its metadata
       const docIndex = docList.findIndex(doc => doc.id === documentId)
       const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
-      let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
+      let newMetadataList: MetadataItemWithValue[] = [...(oldMetadataList ?? []), ...addedList]
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
         })

@@ -41,7 +41,7 @@ export type Strategy = {
   meta?: PluginMeta
 }
 
-export type AgentStrategyProps = {
+type AgentStrategyProps = {
   strategy?: Strategy
   onStrategyChange: (strategy?: Strategy) => void
   formSchema: CredentialFormSchema[]
@@ -159,11 +159,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   max={def.max}
                   onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
                 >
-                  <NumberFieldGroup size="regular">
-                    <NumberFieldInput size="regular" className="w-12" />
+                  <NumberFieldGroup>
+                    <NumberFieldInput className="w-12" />
                     <NumberFieldControls>
-                      <NumberFieldIncrement size="regular" />
-                      <NumberFieldDecrement size="regular" />
+                      <NumberFieldIncrement />
+                      <NumberFieldDecrement />
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>

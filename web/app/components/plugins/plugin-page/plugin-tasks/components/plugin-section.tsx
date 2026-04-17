@@ -3,7 +3,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import PluginItem from './plugin-item'
 
-export type PluginSectionProps = {
+type PluginSectionProps = {
   title: string
   count: number
   plugins: PluginStatus[]
@@ -35,7 +35,7 @@ const PluginSection: FC<PluginSectionProps> = ({
 
   return (
     <>
-      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary system-sm-semibold-uppercase">
+      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
         {title}
         {' '}
         (

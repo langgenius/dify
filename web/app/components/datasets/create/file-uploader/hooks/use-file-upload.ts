@@ -19,7 +19,7 @@ export type FileUploadConfig = {
   file_upload_limit: number
 }
 
-export type UseFileUploadOptions = {
+type UseFileUploadOptions = {
   fileList: FileItem[]
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
@@ -33,7 +33,7 @@ export type UseFileUploadOptions = {
   allowedExtensions?: string[]
 }
 
-export type UseFileUploadReturn = {
+type UseFileUploadReturn = {
   // Refs
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>

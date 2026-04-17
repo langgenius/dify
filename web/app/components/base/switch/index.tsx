@@ -2,9 +2,9 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 const switchRootStateClassName = 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
 
@@ -13,10 +13,10 @@ const switchRootVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-2.5 w-3.5 radius-2xs p-0.5',
+        xs: 'h-2.5 w-3.5 rounded-xs p-0.5',
         sm: 'h-3 w-5 rounded-[3.5px] p-0.5',
         md: 'h-4 w-7 rounded-[5px] p-0.5',
-        lg: 'h-5 w-9 radius-sm p-[3px]',
+        lg: 'h-5 w-9 rounded-md p-[3px]',
       },
     },
     defaultVariants: {
@@ -31,9 +31,9 @@ const switchThumbVariants = cva(
     variants: {
       size: {
         xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5',
-        sm: 'h-2 w-[7px] radius-2xs data-checked:translate-x-[9px]',
+        sm: 'h-2 w-[7px] rounded-xs data-checked:translate-x-[9px]',
         md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-[14px]',
-        lg: 'size-3.5 radius-xs data-checked:translate-x-4',
+        lg: 'size-3.5 rounded-sm data-checked:translate-x-4',
       },
     },
     defaultVariants: {
@@ -62,8 +62,8 @@ const spinnerSizeConfig: Partial<Record<SwitchSize, {
 }
 
 type SwitchProps = {
-  'value': boolean
-  'onChange'?: (value: boolean) => void
+  'checked': boolean
+  'onCheckedChange'?: (checked: boolean) => void
   'size'?: SwitchSize
   'disabled'?: boolean
   'loading'?: boolean
@@ -75,8 +75,8 @@ type SwitchProps = {
 
 const Switch = ({
   ref,
-  value,
-  onChange,
+  checked,
+  onCheckedChange,
   size = 'md',
   disabled = false,
   loading = false,
@@ -93,8 +93,8 @@ const Switch = ({
   return (
     <BaseSwitch.Root
       ref={ref}
-      checked={value}
-      onCheckedChange={checked => onChange?.(checked)}
+      checked={checked}
+      onCheckedChange={value => onCheckedChange?.(value)}
       disabled={isDisabled}
       aria-busy={loading || undefined}
       aria-label={ariaLabel}
@@ -111,7 +111,7 @@ const Switch = ({
               className={cn(
                 'absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
                 spinner.icon,
-                value ? spinner.checkedPosition : spinner.uncheckedPosition,
+                checked ? spinner.checkedPosition : spinner.uncheckedPosition,
               )}
               aria-hidden="true"
             >

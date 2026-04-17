@@ -1,10 +1,10 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
 

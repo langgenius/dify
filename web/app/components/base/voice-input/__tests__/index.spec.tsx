@@ -101,9 +101,9 @@ describe('VoiceInput', () => {
     // eslint-disable-next-line ts/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(recorder.start).toHaveBeenCalled()
-    expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-stop')).toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
+    expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-stop'))!.toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-timer'))!.toHaveTextContent('00:00')
   })
 
   it('should call onCancel when recording start fails', async () => {
@@ -126,9 +126,9 @@ describe('VoiceInput', () => {
 
     // eslint-disable-next-line ts/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
-    expect(await screen.findByTestId('voice-input-converting-text')).toBeInTheDocument()
-    expect(screen.getByText('common.voiceInput.converting')).toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-loader')).toBeInTheDocument()
+    expect(await screen.findByTestId('voice-input-converting-text'))!.toBeInTheDocument()
+    expect(screen.getByText('common.voiceInput.converting'))!.toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-loader'))!.toBeInTheDocument()
 
     await waitFor(() => {
       expect(recorder.stop).toHaveBeenCalled()
@@ -216,7 +216,7 @@ describe('VoiceInput', () => {
 
     await waitFor(() => {
       expect(audioToText).toHaveBeenCalled()
-      const formData = vi.mocked(audioToText).mock.calls[0][2] as FormData
+      const formData = vi.mocked(audioToText).mock.calls[0]![2] as FormData
       expect(formData.get('word_timestamps')).toBe('enabled')
     })
   })
@@ -311,13 +311,13 @@ describe('VoiceInput', () => {
 
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     const timer = await screen.findByTestId('voice-input-timer')
-    expect(timer).toHaveTextContent('00:00')
+    expect(timer)!.toHaveTextContent('00:00')
 
     await act(async () => {
       if (rafState.callback)
         rafState.callback()
     })
-    expect(timer).toHaveTextContent('00:01')
+    expect(timer)!.toHaveTextContent('00:01')
 
     for (let i = 0; i < 9; i++) {
       await act(async () => {
@@ -325,7 +325,7 @@ describe('VoiceInput', () => {
           rafState.callback()
       })
     }
-    expect(timer).toHaveTextContent('00:10')
+    expect(timer)!.toHaveTextContent('00:10')
   })
 
   it('should show timer element with formatted time', async () => {
@@ -333,7 +333,7 @@ describe('VoiceInput', () => {
 
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     const timer = screen.getByTestId('voice-input-timer')
-    expect(timer).toBeInTheDocument()
+    expect(timer)!.toBeInTheDocument()
     // Initial state should show 00:00
     expect(timer.textContent).toMatch(/0\d:\d{2}/)
   })
@@ -364,7 +364,7 @@ describe('VoiceInput', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     await screen.findByTestId('voice-input-stop')
 
-    expect(screen.getByTestId('voice-input-stop')).toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-stop'))!.toBeInTheDocument()
 
     dprSpy.mockRestore()
   })
@@ -387,7 +387,7 @@ describe('VoiceInput', () => {
 
   it('should render speaking state indicator', async () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
+    expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
   })
 
   it('should cleanup on unmount', () => {
@@ -442,7 +442,7 @@ describe('VoiceInput', () => {
     await waitFor(() => {
       const calls = vi.mocked(audioToText).mock.calls
       expect(calls.length).toBeGreaterThan(0)
-      const [url, sourceType, formData] = calls[0]
+      const [url, sourceType, formData] = (calls[0] ?? []) as [any, any, any]
       expect(url).toBe('/audio-to-text')
       expect(sourceType).toBe('webApp')
       expect(formData.get('word_timestamps')).toBe('enabled')
@@ -471,12 +471,12 @@ describe('VoiceInput', () => {
   it('should render timer with initial 00:00 value', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     const timer = screen.getByTestId('voice-input-timer')
-    expect(timer).toHaveTextContent('00:00')
+    expect(timer)!.toHaveTextContent('00:00')
   })
 
   it('should render stop button during recording', async () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByTestId('voice-input-stop')).toBeInTheDocument()
+    expect(await screen.findByTestId('voice-input-stop'))!.toBeInTheDocument()
   })
 
   it('should render converting UI after stopping', async () => {
@@ -489,8 +489,8 @@ describe('VoiceInput', () => {
     await user.click(stopBtn)
 
     await screen.findByTestId('voice-input-loader')
-    expect(screen.getByTestId('voice-input-converting-text')).toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-cancel')).toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-converting-text'))!.toBeInTheDocument()
+    expect(screen.getByTestId('voice-input-cancel'))!.toBeInTheDocument()
   })
 
   it('should auto-stop recording and convert audio when duration reaches 10 minutes (600s)', async () => {
@@ -498,7 +498,7 @@ describe('VoiceInput', () => {
     mockState.params = { token: 'abc' }
 
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByTestId('voice-input-stop')).toBeInTheDocument()
+    expect(await screen.findByTestId('voice-input-stop'))!.toBeInTheDocument()
 
     for (let i = 0; i < 601; i++) {
       await act(async () => {
@@ -507,7 +507,7 @@ describe('VoiceInput', () => {
       })
     }
 
-    expect(await screen.findByTestId('voice-input-converting-text')).toBeInTheDocument()
+    expect(await screen.findByTestId('voice-input-converting-text'))!.toBeInTheDocument()
     await waitFor(() => {
       expect(onConverted).toHaveBeenCalledWith('auto-stopped text')
     })

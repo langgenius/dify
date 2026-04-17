@@ -1,3 +1,5 @@
+from typing import Any
+
 import yaml
 from sqlalchemy import select
 
@@ -13,12 +15,12 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict:
+    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         _, current_tenant_id = current_account_with_tenant()
         result = self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
         return result
 
-    def get_pipeline_template_detail(self, template_id: str):
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
@@ -26,7 +28,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.CUSTOMIZED
 
     @classmethod
-    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict:
+    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param tenant_id: tenant id
@@ -53,7 +55,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID

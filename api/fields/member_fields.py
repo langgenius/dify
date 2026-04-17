@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask_restx import fields
+from pydantic import computed_field, field_validator
+
+from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
 simple_account_fields = {
     "id": fields.String,
@@ -25,16 +27,6 @@ def _build_avatar_url(avatar: str | None) -> str | None:
     if avatar.startswith(("http://", "https://")):
         return avatar
     return file_helpers.get_signed_file_url(avatar)
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
 
 
 class SimpleAccount(ResponseModel):
