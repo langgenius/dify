@@ -6,7 +6,6 @@ import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '@langgenius/dify-ui/cn'
 import { parsePlacement } from '@langgenius/dify-ui/placement'
 
-// Type-only re-export: zero runtime cost under `verbatimModuleSyntax` (compiled away).
 // eslint-disable-next-line no-barrel-files/no-barrel-files
 export type { Placement }
 

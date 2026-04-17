@@ -66,11 +66,6 @@ export type SwitchProps
   = Omit<BaseSwitchNS.Root.Props, 'className' | 'size' | 'onCheckedChange'>
     & VariantProps<typeof switchRootVariants>
     & {
-      /**
-       * Called with the next checked value. The underlying event is omitted
-       * on purpose so the callback matches the React setter shape (`setFoo(bool)`),
-       * which is the overwhelmingly common use case for a toggle.
-       */
       onCheckedChange?: (checked: boolean) => void
       loading?: boolean
       className?: string

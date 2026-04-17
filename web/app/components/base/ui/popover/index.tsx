@@ -6,7 +6,6 @@ import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { parsePlacement } from '@langgenius/dify-ui/placement'
 
-// Type-only re-export: zero runtime cost under `verbatimModuleSyntax` (compiled away).
 // eslint-disable-next-line no-barrel-files/no-barrel-files
 export type { Placement }
 
