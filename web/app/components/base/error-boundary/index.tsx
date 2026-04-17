@@ -67,7 +67,7 @@ class ErrorBoundaryInner extends React.Component<
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
@@ -82,7 +82,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onError(error, errorInfo)
   }
 
-  componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: any) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
@@ -98,7 +98,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onResetKeysChange(prevProps.resetKeys)
   }
 
-  render() {
+  override render() {
     const { hasError, error, errorInfo, errorCount } = this.state
     const {
       fallback,

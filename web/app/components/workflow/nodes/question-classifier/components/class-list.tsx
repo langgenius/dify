@@ -65,7 +65,7 @@ const ClassList: FC<Props> = ({
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
-      handleEdgeDeleteByDeleteBranch(nodeId, list[index].id)
+      handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
       const newList = produce(list, (draft) => {
         draft.splice(index, 1)
       })
@@ -150,7 +150,7 @@ const ClassList: FC<Props> = ({
                         className={cn(canDrag && 'handle')}
                         headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
                         nodeId={nodeId}
-                        key={list[index].id}
+                        key={list[index]!.id}
                         payload={item}
                         onChange={handleClassChange(index)}
                         onRemove={handleRemoveClass(index)}

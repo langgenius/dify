@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
+from graphon.enums import BuiltinNodeTypes
 
 
 class DummyNode:

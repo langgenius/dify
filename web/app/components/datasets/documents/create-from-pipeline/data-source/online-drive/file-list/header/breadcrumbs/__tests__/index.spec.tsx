@@ -58,7 +58,7 @@ describe('Breadcrumbs', () => {
 
       // Assert - Container should be in the document
       const container = document.querySelector('.flex.grow')
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render with correct container styles', () => {
@@ -67,10 +67,10 @@ describe('Breadcrumbs', () => {
       const { container } = render(<Breadcrumbs {...props} />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex')
-      expect(wrapper).toHaveClass('grow')
-      expect(wrapper).toHaveClass('items-center')
-      expect(wrapper).toHaveClass('overflow-hidden')
+      expect(wrapper)!.toHaveClass('flex')
+      expect(wrapper)!.toHaveClass('grow')
+      expect(wrapper)!.toHaveClass('items-center')
+      expect(wrapper)!.toHaveClass('overflow-hidden')
     })
 
     describe('Search Results Display', () => {
@@ -84,7 +84,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Search result text should be displayed
-        expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/)).toBeInTheDocument()
+        // Assert - Search result text should be displayed
+        expect(screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/))!.toBeInTheDocument()
       })
 
       it('should not show search results when keywords is empty', () => {
@@ -121,7 +122,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should use bucket name in search result
-        expect(screen.getByText(/searchResult.*my-bucket/i)).toBeInTheDocument()
+        // Assert - Should use bucket name in search result
+        expect(screen.getByText(/searchResult.*my-bucket/i))!.toBeInTheDocument()
       })
 
       it('should use last breadcrumb as folderName when breadcrumbs exist', () => {
@@ -135,7 +137,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should use last breadcrumb in search result
-        expect(screen.getByText(/searchResult.*folder2/i)).toBeInTheDocument()
+        // Assert - Should use last breadcrumb in search result
+        expect(screen.getByText(/searchResult.*folder2/i))!.toBeInTheDocument()
       })
     })
 
@@ -150,7 +153,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
       })
 
       it('should not show all buckets title when breadcrumbs exist', () => {
@@ -175,6 +178,37 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
+        // Assert - Should show bucket name instead
         expect(screen.queryByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).not.toBeInTheDocument()
       })
     })
@@ -190,7 +224,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Bucket name should be displayed
-        expect(screen.getByText('test-bucket')).toBeInTheDocument()
+        // Assert - Bucket name should be displayed
+        expect(screen.getByText('test-bucket'))!.toBeInTheDocument()
       })
 
       it('should not render Bucket when hasBucket is false', () => {
@@ -202,6 +237,37 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
+        // Assert - Bucket should not be displayed, Drive should be shown instead
         // Assert - Bucket should not be displayed, Drive should be shown instead
         expect(screen.queryByText('test-bucket')).not.toBeInTheDocument()
       })
@@ -217,7 +283,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - "All Files" should be displayed
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles')).toBeInTheDocument()
+        // Assert - "All Files" should be displayed
+        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
       })
 
       it('should not render Drive component when hasBucket is true', () => {
@@ -243,8 +310,8 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('folder1')).toBeInTheDocument()
-        expect(screen.getByText('folder2')).toBeInTheDocument()
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder2'))!.toBeInTheDocument()
       })
 
       it('should render last breadcrumb as active', () => {
@@ -257,8 +324,8 @@ describe('Breadcrumbs', () => {
 
         // Assert - Last breadcrumb should have active styles
         const lastBreadcrumb = screen.getByText('folder2')
-        expect(lastBreadcrumb).toHaveClass('system-sm-medium')
-        expect(lastBreadcrumb).toHaveClass('text-text-secondary')
+        expect(lastBreadcrumb)!.toHaveClass('system-sm-medium')
+        expect(lastBreadcrumb)!.toHaveClass('text-text-secondary')
       })
 
       it('should render non-last breadcrumbs with tertiary styles', () => {
@@ -271,8 +338,8 @@ describe('Breadcrumbs', () => {
 
         // Assert - First breadcrumb should have tertiary styles
         const firstBreadcrumb = screen.getByText('folder1')
-        expect(firstBreadcrumb).toHaveClass('system-sm-regular')
-        expect(firstBreadcrumb).toHaveClass('text-text-tertiary')
+        expect(firstBreadcrumb)!.toHaveClass('system-sm-regular')
+        expect(firstBreadcrumb)!.toHaveClass('text-text-tertiary')
       })
     })
 
@@ -287,7 +354,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Dropdown trigger (more button) should be present
-        expect(screen.getByRole('button', { name: '' })).toBeInTheDocument()
+        // Assert - Dropdown trigger (more button) should be present
+        expect(screen.getByRole('button', { name: '' }))!.toBeInTheDocument()
       })
 
       it('should not show dropdown when breadcrumbs do not exceed displayBreadcrumbNum', () => {
@@ -301,8 +369,10 @@ describe('Breadcrumbs', () => {
 
         // Assert - Should not have dropdown, just regular breadcrumbs
         // All breadcrumbs should be directly visible
-        expect(screen.getByText('folder1')).toBeInTheDocument()
-        expect(screen.getByText('folder2')).toBeInTheDocument()
+        // Assert - Should not have dropdown, just regular breadcrumbs
+        // All breadcrumbs should be directly visible
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder2'))!.toBeInTheDocument()
         // Count buttons - should be 3 (allFiles + folder1 + folder2)
         const buttons = container.querySelectorAll('button')
         expect(buttons.length).toBe(3)
@@ -318,9 +388,41 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - First breadcrumb and last breadcrumb should be visible
-        expect(screen.getByText('folder1')).toBeInTheDocument()
-        expect(screen.getByText('folder2')).toBeInTheDocument()
-        expect(screen.getByText('folder5')).toBeInTheDocument()
+        // Assert - First breadcrumb and last breadcrumb should be visible
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder2'))!.toBeInTheDocument()
+        expect(screen.getByText('folder5'))!.toBeInTheDocument()
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
+        // Middle breadcrumbs should be in dropdown
         // Middle breadcrumbs should be in dropdown
         expect(screen.queryByText('folder3')).not.toBeInTheDocument()
         expect(screen.queryByText('folder4')).not.toBeInTheDocument()
@@ -341,8 +443,8 @@ describe('Breadcrumbs', () => {
 
         // Assert - Collapsed breadcrumbs should be visible
         await waitFor(() => {
-          expect(screen.getByText('folder3')).toBeInTheDocument()
-          expect(screen.getByText('folder4')).toBeInTheDocument()
+          expect(screen.getByText('folder3'))!.toBeInTheDocument()
+          expect(screen.getByText('folder4'))!.toBeInTheDocument()
         })
       })
     })
@@ -357,7 +459,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Only Drive should be visible
-        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles')).toBeInTheDocument()
+        // Assert - Only Drive should be visible
+        expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allFiles'))!.toBeInTheDocument()
       })
 
       it('should handle single breadcrumb', () => {
@@ -366,7 +469,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('single-folder')).toBeInTheDocument()
+        expect(screen.getByText('single-folder'))!.toBeInTheDocument()
       })
 
       it('should handle breadcrumbs with special characters', () => {
@@ -377,8 +480,8 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('folder [1]')).toBeInTheDocument()
-        expect(screen.getByText('folder (copy)')).toBeInTheDocument()
+        expect(screen.getByText('folder [1]'))!.toBeInTheDocument()
+        expect(screen.getByText('folder (copy)'))!.toBeInTheDocument()
       })
 
       it('should handle breadcrumbs with unicode characters', () => {
@@ -389,8 +492,8 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('文件夹')).toBeInTheDocument()
-        expect(screen.getByText('フォルダ')).toBeInTheDocument()
+        expect(screen.getByText('文件夹'))!.toBeInTheDocument()
+        expect(screen.getByText('フォルダ'))!.toBeInTheDocument()
       })
     })
 
@@ -403,7 +506,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText(/searchResult/)).toBeInTheDocument()
+        expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
       })
 
       it('should handle whitespace keywords', () => {
@@ -415,7 +518,8 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Whitespace is truthy, so should show search results
-        expect(screen.getByText(/searchResult/)).toBeInTheDocument()
+        // Assert - Whitespace is truthy, so should show search results
+        expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
       })
     })
 
@@ -428,7 +532,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('production-bucket')).toBeInTheDocument()
+        expect(screen.getByText('production-bucket'))!.toBeInTheDocument()
       })
 
       it('should handle bucket with special characters', () => {
@@ -439,7 +543,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText('bucket-v2.0_backup')).toBeInTheDocument()
+        expect(screen.getByText('bucket-v2.0_backup'))!.toBeInTheDocument()
       })
     })
 
@@ -453,6 +557,37 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
+        // Assert - Should not show search results
         expect(screen.queryByText(/searchResult/)).not.toBeInTheDocument()
       })
 
@@ -464,7 +599,7 @@ describe('Breadcrumbs', () => {
 
         render(<Breadcrumbs {...props} />)
 
-        expect(screen.getByText(/searchResult.*10000/)).toBeInTheDocument()
+        expect(screen.getByText(/searchResult.*10000/))!.toBeInTheDocument()
       })
     })
 
@@ -495,9 +630,10 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - Should NOT collapse because 3 <= 3
-        expect(screen.getByText('folder1')).toBeInTheDocument()
-        expect(screen.getByText('folder2')).toBeInTheDocument()
-        expect(screen.getByText('folder3')).toBeInTheDocument()
+        // Assert - Should NOT collapse because 3 <= 3
+        expect(screen.getByText('folder1'))!.toBeInTheDocument()
+        expect(screen.getByText('folder2'))!.toBeInTheDocument()
+        expect(screen.getByText('folder3'))!.toBeInTheDocument()
       })
 
       it('should reduce displayBreadcrumbNum by 1 when bucket is set', () => {
@@ -533,9 +669,11 @@ describe('Breadcrumbs', () => {
 
         // Assert - displayBreadcrumbNum = 3, so 4 breadcrumbs should collapse
         // First 2 visible, dropdown, last 1 visible
-        expect(screen.getByText('a')).toBeInTheDocument()
-        expect(screen.getByText('b')).toBeInTheDocument()
-        expect(screen.getByText('d')).toBeInTheDocument()
+        // Assert - displayBreadcrumbNum = 3, so 4 breadcrumbs should collapse
+        // First 2 visible, dropdown, last 1 visible
+        expect(screen.getByText('a'))!.toBeInTheDocument()
+        expect(screen.getByText('b'))!.toBeInTheDocument()
+        expect(screen.getByText('d'))!.toBeInTheDocument()
         expect(screen.queryByText('c')).not.toBeInTheDocument()
       })
 
@@ -550,8 +688,9 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - displayBreadcrumbNum = 2, so 3 breadcrumbs should collapse
-        expect(screen.getByText('a')).toBeInTheDocument()
-        expect(screen.getByText('c')).toBeInTheDocument()
+        // Assert - displayBreadcrumbNum = 2, so 3 breadcrumbs should collapse
+        expect(screen.getByText('a'))!.toBeInTheDocument()
+        expect(screen.getByText('c'))!.toBeInTheDocument()
         expect(screen.queryByText('b')).not.toBeInTheDocument()
       })
 
@@ -566,8 +705,9 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - displayBreadcrumbNum = 3 - 1 = 2, so 3 breadcrumbs should collapse
-        expect(screen.getByText('a')).toBeInTheDocument()
-        expect(screen.getByText('c')).toBeInTheDocument()
+        // Assert - displayBreadcrumbNum = 3 - 1 = 2, so 3 breadcrumbs should collapse
+        expect(screen.getByText('a'))!.toBeInTheDocument()
+        expect(screen.getByText('c'))!.toBeInTheDocument()
         expect(screen.queryByText('b')).not.toBeInTheDocument()
       })
     })
@@ -589,12 +729,15 @@ describe('Breadcrumbs', () => {
         // prefixBreadcrumbs = ['f1', 'f2']
         // collapsedBreadcrumbs = ['f3', 'f4']
         // lastBreadcrumb = 'f5'
-        expect(screen.getByText('f1')).toBeInTheDocument()
-        expect(screen.getByText('f2')).toBeInTheDocument()
-        expect(screen.getByText('f5')).toBeInTheDocument()
+        // prefixBreadcrumbs = ['f1', 'f2']
+        // collapsedBreadcrumbs = ['f3', 'f4']
+        // lastBreadcrumb = 'f5'
+        expect(screen.getByText('f1'))!.toBeInTheDocument()
+        expect(screen.getByText('f2'))!.toBeInTheDocument()
+        expect(screen.getByText('f5'))!.toBeInTheDocument()
         await waitFor(() => {
-          expect(screen.getByText('f3')).toBeInTheDocument()
-          expect(screen.getByText('f4')).toBeInTheDocument()
+          expect(screen.getByText('f3'))!.toBeInTheDocument()
+          expect(screen.getByText('f4'))!.toBeInTheDocument()
         })
       })
 
@@ -608,8 +751,9 @@ describe('Breadcrumbs', () => {
         render(<Breadcrumbs {...props} />)
 
         // Assert - All breadcrumbs should be visible
-        expect(screen.getByText('f1')).toBeInTheDocument()
-        expect(screen.getByText('f2')).toBeInTheDocument()
+        // Assert - All breadcrumbs should be visible
+        expect(screen.getByText('f1'))!.toBeInTheDocument()
+        expect(screen.getByText('f2'))!.toBeInTheDocument()
       })
     })
   })
@@ -627,7 +771,7 @@ describe('Breadcrumbs', () => {
 
         // Act - Click bucket icon button (first button in Bucket component)
         const buttons = screen.getAllByRole('button')
-        fireEvent.click(buttons[0]) // Bucket icon button
+        fireEvent.click(buttons[0]!) // Bucket icon button
 
         expect(mockStoreState.setOnlineDriveFileList).toHaveBeenCalledWith([])
         expect(mockStoreState.setSelectedFileIds).toHaveBeenCalledWith([])
@@ -744,7 +888,7 @@ describe('Breadcrumbs', () => {
           fireEvent.click(dropdownTrigger)
 
         await waitFor(() => {
-          expect(screen.getByText('f3')).toBeInTheDocument()
+          expect(screen.getByText('f3'))!.toBeInTheDocument()
         })
 
         fireEvent.click(screen.getByText('f3'))
@@ -771,19 +915,19 @@ describe('Breadcrumbs', () => {
 
       // Assert - Component should render without errors
       const container = document.querySelector('.flex.grow')
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should re-render when breadcrumbs change', () => {
       mockStoreState.hasBucket = false
       const props = createDefaultProps({ breadcrumbs: ['folder1'] })
       const { rerender } = render(<Breadcrumbs {...props} />)
-      expect(screen.getByText('folder1')).toBeInTheDocument()
+      expect(screen.getByText('folder1'))!.toBeInTheDocument()
 
       // Act - Rerender with different breadcrumbs
       rerender(<Breadcrumbs {...createDefaultProps({ breadcrumbs: ['folder2'] })} />)
 
-      expect(screen.getByText('folder2')).toBeInTheDocument()
+      expect(screen.getByText('folder2'))!.toBeInTheDocument()
     })
   })
 
@@ -798,7 +942,7 @@ describe('Breadcrumbs', () => {
 
       render(<Breadcrumbs {...props} />)
 
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      expect(screen.getByText(longName))!.toBeInTheDocument()
     })
 
     it('should handle many breadcrumbs', async () => {
@@ -815,11 +959,12 @@ describe('Breadcrumbs', () => {
         fireEvent.click(dropdownTrigger)
 
       // Assert - First, last, and collapsed should be accessible
-      expect(screen.getByText('folder-0')).toBeInTheDocument()
-      expect(screen.getByText('folder-1')).toBeInTheDocument()
-      expect(screen.getByText('folder-19')).toBeInTheDocument()
+      // Assert - First, last, and collapsed should be accessible
+      expect(screen.getByText('folder-0'))!.toBeInTheDocument()
+      expect(screen.getByText('folder-1'))!.toBeInTheDocument()
+      expect(screen.getByText('folder-19'))!.toBeInTheDocument()
       await waitFor(() => {
-        expect(screen.getByText('folder-2')).toBeInTheDocument()
+        expect(screen.getByText('folder-2'))!.toBeInTheDocument()
       })
     })
 
@@ -833,7 +978,8 @@ describe('Breadcrumbs', () => {
       render(<Breadcrumbs {...props} />)
 
       // Assert - Should show all buckets title
-      expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')).toBeInTheDocument()
+      // Assert - Should show all buckets title
+      expect(screen.getByText('datasetPipeline.onlineDrive.breadcrumbs.allBuckets'))!.toBeInTheDocument()
     })
 
     it('should handle breadcrumb with only whitespace', () => {
@@ -845,7 +991,8 @@ describe('Breadcrumbs', () => {
       render(<Breadcrumbs {...props} />)
 
       // Assert - Both should be rendered
-      expect(screen.getByText('normal-folder')).toBeInTheDocument()
+      // Assert - Both should be rendered
+      expect(screen.getByText('normal-folder'))!.toBeInTheDocument()
     })
   })
 
@@ -863,7 +1010,7 @@ describe('Breadcrumbs', () => {
 
       // Assert - Component should render without errors
       const container = document.querySelector('.flex.grow')
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it.each([
@@ -916,7 +1063,8 @@ describe('Breadcrumbs', () => {
       render(<Breadcrumbs {...props} />)
 
       // Assert - Search result should be shown, navigation elements should be hidden
-      expect(screen.getByText(/searchResult/)).toBeInTheDocument()
+      // Assert - Search result should be shown, navigation elements should be hidden
+      expect(screen.getByText(/searchResult/))!.toBeInTheDocument()
       expect(screen.queryByText('my-bucket')).not.toBeInTheDocument()
     })
   })

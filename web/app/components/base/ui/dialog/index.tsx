@@ -7,9 +7,9 @@
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
 
+import type { ReactNode } from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 
 export const Dialog = BaseDialog.Root
 /** @public */
@@ -18,7 +18,7 @@ export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
 export const DialogPortal = BaseDialog.Portal
 
-type DialogCloseButtonProps = Omit<React.ComponentPropsWithoutRef<typeof BaseDialog.Close>, 'children'>
+type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
 
 export function DialogCloseButton({
   className,
@@ -40,16 +40,16 @@ export function DialogCloseButton({
 }
 
 type DialogContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
-  overlayClassName?: string
-  backdropProps?: React.ComponentPropsWithoutRef<typeof BaseDialog.Backdrop>
+  backdropClassName?: string
+  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
 }
 
 export function DialogContent({
   children,
   className,
-  overlayClassName,
+  backdropClassName,
   backdropProps,
 }: DialogContentProps) {
   return (
@@ -59,8 +59,7 @@ export function DialogContent({
         className={cn(
           'fixed inset-0 z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
-          overlayClassName,
-          backdropProps?.className,
+          backdropClassName,
         )}
       />
       <BaseDialog.Popup

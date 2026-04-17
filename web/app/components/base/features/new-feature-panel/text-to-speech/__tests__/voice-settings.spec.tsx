@@ -78,7 +78,7 @@ describe('VoiceSettings', () => {
       </VoiceSettings>,
     )
 
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByText('Settings'))!.toBeInTheDocument()
   })
 
   it('should render ParamConfigContent in portal', () => {
@@ -88,7 +88,7 @@ describe('VoiceSettings', () => {
       </VoiceSettings>,
     )
 
-    expect(screen.getByText(/voice\.voiceSettings\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/voice\.voiceSettings\.title/))!.toBeInTheDocument()
   })
 
   it('should call onOpen with toggle function when trigger is clicked', () => {
@@ -103,7 +103,7 @@ describe('VoiceSettings', () => {
 
     expect(onOpen).toHaveBeenCalled()
     // The toggle function should flip the open state
-    const toggleFn = onOpen.mock.calls[0][0]
+    const toggleFn = onOpen.mock.calls[0]![0]
     expect(typeof toggleFn).toBe('function')
     expect(toggleFn(false)).toBe(true)
     expect(toggleFn(true)).toBe(false)
@@ -146,7 +146,7 @@ describe('VoiceSettings', () => {
       .find(item => item.hasAttribute('data-main-axis'))
 
     expect(portal).toBeDefined()
-    expect(portal).toHaveAttribute('data-placement', 'top')
-    expect(portal).toHaveAttribute('data-main-axis', '4')
+    expect(portal)!.toHaveAttribute('data-placement', 'top')
+    expect(portal)!.toHaveAttribute('data-main-axis', '4')
   })
 })

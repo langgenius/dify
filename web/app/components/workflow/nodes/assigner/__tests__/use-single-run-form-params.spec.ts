@@ -71,10 +71,10 @@ describe('assigner/use-single-run-form-params', () => {
       ['node-3', 'items'],
     ])
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].inputs).toEqual(varInputs)
-    expect(result.current.forms[0].values).toEqual({ result: 'hello' })
+    expect(result.current.forms[0]!.inputs).toEqual(varInputs)
+    expect(result.current.forms[0]!.values).toEqual({ result: 'hello' })
 
-    result.current.forms[0].onChange({ result: 'updated' })
+    result.current.forms[0]!.onChange({ result: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ result: 'updated' })
     expect(result.current.getDependentVars()).toEqual([

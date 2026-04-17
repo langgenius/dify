@@ -105,7 +105,7 @@ const PluginItem: FC<Props> = ({
       }}
     >
       <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
-        <CornerMark text={categoriesMap[category].label} />
+        <CornerMark text={categoriesMap[category]!.label} />
         {/* Header */}
         <div className="flex">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">

@@ -73,7 +73,7 @@ const OperationDropdown: FC<Props> = ({
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
           <DropdownMenuSeparator />
         )}
-        <DropdownMenuItem destructive onClick={onRemove}>
+        <DropdownMenuItem variant="destructive" onClick={onRemove}>
           {t('detailPanel.operation.remove', { ns: 'plugin' })}
         </DropdownMenuItem>
       </DropdownMenuContent>

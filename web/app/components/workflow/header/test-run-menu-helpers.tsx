@@ -29,7 +29,7 @@ export const OptionRow = ({
   return (
     <div
       key={option.id}
-      className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
+      className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">

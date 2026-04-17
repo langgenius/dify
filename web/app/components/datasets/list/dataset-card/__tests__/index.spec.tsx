@@ -56,9 +56,9 @@ vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
 vi.mock('../components/tag-area', () => ({
-  default: React.forwardRef<HTMLDivElement, { onClick: (e: React.MouseEvent) => void }>(({ onClick }, ref) => (
-    <div ref={ref} data-testid="tag-area" onClick={onClick} />
-  )),
+  default: ({ onClick }: { onClick: (e: React.MouseEvent) => void, ref?: React.Ref<HTMLDivElement> }) => (
+    <div data-testid="tag-area" onClick={onClick} />
+  ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
   default: () => <div data-testid="operations-dropdown" />,

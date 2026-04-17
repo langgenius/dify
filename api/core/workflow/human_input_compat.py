@@ -14,12 +14,13 @@ from typing import Annotated, Any, ClassVar, Literal
 
 import bleach
 import markdown
+from markdown.extensions.tables import TableExtension
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
+
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
-from markdown.extensions.tables import TableExtension
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
 
 
 class DeliveryMethodType(enum.StrEnum):

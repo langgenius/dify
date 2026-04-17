@@ -77,7 +77,7 @@ describe('list-operator/extract-input', () => {
       />,
     )
 
-    expect(mockInput.mock.calls[0][0]).toMatchObject({
+    expect(mockInput.mock.calls[0]![0]).toMatchObject({
       readOnly: false,
       value: '5',
       placeholder: 'workflow.nodes.http.extractListPlaceholder',
@@ -109,7 +109,7 @@ describe('list-operator/extract-input', () => {
       />,
     )
 
-    expect(mockInput.mock.calls[0][0].placeholder).toBe('')
-    expect(mockInput.mock.calls[0][0].readOnly).toBe(true)
+    expect(mockInput.mock.calls[0]![0].placeholder).toBe('')
+    expect(mockInput.mock.calls[0]![0].readOnly).toBe(true)
   })
 })

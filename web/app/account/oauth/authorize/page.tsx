@@ -151,7 +151,7 @@ export default function OAuthAuthorize() {
             return (
               <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
-                {Icon.label}
+                {Icon!.label}
               </div>
             )
           })}

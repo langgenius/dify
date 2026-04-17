@@ -93,6 +93,10 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@/service/apps', () => ({
+  fetchWorkflowOnlineUsers: vi.fn().mockResolvedValue({}),
+}))
+
 vi.mock('@/service/use-apps', () => ({
   useInfiniteAppList: () => ({
     data: { pages: mockPages },

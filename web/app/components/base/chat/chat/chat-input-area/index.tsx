@@ -112,14 +112,14 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
       // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
-        handleQueryChange(historyRef.current[currentIndex - 1])
+        handleQueryChange(historyRef.current[currentIndex - 1]!)
       }
     }
     else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
-        handleQueryChange(historyRef.current[currentIndex + 1])
+        handleQueryChange(historyRef.current[currentIndex + 1]!)
       }
       else if (currentIndex === historyRef.current.length - 1) {
         // If it is the last element, clear the input box

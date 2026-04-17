@@ -46,9 +46,9 @@ describe('EmojiPicker', () => {
           <EmojiPicker isModal={true} />,
         )
       })
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-      expect(screen.getByText(/Cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/OK/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+      expect(screen.getByText(/Cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/OK/i))!.toBeInTheDocument()
     })
 
     it('OK button is disabled initially', async () => {
@@ -58,7 +58,7 @@ describe('EmojiPicker', () => {
         )
       })
       const okButton = screen.getByText(/OK/i).closest('button')
-      expect(okButton).toBeDisabled()
+      expect(okButton)!.toBeDisabled()
     })
 
     it('applies custom className to modal wrapper', async () => {
@@ -69,7 +69,7 @@ describe('EmojiPicker', () => {
         )
       })
       const dialog = screen.getByRole('dialog')
-      expect(dialog).toHaveClass(customClass)
+      expect(dialog)!.toHaveClass(customClass)
     })
   })
 
@@ -84,7 +84,7 @@ describe('EmojiPicker', () => {
       const emojiWrappers = screen.getAllByTestId(/^emoji-container-/)
       expect(emojiWrappers.length).toBeGreaterThan(0)
       await act(async () => {
-        fireEvent.click(emojiWrappers[0])
+        fireEvent.click(emojiWrappers[0]!)
       })
 
       const okButton = screen.getByText(/OK/i)
