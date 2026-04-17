@@ -33,7 +33,7 @@ const OutputVarList: FC<Props> = ({
   const list = outputKeyOrders.map((key) => {
     return {
       variable: key,
-      variable_type: outputs[key]?.type,
+      variable_type: outputs[key]?.type!,
     }
   })
 
@@ -50,15 +50,15 @@ const OutputVarList: FC<Props> = ({
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const oldKey = list[index].variable
+      const oldKey = list[index]!.variable
 
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const newKey = e.target.value
 
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
 
       const newOutputs = produce(outputs, (draft) => {
-        draft[newKey] = draft[oldKey]
+        draft[newKey] = draft[oldKey]!
         // Only delete old key if no other entry shares this name
         if (!list.some((item, i) => i !== index && item.variable === oldKey))
           delete draft[oldKey]
@@ -69,9 +69,9 @@ const OutputVarList: FC<Props> = ({
 
   const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
-      const key = list[index].variable
+      const key = list[index]!.variable
       const newOutputs = produce(outputs, (draft) => {
-        draft[key].type = value as VarType
+        draft[key]!.type = value as VarType
       })
       onChange(newOutputs)
     }

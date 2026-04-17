@@ -78,7 +78,7 @@ const AppPicker: FC<Props> = ({
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
-    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading)
+    if (!target!.isIntersecting || loadingRef.current || !hasMore || isLoading)
       return
 
     loadingRef.current = true
@@ -188,7 +188,7 @@ const AppPicker: FC<Props> = ({
             {apps.map(app => (
               <div
                 key={app.id}
-                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
+                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
                 onClick={() => onSelect(app)}
               >
                 <AppIcon
@@ -199,7 +199,7 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={`${app.name} (${app.id})`} className="grow text-components-input-text-filled system-sm-medium">
+                <div title={`${app.name} (${app.id})`} className="grow system-sm-medium text-components-input-text-filled">
                   <span className="mr-1">{app.name}</span>
                   <span className="text-text-tertiary">
                     (
@@ -207,7 +207,7 @@ const AppPicker: FC<Props> = ({
                     )
                   </span>
                 </div>
-                <div className="shrink-0 text-text-tertiary system-2xs-medium-uppercase">{getAppType(app)}</div>
+                <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{getAppType(app)}</div>
               </div>
             ))}
             <div ref={observerTargetRef} className="h-4 w-full">

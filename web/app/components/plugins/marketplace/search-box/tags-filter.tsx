@@ -88,14 +88,14 @@ const TagsFilter = ({
               filteredOptions.map(option => (
                 <div
                   key={option.name}
-                  className="flex h-7 cursor-pointer select-none items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
+                  className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
                   onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className="mr-1"
                     checked={tags.includes(option.name)}
                   />
-                  <div className="system-sm-medium px-1 text-text-secondary">
+                  <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
                 </div>

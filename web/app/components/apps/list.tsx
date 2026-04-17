@@ -151,7 +151,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
           fetchNextPage()
       }, {
         root: containerRef.current,
@@ -241,7 +241,7 @@ const List: FC<Props> = ({
     <>
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="inset-0 absolute z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
           </div>
         )}
 

@@ -56,7 +56,7 @@ describe('Calendar', () => {
       // Verify the component renders successfully with wrapperClassName
       const dayLabels = screen.getAllByText(/daysInWeek/)
       expect(dayLabels).toHaveLength(7)
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
   })
 
@@ -69,10 +69,10 @@ describe('Calendar', () => {
       render(<Calendar {...props} />)
 
       const dayButtons = screen.getAllByRole('button')
-      fireEvent.click(dayButtons[1])
+      fireEvent.click(dayButtons[1]!)
 
       expect(onDateClick).toHaveBeenCalledTimes(1)
-      expect(onDateClick).toHaveBeenCalledWith(days[1].date)
+      expect(onDateClick).toHaveBeenCalledWith(days[1]!.date)
     })
   })
 
@@ -87,7 +87,7 @@ describe('Calendar', () => {
       render(<Calendar {...props} />)
 
       const dayButtons = screen.getAllByRole('button')
-      fireEvent.click(dayButtons[0])
+      fireEvent.click(dayButtons[0]!)
 
       expect(onDateClick).not.toHaveBeenCalled()
     })

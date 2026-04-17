@@ -1,11 +1,13 @@
 'use client'
 
+import type { VariantProps } from 'class-variance-authority'
+import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
+import { cva } from 'class-variance-authority'
 import {
-  overlayGroupLabelClassName,
+  overlayLabelClassName,
   overlaySeparatorClassName,
 } from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -15,34 +17,43 @@ export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group
 
-const selectSizeClassName: Record<string, string> = {
-  small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-  regular: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-  large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
-}
+const selectTriggerVariants = cva(
+  [
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+    'data-placeholder:text-components-input-text-placeholder',
+    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
+    'data-disabled:data-placeholder:text-components-input-text-disabled',
+  ],
+  {
+    variants: {
+      size: {
+        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
+      },
+    },
+    defaultVariants: {
+      size: 'medium',
+    },
+  },
+)
 
-type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
-  size?: 'small' | 'regular' | 'large'
-}
+type SelectTriggerProps
+  = Omit<BaseSelect.Trigger.Props, 'className'>
+    & VariantProps<typeof selectTriggerVariants>
+    & { className?: string }
 
 export function SelectTrigger({
   className,
   children,
-  size = 'regular',
+  size,
   ...props
 }: SelectTriggerProps) {
   return (
     <BaseSelect.Trigger
-      className={cn(
-        'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-        'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
-        'data-placeholder:text-components-input-text-placeholder',
-        selectSizeClassName[size],
-        'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-        'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-        'data-disabled:data-placeholder:text-components-input-text-disabled',
-        className,
-      )}
+      className={cn(selectTriggerVariants({ size, className }))}
       {...props}
     >
       <span className="min-w-0 grow truncate">
@@ -55,13 +66,13 @@ export function SelectTrigger({
   )
 }
 
-export function SelectGroupLabel({
+export function SelectLabel({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.GroupLabel>) {
+}: BaseSelect.GroupLabel.Props) {
   return (
     <BaseSelect.GroupLabel
-      className={cn(overlayGroupLabelClassName, className)}
+      className={cn(overlayLabelClassName, className)}
       {...props}
     />
   )
@@ -71,7 +82,7 @@ export function SelectGroupLabel({
 export function SelectSeparator({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Separator>) {
+}: BaseSelect.Separator.Props) {
   return (
     <BaseSelect.Separator
       className={cn(overlaySeparatorClassName, className)}
@@ -81,7 +92,7 @@ export function SelectSeparator({
 }
 
 type SelectContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -89,15 +100,15 @@ type SelectContentProps = {
   popupClassName?: string
   listClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Positioner>,
+    BaseSelect.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.Popup>,
+    BaseSelect.Popup.Props,
     'children' | 'className'
   >
   listProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof BaseSelect.List>,
+    BaseSelect.List.Props,
     'children' | 'className'
   >
 }
@@ -150,7 +161,7 @@ export function SelectContent({
 export function SelectItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Item>) {
+}: BaseSelect.Item.Props) {
   return (
     <BaseSelect.Item
       className={cn(
@@ -166,7 +177,7 @@ export function SelectItem({
 export function SelectItemText({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.ItemText>) {
+}: BaseSelect.ItemText.Props) {
   return (
     <BaseSelect.ItemText
       className={cn('mr-1 min-w-0 grow truncate px-1', className)}
@@ -178,7 +189,7 @@ export function SelectItemText({
 export function SelectItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof BaseSelect.ItemIndicator>, 'children'>) {
+}: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
     <BaseSelect.ItemIndicator
       className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}

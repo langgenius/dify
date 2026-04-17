@@ -106,7 +106,7 @@ export const addCondition = ({
     id: uuid4(),
     varType: variable.type,
     variable_selector: valueSelector,
-    comparison_operator: getOperators(variable.type, isVarFileAttribute ? { key: valueSelector.slice(-1)[0] } : undefined)[0],
+    comparison_operator: getOperators(variable.type, isVarFileAttribute ? { key: valueSelector.slice(-1)[0]! } : undefined)[0],
     value: (variable.type === VarType.boolean || variable.type === VarType.arrayBoolean) ? false : '',
   })
 })

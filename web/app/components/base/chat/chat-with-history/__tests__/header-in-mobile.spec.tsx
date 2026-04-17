@@ -143,7 +143,7 @@ describe('HeaderInMobile', () => {
 
   it('should render title when no conversation', () => {
     render(<HeaderInMobile />)
-    expect(screen.getByText('Test Chat')).toBeInTheDocument()
+    expect(screen.getByText('Test Chat'))!.toBeInTheDocument()
   })
 
   it('should render conversation name when active', async () => {
@@ -154,7 +154,7 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    expect(await screen.findByText('Conv 1')).toBeInTheDocument()
+    expect(await screen.findByText('Conv 1'))!.toBeInTheDocument()
   })
 
   it('should open and close sidebar', async () => {
@@ -162,11 +162,12 @@ describe('HeaderInMobile', () => {
 
     // Open sidebar (menu button is the first action btn)
     const menuButton = screen.getAllByRole('button')[0]
-    fireEvent.click(menuButton)
+    fireEvent.click(menuButton!)
 
     // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
-    expect(await screen.findByTestId('mobile-sidebar-overlay')).toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-content')).toBeInTheDocument()
+    // HeaderInMobile renders MobileSidebar which renders Sidebar and overlay
+    expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-content'))!.toBeInTheDocument()
 
     // Close sidebar via overlay click
     fireEvent.click(screen.getByTestId('mobile-sidebar-overlay'))
@@ -180,15 +181,16 @@ describe('HeaderInMobile', () => {
 
     // Open sidebar
     const menuButton = screen.getAllByRole('button')[0]
-    fireEvent.click(menuButton)
+    fireEvent.click(menuButton!)
 
-    expect(await screen.findByTestId('mobile-sidebar-overlay')).toBeInTheDocument()
+    expect(await screen.findByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
 
     // Click inside sidebar content (should not close)
     fireEvent.click(screen.getByTestId('sidebar-content'))
 
     // Sidebar should still be visible
-    expect(screen.getByTestId('mobile-sidebar-overlay')).toBeInTheDocument()
+    // Sidebar should still be visible
+    expect(screen.getByTestId('mobile-sidebar-overlay'))!.toBeInTheDocument()
   })
 
   it('should open and close chat settings', async () => {
@@ -204,7 +206,7 @@ describe('HeaderInMobile', () => {
 
     // Find and click "View Chat Settings"
     await waitFor(() => {
-      expect(screen.getByText(/share\.chat\.viewChatSettings/i)).toBeInTheDocument()
+      expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
 
@@ -231,7 +233,7 @@ describe('HeaderInMobile', () => {
     // Open dropdown and chat settings
     fireEvent.click(await screen.findByTestId('mobile-more-btn'))
     await waitFor(() => {
-      expect(screen.getByText(/share\.chat\.viewChatSettings/i)).toBeInTheDocument()
+      expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/share\.chat\.viewChatSettings/i))
 
@@ -244,7 +246,8 @@ describe('HeaderInMobile', () => {
     fireEvent.click(settingsTitle)
 
     // Settings should still be visible
-    expect(screen.getByTestId('mobile-chat-settings-overlay')).toBeInTheDocument()
+    // Settings should still be visible
+    expect(screen.getByTestId('mobile-chat-settings-overlay'))!.toBeInTheDocument()
   })
 
   it('should hide chat settings option when no input forms', async () => {
@@ -278,7 +281,7 @@ describe('HeaderInMobile', () => {
 
     // Click "New Conversation" or "Reset Chat"
     await waitFor(() => {
-      expect(screen.getByText(/share\.chat\.resetChat/i)).toBeInTheDocument()
+      expect(screen.getByText(/share\.chat\.resetChat/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/share\.chat\.resetChat/i))
 
@@ -303,7 +306,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.pin/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.pin/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.pin/i))
     expect(handlePin).toHaveBeenCalledWith('1')
@@ -325,7 +328,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.unpin/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.unpin/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.unpin/i))
     expect(handleUnpin).toHaveBeenCalledWith('1')
@@ -345,7 +348,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.rename/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
@@ -373,7 +376,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.rename/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
@@ -405,7 +408,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.rename/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
@@ -427,13 +430,13 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.delete/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
     // Confirm modal
     await waitFor(() => {
-      expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0]).toBeInTheDocument()
+      expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
     expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
@@ -453,13 +456,13 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
-      expect(screen.getByText(/explore\.sidebar\.action\.delete/i)).toBeInTheDocument()
+      expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
     // Confirm modal should be visible
     await waitFor(() => {
-      expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0]).toBeInTheDocument()
+      expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
 
     // Click cancel
@@ -525,7 +528,7 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    expect(screen.getByText('My App')).toBeInTheDocument()
+    expect(screen.getByText('My App'))!.toBeInTheDocument()
   })
 
   it('should properly show and hide modals conditionally', async () => {
@@ -543,6 +546,37 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
+    // Initially no modals
     // Initially no modals
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
@@ -571,7 +605,7 @@ describe('HeaderInMobile', () => {
       fireEvent.click(await screen.findByText('Conv 1'))
       fireEvent.click(await screen.findByText(/sidebar\.action\.delete/i))
 
-      expect(await screen.findByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))!.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))
       expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
     }
@@ -596,7 +630,7 @@ describe('HeaderInMobile', () => {
     fireEvent.click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
 
     const input = await screen.findByRole('textbox')
-    expect(input).toHaveValue('')
+    expect(input)!.toHaveValue('')
 
     fireEvent.change(input, { target: { value: 'Renamed from empty' } })
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))

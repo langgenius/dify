@@ -100,8 +100,8 @@ describe('HITLInputComponent', () => {
     await user.click(screen.getByRole('button', { name: 'emit-same-name' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0]).toHaveLength(1)
-    expect(onChange.mock.calls[0][0][0].output_variable_name).toBe('user_name')
+    expect(onChange.mock.calls[0]![0]).toHaveLength(1)
+    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('user_name')
   })
 
   it('should replace payload when variable name is renamed', async () => {
@@ -124,7 +124,7 @@ describe('HITLInputComponent', () => {
     await user.click(screen.getByRole('button', { name: 'emit-rename' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0][0].output_variable_name).toBe('renamed_name')
+    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('renamed_name')
   })
 
   it('should update existing payload when variable name stays the same', async () => {
@@ -157,9 +157,9 @@ describe('HITLInputComponent', () => {
     await user.click(screen.getByRole('button', { name: 'emit-update' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0][0].default.value).toBe('updated')
-    expect(onChange.mock.calls[0][0][0].output_variable_name).toBe('user_name')
-    expect(onChange.mock.calls[0][0][1].output_variable_name).toBe('other_name')
-    expect(onChange.mock.calls[0][0][1].default.value).toBe('other')
+    expect(onChange.mock.calls[0]![0][0].default.value).toBe('updated')
+    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('user_name')
+    expect(onChange.mock.calls[0]![0][1].output_variable_name).toBe('other_name')
+    expect(onChange.mock.calls[0]![0][1].default.value).toBe('other')
   })
 })

@@ -71,7 +71,7 @@ vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
       <div data-testid="workplace-selector-content">{children}</div>
     ),
     SelectGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectItem: ({
       children,
       value,
@@ -115,11 +115,11 @@ describe('WorkplaceSelector', () => {
     it('should render current workspace and available workspace options', () => {
       renderComponent()
 
-      expect(screen.getByTestId('workplace-selector-trigger')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-1')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-2')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-1')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-2')).toHaveTextContent('Workspace 2')
+      expect(screen.getByTestId('workplace-selector-trigger'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-1'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-2'))!.toHaveTextContent('Workspace 2')
     })
   })
 
@@ -127,7 +127,7 @@ describe('WorkplaceSelector', () => {
     it('should switch workspace successfully', async () => {
       vi.mocked(switchWorkspace).mockResolvedValue({
         result: 'success',
-        new_tenant: mockWorkspaces[1],
+        new_tenant: mockWorkspaces[1]!,
       })
 
       renderComponent()
@@ -163,7 +163,7 @@ describe('WorkplaceSelector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'common.provider.saveFailed',
+          message: 'common.actionMsg.modifiedUnsuccessfully',
         })
       })
     })
