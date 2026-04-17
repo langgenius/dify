@@ -6,12 +6,21 @@ import type { App, AppSSO } from '@/types/app'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), { ssr: false })
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), { ssr: false })
-const Confirm = dynamic(() => import('@/app/components/base/confirm'), { ssr: false })
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), { ssr: false })
 const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), { ssr: false })
 
@@ -44,6 +53,12 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
+
+  const handleDeleteDialogClose = () => {
+    setConfirmDeleteInput('')
+    closeModal()
+  }
 
   return (
     <>
@@ -85,39 +100,73 @@ const AppInfoModals = ({
           onHide={closeModal}
         />
       )}
-      {activeModal === 'delete' && (
-        <Confirm
-          title={t('deleteAppConfirmTitle', { ns: 'app' })}
-          content={t('deleteAppConfirmContent', { ns: 'app' })}
-          isShow
-          confirmInputLabel={t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
-          confirmInputPlaceholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
-          confirmInputValue={confirmDeleteInput}
-          onConfirmInputChange={setConfirmDeleteInput}
-          confirmInputMatchValue={appDetail.name}
-          onConfirm={onConfirmDelete}
-          onCancel={() => {
-            setConfirmDeleteInput('')
-            closeModal()
-          }}
-        />
-      )}
+      <AlertDialog open={activeModal === 'delete'} onOpenChange={open => !open && handleDeleteDialogClose()}>
+        <AlertDialogContent>
+          <form
+            className="flex flex-col"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (isDeleteConfirmDisabled)
+                return
+              onConfirmDelete()
+            }}
+          >
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('deleteAppConfirmTitle', { ns: 'app' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('deleteAppConfirmContent', { ns: 'app' })}
+              </AlertDialogDescription>
+              <div className="mt-2">
+                <label className="mb-1 block system-sm-regular text-text-secondary">
+                  {t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
+                </label>
+                <Input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+                  value={confirmDeleteInput}
+                  onChange={e => setConfirmDeleteInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton type="button">
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
       {activeModal === 'importDSL' && (
         <UpdateDSLModal
           onCancel={closeModal}
           onBackup={exportCheck}
         />
       )}
-      {activeModal === 'exportWarning' && (
-        <Confirm
-          type="info"
-          isShow
-          title={t('sidebar.exportWarning', { ns: 'workflow' })}
-          content={t('sidebar.exportWarningDesc', { ns: 'workflow' })}
-          onConfirm={handleConfirmExport}
-          onCancel={closeModal}
-        />
-      )}
+      <AlertDialog open={activeModal === 'exportWarning'} onOpenChange={open => !open && closeModal()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('sidebar.exportWarning', { ns: 'workflow' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="default" onClick={handleConfirmExport}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {secretEnvList.length > 0 && (
         <DSLExportConfirmModal
           envList={secretEnvList}

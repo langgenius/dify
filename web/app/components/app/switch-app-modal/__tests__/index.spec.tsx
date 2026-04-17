@@ -335,6 +335,7 @@ describe('SwitchAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
     it('should toggle remove-original from the checkbox control itself', async () => {

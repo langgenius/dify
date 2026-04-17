@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CrawledResultItem from '../crawled-result-item'
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
     <button data-testid="preview-button" onClick={onClick}>{children}</button>
   ),
 }))

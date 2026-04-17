@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class Embeddings(ABC):
@@ -10,7 +11,7 @@ class Embeddings(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         raise NotImplementedError
 
@@ -20,7 +21,7 @@ class Embeddings(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal query."""
         raise NotImplementedError
 

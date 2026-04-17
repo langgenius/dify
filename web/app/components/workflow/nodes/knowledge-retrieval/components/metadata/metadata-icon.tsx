@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiHashtag,
   RiTextSnippet,
@@ -5,7 +6,6 @@ import {
 } from '@remixicon/react'
 import { memo } from 'react'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { cn } from '@/utils/classnames'
 
 type MetadataIconProps = {
   type?: MetadataFilteringVariableType

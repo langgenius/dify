@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'
 
@@ -46,7 +46,7 @@ const RunBatch: FC<IRunBatchProps> = ({
       <div className="flex justify-end">
         <Button
           variant="primary"
-          className={cn('mt-4 pl-3 pr-4', !isPC && 'grow')}
+          className={cn('mt-4 pr-4 pl-3', !isPC && 'grow')}
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >

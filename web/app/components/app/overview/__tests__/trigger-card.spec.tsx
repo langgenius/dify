@@ -74,12 +74,12 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/switch', () => ({
-  default: ({ defaultValue, onChange, disabled }: { defaultValue: boolean, onChange: (v: boolean) => void, disabled: boolean }) => (
+  default: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
     <button
       data-testid="switch"
-      data-checked={defaultValue ? 'true' : 'false'}
+      data-checked={checked ? 'true' : 'false'}
       data-disabled={disabled ? 'true' : 'false'}
-      onClick={() => onChange(!defaultValue)}
+      onClick={() => onCheckedChange(!checked)}
     >
       Switch
     </button>

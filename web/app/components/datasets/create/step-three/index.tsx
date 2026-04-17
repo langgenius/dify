@@ -35,7 +35,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
   return (
     <div className="flex h-full max-h-full w-full justify-center overflow-y-auto">
       <div className="h-full max-w-[960px] shrink-0 grow overflow-y-auto px-14 sm:px-16">
-        <div className="mx-auto max-w-[640px] pb-8 pt-10">
+        <div className="mx-auto max-w-[640px] pt-10 pb-8">
           {!datasetId && (
             <>
               <div className="flex flex-col gap-y-1 pb-3">
@@ -52,10 +52,10 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
                   className="shrink-0"
                 />
                 <div className="flex grow flex-col gap-y-1">
-                  <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+                  <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
                     {t('stepThree.label', { ns: 'datasetCreation' })}
                   </div>
-                  <div className="system-sm-regular w-full truncate rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled">
+                  <div className="w-full truncate rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
                     <span className="px-1">{datasetName || creationCache?.dataset?.name}</span>
                   </div>
                 </div>
@@ -79,9 +79,9 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
         </div>
       </div>
       {!isMobile && (
-        <div className="shrink-0 pr-8 pt-[88px] text-xs">
+        <div className="shrink-0 pt-[88px] pr-8 text-xs">
           <div className="flex w-[328px] flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
-            <div className="flex size-10 items-center justify-center radius-lg bg-components-card-bg shadow-lg">
+            <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>
             <div className="text-base font-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>

@@ -80,10 +80,10 @@ function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: s
 
     // Extract nodeType, nodeId, and params
     const [nodeType, nodeId, ...paramsRaw] = parts
-    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId.trim() : parentIterationId, nodeType === 'loop' ? nodeId.trim() : parentLoopId)
+    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId!.trim() : parentIterationId, nodeType === 'loop' ? nodeId!.trim() : parentLoopId)
     const complexNode = {
-      nodeType: nodeType.trim(),
-      nodeId: nodeId.trim(),
+      nodeType: nodeType!.trim(),
+      nodeId: nodeId!.trim(),
       params,
     }
     if (parentIterationId) {

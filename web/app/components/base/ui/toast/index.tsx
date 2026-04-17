@@ -7,7 +7,7 @@ import type {
 } from '@base-ui/react/toast'
 import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {
@@ -222,8 +222,7 @@ function ToastViewport() {
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
       className={cn(
-        // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
-        'inset-0 group/toast-viewport pointer-events-none fixed z-1101 overflow-visible',
+        'group/toast-viewport pointer-events-none fixed inset-0 z-1003 overflow-visible',
       )}
     >
       <div

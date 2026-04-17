@@ -64,10 +64,10 @@ const Popup: FC<PopupProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div data-testid="popup-content" className="max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]">
-          <div className="px-4 pb-2 pt-3">
+          <div className="px-4 pt-3 pb-2">
             <div className="flex h-[18px] items-center">
               <FileIcon type={fileType} className="mr-1 h-4 w-4 shrink-0" />
-              <div className="truncate text-text-tertiary system-xs-medium">
+              <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!data.sources?.[0]?.dataset_id
                   ? (
                       <button
@@ -98,7 +98,7 @@ const Popup: FC<PopupProps> = ({
                         <div className="mb-2 flex items-center justify-between">
                           <div className="flex h-5 items-center rounded-md border border-divider-subtle px-1.5">
                             {/* replaced svg component with tailwind icon class per lint rule */}
-                            <i className="i-custom-vender-line-general-hash-02 mr-0.5 h-3 w-3 text-text-quaternary" aria-hidden />
+                            <i className="mr-0.5 i-custom-vender-line-general-hash-02 h-3 w-3 text-text-quaternary" aria-hidden />
                             <div data-testid="popup-segment-position" className="text-[11px] font-medium text-text-tertiary">
                               {source.segment_position || index + 1}
                             </div>
@@ -111,29 +111,29 @@ const Popup: FC<PopupProps> = ({
                                 className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
                               >
                                 {t('chat.citation.linkToDataset', { ns: 'common' })}
-                                <i className="i-custom-vender-line-arrows-arrow-up-right ml-1 h-3 w-3" aria-hidden />
+                                <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right h-3 w-3" aria-hidden />
                               </Link>
                             )
                           }
                         </div>
-                        <div data-testid="popup-source-content" className="wrap-break-word text-[13px] text-text-secondary">{source.content}</div>
+                        <div data-testid="popup-source-content" className="text-[13px] wrap-break-word text-text-secondary">{source.content}</div>
                         {
                           showHitInfo && (
-                            <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center text-text-quaternary system-xs-medium">
+                            <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center system-xs-medium text-text-quaternary">
                               <Tooltip
                                 text={t('chat.citation.characters', { ns: 'common' })}
                                 data={source.word_count}
-                                icon={<i className="i-custom-vender-line-editor-type-square mr-1 h-3 w-3" aria-hidden />}
+                                icon={<i className="mr-1 i-custom-vender-line-editor-type-square h-3 w-3" aria-hidden />}
                               />
                               <Tooltip
                                 text={t('chat.citation.hitCount', { ns: 'common' })}
                                 data={source.hit_count}
-                                icon={<i className="i-custom-vender-line-general-target-04 mr-1 h-3 w-3" aria-hidden />}
+                                icon={<i className="mr-1 i-custom-vender-line-general-target-04 h-3 w-3" aria-hidden />}
                               />
                               <Tooltip
                                 text={t('chat.citation.vectorHash', { ns: 'common' })}
                                 data={source.index_node_hash?.substring(0, 7)}
-                                icon={<i className="i-custom-vender-line-editor-bezier-curve-03 mr-1 h-3 w-3" aria-hidden />}
+                                icon={<i className="mr-1 i-custom-vender-line-editor-bezier-curve-03 h-3 w-3" aria-hidden />}
                               />
                               {
                                 !!source.score && (

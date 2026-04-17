@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Input from '@/app/components/base/input'
 import {
@@ -10,7 +11,6 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
-import { cn } from '@/utils/classnames'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 
@@ -49,14 +49,13 @@ const InputCombined: FC<Props> = ({
           readOnly={readOnly}
           onValueChange={value => onChange(value ?? 0)}
         >
-          <NumberFieldGroup size="regular">
+          <NumberFieldGroup>
             <NumberFieldInput
-              size="regular"
               className={cn(className, 'rounded-l-md')}
             />
             <NumberFieldControls className="overflow-hidden">
-              <NumberFieldIncrement size="regular" className="pb-0 pt-0" />
-              <NumberFieldDecrement size="regular" className="pb-0 pt-0" />
+              <NumberFieldIncrement className="pt-0 pb-0" />
+              <NumberFieldDecrement className="pt-0 pb-0" />
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>

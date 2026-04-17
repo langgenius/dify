@@ -4,11 +4,11 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 
 from configs import dify_config
 from core.model_manager import ModelManager
+from core.rag.datasource.vdb.vector_backend_registry import get_vector_factory_class
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
@@ -18,6 +18,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
 
@@ -41,7 +42,23 @@ class AbstractVectorFactory(ABC):
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+            # `is_summary` and `original_chunk_id` are stored on summary vectors
+            # by `SummaryIndexService` and read back by `RetrievalService` to
+            # route summary hits through their original parent chunks. They
+            # must be listed here so vector backends that use this list as an
+            # explicit return-properties projection (notably Weaviate) actually
+            # return those fields; without them, summary hits silently
+            # collapse into `is_summary = False` branches and the summary
+            # retrieval path is a no-op. See #34884.
+            attributes = [
+                "doc_id",
+                "dataset_id",
+                "document_id",
+                "doc_hash",
+                "doc_type",
+                "is_summary",
+                "original_chunk_id",
+            ]
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes
@@ -69,137 +86,7 @@ class Vector:
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
-        match vector_type:
-            case VectorType.CHROMA:
-                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
-
-                return ChromaVectorFactory
-            case VectorType.MILVUS:
-                from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
-
-                return MilvusVectorFactory
-            case VectorType.ALIBABACLOUD_MYSQL:
-                from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
-                    AlibabaCloudMySQLVectorFactory,
-                )
-
-                return AlibabaCloudMySQLVectorFactory
-            case VectorType.MYSCALE:
-                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
-
-                return MyScaleVectorFactory
-            case VectorType.PGVECTOR:
-                from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
-
-                return PGVectorFactory
-            case VectorType.VASTBASE:
-                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
-
-                return VastbaseVectorFactory
-            case VectorType.PGVECTO_RS:
-                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
-
-                return PGVectoRSFactory
-            case VectorType.QDRANT:
-                from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
-
-                return QdrantVectorFactory
-            case VectorType.RELYT:
-                from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
-
-                return RelytVectorFactory
-            case VectorType.ELASTICSEARCH:
-                from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
-
-                return ElasticSearchVectorFactory
-            case VectorType.ELASTICSEARCH_JA:
-                from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
-                    ElasticSearchJaVectorFactory,
-                )
-
-                return ElasticSearchJaVectorFactory
-            case VectorType.TIDB_VECTOR:
-                from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
-
-                return TiDBVectorFactory
-            case VectorType.WEAVIATE:
-                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
-
-                return WeaviateVectorFactory
-            case VectorType.TENCENT:
-                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
-
-                return TencentVectorFactory
-            case VectorType.ORACLE:
-                from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
-
-                return OracleVectorFactory
-            case VectorType.OPENSEARCH:
-                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
-
-                return OpenSearchVectorFactory
-            case VectorType.ANALYTICDB:
-                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
-
-                return AnalyticdbVectorFactory
-            case VectorType.COUCHBASE:
-                from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
-
-                return CouchbaseVectorFactory
-            case VectorType.BAIDU:
-                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
-
-                return BaiduVectorFactory
-            case VectorType.VIKINGDB:
-                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
-
-                return VikingDBVectorFactory
-            case VectorType.UPSTASH:
-                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
-
-                return UpstashVectorFactory
-            case VectorType.TIDB_ON_QDRANT:
-                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
-
-                return TidbOnQdrantVectorFactory
-            case VectorType.LINDORM:
-                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
-
-                return LindormVectorStoreFactory
-            case VectorType.OCEANBASE | VectorType.SEEKDB:
-                from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
-
-                return OceanBaseVectorFactory
-            case VectorType.OPENGAUSS:
-                from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
-
-                return OpenGaussFactory
-            case VectorType.TABLESTORE:
-                from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
-
-                return TableStoreVectorFactory
-            case VectorType.HUAWEI_CLOUD:
-                from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
-
-                return HuaweiCloudVectorFactory
-            case VectorType.MATRIXONE:
-                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
-
-                return MatrixoneVectorFactory
-            case VectorType.CLICKZETTA:
-                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
-
-                return ClickzettaVectorFactory
-            case VectorType.IRIS:
-                from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
-
-                return IrisVectorFactory
-            case VectorType.HOLOGRES:
-                from core.rag.datasource.vdb.hologres.hologres_vector import HologresVectorFactory
-
-                return HologresVectorFactory
-            case _:
-                raise ValueError(f"Vector store {vector_type} is not supported.")
+        return get_vector_factory_class(vector_type)
 
     def create(self, texts: list | None = None, **kwargs):
         if texts:

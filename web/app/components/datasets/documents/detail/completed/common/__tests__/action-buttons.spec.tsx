@@ -63,7 +63,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render cancel button', () => {
@@ -76,7 +76,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
     })
 
     it('should render save button', () => {
@@ -89,7 +89,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
 
     it('should render ESC keyboard hint on cancel button', () => {
@@ -102,7 +102,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('ESC')).toBeInTheDocument()
+      expect(screen.getByText('ESC'))!.toBeInTheDocument()
     })
 
     it('should render S keyboard hint on save button', () => {
@@ -115,7 +115,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('S')).toBeInTheDocument()
+      expect(screen.getByText('S'))!.toBeInTheDocument()
     })
   })
 
@@ -132,7 +132,7 @@ describe('ActionButtons', () => {
       )
 
       const cancelButton = screen.getAllByRole('button')[0]
-      fireEvent.click(cancelButton)
+      fireEvent.click(cancelButton!)
 
       expect(mockHandleCancel).toHaveBeenCalledTimes(1)
     })
@@ -150,7 +150,7 @@ describe('ActionButtons', () => {
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1] // Save button is last
-      fireEvent.click(saveButton)
+      fireEvent.click(saveButton!)
 
       expect(mockHandleSave).toHaveBeenCalledTimes(1)
     })
@@ -167,7 +167,7 @@ describe('ActionButtons', () => {
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1]
-      expect(saveButton).toBeDisabled()
+      expect(saveButton)!.toBeDisabled()
     })
   })
 
@@ -187,7 +187,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
       )
 
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should not show regeneration button when isChildChunk is true', () => {
@@ -278,7 +278,7 @@ describe('ActionButtons', () => {
       )
 
       const regenerationButton = screen.getByText(/operation\.saveAndRegenerate/i).closest('button')
-      expect(regenerationButton).toBeDisabled()
+      expect(regenerationButton)!.toBeDisabled()
     })
   })
 
@@ -298,7 +298,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default actionType='edit'
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default actionType='edit'
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default isChildChunk of false', () => {
@@ -316,7 +317,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default isChildChunk=false
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default isChildChunk=false
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default showRegenerationButton of true', () => {
@@ -334,7 +336,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default showRegenerationButton=true
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default showRegenerationButton=true
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
   })
 
@@ -373,8 +376,8 @@ describe('ActionButtons', () => {
         </DocumentContext.Provider>,
       )
 
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
 

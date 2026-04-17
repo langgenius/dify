@@ -4,12 +4,12 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import { AUTO_UPDATE_STRATEGY } from './types'
 
 const i18nPrefix = 'autoUpdate.strategy'
@@ -85,7 +85,7 @@ const StrategyPicker = ({
                   }
                 </div>
                 <div className="grow">
-                  <div className="system-sm-semibold mb-0.5 text-text-secondary">{option.label}</div>
+                  <div className="mb-0.5 system-sm-semibold text-text-secondary">{option.label}</div>
                   <div className="system-xs-regular text-text-tertiary">{option.description}</div>
                 </div>
               </div>

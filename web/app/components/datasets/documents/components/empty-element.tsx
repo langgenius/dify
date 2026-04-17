@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import s from '../style.module.css'
 import { FolderPlusIcon, NotionIcon, ThreeDotsIcon } from './icons'
 
@@ -22,7 +22,7 @@ const EmptyElement: FC<EmptyElementProps> = ({ canAdd = true, onClick, type = 'u
         </div>
         <span className={s.emptyTitle}>
           {t('list.empty.title', { ns: 'datasetDocuments' })}
-          <ThreeDotsIcon className="relative -left-1.5 -top-3 inline" />
+          <ThreeDotsIcon className="relative -top-3 -left-1.5 inline" />
         </span>
         <div className={s.emptyTip}>
           {t(`list.empty.${type}.tip`, { ns: 'datasetDocuments' })}

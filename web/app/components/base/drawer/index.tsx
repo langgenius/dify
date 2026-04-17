@@ -1,8 +1,8 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import Button from '../button'
+import { Button } from '@/app/components/base/ui/button'
 
 export type IDrawerProps = {
   title?: string
@@ -73,7 +73,7 @@ export default function Drawer({
               {title && (
                 <DialogTitle
                   as="h3"
-                  className="text-lg font-medium leading-6 text-text-primary"
+                  className="text-lg leading-6 font-medium text-text-primary"
                 >
                   {title}
                 </DialogTitle>

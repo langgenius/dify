@@ -1,9 +1,9 @@
 'use client'
 import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 export type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
@@ -75,7 +75,7 @@ const UploadDropzone = ({
             totalCount: fileUploadConfig.file_upload_limit,
           })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+        {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
       </div>
     </>
   )
