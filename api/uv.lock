@@ -1623,7 +1623,7 @@ dev = [
     { name = "dotenv-linter", specifier = ">=0.7.0" },
     { name = "faker", specifier = ">=20.1.0" },
     { name = "hypothesis", specifier = ">=6.151.12" },
-    { name = "import-linter", specifier = ">=2.3" },
+    { name = "import-linter", specifier = ">=2.11" },
     { name = "lxml-stubs", specifier = ">=0.5.1" },
     { name = "mypy", specifier = ">=1.20.1" },
     { name = "pandas-stubs", specifier = ">=3.0.0" },
@@ -1663,7 +1663,7 @@ dev = [
     { name = "types-psycopg2", specifier = ">=2.9.21" },
     { name = "types-pygments", specifier = ">=2.20.0" },
     { name = "types-pymysql", specifier = ">=1.1.0" },
-    { name = "types-pyopenssl", specifier = ">=24.1.0" },
+    { name = "types-pyopenssl", specifier = ">=24.1.0.20240722" },
     { name = "types-python-dateutil", specifier = ">=2.9.0" },
     { name = "types-python-http-client", specifier = ">=3.3.7.20260408" },
     { name = "types-pywin32", specifier = ">=311.0.0" },
@@ -1676,7 +1676,7 @@ dev = [
     { name = "types-six", specifier = ">=1.17.0.20260408" },
     { name = "types-tensorflow", specifier = ">=2.18.0.20260408" },
     { name = "types-tqdm", specifier = ">=4.67.3.20260408" },
-    { name = "types-ujson", specifier = ">=5.10.0" },
+    { name = "types-ujson", specifier = ">=5.10.0.20250822" },
     { name = "xinference-client", specifier = ">=2.4.0" },
 ]
 storage = [
