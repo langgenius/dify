@@ -23,8 +23,6 @@ from dify_trace_aliyun.entities.semconv import (
     TOOL_PARAMETERS,
     GenAISpanKind,
 )
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opentelemetry.trace import Link, SpanContext, SpanKind, Status, StatusCode, TraceFlags
 
 from core.ops.entities.trace_entity import (

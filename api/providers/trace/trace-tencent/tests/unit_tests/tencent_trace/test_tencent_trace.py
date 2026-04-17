@@ -4,8 +4,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_trace_tencent.config import TencentConfig
 from dify_trace_tencent.tencent_trace import TencentDataTrace
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -16,7 +14,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.tencent_trace.tencent_trace import TencentDataTrace
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin

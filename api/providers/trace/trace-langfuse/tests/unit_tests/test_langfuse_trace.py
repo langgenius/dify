@@ -6,10 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
-from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.trace_entity import MessageTraceInfo, WorkflowTraceInfo
-from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from graphon.enums import BuiltinNodeTypes
 
 

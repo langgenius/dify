@@ -21,8 +21,6 @@ from dify_trace_aliyun.utils import (
     get_workflow_node_status,
     serialize_json_data,
 )
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, StatusCode
 
 from core.rag.models.document import Document

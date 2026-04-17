@@ -14,7 +14,6 @@ from dify_trace_langfuse.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
-from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -26,14 +25,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
-    LangfuseGeneration,
-    LangfuseSpan,
-    LangfuseTrace,
-    LevelEnum,
-    UnitEnum,
-)
-from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.enums import MessageStatus

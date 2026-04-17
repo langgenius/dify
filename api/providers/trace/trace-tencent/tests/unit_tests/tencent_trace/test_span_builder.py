@@ -16,8 +16,6 @@ from dify_trace_tencent.entities.semconv import (
     GenAISpanKind,
 )
 from dify_trace_tencent.span_builder import TencentSpanBuilder
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from opentelemetry.trace import StatusCode
 
 from core.ops.entities.trace_entity import (

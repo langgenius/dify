@@ -41,9 +41,6 @@ from dify_trace_tencent.entities.semconv import (
 )
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from dify_trace_tencent.utils import TencentTraceUtils
-from core.ops.tencent_trace.entities.tencent_trace_entity import SpanData
-from core.ops.tencent_trace.utils import TencentTraceUtils
-from core.rag.models.document import Document
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
