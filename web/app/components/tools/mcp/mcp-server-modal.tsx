@@ -2,20 +2,21 @@
 import type {
   MCPServerDetail,
 } from '@/app/components/tools/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
   useCreateMCPServer,
   useInvalidateMCPServerDetail,
   useUpdateMCPServer,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 
 type ModalProps = {
   appID: string
@@ -59,6 +60,22 @@ const MCPServerModal = ({
     return res
   }
 
+  const emitMcpServerUpdate = (action: 'created' | 'updated') => {
+    const socket = webSocketClient.getSocket(appID)
+    if (!socket)
+      return
+
+    const timestamp = Date.now()
+    socket.emit('collaboration_event', {
+      type: 'mcp_server_update',
+      data: {
+        action,
+        timestamp,
+      },
+      timestamp,
+    })
+  }
+
   const submit = async () => {
     if (!data) {
       const payload: any = {
@@ -71,6 +88,7 @@ const MCPServerModal = ({
 
       await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
+      emitMcpServerUpdate('created')
       onHide()
     }
     else {
@@ -83,6 +101,7 @@ const MCPServerModal = ({
       payload.description = description
       await updateMCPServer(payload)
       invalidateMCPServerDetail(appID)
+      emitMcpServerUpdate('updated')
       onHide()
     }
   }
@@ -93,10 +112,10 @@ const MCPServerModal = ({
       onClose={onHide}
       className={cn('relative max-w-[520px]! p-0!')}
     >
-      <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
+      <div className="absolute top-5 right-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
-      <div className="title-2xl-semi-bold relative p-6 pb-3 text-xl text-text-primary">
+      <div className="relative p-6 pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}
       </div>
       <div className="space-y-5 px-6 py-3">
@@ -116,10 +135,10 @@ const MCPServerModal = ({
         {latestParams.length > 0 && (
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <div className="system-xs-medium-uppercase shrink-0 text-text-primary">{t('mcp.server.modal.parameters', { ns: 'tools' })}</div>
+              <div className="shrink-0 system-xs-medium-uppercase text-text-primary">{t('mcp.server.modal.parameters', { ns: 'tools' })}</div>
               <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
             </div>
-            <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.server.modal.parametersTip', { ns: 'tools' })}</div>
+            <div className="mb-2 body-xs-regular text-text-tertiary">{t('mcp.server.modal.parametersTip', { ns: 'tools' })}</div>
             <div className="space-y-3">
               {latestParams.map(paramItem => (
                 <MCPServerParamItem

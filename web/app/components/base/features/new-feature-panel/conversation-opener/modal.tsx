@@ -1,6 +1,8 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -10,11 +12,9 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { cn } from '@/utils/classnames'
 import { checkKeys, getNewVar } from '@/utils/var'
 
 type OpeningSettingModalProps = {
@@ -104,7 +104,7 @@ const OpeningSettingModal = ({
     return (
       <div>
         <div className="flex items-center py-2">
-          <div className="flex shrink-0 space-x-0.5 text-xs font-medium leading-[18px] text-text-tertiary">
+          <div className="flex shrink-0 space-x-0.5 text-xs leading-[18px] font-medium text-text-tertiary">
             <div className="uppercase">{t('openingStatement.openingQuestion', { ns: 'appDebug' })}</div>
             <div>·</div>
             <div>
@@ -152,13 +152,13 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-hidden"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm leading-9 text-text-secondary focus:outline-hidden"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
 
                 <div
-                  className="absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={() => {
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
@@ -177,7 +177,7 @@ const OpeningSettingModal = ({
             className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
           >
             <span className="i-ri-add-line h-4 w-4" />
-            <div className="text-[13px] system-sm-medium">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
+            <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
           </div>
         )}
       </div>
@@ -191,7 +191,7 @@ const OpeningSettingModal = ({
       className="mt-14! w-[640px]! max-w-none! bg-components-panel-bg-blur! p-6!"
     >
       <div className="mb-6 flex items-center justify-between">
-        <div className="text-text-primary title-2xl-semi-bold">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
+        <div className="title-2xl-semi-bold text-text-primary">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
         <div
           className="cursor-pointer p-1"
           onClick={onCancel}

@@ -115,7 +115,7 @@ const generateImageComponent = async (entry, relativeSegments) => {
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import s from './<%= fileName %>.module.css'
 
 const Icon = (

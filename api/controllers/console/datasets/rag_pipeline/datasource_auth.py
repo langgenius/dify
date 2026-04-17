@@ -2,8 +2,6 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -12,6 +10,8 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.plugin.impl.oauth import OAuthHandler
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService

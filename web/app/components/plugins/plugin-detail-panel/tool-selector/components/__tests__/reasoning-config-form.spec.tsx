@@ -30,10 +30,10 @@ vi.mock('@/app/components/base/select', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange: (value: boolean) => void }) => (
-    <button data-testid="auto-switch" onClick={() => onChange(!value)}>
-      {value ? 'on' : 'off'}
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
+    <button data-testid="auto-switch" onClick={() => onCheckedChange(!checked)}>
+      {checked ? 'on' : 'off'}
     </button>
   ),
 }))

@@ -1,6 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'

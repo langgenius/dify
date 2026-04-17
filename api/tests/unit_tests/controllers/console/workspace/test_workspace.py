@@ -18,6 +18,7 @@ from controllers.console.workspace.workspace import (
     CustomConfigWorkspaceApi,
     SwitchWorkspaceApi,
     TenantApi,
+    TenantInfoResponse,
     TenantListApi,
     WebappLogoWorkspaceApi,
     WorkspaceInfoApi,
@@ -433,6 +434,23 @@ class TestTenantApi:
 
         warn_mock.assert_called_once()
         assert status == 200
+
+
+class TestTenantInfoResponse:
+    def test_tenant_info_response_normalizes_enum_and_datetime(self):
+        created_at = naive_utc_now()
+        payload = TenantInfoResponse.model_validate(
+            {
+                "id": "t1",
+                "status": TenantStatus.NORMAL,
+                "plan": CloudPlan.TEAM,
+                "created_at": created_at,
+            }
+        ).model_dump(mode="json")
+
+        assert payload["status"] == "normal"
+        assert payload["plan"] == "team"
+        assert payload["created_at"] == int(created_at.timestamp())
 
 
 class TestSwitchWorkspaceApi:

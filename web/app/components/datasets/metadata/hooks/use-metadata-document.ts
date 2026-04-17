@@ -1,9 +1,9 @@
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { useBatchUpdateDocMetadata, useCreateMetaData, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
@@ -95,9 +95,9 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     const fieldList = Object.keys(fieldMap).map((key) => {
       const field = fieldMap[key]
       return {
-        id: field?.label,
+        id: field?.label!,
         type: DataType.string,
-        name: field?.label,
+        name: field?.label!,
         value: getTargetValue(key),
       }
     })
@@ -120,8 +120,8 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     startToEdit,
     handleSave,
     handleCancel,
-    originInfo,
-    technicalParameters,
+    originInfo: originInfo!,
+    technicalParameters: technicalParameters!,
   }
 }
 export default useMetadataDocument

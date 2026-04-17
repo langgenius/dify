@@ -432,7 +432,7 @@ class TestWorkflowAppLogEndpoints:
         monkeypatch.setattr(workflow_app_log_module, "sessionmaker", DummySessionMaker)
 
         def fake_get_paginate(self, **_kwargs):
-            return {"items": [], "total": 0}
+            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
         monkeypatch.setattr(
             workflow_app_log_module.WorkflowAppService,
@@ -443,7 +443,7 @@ class TestWorkflowAppLogEndpoints:
         with app.test_request_context("/?page=1&limit=20"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result == {"items": [], "total": 0}
+        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
 class TestWorkflowDraftVariableEndpoints:
@@ -608,7 +608,8 @@ class TestWorkflowTriggerEndpoints:
         with app.test_request_context("/?node_id=node-1"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is trigger
+        assert isinstance(result, dict)
+        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
 
 
 class TestWrapsEndpoints:

@@ -10,7 +10,12 @@ PYTEST_XDIST_ARGS="${PYTEST_XDIST_ARGS:--n auto}"
 # Run most tests in parallel (excluding controllers which have import conflicts with xdist)
 # Controller tests have module-level side effects (Flask route registration) that cause
 # race conditions when imported concurrently by multiple pytest-xdist workers.
-pytest --timeout "${PYTEST_TIMEOUT}" ${PYTEST_XDIST_ARGS} api/tests/unit_tests --ignore=api/tests/unit_tests/controllers
+pytest --timeout "${PYTEST_TIMEOUT}" ${PYTEST_XDIST_ARGS} \
+  api/tests/unit_tests \
+  api/providers/vdb/*/tests/unit_tests \
+  api/providers/trace/*/tests/unit_tests \
+  --ignore=api/tests/unit_tests/controllers
 
 # Run controller tests sequentially to avoid import race conditions
 pytest --timeout "${PYTEST_TIMEOUT}" --cov-append api/tests/unit_tests/controllers
+

@@ -18,10 +18,10 @@ export const getTransformedValuesWhenSecretInputPristine = (formSchemas: FormSch
   const isPristineSecretInputNames: string[] = []
   for (let i = 0; i < formSchemas.length; i++) {
     const schema = formSchemas[i]
-    if (schema.type === FormTypeEnum.secretInput) {
-      const fieldMeta = form?.getFieldMeta(schema.name)
+    if (schema!.type === FormTypeEnum.secretInput) {
+      const fieldMeta = form?.getFieldMeta(schema!.name)
       if (fieldMeta?.isPristine)
-        isPristineSecretInputNames.push(schema.name)
+        isPristineSecretInputNames.push(schema!.name)
     }
   }
 

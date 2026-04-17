@@ -46,7 +46,8 @@ describe('AssistantTypePicker', () => {
       renderComponent()
 
       // Assert
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should render chat assistant by default when value is "chat"', () => {
@@ -54,7 +55,8 @@ describe('AssistantTypePicker', () => {
       renderComponent({ value: 'chat' })
 
       // Assert
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should render agent assistant when value is "agent"', () => {
@@ -62,7 +64,8 @@ describe('AssistantTypePicker', () => {
       renderComponent({ value: 'agent' })
 
       // Assert
-      expect(screen.getByText(/agentAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
     })
   })
 
@@ -73,7 +76,8 @@ describe('AssistantTypePicker', () => {
       renderComponent({ value: 'agent' })
 
       // Assert
-      expect(screen.getByText(/agentAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/agentAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should handle agentConfig prop', () => {
@@ -91,7 +95,8 @@ describe('AssistantTypePicker', () => {
       }).not.toThrow()
 
       // Assert
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     it('should handle undefined agentConfig prop', () => {
@@ -101,7 +106,8 @@ describe('AssistantTypePicker', () => {
       }).not.toThrow()
 
       // Assert
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
   })
 
@@ -137,7 +143,7 @@ describe('AssistantTypePicker', () => {
 
       // Wait for dropdown to open and find chat option
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Find and click the chat option by its unique description
@@ -160,7 +166,7 @@ describe('AssistantTypePicker', () => {
 
       // Wait for dropdown to open and click agent option
       await waitFor(() => {
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       const agentOption = getOptionByDescription(/agentAssistant.description/i)
@@ -181,7 +187,7 @@ describe('AssistantTypePicker', () => {
 
       // Wait for dropdown and select chat
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
       })
 
       const chatOption = getOptionByDescription(/chatAssistant.description/i)
@@ -209,11 +215,11 @@ describe('AssistantTypePicker', () => {
       })
 
       const agentOptions = screen.getAllByText(/agentAssistant.name/i)
-      await user.click(agentOptions[0])
+      await user.click(agentOptions[0]!)
 
       // Assert - Dropdown should remain open (agent settings should be visible)
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
     })
 
@@ -234,7 +240,7 @@ describe('AssistantTypePicker', () => {
       })
 
       const chatOptions = screen.getAllByText(/chatAssistant.name/i)
-      await user.click(chatOptions[1])
+      await user.click(chatOptions[1]!)
 
       // Assert
       expect(onChange).not.toHaveBeenCalled()
@@ -255,7 +261,7 @@ describe('AssistantTypePicker', () => {
 
       // Wait for dropdown to open
       await waitFor(() => {
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Act - Try to click an option
@@ -292,7 +298,7 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Agent settings option should be visible
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
     })
   })
@@ -310,7 +316,7 @@ describe('AssistantTypePicker', () => {
 
       // Click agent settings
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -318,7 +324,7 @@ describe('AssistantTypePicker', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
     })
 
@@ -333,9 +339,40 @@ describe('AssistantTypePicker', () => {
 
       // Wait for dropdown to open
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
       })
 
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
+      // Assert - Agent settings modal should not appear (value is 'chat')
       // Assert - Agent settings modal should not appear (value is 'chat')
       expect(screen.queryByText(/common.operation.save/i)).not.toBeInTheDocument()
     })
@@ -351,7 +388,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -359,7 +396,7 @@ describe('AssistantTypePicker', () => {
 
       // Wait for modal and click save
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
 
       const saveButton = screen.getByText(/common.operation.save/i)
@@ -379,14 +416,14 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
       await user.click(agentSettingsTrigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/appDebug.agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/appDebug.agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const saveButton = screen.getByText(/common.operation.save/i)
@@ -409,14 +446,14 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
       await user.click(agentSettingsTrigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
 
       const cancelButton = screen.getByText(/common.operation.cancel/i)
@@ -439,7 +476,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -447,7 +484,7 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Modal should be open and dropdown should close
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
 
       // The dropdown should be closed (agent settings description should not be visible)
@@ -472,7 +509,8 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       // Assert - Should not crash
-      expect(trigger).toBeInTheDocument()
+      // Assert - Should not crash
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should handle multiple rapid selection changes', async () => {
@@ -486,7 +524,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Click agent option - this stays open because value is 'agent'
@@ -523,7 +561,8 @@ describe('AssistantTypePicker', () => {
       }).not.toThrow()
 
       // Assert
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
     })
 
     describe('should render with different prop combinations', () => {
@@ -542,7 +581,7 @@ describe('AssistantTypePicker', () => {
 
           // Assert
           const expectedText = combo.value === 'agent' ? 'agentAssistant.name' : 'chatAssistant.name'
-          expect(screen.getByText(new RegExp(expectedText, 'i'))).toBeInTheDocument()
+          expect(screen.getByText(new RegExp(expectedText, 'i')))!.toBeInTheDocument()
         },
       )
     })
@@ -561,15 +600,15 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Both options should be visible and clickable
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Verify we can interact with option elements using helper function
       const chatOption = getOptionByDescription(/chatAssistant.description/i)
       const agentOption = getOptionByDescription(/agentAssistant.description/i)
-      expect(chatOption).toBeInTheDocument()
-      expect(agentOption).toBeInTheDocument()
+      expect(chatOption)!.toBeInTheDocument()
+      expect(agentOption)!.toBeInTheDocument()
     })
   })
 
@@ -586,16 +625,16 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Both options should be visible with radio components
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       // The SelectItem components render with different visual states
       // based on isChecked prop - we verify both options are rendered
       const chatOption = getOptionByDescription(/chatAssistant.description/i)
       const agentOption = getOptionByDescription(/agentAssistant.description/i)
-      expect(chatOption).toBeInTheDocument()
-      expect(agentOption).toBeInTheDocument()
+      expect(chatOption)!.toBeInTheDocument()
+      expect(agentOption)!.toBeInTheDocument()
     })
 
     it('should render description text', async () => {
@@ -609,8 +648,8 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Descriptions should be visible
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
     })
 
@@ -625,8 +664,8 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Radio components should be present (both options visible)
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
     })
   })
@@ -643,7 +682,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -651,9 +690,9 @@ describe('AssistantTypePicker', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
-      expect(screen.getByText(/appDebug.agent.agentModeType.functionCall/i)).toBeInTheDocument()
+      expect(screen.getByText(/appDebug.agent.agentModeType.functionCall/i))!.toBeInTheDocument()
     })
 
     it('should show built-in prompt when isFunctionCall is false', async () => {
@@ -666,7 +705,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -674,9 +713,9 @@ describe('AssistantTypePicker', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText(/common.operation.save/i)).toBeInTheDocument()
+        expect(screen.getByText(/common.operation.save/i))!.toBeInTheDocument()
       })
-      expect(screen.getByText(/tools.builtInPromptTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/tools.builtInPromptTitle/i))!.toBeInTheDocument()
     })
 
     it('should initialize max iteration from agentConfig payload', async () => {
@@ -696,7 +735,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettingsTrigger = screen.getByText(/agent.setting.name/i)
@@ -705,7 +744,7 @@ describe('AssistantTypePicker', () => {
       // Assert
       await screen.findByText(/common.operation.save/i)
       const maxIterationInput = await screen.findByRole('spinbutton')
-      expect(maxIterationInput).toHaveValue(10)
+      expect(maxIterationInput)!.toHaveValue(10)
     })
   })
 
@@ -721,7 +760,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Press Escape
@@ -741,8 +780,9 @@ describe('AssistantTypePicker', () => {
       const trigger = screen.getByText(/chatAssistant.name/i)
 
       // Assert - Element should be focusable
-      expect(trigger).toBeInTheDocument()
-      expect(trigger.parentElement).toBeInTheDocument()
+      // Assert - Element should be focusable
+      expect(trigger)!.toBeInTheDocument()
+      expect(trigger.parentElement)!.toBeInTheDocument()
     })
 
     it('should allow keyboard focus on dropdown options', async () => {
@@ -755,7 +795,7 @@ describe('AssistantTypePicker', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Get options
@@ -763,8 +803,9 @@ describe('AssistantTypePicker', () => {
       const agentOption = getOptionByDescription(/agentAssistant.description/i)
 
       // Assert - Options should be focusable
-      expect(chatOption).toBeInTheDocument()
-      expect(agentOption).toBeInTheDocument()
+      // Assert - Options should be focusable
+      expect(chatOption)!.toBeInTheDocument()
+      expect(agentOption)!.toBeInTheDocument()
 
       // Verify options exist and can receive focus programmatically
       // Note: focus() doesn't always update document.activeElement in JSDOM
@@ -787,11 +828,11 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Agent settings button should be focusable
       await waitFor(() => {
-        expect(screen.getByText(/agent.setting.name/i)).toBeInTheDocument()
+        expect(screen.getByText(/agent.setting.name/i))!.toBeInTheDocument()
       })
 
       const agentSettings = screen.getByText(/agent.setting.name/i)
-      expect(agentSettings).toBeInTheDocument()
+      expect(agentSettings)!.toBeInTheDocument()
     })
   })
 
@@ -804,7 +845,7 @@ describe('AssistantTypePicker', () => {
 
       // Act - Check initial state
       const portalContainer = container.querySelector('[data-state]')
-      expect(portalContainer).toHaveAttribute('data-state', 'closed')
+      expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
 
       // Open dropdown
       const trigger = screen.getByText(/chatAssistant.name/i)
@@ -813,7 +854,7 @@ describe('AssistantTypePicker', () => {
       // Assert - State should change to open
       await waitFor(() => {
         const openPortal = container.querySelector('[data-state="open"]')
-        expect(openPortal).toBeInTheDocument()
+        expect(openPortal)!.toBeInTheDocument()
       })
     })
 
@@ -823,11 +864,12 @@ describe('AssistantTypePicker', () => {
 
       // Assert - Portal should have data-state for accessibility
       const portalContainer = container.querySelector('[data-state]')
-      expect(portalContainer).toBeInTheDocument()
-      expect(portalContainer).toHaveAttribute('data-state')
+      expect(portalContainer)!.toBeInTheDocument()
+      expect(portalContainer)!.toHaveAttribute('data-state')
 
       // Should start in closed state
-      expect(portalContainer).toHaveAttribute('data-state', 'closed')
+      // Should start in closed state
+      expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
     })
 
     it('should maintain accessible structure for screen readers', () => {
@@ -835,7 +877,8 @@ describe('AssistantTypePicker', () => {
       renderComponent({ value: 'chat' })
 
       // Assert - Text content should be accessible
-      expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
+      // Assert - Text content should be accessible
+      expect(screen.getByText(/chatAssistant.name/i))!.toBeInTheDocument()
 
       // Icons should have proper structure
       const { container } = renderComponent()
@@ -854,12 +897,13 @@ describe('AssistantTypePicker', () => {
 
       // Assert - All options should have descriptive text
       await waitFor(() => {
-        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
-        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
+        expect(screen.getByText(/chatAssistant.description/i))!.toBeInTheDocument()
+        expect(screen.getByText(/agentAssistant.description/i))!.toBeInTheDocument()
       })
 
       // Title text should be visible
-      expect(screen.getByText(/assistantType.name/i)).toBeInTheDocument()
+      // Title text should be visible
+      expect(screen.getByText(/assistantType.name/i))!.toBeInTheDocument()
     })
   })
 })

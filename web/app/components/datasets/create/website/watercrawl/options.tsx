@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from '../base/checkbox-with-label'
 import Field from '../base/field'
 
@@ -32,7 +32,7 @@ const Options: FC<Props> = ({
     }
   }, [payload, onChange])
   return (
-    <div className={cn(className, ' space-y-2')}>
+    <div className={cn(className, 'space-y-2')}>
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.crawlSubPage`, { ns: 'datasetCreation' })}
         isChecked={payload.crawl_sub_pages}

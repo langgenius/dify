@@ -1,10 +1,10 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   email: string
@@ -35,7 +35,7 @@ const EmailItem = ({
         <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
       )}
       {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
-      <div title={data.email} className="system-xs-regular max-w-[500px] truncate text-text-primary">
+      <div title={data.email} className="max-w-[500px] truncate system-xs-regular text-text-primary">
         {email === data.email ? data.name : data.email}
         {email === data.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
       </div>

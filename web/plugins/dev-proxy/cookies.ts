@@ -57,13 +57,13 @@ export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
 
 const rewriteSetCookieValueForLocal = (setCookieValue: string) => {
   const [rawCookiePair, ...rawAttributes] = setCookieValue.split(';')
-  const separatorIndex = rawCookiePair.indexOf('=')
+  const separatorIndex = rawCookiePair!.indexOf('=')
 
   if (separatorIndex === -1)
     return setCookieValue
 
-  const cookieName = rawCookiePair.slice(0, separatorIndex).trim()
-  const cookieValue = rawCookiePair.slice(separatorIndex + 1)
+  const cookieName = rawCookiePair!.slice(0, separatorIndex).trim()
+  const cookieValue = rawCookiePair!.slice(separatorIndex + 1)
   const rewrittenAttributes = rawAttributes
     .map(attribute => attribute.trim())
     .filter(attribute =>

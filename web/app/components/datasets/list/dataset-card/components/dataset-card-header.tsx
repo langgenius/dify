@@ -1,4 +1,5 @@
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -31,7 +31,7 @@ const DocModeInfo = ({
 
   if (isExternalProvider) {
     return (
-      <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
+      <div className="flex items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary">
         <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>
       </div>
     )
@@ -48,10 +48,10 @@ const DocModeInfo = ({
     : ''
 
   return (
-    <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
+    <div className="flex items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary">
       {!!dataset.doc_form && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
         >
           {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
@@ -59,7 +59,7 @@ const DocModeInfo = ({
       )}
       {dataset.indexing_technique && indexingText && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={indexingText}
         >
           {indexingText}
@@ -67,7 +67,7 @@ const DocModeInfo = ({
       )}
       {dataset.is_multimodal && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={t('multimodal', { ns: 'dataset' })}
         >
           {t('multimodal', { ns: 'dataset' })}
@@ -108,7 +108,7 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
   )
 
   return (
-    <div className={cn('flex items-center gap-x-3 px-4 pb-2 pt-4', !dataset.embedding_available && 'opacity-30')}>
+    <div className={cn('flex items-center gap-x-3 px-4 pt-4 pb-2', !dataset.embedding_available && 'opacity-30')}>
       <div className="relative shrink-0">
         <AppIcon
           size="large"
@@ -118,19 +118,19 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
         {(isShowChunkingModeIcon || isExternalProvider) && (
-          <div className="absolute -bottom-1 -right-1 z-5">
+          <div className="absolute -right-1 -bottom-1 z-5">
             <Icon className="size-4" />
           </div>
         )}
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
         <div
-          className="system-md-semibold truncate text-text-secondary"
+          className="truncate system-md-semibold text-text-secondary"
           title={dataset.name}
         >
           {dataset.name}
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary">
+        <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
           <div className="truncate" title={dataset.author_name}>{dataset.author_name}</div>
           <div>·</div>
           <div className="truncate" title={editTimeText}>{editTimeText}</div>

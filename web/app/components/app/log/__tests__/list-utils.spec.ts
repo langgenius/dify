@@ -150,12 +150,12 @@ describe('log list utils', () => {
   it('should update annotation state helpers', () => {
     const items = createChatItems()
 
-    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0].content).toBe('updated question')
-    expect(applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1].annotation).toEqual(expect.objectContaining({
+    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0]!.content).toBe('updated question')
+    expect(applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1]!.annotation).toEqual(expect.objectContaining({
       id: 'annotation-1',
       authorName: 'Dify',
     }))
-    expect(applyAnnotationRemoved(items, 1)[1].annotation).toBeUndefined()
+    expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
   })
 
   it('should derive urls, scroll thresholds, row values, and detail metadata', () => {

@@ -44,7 +44,7 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/popover', () => ({
+vi.mock('@langgenius/dify-ui/popover', () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -185,7 +185,7 @@ describe('PopupItem', () => {
 
     expect(mockSetShowModelModal).toHaveBeenCalled()
 
-    const call = mockSetShowModelModal.mock.calls[0][0] as { onSaveCallback?: () => void }
+    const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
     call.onSaveCallback?.()
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
@@ -220,7 +220,7 @@ describe('PopupItem', () => {
       />,
     )
 
-    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
   })
 
   it('should fall back to english labels when the current language is unavailable', () => {
@@ -237,14 +237,14 @@ describe('PopupItem', () => {
       />,
     )
 
-    expect(screen.getByText('OpenAI only')).toBeInTheDocument()
-    expect(screen.getByText('GPT-4 only')).toBeInTheDocument()
+    expect(screen.getByText('OpenAI only'))!.toBeInTheDocument()
+    expect(screen.getByText('GPT-4 only'))!.toBeInTheDocument()
   })
 
   it('should toggle collapsed state when clicking provider header', () => {
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('OpenAI'))
 
@@ -252,13 +252,13 @@ describe('PopupItem', () => {
 
     fireEvent.click(screen.getByText('OpenAI'))
 
-    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
   })
 
   it('should show credential name when using custom provider', () => {
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText('my-api-key')).toBeInTheDocument()
+    expect(screen.getByText('my-api-key'))!.toBeInTheDocument()
   })
 
   it('should render the inactive credential badge when the api key is not active', () => {
@@ -275,7 +275,7 @@ describe('PopupItem', () => {
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText('stale-key')).toBeInTheDocument()
+    expect(screen.getByText('stale-key'))!.toBeInTheDocument()
     expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
   })
 
@@ -301,7 +301,7 @@ describe('PopupItem', () => {
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText(/modelProvider\.selector\.configureRequired/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.configureRequired/))!.toBeInTheDocument()
   })
 
   it('should show credits info when using system provider with remaining credits', () => {
@@ -323,7 +323,7 @@ describe('PopupItem', () => {
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText(/modelProvider\.selector\.aiCredits/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.aiCredits/))!.toBeInTheDocument()
   })
 
   it('should show credits exhausted when system provider has no credits', () => {
@@ -348,7 +348,7 @@ describe('PopupItem', () => {
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
 
   it('should close the dropdown through dropdown content callbacks', () => {

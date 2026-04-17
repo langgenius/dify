@@ -48,6 +48,7 @@ describe('EmbeddedChatbot Header', () => {
   }
 
   const defaultSystemFeatures: SystemFeatures = {
+    app_dsl_version: '',
     trial_models: [],
     plugin_installation_permission: {
       plugin_installation_scope: InstallationScope.ALL,
@@ -83,6 +84,7 @@ describe('EmbeddedChatbot Header', () => {
       allow_email_code_login: false,
       allow_email_password_login: false,
     },
+    enable_collaboration_mode: false,
     enable_trial_app: false,
     enable_explore_banner: false,
   }
