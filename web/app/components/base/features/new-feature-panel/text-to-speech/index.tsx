@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -9,7 +10,6 @@ import FeatureCard from '@/app/components/base/features/new-feature-panel/featur
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
-import { Button } from '@/app/components/base/ui/button'
 import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 

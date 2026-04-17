@@ -26,7 +26,7 @@ type CreateContentProps = {
   hasBack?: boolean
 }
 
-vi.mock('../../../../base/ui/popover', async () => {
+vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
   const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
 

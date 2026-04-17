@@ -1,6 +1,6 @@
 import type { UserProfileResponse } from '@/models/common'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'

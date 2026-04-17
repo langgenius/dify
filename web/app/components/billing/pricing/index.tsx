@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Category } from './types'
-import * as React from 'react'
-import { useState } from 'react'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   ScrollAreaContent,
   ScrollAreaCorner,
@@ -11,7 +9,9 @@ import {
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
-} from '@/app/components/base/ui/scroll-area'
+} from '@langgenius/dify-ui/scroll-area'
+import * as React from 'react'
+import { useState } from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'

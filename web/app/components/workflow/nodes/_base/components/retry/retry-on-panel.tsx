@@ -1,10 +1,10 @@
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
-import { Slider } from '@/app/components/base/ui/slider'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'

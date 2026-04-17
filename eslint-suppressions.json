@@ -2113,11 +2113,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/switch/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tab-slider/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2

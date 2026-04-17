@@ -5,13 +5,13 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import { useVariableAssigner } from '../../hooks'
 

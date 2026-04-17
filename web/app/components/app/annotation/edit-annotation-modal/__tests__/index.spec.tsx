@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import EditAnnotationModal from '../index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({

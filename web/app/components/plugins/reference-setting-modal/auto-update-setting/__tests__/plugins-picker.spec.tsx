@@ -5,7 +5,7 @@ import { AUTO_UPDATE_MODE } from '../types'
 
 const mockToolPicker = vi.fn()
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({
     children,
   }: {

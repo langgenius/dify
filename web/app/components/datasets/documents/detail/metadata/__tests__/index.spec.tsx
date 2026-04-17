@@ -34,7 +34,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 

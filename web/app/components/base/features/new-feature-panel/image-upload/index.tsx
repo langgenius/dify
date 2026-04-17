@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line, RiImage2Fill } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -9,7 +10,6 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   disabled: boolean

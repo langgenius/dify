@@ -2,8 +2,8 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'

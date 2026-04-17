@@ -1,6 +1,13 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   Fragment,
   memo,
   useState,
@@ -10,13 +17,6 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import TipPopup from '@/app/components/workflow/operator/tip-popup'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 

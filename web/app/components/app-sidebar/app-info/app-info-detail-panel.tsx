@@ -1,6 +1,7 @@
 import type { Operation } from './app-operations'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { App, AppSSO } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -14,7 +15,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import ContentDialog from '@/app/components/base/content-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import { AppModeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'

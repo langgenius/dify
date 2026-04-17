@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AppOperations from '../app-operations'
 
-vi.mock('../../../base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
     'children': React.ReactNode
     'onClick'?: () => void
@@ -30,7 +30,7 @@ vi.mock('../../../base/ui/button', () => ({
   ),
 }))
 
-vi.mock('../../../base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
 
   const useDropdownMenuContext = () => {

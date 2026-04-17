@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '../../../base/switch'
 
 export enum PlanRange {
   monthly = 'monthly',
