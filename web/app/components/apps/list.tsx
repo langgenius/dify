@@ -2,7 +2,6 @@
 
 import type { FC } from 'react'
 import type { StudioPageType } from '.'
-import type { App } from '@/types/app'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
@@ -23,7 +22,6 @@ import { useInfiniteAppList } from '@/service/use-apps'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetCard from '../snippets/components/snippet-card'
 import SnippetCreateCard from '../snippets/components/snippet-create-card'
-import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import AppTypeFilter from './app-type-filter'
@@ -173,7 +171,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isPageLoading && !isNextPageFetching && !currentError && hasMore) {
+        if (entries[0]!.isIntersecting && !isPageLoading && !isNextPageFetching && !currentError && hasMore) {
           if (isAppsPage)
             fetchNextPage()
           else
@@ -217,10 +215,6 @@ const List: FC<Props> = ({
     setTagFilterValue(value)
     handleTagsUpdate(value)
   }, [handleTagsUpdate])
-
-  const appItems = useMemo<App[]>(() => {
-    return (data?.pages ?? []).flatMap(({ data: apps }) => apps)
-  }, [data?.pages])
 
   const snippetItems = useMemo(() => {
     return (snippetData?.pages ?? []).flatMap(({ data }) => data)

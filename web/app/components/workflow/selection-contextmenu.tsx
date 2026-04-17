@@ -1,6 +1,7 @@
 import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import {
   memo,
@@ -18,13 +19,12 @@ import {
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
 import { toast } from '@/app/components/base/ui/toast'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
-import { cn } from '@langgenius/dify-ui/cn'
 import CreateSnippetDialog from './create-snippet-dialog'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
