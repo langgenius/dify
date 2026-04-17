@@ -78,6 +78,13 @@ class SnippetDraftSyncPayload(BaseModel):
     input_fields: list[dict[str, Any]] | None = None
 
 
+class SnippetWorkflowListQuery(BaseModel):
+    """Query parameters for listing snippet published workflows."""
+
+    page: int = Field(default=1, ge=1, le=99999)
+    limit: int = Field(default=10, ge=1, le=100)
+
+
 class WorkflowRunQuery(BaseModel):
     """Query parameters for workflow runs."""
 

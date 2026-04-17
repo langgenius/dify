@@ -4,14 +4,14 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal, marshal_with
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import workflow_model
+from controllers.console.app.workflow import workflow_model, workflow_pagination_model
 from controllers.console.app.workflow_run import (
     workflow_run_detail_model,
     workflow_run_node_execution_list_model,
@@ -25,6 +25,7 @@ from controllers.console.snippets.payloads import (
     SnippetDraftSyncPayload,
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
+    SnippetWorkflowListQuery,
     WorkflowRunQuery,
 )
 from controllers.console.wraps import (
@@ -58,6 +59,7 @@ register_schema_models(
     SnippetDraftRunPayload,
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
+    SnippetWorkflowListQuery,
     WorkflowRunQuery,
     PublishWorkflowPayload,
 )
@@ -248,6 +250,40 @@ class SnippetDefaultBlockConfigsApi(Resource):
         """Get default block configurations for snippet workflow."""
         snippet_service = SnippetService()
         return snippet_service.get_default_block_configs()
+
+
+@console_ns.route("/snippets/<uuid:snippet_id>/workflows")
+class SnippetPublishedAllWorkflowApi(Resource):
+    @console_ns.expect(console_ns.models[SnippetWorkflowListQuery.__name__])
+    @console_ns.doc("get_all_snippet_published_workflows")
+    @console_ns.doc(description="Get all published workflows for a snippet")
+    @console_ns.doc(params={"snippet_id": "Snippet ID"})
+    @console_ns.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_snippet
+    @edit_permission_required
+    def get(self, snippet: CustomizedSnippet):
+        """Get all published workflow versions for snippet."""
+        args = SnippetWorkflowListQuery.model_validate(request.args.to_dict(flat=True))
+
+        snippet_service = SnippetService()
+        with Session(db.engine) as session:
+            workflows, has_more = snippet_service.get_all_published_workflows(
+                session=session,
+                snippet=snippet,
+                page=args.page,
+                limit=args.limit,
+            )
+            serialized_workflows = marshal(workflows, workflow_model)
+
+        return {
+            "items": serialized_workflows,
+            "page": args.page,
+            "limit": args.limit,
+            "has_more": has_more,
+        }
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
