@@ -16,6 +16,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
 )
+from core.tools.errors import ApiToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
@@ -308,7 +309,7 @@ class ApiToolManageService:
             )
 
             if provider is None:
-                raise ValueError(f"api provider {provider_name} does not exist")
+                raise ApiToolProviderNotFoundError(provider_name=original_provider, tenant_id=tenant_id)
 
             # parse openapi to tool bundle
             extra_info: dict[str, str] = {}
