@@ -151,6 +151,7 @@
   "common.branch": "分支",
   "common.chooseDSL": "选择 DSL(yml) 文件",
   "common.chooseStartNodeToRun": "选择启动节点进行运行",
+  "common.clipboardVersionCompatibilityWarning": "此内容复制自不同版本的 Dify 应用，部分内容可能不兼容。",
   "common.commentMode": "评论模式",
   "common.configure": "配置",
   "common.configureRequired": "需要进行配置",

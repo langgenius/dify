@@ -151,6 +151,7 @@
   "common.branch": "BRANCHE",
   "common.chooseDSL": "Choisir le fichier DSL(yml)",
   "common.chooseStartNodeToRun": "Choisissez le nœud de départ pour lancer",
+  "common.clipboardVersionCompatibilityWarning": "Ce contenu a été copié depuis une version différente de l'application Dify. Certaines parties peuvent être incompatibles.",
   "common.commentMode": "Mode commentaires",
   "common.configure": "Configurer",
   "common.configureRequired": "Configuration requise",
