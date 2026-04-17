@@ -140,6 +140,10 @@ class MongoDBVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         self._create_collection()
         if texts:
+            if not embeddings:
+                raise ValueError("Embeddings must be provided and non-empty when texts are provided.")
+            if any(not embedding for embedding in embeddings):
+                raise ValueError("All embeddings must be non-empty when texts are provided.")
             self._create_vector_index(len(embeddings[0]))
             self.add_texts(texts, embeddings, **kwargs)
 
