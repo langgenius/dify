@@ -122,7 +122,7 @@ describe('useChat – handleResume', () => {
     })
 
     expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-1/events?include_state_snapshot=true&replay=true',
+      '/workflow/wfr-1/events?include_state_snapshot=true',
       {},
       expect.any(Object),
     )

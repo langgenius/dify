@@ -680,10 +680,8 @@ export const useChat = (
       onGetSuggestedQuestions,
     }: SendCallback,
   ) => {
-    // Re-subscribe to workflow events for the specific message.
-    // replay=true tells the backend to read from the beginning of the Redis Stream
-    // so all retained events are replayed on reconnection (e.g. page refresh).
-    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&replay=true`
+    // Re-subscribe to workflow events for the specific message
+    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
     const otherOptions: IOtherOptions = {
       getAbortController: (abortController) => {
