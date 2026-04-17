@@ -20,11 +20,11 @@ const MenuItem: FC<MenuItemProps> = ({
 }) => {
   return (
     <DropdownMenuItem
+      variant={isDestructive ? 'destructive' : 'default'}
       className={cn(
         'justify-between px-2 py-1.5',
         isDestructive && 'data-highlighted:bg-state-destructive-hover',
       )}
-      destructive={isDestructive}
       onClick={(event) => {
         event.stopPropagation()
         onClick(item.key)

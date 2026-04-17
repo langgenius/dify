@@ -115,7 +115,7 @@ const DebugItem: FC<DebugItemProps> = ({
             {showRemove && (
               <>
                 {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
-                <DropdownMenuItem destructive className="system-md-regular" onClick={handleRemove}>
+                <DropdownMenuItem variant="destructive" className="system-md-regular" onClick={handleRemove}>
                   {t('operation.remove', { ns: 'common' })}
                 </DropdownMenuItem>
               </>
