@@ -1,10 +1,4 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,7 +6,13 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 
 const i18nPrefix = 'batchAction'
 

@@ -1,14 +1,6 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import copy from 'copy-to-clipboard'
-
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import InputWithCopy from '@/app/components/base/input-with-copy'
-import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -16,8 +8,16 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/number-field'
+
+import { toast } from '@langgenius/dify-ui/toast'
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import InputWithCopy from '@/app/components/base/input-with-copy'
+import { SimpleSelect } from '@/app/components/base/select'
+import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'

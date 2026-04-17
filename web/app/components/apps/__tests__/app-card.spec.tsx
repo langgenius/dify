@@ -34,7 +34,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 
@@ -190,7 +190,7 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   type DropdownMenuContextValue = {
     isOpen: boolean
     setOpen: (open: boolean) => void
@@ -1658,7 +1658,7 @@ describe('AppCard', () => {
 
     it('should reset delete input when dialog closes', async () => {
       vi.resetModules()
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1675,12 +1675,12 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('textbox')).toHaveValue('')
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
     })
 
     it('should keep delete input when dialog remains open', async () => {
       vi.resetModules()
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1694,13 +1694,13 @@ describe('AppCard', () => {
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
       expect(await screen.findByRole('textbox')).toHaveValue('partial name')
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
     })
 
     it('should keep delete dialog open when close is requested during deletion', async () => {
       vi.resetModules()
       mockDeleteMutationPending = true
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1713,7 +1713,7 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
       mockDeleteMutationPending = false
     })
   })

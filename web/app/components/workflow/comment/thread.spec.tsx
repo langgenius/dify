@@ -68,14 +68,14 @@ vi.mock('@/app/components/base/inline-delete-confirm', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/avatar', () => ({
+vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
   AvatarRoot: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-root">{children}</div>,
   AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,
   AvatarFallback: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-fallback">{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button type="button" {...props}>{children}</button>
@@ -83,7 +83,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/tooltip', () => ({
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipTrigger: ({
     children,

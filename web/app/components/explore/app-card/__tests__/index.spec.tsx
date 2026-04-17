@@ -2,11 +2,16 @@ import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('../../../app/type-selector', () => ({
   AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
 }))
 
 const createApp = (overrides?: Partial<App>): App => ({
@@ -41,6 +46,7 @@ const createApp = (overrides?: Partial<App>): App => ({
 describe('AppCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
+  const mockTrackEvent = vi.mocked(trackEvent)
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
@@ -147,6 +153,22 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByText('explore.appCard.try'))
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
+    })
+
+    it('should track preview event when detail button is clicked', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true, isExplore: true })
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+
+      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
+        template_id: app.app_id,
+        template_name: app.app.name,
+        template_mode: app.app.mode,
+        template_category: app.category,
+        page: 'explore',
+      })
     })
   })
 })

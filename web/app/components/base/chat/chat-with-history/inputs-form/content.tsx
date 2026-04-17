@@ -86,7 +86,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.select && (
             <PortalSelect
-              popupClassName="w-[200px]"
+              popupClassName="z-[60] w-[200px]"
               value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
               items={form.options.map((option: string) => ({ value: option, name: option }))}
               onSelect={item => handleFormChange(form.variable, item.value as string)}

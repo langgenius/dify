@@ -218,16 +218,8 @@
     }
   },
   "web/app/components/app-sidebar/app-info/app-operations.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 4
-    }
-  },
-  "web/app/components/app-sidebar/app-sidebar-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app-sidebar/basic.tsx": {
@@ -236,15 +228,7 @@
     }
   },
   "web/app/components/app-sidebar/dataset-info/dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app-sidebar/dataset-sidebar-dropdown.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -336,11 +320,6 @@
   "web/app/components/app/app-publisher/index.tsx": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/app/app-publisher/publish-with-multiple-model.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/app-publisher/version-info-modal.tsx": {
@@ -575,11 +554,6 @@
       "count": 6
     }
   },
-  "web/app/components/app/configuration/debug/debug-with-multiple-model/debug-item.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "web/app/components/app/configuration/debug/debug-with-multiple-model/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -801,9 +775,6 @@
   },
   "web/app/components/base/action-button/index.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -2142,11 +2113,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/switch/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tab-slider/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
@@ -2594,11 +2560,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/header/breadcrumbs/dropdown/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3022,9 +2983,6 @@
     }
   },
   "web/app/components/explore/item-operation/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -3168,11 +3126,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/data-source-page-new/operator.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3194,11 +3147,6 @@
   "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/members-page/operation/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
@@ -3486,11 +3434,6 @@
     }
   },
   "web/app/components/plugins/marketplace/search-box/tags-filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/sort-dropdown/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -3851,9 +3794,6 @@
     }
   },
   "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     }
@@ -3864,11 +3804,6 @@
     }
   },
   "web/app/components/plugins/plugin-page/plugin-tasks/components/task-status-indicator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-page/plugin-tasks/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4091,9 +4026,6 @@
     }
   },
   "web/app/components/share/text-generation/menu-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -4173,11 +4105,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/tools/mcp/detail/operation-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/tools/mcp/detail/tool-item.tsx": {
@@ -4349,9 +4276,6 @@
     }
   },
   "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -4465,9 +4389,6 @@
   },
   "web/app/components/workflow/header/test-run-menu.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "react-refresh/only-export-components": {
@@ -4753,27 +4674,12 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/next-step/operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/node-control.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/node-handle.tsx": {
     "react/set-state-in-effect": {
       "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/option-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/panel-operator/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4998,11 +4904,6 @@
   },
   "web/app/components/workflow/nodes/answer/default.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/assigner/components/operation-selector.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6010,11 +5911,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/note-node/note-editor/toolbar/operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/note-node/note-editor/utils.ts": {
     "regexp/no-useless-quantifier": {
       "count": 1
@@ -6030,11 +5926,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/more-actions.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/operator/tip-popup.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -6042,9 +5933,6 @@
   },
   "web/app/components/workflow/operator/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6141,11 +6029,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/panel/version-history-panel/context-menu/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/version-history-panel/delete-confirm-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -6164,11 +6047,6 @@
   "web/app/components/workflow/panel/workflow-preview.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/run/agent-log/agent-log-nav-more.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/run/agent-log/index.tsx": {
@@ -6449,9 +6327,6 @@
   },
   "web/app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },

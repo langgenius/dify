@@ -1,10 +1,10 @@
 import type { StartNodeType } from './types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useIsChatMode,
   useNodesReadOnly,

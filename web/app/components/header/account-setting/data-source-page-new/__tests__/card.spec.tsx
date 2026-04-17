@@ -188,10 +188,12 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.edit/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
-        apiKey: 'key1',
-        __name__: 'Credential 1',
-        __credential_id__: 'c1',
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
+          apiKey: 'key1',
+          __name__: 'Credential 1',
+          __credential_id__: 'c1',
+        })
       })
     })
 
@@ -202,7 +204,9 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.remove/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
+      })
     })
 
     it('should handle "setDefault" action from Item component', async () => {
@@ -212,7 +216,9 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/auth.setDefault/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+      })
     })
 
     it('should handle "rename" action from Item component', async () => {
@@ -231,14 +237,16 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.rename/))
 
       // Now it should show an input
-      const input = screen.getByPlaceholderText(/placeholder.input/)
+      const input = await screen.findByPlaceholderText(/placeholder.input/)
       fireEvent.change(input, { target: { value: 'New Name' } })
       fireEvent.click(screen.getByText(/operation.save/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({
-        credential_id: 'c1',
-        name: 'New Name',
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({
+          credential_id: 'c1',
+          name: 'New Name',
+        })
       })
     })
 
