@@ -5,7 +5,7 @@ import { useUserProfile } from '@/service/use-common'
 import Loading from './base/loading'
 
 const Splash: FC<PropsWithChildren> = () => {
-  const { isPending, isError, data } = useUserProfile()
+  const { isPending } = useUserProfile()
 
   if (isPending) {
     return (
@@ -14,9 +14,6 @@ const Splash: FC<PropsWithChildren> = () => {
       </div>
     )
   }
-
-  if (isError || !data?.profile)
-    return null
 
   return null
 }
