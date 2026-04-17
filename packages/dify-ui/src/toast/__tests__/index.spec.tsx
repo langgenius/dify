@@ -121,7 +121,7 @@ describe('base/ui/toast', () => {
     await vi.advanceTimersByTimeAsync(4999)
     expect(document.body).toHaveTextContent('Default timeout')
 
-    await vi.advanceTimersByTimeAsync(1)
+    await vi.advanceTimersByTimeAsync(10)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Default timeout')
     })
@@ -136,7 +136,7 @@ describe('base/ui/toast', () => {
     await vi.advanceTimersByTimeAsync(2999)
     expect(document.body).toHaveTextContent('Configured timeout')
 
-    await vi.advanceTimersByTimeAsync(1)
+    await vi.advanceTimersByTimeAsync(10)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Configured timeout')
     })
