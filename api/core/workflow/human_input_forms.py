@@ -12,14 +12,9 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.workflow.human_input_policy import get_preferred_form_token
 from extensions.ext_database import db
 from models.human_input import HumanInputFormRecipient, RecipientType
-
-_FORM_TOKEN_PRIORITY = {
-    RecipientType.BACKSTAGE: 0,
-    RecipientType.CONSOLE: 1,
-    RecipientType.STANDALONE_WEB_APP: 2,
-}
 
 
 def load_form_tokens_by_form_id(
@@ -40,16 +35,16 @@ def load_form_tokens_by_form_id(
 
 
 def _load_form_tokens_by_form_id(session: Session, form_ids: Sequence[str]) -> dict[str, str]:
-    tokens_by_form_id: dict[str, tuple[int, str]] = {}
+    recipients_by_form_id: dict[str, list[tuple[RecipientType, str]]] = {}
     stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
     for recipient in session.scalars(stmt):
-        priority = _FORM_TOKEN_PRIORITY.get(recipient.recipient_type)
-        if priority is None or not recipient.access_token:
+        if not recipient.access_token:
             continue
+        recipients_by_form_id.setdefault(recipient.form_id, []).append((recipient.recipient_type, recipient.access_token))
 
-        candidate = (priority, recipient.access_token)
-        current = tokens_by_form_id.get(recipient.form_id)
-        if current is None or candidate[0] < current[0]:
-            tokens_by_form_id[recipient.form_id] = candidate
-
-    return {form_id: token for form_id, (_, token) in tokens_by_form_id.items()}
+    tokens_by_form_id: dict[str, str] = {}
+    for form_id, recipients in recipients_by_form_id.items():
+        token = get_preferred_form_token(recipients)
+        if token is not None:
+            tokens_by_form_id[form_id] = token
+    return tokens_by_form_id

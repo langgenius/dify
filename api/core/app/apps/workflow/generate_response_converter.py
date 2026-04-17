@@ -9,24 +9,29 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
 )
 
 
-class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = WorkflowAppBlockingResponse
-
+class WorkflowAppGenerateResponseConverter(
+    AppGenerateResponseConverter[WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse]
+):
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_full_response(
+        cls, blocking_response: WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse
+    ) -> dict[str, Any]:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        return blocking_response.model_dump()
+        return dict(blocking_response.model_dump())
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_simple_response(
+        cls, blocking_response: WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse
+    ) -> dict[str, Any]:
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -58,7 +63,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
+                response_chunk.update(cast(dict[str, object], data))
             else:
                 response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk
@@ -87,9 +92,9 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
+                response_chunk.update(cast(dict[str, object], data))
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
-                response_chunk.update(sub_stream_response.to_ignore_detail_dict())
+                response_chunk.update(cast(dict[str, object], sub_stream_response.to_ignore_detail_dict()))
             else:
                 response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk

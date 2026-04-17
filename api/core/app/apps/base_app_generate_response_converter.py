@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
@@ -11,8 +11,10 @@ from graphon.model_runtime.errors.invoke import InvokeError
 logger = logging.getLogger(__name__)
 
 
-class AppGenerateResponseConverter(ABC):
-    _blocking_response_type: type[AppBlockingResponse]
+class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
+    @classmethod
+    def _cast_blocking_response(cls, response: AppBlockingResponse) -> TBlockingResponse:
+        return cast(TBlockingResponse, response)
 
     @classmethod
     def convert(
@@ -20,7 +22,7 @@ class AppGenerateResponseConverter(ABC):
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_full_response(response)
+                return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
 
                 def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
@@ -29,7 +31,7 @@ class AppGenerateResponseConverter(ABC):
                 return _generate_full_response()
         else:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_simple_response(response)
+                return cls.convert_blocking_simple_response(cls._cast_blocking_response(response))
             else:
 
                 def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
@@ -39,12 +41,12 @@ class AppGenerateResponseConverter(ABC):
 
     @classmethod
     @abstractmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_full_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_simple_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
