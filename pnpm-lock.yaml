@@ -671,9 +671,6 @@ importers:
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.2.2(@voidzero-dev/vite-plus-core@0.1.18(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3))
-      '@testing-library/jest-dom':
-        specifier: 'catalog:'
-        version: 6.9.1
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
