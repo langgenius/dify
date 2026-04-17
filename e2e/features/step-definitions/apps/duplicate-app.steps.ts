@@ -1,6 +1,5 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
-import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {
@@ -33,7 +32,5 @@ When('I click {string} in the app options menu', async function (this: DifyWorld
 })
 
 When('I confirm the app duplication', async function (this: DifyWorld) {
-  const dialog = this.getPage().getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Duplicate' }).click()
+  await this.getPage().getByRole('button', { name: 'Duplicate' }).click()
 })

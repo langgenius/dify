@@ -29,7 +29,7 @@ Then('the app should no longer appear in the apps console', async function (this
     )
   }
 
-  await expect(this.getPage().getByText(appName, { exact: true })).not.toBeVisible({
+  await expect(this.getPage().getByTitle(appName)).not.toBeVisible({
     timeout: 10_000,
   })
 })

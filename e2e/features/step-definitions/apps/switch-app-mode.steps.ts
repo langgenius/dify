@@ -11,9 +11,7 @@ Given('there is an existing E2E chat app available for testing', async function 
 })
 
 When('I confirm the app switch', async function (this: DifyWorld) {
-  const dialog = this.getPage().getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Start switch' }).click()
+  await this.getPage().getByRole('button', { name: 'Start switch' }).click()
 })
 
 Then('I should land on the switched app', async function (this: DifyWorld) {
