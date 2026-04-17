@@ -1925,7 +1925,7 @@ export const useNodesInteractions = () => {
     let idMapping: Record<string, string> = {}
     const pastedNodesMap: Record<string, Node> = {}
     const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
-    const selectedNode = nodes.find(node => node.selected)
+    const selectedNodes = nodes.filter(node => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
     // in use-available-blocks.ts.
     const commonNestedDisallowPasteNodes = [
@@ -1936,9 +1936,12 @@ export const useNodesInteractions = () => {
       BlockEnum.KnowledgeBase,
       BlockEnum.HumanInput,
     ]
-    const selectedContainerNode = selectedNode
-      && (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop)
-      ? selectedNode
+    // Same-canvas copy keeps the source container selected, so only treat a
+    // selected container as the paste target when it is not part of the clipboard.
+    const selectedContainerNode = selectedNodes.length === 1
+      && (selectedNodes[0]?.data.type === BlockEnum.Iteration || selectedNodes[0]?.data.type === BlockEnum.Loop)
+      && !compatibleClipboardNodeIds.has(selectedNodes[0].id)
+      ? selectedNodes[0]
       : undefined
 
     rootClipboardNodes.forEach((nodeToPaste, index) => {

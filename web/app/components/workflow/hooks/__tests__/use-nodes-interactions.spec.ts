@@ -11,6 +11,14 @@ const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
 const mockUndo = vi.hoisted(() => vi.fn())
 const mockRedo = vi.hoisted(() => vi.fn())
+const mockHandleNodeIterationChildrenCopy = vi.hoisted(() => vi.fn(() => ({
+  copyChildren: [],
+  newIdMapping: {},
+})))
+const mockHandleNodeLoopChildrenCopy = vi.hoisted(() => vi.fn(() => ({
+  copyChildren: [],
+  newIdMapping: {},
+})))
 const runtimeNodesMetaDataMap = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
 }))
@@ -72,14 +80,14 @@ vi.mock('../use-inspect-vars-crud', () => ({
 vi.mock('../../nodes/iteration/use-interactions', () => ({
   useNodeIterationInteractions: () => ({
     handleNodeIterationChildDrag: () => ({ restrictPosition: {} }),
-    handleNodeIterationChildrenCopy: vi.fn(),
+    handleNodeIterationChildrenCopy: mockHandleNodeIterationChildrenCopy,
   }),
 }))
 
 vi.mock('../../nodes/loop/use-interactions', () => ({
   useNodeLoopInteractions: () => ({
     handleNodeLoopChildDrag: () => ({ restrictPosition: {} }),
-    handleNodeLoopChildrenCopy: vi.fn(),
+    handleNodeLoopChildrenCopy: mockHandleNodeLoopChildrenCopy,
   }),
 }))
 
@@ -797,6 +805,97 @@ describe('useNodesInteractions', () => {
       const newNode = pastedNodes.find(node => !currentNodes.some(existingNode => existingNode.id === node.id))
 
       expect(newNode?.data.title).toBe('Clipboard (2)')
+    })
+  })
+
+  // A copied container can still be selected on the source canvas during same-canvas paste.
+  describe('container paste target detection', () => {
+    beforeEach(() => {
+      runtimeNodesMetaDataMap.value = {
+        [BlockEnum.Iteration]: {
+          defaultValue: {
+            type: BlockEnum.Iteration,
+            title: 'Iteration',
+            desc: '',
+            _children: [],
+          },
+          metaData: {
+            isSingleton: false,
+          },
+        },
+        [BlockEnum.Loop]: {
+          defaultValue: {
+            type: BlockEnum.Loop,
+            title: 'Loop',
+            desc: '',
+            _children: [],
+          },
+          metaData: {
+            isSingleton: false,
+          },
+        },
+      }
+    })
+
+    it.each([
+      [BlockEnum.Iteration, 'iteration-source'],
+      [BlockEnum.Loop, 'loop-source'],
+    ])('pastes a copied %s as a top-level node when the source container remains selected', async (containerType, nodeId) => {
+      currentNodes = [
+        createNode({
+          id: nodeId,
+          position: { x: 20, y: 20 },
+          selected: true,
+          data: {
+            type: containerType,
+            title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
+            desc: '',
+            _children: [],
+          },
+        }),
+      ]
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: nodeId,
+            position: { x: 120, y: 120 },
+            data: {
+              type: containerType,
+              title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
+              desc: '',
+              _children: [],
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+      const newContainer = pastedNodes.find(node => node.id !== nodeId && node.data.type === containerType)
+
+      expect(newContainer).toBeDefined()
+      expect(newContainer?.parentId).toBeUndefined()
+      expect(newContainer?.data.isInIteration).toBeFalsy()
+      expect(newContainer?.data.isInLoop).toBeFalsy()
     })
   })
 
