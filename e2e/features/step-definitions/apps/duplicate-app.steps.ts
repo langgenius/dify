@@ -29,7 +29,7 @@ When('I open the options menu for the last created E2E app', async function (thi
 })
 
 When('I click {string} in the app options menu', async function (this: DifyWorld, label: string) {
-  await this.getPage().getByRole('button', { name: label }).click()
+  await this.getPage().getByRole('menuitem', { name: label }).click()
 })
 
 When('I confirm the app duplication', async function (this: DifyWorld) {

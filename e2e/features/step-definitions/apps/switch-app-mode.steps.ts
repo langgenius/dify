@@ -22,6 +22,6 @@ Then('I should land on the switched app', async function (this: DifyWorld) {
 
   // Capture the new app's ID so the After hook can clean it up
   const match = page.url().match(/\/app\/([^/]+)\/workflow/)
-  if (match)
+  if (match?.[1])
     this.createdAppIds.push(match[1])
 })
