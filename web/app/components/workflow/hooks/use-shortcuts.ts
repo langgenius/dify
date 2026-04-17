@@ -46,6 +46,7 @@ export const useShortcuts = (): void => {
     zoomTo,
     getZoom,
     fitView,
+    getNodes,
   } = useReactFlow()
 
   // Zoom out to a minimum of 0.25 for shortcut
@@ -62,11 +63,20 @@ export const useShortcuts = (): void => {
     zoomTo(newZoom)
   }
 
+  const hasBundledSelection = useCallback(() => {
+    return getNodes().some(node => node.data._isBundled)
+  }, [getNodes])
+
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
     return !isEventTargetInputArea(e.target as HTMLElement)
   }, [])
 
   const shouldHandleCopy = useCallback(() => {
+    // Box selection can leave incidental DOM text selection behind while the
+    // workflow selection itself lives on node.data._isBundled.
+    if (hasBundledSelection())
+      return true
+
     const selection = document.getSelection()
     if (!selection || selection.isCollapsed || !selection.rangeCount)
       return true
@@ -79,7 +89,7 @@ export const useShortcuts = (): void => {
     // Preserve native text copy outside the canvas, but don't let incidental
     // canvas text selection block node copy.
     return !!selectionElement?.closest('.react-flow')
-  }, [])
+  }, [hasBundledSelection])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
