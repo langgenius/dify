@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum, auto
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.extension.extensible import Extensible, ExtensionModule
 
@@ -32,6 +32,15 @@ class ModerationConfigItem(BaseModel):
 
     enabled: bool = False
     preset_response: str = ""
+
+
+class ModerationConfig(BaseModel):
+    """Top-level moderation config with inputs_config and outputs_config."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    inputs_config: ModerationConfigItem
+    outputs_config: ModerationConfigItem
 
 
 class Moderation(Extensible, ABC):
@@ -84,38 +93,29 @@ class Moderation(Extensible, ABC):
 
     @classmethod
     def _validate_inputs_and_outputs_config(cls, config: dict[str, Any], is_preset_response_required: bool):
-        # inputs_config
-        inputs_config = config.get("inputs_config")
-        if not isinstance(inputs_config, dict):
-            raise ValueError("inputs_config must be a dict")
+        # Validate the full config with a single model_validate call
+        config_model = ModerationConfig.model_validate(config)
+        inputs_config = config_model.inputs_config
+        outputs_config = config_model.outputs_config
 
-        # outputs_config
-        outputs_config = config.get("outputs_config")
-        if not isinstance(outputs_config, dict):
-            raise ValueError("outputs_config must be a dict")
-
-        # Validate sub-configs using Pydantic models
-        inputs_config_item = ModerationConfigItem.model_validate(inputs_config)
-        outputs_config_item = ModerationConfigItem.model_validate(outputs_config)
-
-        if not inputs_config_item.enabled and not outputs_config_item.enabled:
+        if not inputs_config.enabled and not outputs_config.enabled:
             raise ValueError("At least one of inputs_config or outputs_config must be enabled")
 
         if not is_preset_response_required:
             return
 
-        if inputs_config_item.enabled:
-            if not inputs_config_item.preset_response:
+        if inputs_config.enabled:
+            if not inputs_config.preset_response:
                 raise ValueError("inputs_config.preset_response is required")
 
-            if len(inputs_config_item.preset_response) > 100:
+            if len(inputs_config.preset_response) > 100:
                 raise ValueError("inputs_config.preset_response must be less than 100 characters")
 
-        if outputs_config_item.enabled:
-            if not outputs_config_item.preset_response:
+        if outputs_config.enabled:
+            if not outputs_config.preset_response:
                 raise ValueError("outputs_config.preset_response is required")
 
-            if len(outputs_config_item.preset_response) > 100:
+            if len(outputs_config.preset_response) > 100:
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
 
 
