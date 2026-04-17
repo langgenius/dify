@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render } from 'vitest-browser-react'
 import {
   Dialog,
   DialogCloseButton,
@@ -8,10 +7,12 @@ import {
   DialogTitle,
 } from '../index'
 
+const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+
 describe('Dialog wrapper', () => {
   describe('Rendering', () => {
-    it('should render dialog content when dialog is open', () => {
-      render(
+    it('should render dialog content when dialog is open', async () => {
+      const screen = await render(
         <Dialog open>
           <DialogContent>
             <DialogTitle>Dialog Title</DialogTitle>
@@ -20,15 +21,14 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      const dialog = screen.getByRole('dialog')
-      expect(dialog).toHaveTextContent('Dialog Title')
-      expect(dialog).toHaveTextContent('Dialog Description')
+      await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
+      await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
     })
   })
 
   describe('Props', () => {
-    it('should not render close button when DialogCloseButton is not provided', () => {
-      render(
+    it('should not render close button when DialogCloseButton is not provided', async () => {
+      const screen = await render(
         <Dialog open>
           <DialogContent>
             <span>Dialog body</span>
@@ -36,11 +36,11 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+      expect(() => screen.getByRole('button', { name: 'Close' }).element()).toThrow()
     })
 
-    it('should render explicit close button with custom aria-label', () => {
-      render(
+    it('should render explicit close button with custom aria-label', async () => {
+      const screen = await render(
         <Dialog open>
           <DialogContent>
             <DialogCloseButton aria-label="Dismiss dialog" />
@@ -49,11 +49,11 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+      await expect.element(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
     })
 
-    it('should render default close button label when aria-label is omitted', () => {
-      render(
+    it('should render default close button label when aria-label is omitted', async () => {
+      const screen = await render(
         <Dialog open>
           <DialogContent>
             <DialogCloseButton />
@@ -62,12 +62,12 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+      await expect.element(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
     })
 
-    it('should forward close button props to base primitive', () => {
+    it('should forward close button props to base primitive', async () => {
       const onClick = vi.fn()
-      render(
+      const screen = await render(
         <Dialog open>
           <DialogContent>
             <DialogCloseButton data-testid="close-button" disabled onClick={onClick} />
@@ -77,8 +77,8 @@ describe('Dialog wrapper', () => {
       )
 
       const closeButton = screen.getByTestId('close-button')
-      expect(closeButton).toBeDisabled()
-      fireEvent.click(closeButton)
+      await expect.element(closeButton).toBeDisabled()
+      asHTMLElement(closeButton.element()).click()
       expect(onClick).not.toHaveBeenCalled()
     })
   })
