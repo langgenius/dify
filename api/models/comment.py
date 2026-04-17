@@ -151,7 +151,7 @@ class WorkflowCommentReply(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     comment_id: Mapped[str] = mapped_column(
-        StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
+        StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -196,10 +196,10 @@ class WorkflowCommentMention(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     comment_id: Mapped[str] = mapped_column(
-        StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
+        StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
     reply_id: Mapped[str | None] = mapped_column(
-        StringUUID, db.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True
+        StringUUID, sa.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True
     )
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
