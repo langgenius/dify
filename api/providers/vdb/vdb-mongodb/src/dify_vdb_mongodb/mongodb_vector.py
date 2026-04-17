@@ -29,7 +29,7 @@ MONGODB_INDEX_ALREADY_EXISTS = 68
 MONGODB_PERMISSION_DENIED = 13
 
 
-def _sanitize_uri_for_logging(uri: str) -> str:
+def _sanitize_uri_for_logging(uri: str | None) -> str:
     """Mask credentials in a MongoDB URI so it is safe to log."""
     if not uri or not isinstance(uri, str) or not uri.strip() or "://" not in uri:
         return "***"
