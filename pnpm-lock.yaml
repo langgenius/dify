@@ -659,6 +659,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(@voidzero-dev/vite-plus-core@0.1.18(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3))
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.4(@voidzero-dev/vite-plus-test@0.1.18)
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

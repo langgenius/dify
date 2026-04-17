@@ -72,6 +72,7 @@ function AppCard({
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
@@ -106,6 +107,18 @@ function AppCard({
     await asyncRunSafe(onGenerateCode())
     setGenLoading(false)
   }
+
+  const handleToggleStatus = useCallback(async (val: boolean) => {
+    if (isTogglingStatus)
+      return
+    setIsTogglingStatus(true)
+    try {
+      await onChangeStatus(val)
+    }
+    finally {
+      setIsTogglingStatus(false)
+    }
+  }, [isTogglingStatus, onChangeStatus])
 
   const handleClickAccessControl = useCallback(() => {
     if (!appDetail)
@@ -247,7 +260,12 @@ function AppCard({
               offset={24}
             >
               <div>
-                <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                <Switch
+                  checked={cardState.runningStatus}
+                  onCheckedChange={handleToggleStatus}
+                  disabled={cardState.toggleDisabled}
+                  loading={isTogglingStatus}
+                />
               </div>
             </Tooltip>
           </div>

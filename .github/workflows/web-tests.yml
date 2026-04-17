@@ -93,6 +93,8 @@ jobs:
   dify-ui-test:
     name: dify-ui Tests
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -108,4 +110,13 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run dify-ui tests
-        run: vp test run --passWithNoTests --silent=passed-only
+        run: vp test run --passWithNoTests --coverage --silent=passed-only
+
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          directory: packages/dify-ui/coverage
+          flags: dify-ui
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}

@@ -10,6 +10,11 @@ flags:
       - "web/"
     carryforward: true
 
+  dify-ui:
+    paths:
+      - "packages/dify-ui/"
+    carryforward: true
+
   api:
     paths:
       - "api/"
