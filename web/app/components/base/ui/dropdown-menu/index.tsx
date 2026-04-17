@@ -1,8 +1,8 @@
 'use client'
 
+import type { OverlayItemVariant } from '@langgenius/dify-ui/overlay-shared'
+import type { Placement } from '@langgenius/dify-ui/placement'
 import type { ReactNode } from 'react'
-import type { OverlayItemVariant } from '@/app/components/base/ui/overlay-shared'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -13,8 +13,8 @@ import {
   overlayPopupBaseClassName,
   overlayRowClassName,
   overlaySeparatorClassName,
-} from '@/app/components/base/ui/overlay-shared'
-import { parsePlacement } from '@/app/components/base/ui/placement'
+} from '@langgenius/dify-ui/overlay-shared'
+import { parsePlacement } from '@langgenius/dify-ui/placement'
 
 export const DropdownMenu = Menu.Root
 export const DropdownMenuTrigger = Menu.Trigger

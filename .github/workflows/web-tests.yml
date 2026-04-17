@@ -89,3 +89,23 @@ jobs:
           flags: web
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+  dify-ui-test:
+    name: dify-ui Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Run dify-ui tests
+        run: vp test run --passWithNoTests --silent=passed-only

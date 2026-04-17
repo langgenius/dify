@@ -1,7 +1,7 @@
 'use client'
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '../cn'
 
 /** @public */
 export const SliderRoot = BaseSlider.Root

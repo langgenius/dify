@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Slider } from '@langgenius/dify-ui/slider'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { Slider } from '@/app/components/base/ui/slider'
 import {
   NumberField,
   NumberFieldControls,

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { UserProfile } from '@/service/workflow-comment'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import {
@@ -19,7 +20,6 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { Button } from '@/app/components/base/ui/button'
 import { useParams } from '@/next/navigation'
 import { fetchMentionableUsers } from '@/service/workflow-comment'

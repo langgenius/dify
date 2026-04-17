@@ -1,16 +1,16 @@
 'use client'
 
+import type { Placement } from '@langgenius/dify-ui/placement'
 import type { VariantProps } from 'class-variance-authority'
 import type { ReactNode } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
-import { cva } from 'class-variance-authority'
 import {
   overlayLabelClassName,
   overlaySeparatorClassName,
-} from '@/app/components/base/ui/overlay-shared'
-import { parsePlacement } from '@/app/components/base/ui/placement'
+} from '@langgenius/dify-ui/overlay-shared'
+import { parsePlacement } from '@langgenius/dify-ui/placement'
+import { cva } from 'class-variance-authority'
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value

@@ -1,7 +1,8 @@
 {
-  "extends": "@dify/tsconfig/base.json",
+  "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": ".",
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "declaration": true,
     "declarationMap": true,
     "noEmit": false,
@@ -10,5 +11,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "tests", "vite.config.ts"]
 }

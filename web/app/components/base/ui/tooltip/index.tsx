@@ -1,10 +1,10 @@
 'use client'
 
+import type { Placement } from '@langgenius/dify-ui/placement'
 import type { ReactNode } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '@langgenius/dify-ui/cn'
-import { parsePlacement } from '@/app/components/base/ui/placement'
+import { parsePlacement } from '@langgenius/dify-ui/placement'
 
 type TooltipContentVariant = 'default' | 'plain'
 

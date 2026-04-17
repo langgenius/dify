@@ -68,7 +68,7 @@ vi.mock('@/app/components/base/inline-delete-confirm', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/avatar', () => ({
+vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
   AvatarRoot: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-root">{children}</div>,
   AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,

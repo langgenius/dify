@@ -1,6 +1,19 @@
 # @langgenius/dify-ui
 
-This package provides shared design tokens (colors, shadows, typography), the `cn()` utility, and a Tailwind CSS preset consumed by `web/`.
+This package provides shared design tokens (colors, shadows, typography), the `cn()` utility, a Tailwind CSS preset, and a set of headless primitive components (Button, Dialog, Popover, ...) consumed by `web/`.
+
+## Component Authoring Rules
+
+- Prefer `@base-ui/react` as the headless primitive, styled with `cva` + `cn`.
+- Inside dify-ui, cross-component imports MUST use relative paths (e.g. `import { Button } from '../button'`). Do NOT self-import via `@langgenius/dify-ui/*`.
+- External consumers (e.g. `web/`) MUST import via subpath exports (e.g. `import { Button } from '@langgenius/dify-ui/button'`).
+- Do NOT import anything from `web/` (no `@/*` aliases). dify-ui is a leaf package.
+- Do NOT depend on next.js, react-i18next, ky, jotai, zustand, or other app-level runtime libraries. Keep components headless / framework-free.
+- Icons: keep using the Tailwind `i-ri-*` / `i-heroicons-*` utilities. The `@egoist/tailwindcss-icons` plugin is configured at the host-app level; any component moved here will be picked up automatically because `web/tailwind.config.ts` already scans `packages/dify-ui/src/**`.
+- Each component owns its folder: `src/<name>/index.tsx`, plus optional `index.stories.tsx` and `__tests__/index.spec.tsx`.
+- Add a matching subpath to `package.json#exports`: `"./<name>": { "types": "./src/<name>/index.tsx", "import": "./src/<name>/index.tsx" }`.
+
+## Border Radius: Figma Token → Tailwind Class Mapping
 
 ## Border Radius: Figma Token → Tailwind Class Mapping
 

@@ -12,18 +12,58 @@
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
+    },
+    "./placement": {
+      "types": "./src/placement.ts",
+      "import": "./src/placement.ts"
+    },
+    "./overlay-shared": {
+      "types": "./src/overlay-shared.ts",
+      "import": "./src/overlay-shared.ts"
+    },
+    "./avatar": {
+      "types": "./src/avatar/index.tsx",
+      "import": "./src/avatar/index.tsx"
+    },
+    "./slider": {
+      "types": "./src/slider/index.tsx",
+      "import": "./src/slider/index.tsx"
     }
   },
   "scripts": {
+    "test": "vp test",
+    "test:watch": "vp test --watch",
     "type-check": "tsc"
+  },
+  "peerDependencies": {
+    "@base-ui/react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   },
   "dependencies": {
     "clsx": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
+    "@base-ui/react": "catalog:",
     "@dify/tsconfig": "workspace:*",
+    "@storybook/nextjs-vite": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }

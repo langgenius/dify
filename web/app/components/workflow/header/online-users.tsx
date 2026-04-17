@@ -1,11 +1,11 @@
 'use client'
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import {
   Popover,
   PopoverContent,

@@ -1,5 +1,6 @@
 'use client'
 
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -11,7 +12,6 @@ import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
