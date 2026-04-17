@@ -263,6 +263,10 @@ class MongoDBVector(BaseVector):
         if not query_vector:
             return []
 
+        top_k = kwargs.get("top_k", 4)
+        if not isinstance(top_k, int) or top_k <= 0:
+            return []
+
         filter_dict: dict[str, Any] = {"group_id": self._group_id}
 
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -275,8 +279,8 @@ class MongoDBVector(BaseVector):
                     "index": self._index_name,
                     "path": "embedding",
                     "queryVector": query_vector,
-                    "numCandidates": kwargs.get("top_k", 4) * 10,
-                    "limit": kwargs.get("top_k", 4),
+                    "numCandidates": top_k * 10,
+                    "limit": top_k,
                     "filter": filter_dict,
                 }
             },

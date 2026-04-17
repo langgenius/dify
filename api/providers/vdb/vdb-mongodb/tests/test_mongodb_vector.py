@@ -138,6 +138,22 @@ def test_search_by_vector_applies_score_threshold(mock_client_cls: MagicMock) ->
 
 
 @patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_search_by_vector_returns_empty_for_invalid_top_k(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+
+    vector = MongoDBVector("col", "grp", _make_config())
+
+    assert vector.search_by_vector([0.1, 0.2], top_k=0) == []
+    assert vector.search_by_vector([0.1, 0.2], top_k=-1) == []
+    mock_collection.aggregate.assert_not_called()
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
 def test_create_collection_and_index(mock_client_cls: MagicMock) -> None:
     mock_instance = MagicMock()
     mock_client_cls.return_value = mock_instance
