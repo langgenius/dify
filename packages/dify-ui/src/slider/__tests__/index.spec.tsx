@@ -1,47 +1,40 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { act } from 'react'
+import { render } from 'vitest-browser-react'
 import { Slider } from '../index'
 
+const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+
 describe('Slider', () => {
-  const getSliderInput = () => screen.getByLabelText('Value')
+  it('should render with correct default ARIA limits and current value', async () => {
+    const screen = await render(<Slider value={50} onValueChange={vi.fn()} aria-label="Value" />)
 
-  it('should render with correct default ARIA limits and current value', () => {
-    render(<Slider value={50} onValueChange={vi.fn()} aria-label="Value" />)
-
-    const slider = getSliderInput()
-    expect(slider).toHaveAttribute('min', '0')
-    expect(slider).toHaveAttribute('max', '100')
-    expect(slider).toHaveAttribute('aria-valuenow', '50')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('min', '0')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('max', '100')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('aria-valuenow', '50')
   })
 
-  it('should apply custom min, max, and step values', () => {
-    render(<Slider value={10} min={5} max={20} step={5} onValueChange={vi.fn()} aria-label="Value" />)
+  it('should apply custom min, max, and step values', async () => {
+    const screen = await render(<Slider value={10} min={5} max={20} step={5} onValueChange={vi.fn()} aria-label="Value" />)
 
-    const slider = getSliderInput()
-    expect(slider).toHaveAttribute('min', '5')
-    expect(slider).toHaveAttribute('max', '20')
-    expect(slider).toHaveAttribute('aria-valuenow', '10')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('min', '5')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('max', '20')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('aria-valuenow', '10')
   })
 
-  it('should clamp non-finite values to min', () => {
-    render(<Slider value={Number.NaN} min={5} onValueChange={vi.fn()} aria-label="Value" />)
+  it('should clamp non-finite values to min', async () => {
+    const screen = await render(<Slider value={Number.NaN} min={5} onValueChange={vi.fn()} aria-label="Value" />)
 
-    expect(getSliderInput()).toHaveAttribute('aria-valuenow', '5')
+    await expect.element(screen.getByLabelText('Value')).toHaveAttribute('aria-valuenow', '5')
   })
 
   it('should call onValueChange when arrow keys are pressed', async () => {
     const onValueChange = vi.fn()
+    const screen = await render(<Slider value={20} onValueChange={onValueChange} aria-label="Value" />)
 
-    render(<Slider value={20} onValueChange={onValueChange} aria-label="Value" />)
+    const slider = screen.getByLabelText('Value').element()
+    slider.focus()
+    slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
 
-    const slider = getSliderInput()
-    act(() => {
-      slider.focus()
-      fireEvent.keyDown(slider, { key: 'ArrowRight' })
-    })
-
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(onValueChange).toHaveBeenCalledTimes(1)
     })
     expect(onValueChange).toHaveBeenLastCalledWith(21, expect.anything())
@@ -49,45 +42,39 @@ describe('Slider', () => {
 
   it('should round floating point keyboard updates to the configured step', async () => {
     const onValueChange = vi.fn()
+    const screen = await render(<Slider value={0.2} min={0} max={1} step={0.1} onValueChange={onValueChange} aria-label="Value" />)
 
-    render(<Slider value={0.2} min={0} max={1} step={0.1} onValueChange={onValueChange} aria-label="Value" />)
+    const slider = screen.getByLabelText('Value').element()
+    slider.focus()
+    slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
 
-    const slider = getSliderInput()
-    act(() => {
-      slider.focus()
-      fireEvent.keyDown(slider, { key: 'ArrowRight' })
-    })
-
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(onValueChange).toHaveBeenCalledTimes(1)
     })
     expect(onValueChange).toHaveBeenLastCalledWith(0.3, expect.anything())
   })
 
   it('should not trigger onValueChange when disabled', async () => {
-    const user = userEvent.setup()
     const onValueChange = vi.fn()
-    render(<Slider value={20} onValueChange={onValueChange} disabled aria-label="Value" />)
+    const screen = await render(<Slider value={20} onValueChange={onValueChange} disabled aria-label="Value" />)
 
-    const slider = getSliderInput()
-
+    const slider = screen.getByLabelText('Value').element()
     expect(slider).toBeDisabled()
-    await user.click(slider)
-    await user.keyboard('{ArrowRight}')
+
+    asHTMLElement(slider).click()
 
     expect(onValueChange).not.toHaveBeenCalled()
   })
 
-  it('should apply custom class names on root', () => {
-    const { container } = render(<Slider value={10} onValueChange={vi.fn()} className="outer-test" aria-label="Value" />)
+  it('should apply custom class names on root', async () => {
+    const screen = await render(<Slider value={10} onValueChange={vi.fn()} className="outer-test" aria-label="Value" />)
 
-    const sliderWrapper = container.querySelector('.outer-test')
-    expect(sliderWrapper).toBeInTheDocument()
+    expect(screen.container.querySelector('.outer-test')).toBeInTheDocument()
   })
 
-  it('should not render prehydration script tags', () => {
-    const { container } = render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
+  it('should not render prehydration script tags', async () => {
+    const screen = await render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
 
-    expect(container.querySelector('script')).not.toBeInTheDocument()
+    expect(screen.container.querySelector('script')).not.toBeInTheDocument()
   })
 })

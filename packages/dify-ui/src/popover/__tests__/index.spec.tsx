@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render } from 'vitest-browser-react'
 import {
   Popover,
   PopoverContent,
@@ -7,8 +7,8 @@ import {
 
 describe('PopoverContent', () => {
   describe('Placement', () => {
-    it('should use bottom placement and default offsets when placement props are not provided', () => {
-      render(
+    it('should use bottom placement and default offsets when placement props are not provided', async () => {
+      const screen = await render(
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
@@ -20,16 +20,13 @@ describe('PopoverContent', () => {
         </Popover>,
       )
 
-      const positioner = screen.getByRole('group', { name: 'default positioner' })
-      const popup = screen.getByRole('dialog', { name: 'default popover' })
-
-      expect(positioner).toHaveAttribute('data-side', 'bottom')
-      expect(positioner).toHaveAttribute('data-align', 'center')
-      expect(popup).toHaveTextContent('Default content')
+      await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-align', 'center')
+      await expect.element(screen.getByRole('dialog', { name: 'default popover' })).toHaveTextContent('Default content')
     })
 
-    it('should apply parsed custom placement and custom offsets when placement props are provided', () => {
-      render(
+    it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
+      const screen = await render(
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
@@ -44,20 +41,17 @@ describe('PopoverContent', () => {
         </Popover>,
       )
 
-      const positioner = screen.getByRole('group', { name: 'custom positioner' })
-      const popup = screen.getByRole('dialog', { name: 'custom popover' })
-
-      expect(positioner).toHaveAttribute('data-side', 'top')
-      expect(positioner).toHaveAttribute('data-align', 'end')
-      expect(popup).toHaveTextContent('Custom placement content')
+      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-side')
+      await expect.element(screen.getByRole('group', { name: 'custom positioner' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('dialog', { name: 'custom popover' })).toHaveTextContent('Custom placement content')
     })
   })
 
   describe('Passthrough props', () => {
-    it('should forward positionerProps and popupProps when passthrough props are provided', () => {
+    it('should forward positionerProps and popupProps when passthrough props are provided', async () => {
       const onPopupClick = vi.fn()
 
-      render(
+      const screen = await render(
         <Popover open>
           <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
           <PopoverContent
@@ -78,12 +72,11 @@ describe('PopoverContent', () => {
         </Popover>,
       )
 
-      const positioner = screen.getByRole('group', { name: 'popover positioner' })
       const popup = screen.getByRole('dialog', { name: 'popover content' })
-      fireEvent.click(popup)
+      await popup.click()
 
-      expect(positioner).toHaveAttribute('id', 'popover-positioner-id')
-      expect(popup).toHaveAttribute('id', 'popover-popup-id')
+      await expect.element(screen.getByRole('group', { name: 'popover positioner' })).toHaveAttribute('id', 'popover-positioner-id')
+      await expect.element(popup).toHaveAttribute('id', 'popover-popup-id')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
     })
   })

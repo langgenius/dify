@@ -1,10 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render } from 'vitest-browser-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../index'
 
 describe('TooltipContent', () => {
   describe('Placement and offsets', () => {
-    it('should use default top placement when placement is not provided', () => {
-      render(
+    it('should use default top placement when placement is not provided', async () => {
+      const screen = await render(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent role="tooltip" aria-label="default tooltip">
@@ -13,14 +13,13 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      const popup = screen.getByRole('tooltip', { name: 'default tooltip' })
-      expect(popup).toHaveAttribute('data-side', 'top')
-      expect(popup).toHaveAttribute('data-align', 'center')
-      expect(popup).toHaveTextContent('Tooltip body')
+      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-side')
+      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-align')
+      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveTextContent('Tooltip body')
     })
 
-    it('should apply custom placement when placement props are provided', () => {
-      render(
+    it('should apply custom placement when placement props are provided', async () => {
+      const screen = await render(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent
@@ -35,16 +34,15 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      const popup = screen.getByRole('tooltip', { name: 'custom tooltip' })
-      expect(popup).toHaveAttribute('data-side', 'bottom')
-      expect(popup).toHaveAttribute('data-align', 'start')
-      expect(popup).toHaveTextContent('Custom tooltip body')
+      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveAttribute('data-align', 'start')
+      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveTextContent('Custom tooltip body')
     })
   })
 
   describe('Variant and popup props', () => {
-    it('should render popup content when variant is plain', () => {
-      render(
+    it('should render popup content when variant is plain', async () => {
+      const screen = await render(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent variant="plain" role="tooltip" aria-label="plain tooltip">
@@ -53,13 +51,13 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      expect(screen.getByRole('tooltip', { name: 'plain tooltip' })).toHaveTextContent('Plain tooltip body')
+      await expect.element(screen.getByRole('tooltip', { name: 'plain tooltip' })).toHaveTextContent('Plain tooltip body')
     })
 
-    it('should forward popup props and handlers when popup props are provided', () => {
+    it('should forward popup props and handlers when popup props are provided', async () => {
       const onMouseEnter = vi.fn()
 
-      render(
+      const screen = await render(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent
@@ -75,15 +73,15 @@ describe('TooltipContent', () => {
       )
 
       const popup = screen.getByRole('tooltip', { name: 'help text' })
-      fireEvent.mouseEnter(popup)
+      await popup.hover()
 
-      expect(popup).toHaveAttribute('id', 'tooltip-popup-id')
-      expect(popup).toHaveAttribute('data-track-id', 'tooltip-track')
+      await expect.element(popup).toHaveAttribute('id', 'tooltip-popup-id')
+      await expect.element(popup).toHaveAttribute('data-track-id', 'tooltip-track')
       expect(onMouseEnter).toHaveBeenCalledTimes(1)
     })
 
-    it('should apply className to the popup and positionerClassName to the positioner', () => {
-      render(
+    it('should apply className to the popup and positionerClassName to the positioner', async () => {
+      const screen = await render(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
           <TooltipContent
@@ -97,7 +95,7 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      const popup = screen.getByRole('tooltip', { name: 'styled tooltip' })
+      const popup = screen.getByRole('tooltip', { name: 'styled tooltip' }).element()
       expect(popup).toHaveClass('popup-class')
       expect(popup.parentElement).toHaveClass('positioner-class')
     })

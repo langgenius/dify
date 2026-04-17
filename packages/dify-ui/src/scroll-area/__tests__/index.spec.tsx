@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -71,21 +71,19 @@ const renderScrollArea = (options: {
 describe('scroll-area wrapper', () => {
   describe('Rendering', () => {
     it('should render the compound exports together', async () => {
-      renderScrollArea()
+      const screen = await renderScrollArea()
 
-      await waitFor(() => {
-        expect(screen.getByTestId('scroll-area-root')).toBeInTheDocument()
-        expect(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
-        expect(screen.getByTestId('scroll-area-content')).toHaveTextContent('Scrollable content')
-        expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toBeInTheDocument()
-        expect(screen.getByTestId('scroll-area-vertical-thumb')).toBeInTheDocument()
-        expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toBeInTheDocument()
-        expect(screen.getByTestId('scroll-area-horizontal-thumb')).toBeInTheDocument()
-      })
+      await expect.element(screen.getByTestId('scroll-area-root')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('scroll-area-content')).toHaveTextContent('Scrollable content')
+      await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('scroll-area-vertical-thumb')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('scroll-area-horizontal-thumb')).toBeInTheDocument()
     })
 
     it('should render the convenience wrapper and apply slot props', async () => {
-      render(
+      const screen = await render(
         <>
           <p id="installed-apps-label">Installed apps</p>
           <ScrollArea
@@ -103,134 +101,117 @@ describe('scroll-area wrapper', () => {
         </>,
       )
 
-      await waitFor(() => {
-        const root = screen.getByTestId('scroll-area-wrapper-root')
-        const viewport = screen.getByRole('region', { name: 'Installed apps' })
-        const content = screen.getByText('Scrollable content').parentElement
+      const viewport = screen.getByRole('region', { name: 'Installed apps' })
+      const content = screen.getByText('Scrollable content').element().parentElement
 
-        expect(root).toBeInTheDocument()
-        expect(viewport).toHaveClass('custom-viewport-class')
-        expect(viewport).toHaveAccessibleName('Installed apps')
-        expect(content).toHaveClass('custom-content-class')
-        expect(screen.getByText('Scrollable content')).toBeInTheDocument()
-      })
+      await expect.element(screen.getByTestId('scroll-area-wrapper-root')).toBeInTheDocument()
+      await expect.element(viewport).toHaveClass('custom-viewport-class')
+      await expect.element(viewport).toHaveAccessibleName('Installed apps')
+      expect(content).toHaveClass('custom-content-class')
+      await expect.element(screen.getByText('Scrollable content')).toBeInTheDocument()
     })
   })
 
   describe('Scrollbar', () => {
     it('should apply the default vertical scrollbar classes and orientation data attribute', async () => {
-      renderScrollArea()
+      const screen = await renderScrollArea()
 
-      await waitFor(() => {
-        const scrollbar = screen.getByTestId('scroll-area-vertical-scrollbar')
-        const thumb = screen.getByTestId('scroll-area-vertical-thumb')
-
-        expect(scrollbar).toHaveAttribute('data-orientation', 'vertical')
-        expect(scrollbar).toHaveAttribute('data-dify-scrollbar')
-        expect(scrollbar).toHaveClass(
-          'flex',
-          'overflow-clip',
-          'p-1',
-          'touch-none',
-          'select-none',
-          'opacity-100',
-          'transition-opacity',
-          'motion-reduce:transition-none',
-          'pointer-events-none',
-          'data-hovering:pointer-events-auto',
-          'data-scrolling:pointer-events-auto',
-          'data-[orientation=vertical]:absolute',
-          'data-[orientation=vertical]:inset-y-0',
-          'data-[orientation=vertical]:w-3',
-          'data-[orientation=vertical]:justify-center',
-        )
-        expect(thumb).toHaveAttribute('data-orientation', 'vertical')
-        expect(thumb).toHaveClass(
-          'shrink-0',
-          'rounded-sm',
-          'bg-state-base-handle',
-          'transition-[background-color]',
-          'motion-reduce:transition-none',
-          'data-[orientation=vertical]:w-1',
-        )
-      })
+      await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-orientation', 'vertical')
+      await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-dify-scrollbar')
+      await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+        'flex',
+        'overflow-clip',
+        'p-1',
+        'touch-none',
+        'select-none',
+        'opacity-100',
+        'transition-opacity',
+        'motion-reduce:transition-none',
+        'pointer-events-none',
+        'data-hovering:pointer-events-auto',
+        'data-scrolling:pointer-events-auto',
+        'data-[orientation=vertical]:absolute',
+        'data-[orientation=vertical]:inset-y-0',
+        'data-[orientation=vertical]:w-3',
+        'data-[orientation=vertical]:justify-center',
+      )
+      await expect.element(screen.getByTestId('scroll-area-vertical-thumb')).toHaveAttribute('data-orientation', 'vertical')
+      await expect.element(screen.getByTestId('scroll-area-vertical-thumb')).toHaveClass(
+        'shrink-0',
+        'rounded-sm',
+        'bg-state-base-handle',
+        'transition-[background-color]',
+        'motion-reduce:transition-none',
+        'data-[orientation=vertical]:w-1',
+      )
     })
 
     it('should apply horizontal scrollbar and thumb classes when orientation is horizontal', async () => {
-      renderScrollArea()
+      const screen = await renderScrollArea()
 
-      await waitFor(() => {
-        const scrollbar = screen.getByTestId('scroll-area-horizontal-scrollbar')
-        const thumb = screen.getByTestId('scroll-area-horizontal-thumb')
-
-        expect(scrollbar).toHaveAttribute('data-orientation', 'horizontal')
-        expect(scrollbar).toHaveAttribute('data-dify-scrollbar')
-        expect(scrollbar).toHaveClass(
-          'flex',
-          'overflow-clip',
-          'p-1',
-          'touch-none',
-          'select-none',
-          'opacity-100',
-          'transition-opacity',
-          'motion-reduce:transition-none',
-          'pointer-events-none',
-          'data-hovering:pointer-events-auto',
-          'data-scrolling:pointer-events-auto',
-          'data-[orientation=horizontal]:absolute',
-          'data-[orientation=horizontal]:inset-x-0',
-          'data-[orientation=horizontal]:h-3',
-          'data-[orientation=horizontal]:items-center',
-        )
-        expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
-        expect(thumb).toHaveClass(
-          'shrink-0',
-          'rounded-sm',
-          'bg-state-base-handle',
-          'transition-[background-color]',
-          'motion-reduce:transition-none',
-          'data-[orientation=horizontal]:h-1',
-        )
-      })
+      await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-orientation', 'horizontal')
+      await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-dify-scrollbar')
+      await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+        'flex',
+        'overflow-clip',
+        'p-1',
+        'touch-none',
+        'select-none',
+        'opacity-100',
+        'transition-opacity',
+        'motion-reduce:transition-none',
+        'pointer-events-none',
+        'data-hovering:pointer-events-auto',
+        'data-scrolling:pointer-events-auto',
+        'data-[orientation=horizontal]:absolute',
+        'data-[orientation=horizontal]:inset-x-0',
+        'data-[orientation=horizontal]:h-3',
+        'data-[orientation=horizontal]:items-center',
+      )
+      await expect.element(screen.getByTestId('scroll-area-horizontal-thumb')).toHaveAttribute('data-orientation', 'horizontal')
+      await expect.element(screen.getByTestId('scroll-area-horizontal-thumb')).toHaveClass(
+        'shrink-0',
+        'rounded-sm',
+        'bg-state-base-handle',
+        'transition-[background-color]',
+        'motion-reduce:transition-none',
+        'data-[orientation=horizontal]:h-1',
+      )
     })
   })
 
   describe('Props', () => {
     it('should forward className to the viewport', async () => {
-      renderScrollArea({
+      const screen = await renderScrollArea({
         viewportClassName: 'custom-viewport-class',
       })
 
-      await waitFor(() => {
-        expect(screen.getByTestId('scroll-area-viewport')).toHaveClass(
-          'size-full',
-          'min-h-0',
-          'min-w-0',
-          'outline-hidden',
-          'focus-visible:ring-1',
-          'focus-visible:ring-inset',
-          'focus-visible:ring-components-input-border-hover',
-          'custom-viewport-class',
-        )
-      })
+      await expect.element(screen.getByTestId('scroll-area-viewport')).toHaveClass(
+        'size-full',
+        'min-h-0',
+        'min-w-0',
+        'outline-hidden',
+        'focus-visible:ring-1',
+        'focus-visible:ring-inset',
+        'focus-visible:ring-components-input-border-hover',
+        'custom-viewport-class',
+      )
     })
 
     it('should let callers control scrollbar inset spacing via margin-based className overrides', async () => {
-      renderScrollArea({
+      const screen = await renderScrollArea({
         verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3',
         horizontalScrollbarClassName: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
       })
 
-      await waitFor(() => {
-        expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
-          'data-[orientation=vertical]:my-2',
-          'data-[orientation=vertical]:-me-3',
-        )
-        expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
-          'data-[orientation=horizontal]:mx-2',
-          'data-[orientation=horizontal]:mb-2',
-        )
-      })
+      await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+        'data-[orientation=vertical]:my-2',
+        'data-[orientation=vertical]:-me-3',
+      )
+      await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+        'data-[orientation=horizontal]:mx-2',
+        'data-[orientation=horizontal]:mb-2',
+      )
     })
   })
 
@@ -239,7 +220,7 @@ describe('scroll-area wrapper', () => {
       const restoreViewportMetrics: Array<() => void> = []
 
       try {
-        render(
+        const screen = await render(
           <ScrollAreaRoot className="h-40 w-40" data-testid="scroll-area-root">
             <ScrollAreaViewport
               data-testid="scroll-area-viewport"
@@ -273,9 +254,9 @@ describe('scroll-area wrapper', () => {
           </ScrollAreaRoot>,
         )
 
-        await waitFor(() => {
-          expect(screen.getByTestId('scroll-area-corner')).toBeInTheDocument()
-          expect(screen.getByTestId('scroll-area-corner')).toHaveClass('bg-transparent')
+        await vi.waitFor(() => {
+          expect(screen.getByTestId('scroll-area-corner').element()).toBeInTheDocument()
+          expect(screen.getByTestId('scroll-area-corner').element()).toHaveClass('bg-transparent')
         })
       }
       finally {

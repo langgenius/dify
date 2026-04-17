@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render } from 'vitest-browser-react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,10 +10,12 @@ import {
   AlertDialogTrigger,
 } from '../index'
 
+const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+
 describe('AlertDialog wrapper', () => {
   describe('Rendering', () => {
-    it('should render alert dialog content when dialog is open', () => {
-      render(
+    it('should render alert dialog content when dialog is open', async () => {
+      const screen = await render(
         <AlertDialog open>
           <AlertDialogContent>
             <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
@@ -22,13 +24,12 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toHaveTextContent('Confirm Delete')
-      expect(dialog).toHaveTextContent('This action cannot be undone.')
+      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
+      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
     })
 
-    it('should not render content when dialog is closed', () => {
-      render(
+    it('should not render content when dialog is closed', async () => {
+      const screen = await render(
         <AlertDialog open={false}>
           <AlertDialogContent>
             <AlertDialogTitle>Hidden Title</AlertDialogTitle>
@@ -36,13 +37,13 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
-    it('should apply custom className to popup', () => {
-      render(
+    it('should apply custom className to popup', async () => {
+      const screen = await render(
         <AlertDialog open>
           <AlertDialogContent className="custom-class">
             <AlertDialogTitle>Title</AlertDialogTitle>
@@ -50,12 +51,11 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toHaveClass('custom-class')
+      await expect.element(screen.getByRole('alertdialog')).toHaveClass('custom-class')
     })
 
-    it('should not render a close button by default', () => {
-      render(
+    it('should not render a close button by default', async () => {
+      const screen = await render(
         <AlertDialog open>
           <AlertDialogContent>
             <AlertDialogTitle>Title</AlertDialogTitle>
@@ -63,13 +63,13 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+      expect(() => screen.getByRole('button', { name: 'Close' }).element()).toThrow()
     })
   })
 
   describe('User Interactions', () => {
     it('should open and close dialog when trigger and cancel button are clicked', async () => {
-      render(
+      const screen = await render(
         <AlertDialog>
           <AlertDialogTrigger>Open Dialog</AlertDialogTrigger>
           <AlertDialogContent>
@@ -82,21 +82,21 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Open Dialog' }))
-      expect(await screen.findByRole('alertdialog')).toHaveTextContent('Action Required')
+      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
+      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Action Required')
 
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
+      await vi.waitFor(() => {
+        expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
       })
     })
   })
 
   describe('Composition Helpers', () => {
-    it('should render actions wrapper and default confirm button styles', () => {
-      render(
+    it('should render actions wrapper and default confirm button styles', async () => {
+      const screen = await render(
         <AlertDialog open>
           <AlertDialogContent>
             <AlertDialogTitle>Action Required</AlertDialogTitle>
@@ -107,15 +107,14 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      expect(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
-      const confirmButton = screen.getByRole('button', { name: 'Confirm' })
-      expect(confirmButton).toHaveClass('bg-components-button-destructive-primary-bg')
+      await expect.element(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
+      await expect.element(screen.getByRole('button', { name: 'Confirm' })).toHaveClass('bg-components-button-destructive-primary-bg')
     })
 
     it('should keep dialog open after confirm click and close via cancel helper', async () => {
       const onConfirm = vi.fn()
 
-      render(
+      const screen = await render(
         <AlertDialog>
           <AlertDialogTrigger>Open Dialog</AlertDialogTrigger>
           <AlertDialogContent>
@@ -128,16 +127,16 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Open Dialog' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
+      await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+      asHTMLElement(screen.getByRole('button', { name: 'Confirm' }).element()).click()
       expect(onConfirm).toHaveBeenCalledTimes(1)
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
+      await vi.waitFor(() => {
+        expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
       })
     })
   })

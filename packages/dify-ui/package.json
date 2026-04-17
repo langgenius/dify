@@ -100,8 +100,6 @@
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
-    "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
@@ -114,6 +112,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest-browser-react": "catalog:"
   }
 }
