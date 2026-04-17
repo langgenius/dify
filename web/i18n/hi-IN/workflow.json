@@ -151,6 +151,7 @@
   "common.branch": "शाखा",
   "common.chooseDSL": "डीएसएल (वाईएमएल) फ़ाइल चुनें",
   "common.chooseStartNodeToRun": "चलाने के लिए प्रारंभ नोड चुनें",
+  "common.clipboardVersionCompatibilityWarning": "यह सामग्री Dify ऐप के किसी अलग संस्करण से कॉपी की गई है। इसके कुछ हिस्से असंगत हो सकते हैं।",
   "common.commentMode": "टिप्पणी मोड",
   "common.configure": "कॉन्फ़िगर करें",
   "common.configureRequired": "कॉन्फ़िगरेशन आवश्यक",
