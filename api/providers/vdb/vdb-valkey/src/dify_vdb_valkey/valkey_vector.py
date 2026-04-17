@@ -311,6 +311,13 @@ class ValkeyVector(BaseVector):
                 self.close()
         except Exception:
             logger.debug("Error during __del__ cleanup", exc_info=True)
+        finally:
+            # Ensure the loop is closed even if close() failed.
+            try:
+                if not self._loop.is_closed():
+                    self._loop.close()
+            except Exception:
+                pass
 
     def get_type(self) -> str:
         return VectorType.VALKEY
