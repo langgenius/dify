@@ -6,8 +6,8 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { Button } from '@/app/components/base/ui/button'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
@@ -55,9 +55,9 @@ const ChunkPreview = ({
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
-  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0])
-  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
-  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0])
+  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0]!)
+  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0]!)
+  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0]!)
 
   return (
     <PreviewContainer

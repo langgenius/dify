@@ -1,9 +1,11 @@
 'use client'
 
 import type { FC } from 'react'
+import type { WorkflowOnlineUser } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
@@ -15,9 +17,9 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import { fetchWorkflowOnlineUsers } from '@/service/apps'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
@@ -68,6 +70,7 @@ const List: FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [workflowOnlineUsersMap, setWorkflowOnlineUsersMap] = useState<Record<string, WorkflowOnlineUser[]>>({})
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -115,12 +118,12 @@ const List: FC<Props> = ({
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -148,7 +151,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
           fetchNextPage()
       }, {
         root: containerRef.current,
@@ -183,6 +186,53 @@ const List: FC<Props> = ({
   }, [isCreatedByMe, setQuery])
 
   const pages = data?.pages ?? []
+  const appIds = useMemo(() => {
+    const ids = new Set<string>()
+    pages.forEach((page) => {
+      page.data?.forEach((app) => {
+        if (app.id)
+          ids.add(app.id)
+      })
+    })
+    return Array.from(ids)
+  }, [pages])
+
+  const refreshWorkflowOnlineUsers = useCallback(async () => {
+    if (!systemFeatures.enable_collaboration_mode) {
+      setWorkflowOnlineUsersMap({})
+      return
+    }
+
+    if (!appIds.length) {
+      setWorkflowOnlineUsersMap({})
+      return
+    }
+
+    try {
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
+      setWorkflowOnlineUsersMap(onlineUsersMap)
+    }
+    catch {
+      setWorkflowOnlineUsersMap({})
+    }
+  }, [appIds, systemFeatures.enable_collaboration_mode])
+
+  useEffect(() => {
+    void refreshWorkflowOnlineUsers()
+  }, [refreshWorkflowOnlineUsers])
+
+  useEffect(() => {
+    if (!systemFeatures.enable_collaboration_mode)
+      return
+
+    const timer = window.setInterval(() => {
+      void refetch()
+      void refreshWorkflowOnlineUsers()
+    }, 10000)
+
+    return () => window.clearInterval(timer)
+  }, [refetch, refreshWorkflowOnlineUsers, systemFeatures.enable_collaboration_mode])
+
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
@@ -195,7 +245,7 @@ const List: FC<Props> = ({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <TabSliderNew
             value={activeTab}
             onChange={(nextValue) => {
@@ -223,7 +273,7 @@ const List: FC<Props> = ({
           </div>
         </div>
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           !hasAnyApp && 'overflow-hidden',
         )}
         >
@@ -242,7 +292,12 @@ const List: FC<Props> = ({
 
             if (hasAnyApp) {
               return pages.flatMap(({ data: apps }) => apps).map(app => (
-                <AppCard key={app.id} app={app} onRefresh={refetch} />
+                <AppCard
+                  key={app.id}
+                  app={app}
+                  onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                  onRefresh={refetch}
+                />
               ))
             }
 

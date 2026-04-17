@@ -82,17 +82,17 @@ const buildHorizontalHelpLine = ({
 
   const first = alignedNodes[0]
   const last = alignedNodes[alignedNodes.length - 1]
-  const firstPos = getNodeAlignPosition(first)
-  const lastPos = getNodeAlignPosition(last)
+  const firstPos = getNodeAlignPosition(first!)
+  const lastPos = getNodeAlignPosition(last!)
   const helpLine = {
     top: firstPos.y,
     left: firstPos.x,
-    width: lastPos.x + (isEntryNode(last) ? getEntryNodeDimension(last, 'width') : last.width ?? 0) - firstPos.x,
+    width: lastPos.x + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'width') : last!.width ?? 0) - firstPos.x,
   }
 
   if (nodeAlignPos.x < firstPos.x) {
     helpLine.left = nodeAlignPos.x
-    helpLine.width = firstPos.x + (isEntryNode(first) ? getEntryNodeDimension(first, 'width') : first.width ?? 0) - nodeAlignPos.x
+    helpLine.width = firstPos.x + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'width') : first!.width ?? 0) - nodeAlignPos.x
   }
 
   if (nodeAlignPos.x > lastPos.x)
@@ -119,17 +119,17 @@ const buildVerticalHelpLine = ({
 
   const first = alignedNodes[0]
   const last = alignedNodes[alignedNodes.length - 1]
-  const firstPos = getNodeAlignPosition(first)
-  const lastPos = getNodeAlignPosition(last)
+  const firstPos = getNodeAlignPosition(first!)
+  const lastPos = getNodeAlignPosition(last!)
   const helpLine = {
     top: firstPos.y,
     left: firstPos.x,
-    height: lastPos.y + (isEntryNode(last) ? getEntryNodeDimension(last, 'height') : last.height ?? 0) - firstPos.y,
+    height: lastPos.y + (isEntryNode(last!) ? getEntryNodeDimension(last!, 'height') : last!.height ?? 0) - firstPos.y,
   }
 
   if (nodeAlignPos.y < firstPos.y) {
     helpLine.top = nodeAlignPos.y
-    helpLine.height = firstPos.y + (isEntryNode(first) ? getEntryNodeDimension(first, 'height') : first.height ?? 0) - nodeAlignPos.y
+    helpLine.height = firstPos.y + (isEntryNode(first!) ? getEntryNodeDimension(first!, 'height') : first!.height ?? 0) - nodeAlignPos.y
   }
 
   if (nodeAlignPos.y > lastPos.y)

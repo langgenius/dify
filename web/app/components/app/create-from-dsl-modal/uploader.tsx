@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiUploadCloud2Line,
@@ -10,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
 type Props = {
@@ -107,7 +107,7 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center radius-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">
@@ -115,7 +115,7 @@ const Uploader: FC<Props> = ({
                 <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>{t('dslUploader.browse', { ns: 'app' })}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
           </div>
         )}
         {file && (
@@ -124,8 +124,8 @@ const Uploader: FC<Props> = ({
               <YamlIcon className="h-6 w-6 shrink-0" />
             </div>
             <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
-              <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary">{file.name}</span>
-              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary">
+              <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">{file.name}</span>
+              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
                 <span>{displayName}</span>
                 <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>

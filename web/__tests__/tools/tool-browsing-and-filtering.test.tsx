@@ -226,7 +226,7 @@ vi.mock('@/app/components/tools/mcp', () => ({
   default: () => <div data-testid="mcp-list">MCP List</div>,
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 

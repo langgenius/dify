@@ -62,7 +62,7 @@ jobs:
       - name: Render coverage markdown from structured data
         id: render
         run: |
-          comment_body="$(uv run --directory api python api/libs/pyrefly_type_coverage.py \
+          comment_body="$(uv run --directory api python libs/pyrefly_type_coverage.py \
             --base base_report.json \
             < pr_report.json)"
 

@@ -1,4 +1,5 @@
 import type { ConversationItem } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditBoxLine,
   RiLayoutRight2Line,
@@ -10,9 +11,16 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import {
   useChatWithHistoryContext,
 } from '../context'
@@ -89,7 +97,7 @@ const Header = () => {
             />
           </div>
           {!currentConversationId && (
-            <div className={cn('grow truncate text-text-secondary system-md-semibold')}>{appData?.site.title}</div>
+            <div className={cn('grow truncate system-md-semibold text-text-secondary')}>{appData?.site.title}</div>
           )}
           {currentConversationId && currentConversationItem && isSidebarCollapsed && (
             <>
@@ -141,15 +149,24 @@ const Header = () => {
           )}
         </div>
       </div>
-      {!!showConfirm && (
-        <Confirm
-          title={t('chat.deleteConversation.title', { ns: 'share' })}
-          content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
-          isShow
-          onCancel={handleCancelConfirm}
-          onConfirm={handleDelete}
-        />
-      )}
+      <AlertDialog open={!!showConfirm} onOpenChange={open => !open && handleCancelConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('chat.deleteConversation.title', { ns: 'share' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showRename && (
         <RenameModal
           isShow

@@ -2,8 +2,8 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
@@ -22,7 +22,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
 
   return (
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
-      <div className="flex flex-col gap-y-2 p-6 pb-4 ">
+      <div className="flex flex-col gap-y-2 p-6 pb-4">
         <div className="title-2xl-semi-bold text-text-primary">
           {`${t('common.restore', { ns: 'workflow' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
         </div>

@@ -49,9 +49,9 @@ describe('cron-parser + execution-time-calculator integration', () => {
         // Results should be identical
         directResult.forEach((directDate, index) => {
           const calcDate = calculatorResult[index]
-          expect(calcDate.getTime()).toBe(directDate.getTime())
-          expect(calcDate.getHours()).toBe(directDate.getHours())
-          expect(calcDate.getMinutes()).toBe(directDate.getMinutes())
+          expect(calcDate!.getTime()).toBe(directDate.getTime())
+          expect(calcDate!.getHours()).toBe(directDate.getHours())
+          expect(calcDate!.getMinutes()).toBe(directDate.getMinutes())
         })
       })
     })
@@ -77,7 +77,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
 
         // Cross-validation: results should be identical
         directResult.forEach((directDate, index) => {
-          expect(calculatorResult[index].getTime()).toBe(directDate.getTime())
+          expect(calculatorResult[index]!.getTime()).toBe(directDate.getTime())
         })
       })
     })
@@ -205,8 +205,8 @@ describe('cron-parser + execution-time-calculator integration', () => {
         expect(calculatorResult.length).toBeGreaterThan(0)
 
         // Results should be consistent
-        expect(calculatorResult[0].getHours()).toBe(directResult[0].getHours())
-        expect(calculatorResult[0].getMinutes()).toBe(directResult[0].getMinutes())
+        expect(calculatorResult[0]!.getHours()).toBe(directResult[0]!.getHours())
+        expect(calculatorResult[0]!.getMinutes()).toBe(directResult[0]!.getMinutes())
       })
     })
   })
@@ -233,7 +233,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
 
       // Results should be identical
       directResult.forEach((directDate, index) => {
-        expect(calculatorResult[index].getTime()).toBe(directDate.getTime())
+        expect(calculatorResult[index]!.getTime()).toBe(directDate.getTime())
       })
     })
 
@@ -264,7 +264,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
         })
 
         // Cross-validate consistency
-        expect(calculatorResult[0].getTime()).toBe(directResult[0].getTime())
+        expect(calculatorResult[0]!.getTime()).toBe(directResult[0]!.getTime())
       })
     })
   })
@@ -293,7 +293,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
 
         // Results should be consistent
         directResult.forEach((directDate, index) => {
-          expect(calculatorResult[index].getTime()).toBe(directDate.getTime())
+          expect(calculatorResult[index]!.getTime()).toBe(directDate.getTime())
         })
       })
     })
@@ -320,7 +320,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
           // Validate consistency where results exist
           const minLength = Math.min(directResult.length, calculatorResult.length)
           for (let i = 0; i < minLength; i++)
-            expect(calculatorResult[i].getTime()).toBe(directResult[i].getTime())
+            expect(calculatorResult[i]!.getTime()).toBe(directResult[i]!.getTime())
         }
       })
     })

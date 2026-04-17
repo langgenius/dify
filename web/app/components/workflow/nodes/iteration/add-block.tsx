@@ -2,6 +2,7 @@ import type { IterationNodeType } from './types'
 import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -14,7 +15,6 @@ import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import {
   useAvailableBlocks,
   useNodesInteractions,
@@ -49,7 +49,7 @@ const AddBlock = ({
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
       <div className={cn(
-        'system-sm-medium relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
+        'relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
         `${nodesReadOnly && 'cursor-not-allowed! bg-components-button-secondary-bg-disabled'}`,
         open && 'bg-components-button-secondary-bg-hover',
       )}
@@ -61,9 +61,9 @@ const AddBlock = ({
   }, [nodesReadOnly, t])
 
   return (
-    <div className="absolute left-14 top-7 z-10 flex h-8 items-center">
+    <div className="absolute top-7 left-14 z-10 flex h-8 items-center">
       <div className="group/insert relative h-0.5 w-16 bg-gray-300">
-        <div className="absolute right-0 top-1/2 h-2 w-0.5 -translate-y-1/2 bg-primary-500"></div>
+        <div className="absolute top-1/2 right-0 h-2 w-0.5 -translate-y-1/2 bg-primary-500"></div>
       </div>
       <BlockSelector
         disabled={nodesReadOnly}

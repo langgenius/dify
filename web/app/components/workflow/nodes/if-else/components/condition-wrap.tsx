@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -12,9 +13,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -97,21 +97,21 @@ const ConditionWrap: FC<Props> = ({
             <div key={item.case_id}>
               <div
                 className={cn(
-                  'group relative radius-lg bg-components-panel-bg',
+                  'group relative rounded-[10px] bg-components-panel-bg',
                   willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                  !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+                  !isSubVariable && 'min-h-[40px] px-3 py-1',
                   isSubVariable && 'px-1 py-2',
                 )}
               >
                 {!isSubVariable && (
                   <>
                     <RiDraggable className={cn(
-                      'handle absolute left-1 top-2 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                      'handle absolute top-2 left-1 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                       casesLength > 1 && 'group-hover:block',
                     )}
                     />
                     <div className={cn(
-                      'absolute left-4 text-[13px] font-semibold leading-4 text-text-secondary',
+                      'absolute left-4 text-[13px] leading-4 font-semibold text-text-secondary',
                       casesLength === 1 ? 'top-2.5' : 'top-1',
                     )}
                     >
@@ -161,7 +161,7 @@ const ConditionWrap: FC<Props> = ({
                   'flex items-center justify-between pr-[30px]',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && ' pl-[60px]',
+                  !isSubVariable && 'pl-[60px]',
                 )}
                 >
                   {isSubVariable

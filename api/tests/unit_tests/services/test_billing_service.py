@@ -1117,42 +1117,6 @@ class TestBillingServiceEdgeCases:
             # Assert
             assert result["history_id"] == history_id
 
-    def test_is_tenant_owner_or_admin_editor_role_raises_error(self):
-        """Test tenant owner/admin check raises error for editor role."""
-        # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.EDITOR  # Editor is not privileged
-
-        with patch("services.billing_service.db.session") as mock_session:
-            mock_session.scalar.return_value = mock_join
-
-            # Act & Assert
-            with pytest.raises(ValueError) as exc_info:
-                BillingService.is_tenant_owner_or_admin(current_user)
-            assert "Only team owner or team admin can perform this action" in str(exc_info.value)
-
-    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self):
-        """Test tenant owner/admin check raises error for dataset operator role."""
-        # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.DATASET_OPERATOR  # Dataset operator is not privileged
-
-        with patch("services.billing_service.db.session") as mock_session:
-            mock_session.scalar.return_value = mock_join
-
-            # Act & Assert
-            with pytest.raises(ValueError) as exc_info:
-                BillingService.is_tenant_owner_or_admin(current_user)
-            assert "Only team owner or team admin can perform this action" in str(exc_info.value)
-
 
 class TestBillingServiceSubscriptionOperations:
     """Unit tests for subscription operations in BillingService.

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
-import { cn } from '@/utils/classnames'
 import {
   NumberField,
   NumberFieldControls,
@@ -15,7 +15,7 @@ type DemoFieldProps = {
   label: string
   helperText: string
   placeholder: string
-  size: 'regular' | 'large'
+  size: 'medium' | 'large'
   unit?: string
   defaultValue?: number | null
   min?: number
@@ -108,7 +108,7 @@ const DemoField = ({
 }
 
 const meta = {
-  title: 'Base/Form/NumberField',
+  title: 'Base/UI/NumberField',
   component: NumberField,
   parameters: {
     layout: 'centered',
@@ -131,7 +131,7 @@ export const VariantMatrix: Story = {
         label="Top K"
         helperText="Regular size without suffix. Covers the regular group, input, and control button spacing."
         placeholder="Set top K"
-        size="regular"
+        size="medium"
         defaultValue={3}
         min={1}
         max={10}
@@ -141,7 +141,7 @@ export const VariantMatrix: Story = {
         label="Score threshold"
         helperText="Regular size with a suffix so the regular unit variant is visible."
         placeholder="Set threshold"
-        size="regular"
+        size="medium"
         unit="%"
         defaultValue={85}
         min={0}
@@ -180,7 +180,7 @@ export const DecimalInputs: Story = {
         label="Score threshold"
         helperText="Two-decimal precision with a 0.01 step, like retrieval tuning fields."
         placeholder="0.00"
-        size="regular"
+        size="medium"
         defaultValue={0.82}
         min={0}
         max={1}
@@ -204,7 +204,7 @@ export const DecimalInputs: Story = {
         label="Penalty"
         helperText="Starts empty so the placeholder and empty numeric state are both visible."
         placeholder="Optional"
-        size="regular"
+        size="medium"
         defaultValue={null}
         min={0}
         max={2}
@@ -236,7 +236,7 @@ export const BoundariesAndStates: Story = {
         label="HTTP status code"
         helperText="Integer-only style usage with tighter bounds from 100 to 599."
         placeholder="200"
-        size="regular"
+        size="medium"
         defaultValue={200}
         min={100}
         max={599}
@@ -247,7 +247,7 @@ export const BoundariesAndStates: Story = {
         label="Request timeout"
         helperText="Bounded regular input with suffix, common in system settings."
         placeholder="Set timeout"
-        size="regular"
+        size="medium"
         unit="ms"
         defaultValue={1200}
         min={100}

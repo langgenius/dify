@@ -86,7 +86,7 @@ const PromptEditorDemo = (args: any) => {
       {value && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">Current Value:</div>
-          <div className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+          <div className="font-mono text-sm whitespace-pre-wrap text-gray-800">
             {value}
           </div>
         </div>
@@ -204,7 +204,7 @@ const MultipleEditorsDemo = () => {
       {(systemPrompt || userPrompt) && (
         <div className="rounded-lg bg-gray-50 p-4">
           <div className="mb-2 text-xs font-medium text-gray-600">Combined Output:</div>
-          <div className="whitespace-pre-wrap text-sm text-gray-800">
+          <div className="text-sm whitespace-pre-wrap text-gray-800">
             {systemPrompt && (
               <>
                 <strong>System:</strong>

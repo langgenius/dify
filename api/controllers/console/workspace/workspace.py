@@ -1,8 +1,9 @@
 import logging
+from datetime import datetime
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource, fields, marshal
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
@@ -26,6 +27,7 @@ from controllers.console.wraps import (
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantCustomConfigDict, TenantStatus
@@ -58,6 +60,37 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
+class TenantInfoResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    plan: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+    role: str | None = None
+    in_trial: bool | None = None
+    trial_end_reason: str | None = None
+    custom_config: dict | None = None
+    trial_credits: int | None = None
+    trial_credits_used: int | None = None
+    next_credit_reset_date: int | None = None
+
+    @field_validator("plan", "status", "trial_end_reason", mode="before")
+    @classmethod
+    def _normalize_enum_like(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None):
+        if isinstance(value, datetime):
+            return int(value.timestamp())
+        return value
+
+
 def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
@@ -66,6 +99,7 @@ reg(WorkspaceListQuery)
 reg(SwitchWorkspacePayload)
 reg(WorkspaceCustomConfigPayload)
 reg(WorkspaceInfoPayload)
+reg(TenantInfoResponse)
 
 provider_fields = {
     "provider_name": fields.String,
@@ -180,7 +214,7 @@ class TenantApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(tenant_fields)
+    @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
     def post(self):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
@@ -200,7 +234,13 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return WorkspaceService.get_tenant_info(tenant), 200
+        return (
+            TenantInfoResponse.model_validate(
+                WorkspaceService.get_tenant_info(tenant),
+                from_attributes=True,
+            ).model_dump(mode="json"),
+            200,
+        )
 
 
 @console_ns.route("/workspaces/switch")

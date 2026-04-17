@@ -9,6 +9,7 @@ from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
+from extensions.redis_names import normalize_redis_key_prefix
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -16,9 +17,10 @@ class _CelerySentinelKwargsDict(TypedDict):
     password: str | None
 
 
-class CelerySentinelTransportDict(TypedDict):
+class CelerySentinelTransportDict(TypedDict, total=False):
     master_name: str | None
     sentinel_kwargs: _CelerySentinelKwargsDict
+    global_keyprefix: str
 
 
 class CelerySSLOptionsDict(TypedDict):
@@ -61,15 +63,31 @@ def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
 
 def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[str, Any]:
     """Get broker transport options (e.g. Redis Sentinel) for Celery connections."""
+    transport_options: CelerySentinelTransportDict | dict[str, Any]
     if dify_config.CELERY_USE_SENTINEL:
-        return CelerySentinelTransportDict(
+        transport_options = CelerySentinelTransportDict(
             master_name=dify_config.CELERY_SENTINEL_MASTER_NAME,
             sentinel_kwargs=_CelerySentinelKwargsDict(
                 socket_timeout=dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
                 password=dify_config.CELERY_SENTINEL_PASSWORD,
             ),
         )
-    return {}
+    else:
+        transport_options = {}
+
+    global_keyprefix = get_celery_redis_global_keyprefix()
+    if global_keyprefix:
+        transport_options["global_keyprefix"] = global_keyprefix
+
+    return transport_options
+
+
+def get_celery_redis_global_keyprefix() -> str | None:
+    """Return the Redis transport prefix for Celery when namespace isolation is enabled."""
+    normalized_prefix = normalize_redis_key_prefix(dify_config.REDIS_KEY_PREFIX)
+    if not normalized_prefix:
+        return None
+    return f"{normalized_prefix}:"
 
 
 def init_app(app: DifyApp) -> Celery:

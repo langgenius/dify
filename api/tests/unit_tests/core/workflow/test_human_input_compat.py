@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-from graphon.enums import BuiltinNodeTypes
 from pydantic import BaseModel
 
 from core.workflow.human_input_compat import (
@@ -16,6 +15,7 @@ from core.workflow.human_input_compat import (
     normalize_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from graphon.enums import BuiltinNodeTypes
 
 
 def test_email_delivery_config_helpers_render_and_sanitize_text() -> None:

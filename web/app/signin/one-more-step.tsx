@@ -2,9 +2,9 @@
 import type { Reducer } from 'react'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
@@ -79,13 +79,13 @@ const OneMoreStep = () => {
     <>
       <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-1 text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
+        <p className="mt-1 body-md-regular text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
-            <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
+            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
               {t('invitationCode', { ns: 'login' })}
               <Tooltip
                 popupContent={(
@@ -113,7 +113,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className="mb-5">
-            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+            <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
               {t('interfaceLanguage', { ns: 'login' })}
             </label>
             <div className="mt-1">
@@ -150,7 +150,7 @@ const OneMoreStep = () => {
               {t('go', { ns: 'login' })}
             </Button>
           </div>
-          <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+          <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
             {t('license.tip', { ns: 'login' })}
             &nbsp;
             <Link

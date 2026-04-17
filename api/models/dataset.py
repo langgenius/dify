@@ -1305,6 +1305,7 @@ class TidbAuthBinding(TypeBase):
     )
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+    qdrant_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1551,7 +1552,7 @@ class PipelineBuiltInTemplate(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    icon: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
     copyright: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -1584,7 +1585,7 @@ class PipelineCustomizedTemplate(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    icon: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -1657,7 +1658,7 @@ class DocumentPipelineExecutionLog(TypeBase):
     datasource_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     datasource_info: Mapped[str] = mapped_column(LongText, nullable=False)
     datasource_node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    input_data: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    input_data: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1688,7 +1689,7 @@ class PipelineRecommendedPlugin(TypeBase):
     )
 
 
-class SegmentAttachmentBinding(Base):
+class SegmentAttachmentBinding(TypeBase):
     __tablename__ = "segment_attachment_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="segment_attachment_binding_pkey"),
@@ -1701,16 +1702,20 @@ class SegmentAttachmentBinding(Base):
         ),
         sa.Index("segment_attachment_binding_attachment_idx", "attachment_id"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     attachment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
-class DocumentSegmentSummary(Base):
+class DocumentSegmentSummary(TypeBase):
     __tablename__ = "document_segment_summaries"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
@@ -1720,25 +1725,40 @@ class DocumentSegmentSummary(Base):
         sa.Index("document_segment_summaries_status_idx", "status"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # corresponds to DocumentSegment.id or parent chunk id
     chunk_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    summary_content: Mapped[str] = mapped_column(LongText, nullable=True)
-    summary_index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
-    summary_index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    status: Mapped[str] = mapped_column(
-        EnumText(SummaryStatus, length=32), nullable=False, server_default=sa.text("'generating'")
+    summary_content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    summary_index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    summary_index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    status: Mapped[SummaryStatus] = mapped_column(
+        EnumText(SummaryStatus, length=32),
+        nullable=False,
+        server_default=sa.text("'generating'"),
+        default=SummaryStatus.GENERATING,
     )
-    error: Mapped[str] = mapped_column(LongText, nullable=True)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     def __repr__(self):
