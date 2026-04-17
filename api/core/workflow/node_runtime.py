@@ -41,7 +41,7 @@ from graphon.model_runtime.entities.llm_entities import (
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.llm.runtime_protocols import (
     PreparedLLMProtocol,
@@ -64,7 +64,7 @@ from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .human_input_compat import (
+from .human_input_adapter import (
     BoundRecipient,
     DeliveryChannelConfig,
     DeliveryMethodType,

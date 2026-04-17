@@ -6,14 +6,17 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.nodes.document_extractor import (
+    DocumentExtractorNode,
+    DocumentExtractorNodeData,
+    extract_text_from_excel,
+)
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
-from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
-    _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
     _normalize_docx_zip,
@@ -44,11 +47,10 @@ def document_extractor_node(graph_init_params):
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )
-    node_config = {"id": "test_node_id", "data": node_data.model_dump()}
     http_client = Mock()
     node = DocumentExtractorNode(
-        id="test_node_id",
-        config=node_config,
+        node_id="test_node_id",
+        config=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
         http_client=http_client,
@@ -269,7 +271,7 @@ def test_extract_text_from_excel_single_sheet(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_content"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
     expected_manual = "| Name with newline | Age |\n| ----------------- | --- |\n\
 | John Doe | 25 |\n| Jane Smith | 30 |\n\n"
 
@@ -295,7 +297,7 @@ def test_extract_text_from_excel_multiple_sheets(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_content_multiple_sheets"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     expected_manual1 = "| Product Name | Price |\n| ------------ | ----- |\n\
 | Apple Red | 1.5 |\n| Banana Yellow | 0.99 |\n\n"
@@ -322,7 +324,7 @@ def test_extract_text_from_excel_empty_sheets(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_empty_content"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     expected = "|  |\n|  |\n\n"
     assert result == expected
@@ -345,7 +347,7 @@ def test_extract_text_from_excel_sheet_parse_error(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_mixed_content"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     expected_manual = "| Data | Value |\n| ---- | ----- |\n| Test | 123 |\n\n"
 
@@ -369,7 +371,7 @@ def test_extract_text_from_excel_io_bytesio_usage(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"test_excel_bytes"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     mock_excel_file.assert_called_once()
     call_arg = mock_excel_file.call_args[0][0]
@@ -390,7 +392,7 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_all_bad_sheets"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     assert result == ""
 
@@ -413,7 +415,7 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_content"
-    result = _extract_text_from_excel(file_content)
+    result = extract_text_from_excel(file_content)
 
     expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
 

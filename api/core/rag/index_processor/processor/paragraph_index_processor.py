@@ -609,11 +609,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             try:
                 # Create File object directly (similar to DatasetRetrieval)
                 file_obj = File(
-                    id=upload_file.id,
+                    file_id=upload_file.id,
                     filename=upload_file.name,
                     extension="." + upload_file.extension,
                     mime_type=upload_file.mime_type,
-                    type=FileType.IMAGE,
+                    file_type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.LOCAL_FILE,
                     remote_url=upload_file.source_url,
                     reference=build_file_reference(

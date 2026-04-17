@@ -18,7 +18,7 @@ from core.moderation.base import ModerationError
 from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)

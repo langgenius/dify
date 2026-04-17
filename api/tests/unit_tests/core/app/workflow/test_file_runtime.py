@@ -26,8 +26,8 @@ def _build_file(
     extension: str | None = None,
 ) -> File:
     return File(
-        id="file-id",
-        type=FileType.IMAGE,
+        file_id="file-id",
+        file_type=FileType.IMAGE,
         transfer_method=transfer_method,
         reference=reference,
         remote_url=remote_url,

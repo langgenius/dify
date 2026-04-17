@@ -2,17 +2,17 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel
 
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
+    adapt_human_input_node_data_for_graph,
+    adapt_node_config_for_graph,
+    adapt_node_data_for_graph,
     is_human_input_webapp_enabled,
-    normalize_human_input_node_data_for_graph,
-    normalize_node_config_for_graph,
-    normalize_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
 from graphon.enums import BuiltinNodeTypes
@@ -100,8 +100,8 @@ def test_is_human_input_webapp_enabled_checks_enabled_delivery_methods() -> None
     )
 
 
-def test_normalize_node_data_for_graph_only_rewrites_human_input_nodes() -> None:
-    human_input = normalize_node_data_for_graph(
+def test_adapt_node_data_for_graph_only_rewrites_human_input_nodes() -> None:
+    human_input = adapt_node_data_for_graph(
         {
             "type": BuiltinNodeTypes.HUMAN_INPUT,
             "delivery_methods": [
@@ -116,14 +116,39 @@ def test_normalize_node_data_for_graph_only_rewrites_human_input_nodes() -> None
             ],
         }
     )
-    other_node = normalize_node_data_for_graph({"type": "answer", "delivery_methods": "unchanged"})
+    other_node = adapt_node_data_for_graph({"type": "answer", "delivery_methods": "unchanged"})
 
     assert human_input["delivery_methods"][0]["config"]["recipients"]["include_bound_group"] is True
     assert other_node == {"type": "answer", "delivery_methods": "unchanged"}
 
 
-def test_normalize_node_config_for_graph_rewrites_nested_node_data() -> None:
-    normalized = normalize_node_config_for_graph(
+def test_adapt_node_data_for_graph_migrates_legacy_tool_configurations() -> None:
+    normalized = adapt_node_data_for_graph(
+        {
+            "type": BuiltinNodeTypes.TOOL,
+            "tool_configurations": {
+                "format": {"type": "mixed", "value": "%Y-%m-%d %H:%M:%S"},
+                "timezone": {"type": "constant", "value": "UTC"},
+                "query": {"type": "variable", "value": ["sys", "query"]},
+            },
+            "tool_parameters": {},
+        }
+    )
+
+    assert normalized["tool_configurations"] == {
+        "format": "%Y-%m-%d %H:%M:%S",
+        "timezone": "UTC",
+        "query": "{{#sys.query#}}",
+    }
+    assert normalized["tool_parameters"] == {
+        "format": {"type": "mixed", "value": "%Y-%m-%d %H:%M:%S"},
+        "timezone": {"type": "constant", "value": "UTC"},
+        "query": {"type": "variable", "value": ["sys", "query"]},
+    }
+
+
+def test_adapt_node_config_for_graph_rewrites_nested_node_data() -> None:
+    normalized = adapt_node_config_for_graph(
         {
             "data": {
                 "type": BuiltinNodeTypes.HUMAN_INPUT,
@@ -146,11 +171,11 @@ def test_normalize_node_config_for_graph_rewrites_nested_node_data() -> None:
     assert recipients["items"][0]["reference_id"] == "user-1"
 
 
-def test_normalize_human_input_node_data_for_graph_accepts_models() -> None:
+def test_adapt_human_input_node_data_for_graph_accepts_models() -> None:
     class _NodeModel(BaseModel):
         delivery_methods: list[dict]
 
-    normalized = normalize_human_input_node_data_for_graph(
+    normalized = adapt_human_input_node_data_for_graph(
         _NodeModel(
             delivery_methods=[
                 {
