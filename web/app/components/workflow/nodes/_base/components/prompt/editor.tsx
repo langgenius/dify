@@ -7,6 +7,7 @@ import type {
   Variable,
 } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -14,8 +15,8 @@ import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import {
   Copy,
@@ -25,7 +26,6 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'

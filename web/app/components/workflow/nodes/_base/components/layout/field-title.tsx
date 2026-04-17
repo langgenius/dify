@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useState,
 } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 
 export type FieldTitleProps = {
   title?: string

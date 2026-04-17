@@ -16,6 +16,7 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import {
@@ -27,7 +28,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'

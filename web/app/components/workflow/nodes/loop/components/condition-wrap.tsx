@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
@@ -10,7 +11,6 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalSelect as Select } from '@/app/components/base/select'
-import { Button } from '@/app/components/base/ui/button'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import { SUB_VARIABLES } from './../default'

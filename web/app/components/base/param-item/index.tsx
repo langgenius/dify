@@ -1,8 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { Slider } from '@/app/components/base/ui/slider'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +7,10 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '../ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string

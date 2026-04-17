@@ -2,12 +2,12 @@
 
 import type { ChangeEvent, FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { checkKeys } from '@/utils/var'
 import VarHighlight from '../../app/configuration/base/var-highlight'
-import { toast } from '../ui/toast'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g

@@ -95,7 +95,7 @@ const NoteNode = ({
           </div>
           {
             data.selected && !data._isTempNode && (
-              <div className="absolute top-[-41px] left-1/2 -translate-x-1/2">
+              <div className="pointer-events-auto absolute top-[-41px] left-1/2 z-40 -translate-x-1/2">
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}

@@ -1,10 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import * as React from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Drawer from '@/app/components/base/drawer-plus'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,8 +7,13 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Drawer from '@/app/components/base/drawer-plus'
+import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'

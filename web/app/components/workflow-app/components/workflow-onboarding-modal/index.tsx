@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@/app/components/base/ui/dialog'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
@@ -24,7 +24,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
         className="w-[618px] max-w-[618px] rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
-        overlayClassName="bg-workflow-canvas-canvas-overlay"
+        backdropClassName="bg-workflow-canvas-canvas-overlay"
       >
         <DialogCloseButton />
 

@@ -1,11 +1,11 @@
 'use client'
 import type { LangGeniusVersionResponse } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 

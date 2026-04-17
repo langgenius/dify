@@ -5,15 +5,15 @@ import type {
   ModelItem,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import {

@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
@@ -108,7 +108,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
           </span>
         )}
         statusText={(
-          <span className="whitespace-pre-line">
+          <span className="block max-w-full break-words whitespace-pre-line">
             {plugin.message || errorMsg}
           </span>
         )}

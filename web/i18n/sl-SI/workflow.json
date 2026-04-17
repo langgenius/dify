@@ -151,6 +151,7 @@
   "common.branch": "VEJA",
   "common.chooseDSL": "Izberi DSL datoteko",
   "common.chooseStartNodeToRun": "Izberite začetno vozlišče za zagon",
+  "common.clipboardVersionCompatibilityWarning": "Ta vsebina je bila kopirana iz druge različice aplikacije Dify. Nekateri deli morda niso združljivi.",
   "common.commentMode": "Način komentarjev",
   "common.configure": "Konfiguriraj",
   "common.configureRequired": "Konfigurirajte zahteve",

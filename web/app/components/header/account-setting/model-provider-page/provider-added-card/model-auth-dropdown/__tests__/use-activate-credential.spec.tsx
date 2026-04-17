@@ -1,6 +1,6 @@
 import type { Credential, ModelProvider } from '../../../declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useActivateCredential } from '../use-activate-credential'
 
 const mockMutate = vi.fn()

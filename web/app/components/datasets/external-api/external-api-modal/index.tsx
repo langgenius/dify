@@ -1,11 +1,5 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
-import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
-import { memo, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { PortalToFollowElem, PortalToFollowElemContent } from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,9 +8,15 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
+import { memo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import { PortalToFollowElem, PortalToFollowElemContent } from '@/app/components/base/portal-to-follow-elem'
+import Tooltip from '@/app/components/base/tooltip'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 

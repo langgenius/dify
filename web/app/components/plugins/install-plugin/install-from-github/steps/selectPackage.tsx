@@ -2,10 +2,10 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import type { Item } from '@/app/components/base/select'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalSelect } from '@/app/components/base/select'
-import { Button } from '@/app/components/base/ui/button'
 import { handleUpload } from '../../hooks'
 
 const i18nPrefix = 'installFromGitHub'

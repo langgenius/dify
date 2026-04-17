@@ -1,9 +1,9 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
-import { Button } from '@/app/components/base/ui/button'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 
