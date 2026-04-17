@@ -685,6 +685,26 @@ describe('PluginTasks Component', () => {
       })
     })
 
+    it('should close the menu after clearing the last non-running plugins', async () => {
+      setupMocks([
+        createMockPlugin({ status: TaskStatus.success, plugin_unique_identifier: 'success-1' }),
+      ])
+
+      render(<PluginTasks />)
+
+      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+
+      await waitFor(() => {
+        expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /task\.clearAll/i }))
+
+      await waitFor(() => {
+        expect(document.querySelector('.w-\\[360px\\]')).not.toBeInTheDocument()
+      })
+    })
+
     it('should clear only error plugins when onClearErrors is called', async () => {
       const { mockMutateAsync } = setupMocks([
         createMockPlugin({ status: TaskStatus.failed, plugin_unique_identifier: 'error-1' }),
@@ -796,6 +816,30 @@ describe('PluginTasks Component', () => {
       fireEvent.click(document.getElementById('plugin-task-trigger')!)
 
       expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
+    })
+
+    it('should open for installing-with-success state', () => {
+      setupMocks([
+        createMockPlugin({ status: TaskStatus.running, plugin_unique_identifier: 'running-1' }),
+        createMockPlugin({ status: TaskStatus.success, plugin_unique_identifier: 'success-1' }),
+      ])
+
+      render(<PluginTasks />)
+      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+
+      expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
+    })
+
+    it('should open for installing-with-error state', () => {
+      setupMocks([
+        createMockPlugin({ status: TaskStatus.running, plugin_unique_identifier: 'running-1' }),
+        createMockPlugin({ status: TaskStatus.failed, plugin_unique_identifier: 'failed-1' }),
+      ])
+
+      render(<PluginTasks />)
+      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+
+      expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
     })
   })
 })

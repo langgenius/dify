@@ -1,6 +1,5 @@
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +13,6 @@ import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import ActionButton from '../../base/action-button'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -24,6 +22,11 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '../../base/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '../../base/ui/dropdown-menu'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -44,10 +47,6 @@ const DropDown = ({
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
 
-  const handleTrigger = useCallback(() => {
-    setOpen(prev => !prev)
-  }, [])
-
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
 
@@ -57,9 +56,11 @@ const DropDown = ({
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setShowRenameModal(true)
-    handleTrigger()
-  }, [handleTrigger])
+    setOpen(false)
+    queueMicrotask(() => {
+      setShowRenameModal(true)
+    })
+  }, [])
 
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
@@ -67,7 +68,7 @@ const DropDown = ({
     const { pipeline_id, name } = dataset
     if (!pipeline_id)
       return
-    handleTrigger()
+    setOpen(false)
     try {
       const { data } = await exportPipelineConfig({
         pipelineId: pipeline_id,
@@ -79,9 +80,10 @@ const DropDown = ({
     catch {
       toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [dataset, exportPipelineConfig, handleTrigger, t])
+  }, [dataset, exportPipelineConfig, t])
 
   const detectIsUsedByApp = useCallback(async () => {
+    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
@@ -91,10 +93,7 @@ const DropDown = ({
       const res = await e.json()
       toast(res?.message || 'Unknown error', { type: 'error' })
     }
-    finally {
-      handleTrigger()
-    }
-  }, [dataset.id, handleTrigger, t])
+  }, [dataset.id, t])
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -109,32 +108,27 @@ const DropDown = ({
   }, [dataset.id, replace, invalidDatasetList, t])
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement={expand ? 'bottom-end' : 'right'}
-      offset={expand
-        ? {
-            mainAxis: 4,
-            crossAxis: 10,
-          }
-        : {
-            mainAxis: 4,
-          }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className="size-4" />
+      <DropdownMenuTrigger render={<div />}>
+        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', open && 'bg-state-base-hover')}>
+          <span aria-hidden className="i-ri-more-fill size-4" />
         </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-60">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement={expand ? 'bottom-end' : 'right-start'}
+        sideOffset={4}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
         />
-      </PortalToFollowElemContent>
+      </DropdownMenuContent>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -163,7 +157,7 @@ const DropDown = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-    </PortalToFollowElem>
+    </DropdownMenu>
   )
 }
 
