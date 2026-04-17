@@ -41,6 +41,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
       return open ? <div>{children}</div> : null
     },
     DropdownMenuGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
     DropdownMenuGroupLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
     DropdownMenuSeparator: ({ className }: { className?: string }) => <div className={className} data-testid="dropdown-separator" />,
     DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement>, className?: string }) => {

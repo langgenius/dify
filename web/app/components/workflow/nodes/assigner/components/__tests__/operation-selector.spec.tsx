@@ -47,6 +47,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
       return open ? <div>{children}</div> : null
     },
     DropdownMenuGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuGroupLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuSeparator: () => <div data-testid="dropdown-separator" />,
     DropdownMenuItem: ({
