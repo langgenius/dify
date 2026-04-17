@@ -1,6 +1,11 @@
 import type { FC } from 'react'
 import type { Node } from '../../../types'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
+import {
   memo,
   useCallback,
   useState,
@@ -9,11 +14,6 @@ import { useTranslation } from 'react-i18next'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useNodesInteractions,
