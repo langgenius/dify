@@ -4,6 +4,7 @@ import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -32,7 +33,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 
@@ -298,10 +298,10 @@ const AgentTools: FC = () => {
                 <div className={cn(item.isDeleted && 'opacity-50')}>
                   {!item.notAuthor && (
                     <Switch
-                      value={item.isDeleted ? false : item.enabled}
+                      checked={item.isDeleted ? false : item.enabled}
                       disabled={item.isDeleted || readonly}
                       size="md"
-                      onChange={(enabled) => {
+                      onCheckedChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           (draft.agentConfig.tools[index] as any).enabled = enabled
                         })

@@ -2,6 +2,7 @@ import type {
   ComparisonOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
@@ -14,7 +15,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import {
   getOperators,
   isComparisonOperatorNeedTranslate,

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -10,7 +11,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { IS_CE_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION

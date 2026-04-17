@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { CodeLanguage } from '../../../code/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
@@ -14,7 +15,6 @@ import {
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import { cn } from '@/utils/classnames'
 import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
 import Wrap from './wrap'
@@ -85,7 +85,7 @@ const Base: FC<Props> = ({
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
       <div ref={ref} className={cn(className, isExpand ? 'h-full border-0' : 'rounded-lg border', !isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
-        <div className="flex h-7 items-center justify-between pl-3 pr-2 pt-1">
+        <div className="flex h-7 items-center justify-between pt-1 pr-2 pl-3">
           <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
           <div
             className="flex items-center"

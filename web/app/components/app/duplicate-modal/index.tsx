@@ -1,5 +1,6 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -12,7 +13,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {

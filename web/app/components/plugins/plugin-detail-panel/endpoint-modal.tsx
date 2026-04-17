@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { FormSchema } from '../../base/form/types'
 import type { PluginDetail } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { cn } from '@/utils/classnames'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 
 type Props = {

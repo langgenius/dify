@@ -1,18 +1,20 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { OverlayItemVariant } from '@/app/components/base/ui/overlay-shared'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
-import * as React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  menuGroupLabelClassName,
-  menuIndicatorClassName,
-  menuPopupAnimationClassName,
-  menuPopupBaseClassName,
-  menuRowClassName,
-  menuSeparatorClassName,
-} from '@/app/components/base/ui/menu-shared'
+  overlayDestructiveClassName,
+  overlayIndicatorClassName,
+  overlayLabelClassName,
+  overlayPopupAnimationClassName,
+  overlayPopupBaseClassName,
+  overlayRowClassName,
+  overlaySeparatorClassName,
+} from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const DropdownMenu = Menu.Root
 export const DropdownMenuTrigger = Menu.Trigger
@@ -23,10 +25,10 @@ export const DropdownMenuRadioGroup = Menu.RadioGroup
 export function DropdownMenuRadioItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
+}: Menu.RadioItem.Props) {
   return (
     <Menu.RadioItem
-      className={cn(menuRowClassName, className)}
+      className={cn(overlayRowClassName, className)}
       {...props}
     />
   )
@@ -35,10 +37,10 @@ export function DropdownMenuRadioItem({
 export function DropdownMenuRadioItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Menu.RadioItemIndicator>, 'children'>) {
+}: Omit<Menu.RadioItemIndicator.Props, 'children'>) {
   return (
     <Menu.RadioItemIndicator
-      className={cn(menuIndicatorClassName, className)}
+      className={cn(overlayIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -49,10 +51,10 @@ export function DropdownMenuRadioItemIndicator({
 export function DropdownMenuCheckboxItem({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>) {
+}: Menu.CheckboxItem.Props) {
   return (
     <Menu.CheckboxItem
-      className={cn(menuRowClassName, className)}
+      className={cn(overlayRowClassName, className)}
       {...props}
     />
   )
@@ -61,10 +63,10 @@ export function DropdownMenuCheckboxItem({
 export function DropdownMenuCheckboxItemIndicator({
   className,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Menu.CheckboxItemIndicator>, 'children'>) {
+}: Omit<Menu.CheckboxItemIndicator.Props, 'children'>) {
   return (
     <Menu.CheckboxItemIndicator
-      className={cn(menuIndicatorClassName, className)}
+      className={cn(overlayIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -72,31 +74,31 @@ export function DropdownMenuCheckboxItemIndicator({
   )
 }
 
-export function DropdownMenuGroupLabel({
+export function DropdownMenuLabel({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.GroupLabel>) {
+}: Menu.GroupLabel.Props) {
   return (
     <Menu.GroupLabel
-      className={cn(menuGroupLabelClassName, className)}
+      className={cn(overlayLabelClassName, className)}
       {...props}
     />
   )
 }
 
 type DropdownMenuContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   className?: string
   popupClassName?: string
   positionerProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof Menu.Positioner>,
+    Menu.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
   popupProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof Menu.Popup>,
+    Menu.Popup.Props,
     'children' | 'className'
   >
 }
@@ -135,8 +137,8 @@ function renderDropdownMenuPopup({
       >
         <Menu.Popup
           className={cn(
-            menuPopupBaseClassName,
-            menuPopupAnimationClassName,
+            overlayPopupBaseClassName,
+            overlayPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -170,19 +172,20 @@ export function DropdownMenuContent({
   })
 }
 
-type DropdownMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof Menu.SubmenuTrigger> & {
-  destructive?: boolean
+type DropdownMenuSubTriggerProps = Menu.SubmenuTrigger.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function DropdownMenuSubTrigger({
   className,
-  destructive,
+  variant = 'default',
   children,
   ...props
 }: DropdownMenuSubTriggerProps) {
   return (
     <Menu.SubmenuTrigger
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     >
       {children}
@@ -192,7 +195,7 @@ export function DropdownMenuSubTrigger({
 }
 
 type DropdownMenuSubContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -224,36 +227,38 @@ export function DropdownMenuSubContent({
   })
 }
 
-type DropdownMenuItemProps = React.ComponentPropsWithoutRef<typeof Menu.Item> & {
-  destructive?: boolean
+type DropdownMenuItemProps = Menu.Item.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function DropdownMenuItem({
   className,
-  destructive,
+  variant = 'default',
   ...props
 }: DropdownMenuItemProps) {
   return (
     <Menu.Item
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       {...props}
     />
   )
 }
 
-type DropdownMenuLinkItemProps = React.ComponentPropsWithoutRef<typeof Menu.LinkItem> & {
-  destructive?: boolean
+type DropdownMenuLinkItemProps = Menu.LinkItem.Props & {
+  variant?: OverlayItemVariant
 }
 
 export function DropdownMenuLinkItem({
   className,
-  destructive,
+  variant = 'default',
   closeOnClick = true,
   ...props
 }: DropdownMenuLinkItemProps) {
   return (
     <Menu.LinkItem
-      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
+      data-variant={variant}
+      className={cn(overlayRowClassName, overlayDestructiveClassName, className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -263,10 +268,10 @@ export function DropdownMenuLinkItem({
 export function DropdownMenuSeparator({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof Menu.Separator>) {
+}: Menu.Separator.Props) {
   return (
     <Menu.Separator
-      className={cn(menuSeparatorClassName, className)}
+      className={cn(overlaySeparatorClassName, className)}
       {...props}
     />
   )

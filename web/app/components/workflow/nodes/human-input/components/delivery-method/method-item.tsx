@@ -4,6 +4,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -20,7 +21,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
@@ -95,12 +95,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
       >
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
               <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
           {method.type === DeliveryMethodType.Email && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
@@ -160,8 +160,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (
             <Switch
-              value={method.enabled}
-              onChange={handleEnableStatusChange}
+              checked={method.enabled}
+              onCheckedChange={handleEnableStatusChange}
               disabled={readonly}
             />
           )}

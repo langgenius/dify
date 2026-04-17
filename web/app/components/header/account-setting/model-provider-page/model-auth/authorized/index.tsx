@@ -9,6 +9,7 @@ import type {
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -33,7 +34,6 @@ import {
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 

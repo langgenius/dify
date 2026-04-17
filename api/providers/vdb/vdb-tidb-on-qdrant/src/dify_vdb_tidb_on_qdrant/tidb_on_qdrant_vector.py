@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
@@ -7,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import qdrant_client
+
+logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -421,13 +424,16 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+        logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
         tidb_auth_binding = db.session.scalars(stmt).one_or_none()
         if not tidb_auth_binding:
+            logger.info("No existing TidbAuthBinding for tenant %s, acquiring lock", dataset.tenant_id)
             with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
                 stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
                 tidb_auth_binding = db.session.scalars(stmt).one_or_none()
                 if tidb_auth_binding:
+                    logger.info("Found binding after lock: cluster_id=%s", tidb_auth_binding.cluster_id)
                     TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
@@ -437,11 +443,18 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         .limit(1)
                     )
                     if idle_tidb_auth_binding:
+                        logger.info(
+                            "Assigning idle cluster %s to tenant %s",
+                            idle_tidb_auth_binding.cluster_id,
+                            dataset.tenant_id,
+                        )
                         idle_tidb_auth_binding.active = True
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
                         db.session.commit()
+                        tidb_auth_binding = idle_tidb_auth_binding
                         TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
+                        logger.info("No idle clusters available, creating new cluster for tenant %s", dataset.tenant_id)
                         new_cluster = TidbService.create_tidb_serverless_cluster(
                             dify_config.TIDB_PROJECT_ID or "",
                             dify_config.TIDB_API_URL or "",
@@ -450,20 +463,38 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             dify_config.TIDB_PRIVATE_KEY or "",
                             dify_config.TIDB_REGION or "",
                         )
+                        logger.info(
+                            "New cluster created: cluster_id=%s, qdrant_endpoint=%s",
+                            new_cluster["cluster_id"],
+                            new_cluster.get("qdrant_endpoint"),
+                        )
                         new_tidb_auth_binding = TidbAuthBinding(
                             cluster_id=new_cluster["cluster_id"],
                             cluster_name=new_cluster["cluster_name"],
                             account=new_cluster["account"],
                             password=new_cluster["password"],
+                            qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                             tenant_id=dataset.tenant_id,
                             active=True,
                             status=TidbAuthBindingStatus.ACTIVE,
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
+                        tidb_auth_binding = new_tidb_auth_binding
                         TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
         else:
+            logger.info("Existing binding found: cluster_id=%s", tidb_auth_binding.cluster_id)
             TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+
+        qdrant_url = (
+            (tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None) or dify_config.TIDB_ON_QDRANT_URL or ""
+        )
+        logger.info(
+            "Using qdrant endpoint: %s (from_binding=%s, fallback_global=%s)",
+            qdrant_url,
+            tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None,
+            dify_config.TIDB_ON_QDRANT_URL,
+        )
 
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -479,7 +510,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
-                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
+                endpoint=qdrant_url,
                 api_key=TIDB_ON_QDRANT_API_KEY,
                 root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,

@@ -123,8 +123,8 @@ const EmailConfigureModal = ({
           />
         </div>
         <Divider className="my-0! mt-5! h-px!" />
-        <div className="flex items-start justify-between gap-2 radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
-          <div className="radius-xs border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
+        <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
             <RiBugLine className="h-3.5 w-3.5 text-text-primary-on-surface" />
           </div>
           <div className="grow space-y-1">
@@ -140,8 +140,8 @@ const EmailConfigureModal = ({
             </div>
           </div>
           <Switch
-            value={debugMode}
-            onChange={checked => setDebugMode(checked)}
+            checked={debugMode}
+            onCheckedChange={checked => setDebugMode(checked)}
           />
         </div>
       </div>

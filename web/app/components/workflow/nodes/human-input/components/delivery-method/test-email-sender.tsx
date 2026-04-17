@@ -4,6 +4,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
@@ -24,7 +25,6 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import { isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
@@ -99,13 +99,13 @@ const EmailSenderModal = ({
     }, [] as ValueSelector[])
     const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
     const variables = unionBy([...valueSelectors, ...defaultValueSelectors], item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodes, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodes, item[0]!)?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          nodeName: varInfo?.title || availableNodes[0]?.data.title!, // default start node title
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,

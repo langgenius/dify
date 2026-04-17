@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -18,7 +19,6 @@ import {
 } from '@/app/components/base/ui/alert-dialog'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { isAfter } from '@/utils/time'
 import StatusItem from '../../../status-item'
@@ -177,7 +177,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <div className="flex items-center">
                   <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                   {embeddingAvailable && (
-                    <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
+                    <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px]
                       border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex"
                     >
                       {!archived && (
@@ -223,8 +223,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         <Switch
                           size="md"
                           disabled={archived || detail?.status !== 'completed'}
-                          value={enabled}
-                          onChange={async (val) => {
+                          checked={enabled}
+                          onCheckedChange={async (val) => {
                             await onChangeSwitch?.(val, id)
                           }}
                         />

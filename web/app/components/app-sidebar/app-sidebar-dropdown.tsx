@@ -1,4 +1,5 @@
 import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Line,
   RiMenuLine,
@@ -13,7 +14,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
 import AppInfo from './app-info'
@@ -50,7 +50,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
 
   return (
     <>
-      <div className="fixed left-2 top-2 z-20">
+      <div className="fixed top-2 left-2 z-20">
         <PortalToFollowElem
           open={open}
           onOpenChange={setOpen}
@@ -60,7 +60,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
           }}
         >
           <PortalToFollowElemTrigger onClick={handleTrigger}>
-            <div className={cn('flex cursor-pointer items-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
+            <div className={cn('flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
               <AppIcon
                 size="small"
                 iconType={appDetail.icon_type}
@@ -97,16 +97,16 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                   </div>
                   <div className="flex flex-col items-start gap-1">
                     <div className="flex w-full">
-                      <div className="truncate text-text-secondary system-md-semibold">{appDetail.name}</div>
+                      <div className="truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
                     </div>
-                    <div className="text-text-tertiary system-2xs-medium-uppercase">{getAppModeLabel(appDetail.mode, t)}</div>
+                    <div className="system-2xs-medium-uppercase text-text-tertiary">{getAppModeLabel(appDetail.mode, t)}</div>
                   </div>
                 </div>
               </div>
               <div className="px-4">
                 <Divider bgStyle="gradient" />
               </div>
-              <nav className="space-y-0.5 px-3 pb-6 pt-4">
+              <nav className="space-y-0.5 px-3 pt-4 pb-6">
                 {navigation.map((item, index) => {
                   return (
                     <NavLink key={index} mode="expand" iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />

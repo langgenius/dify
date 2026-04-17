@@ -29,6 +29,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
@@ -113,6 +114,7 @@ const UpdateDSLModal = ({
     }
 
     await handleWorkflowUpdate(appId)
+    collaborationManager.emitWorkflowUpdate(appId)
     onImport?.()
     const payload = getImportNotificationPayload(status, t)
     toast[payload.type](payload.message, payload.children ? { description: payload.children } : undefined)

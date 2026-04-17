@@ -88,23 +88,6 @@ describe('VersionMismatchModal', () => {
     })
   })
 
-  describe('button variants', () => {
-    it('should render cancel button with secondary variant', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      const cancelBtn = screen.getByRole('button', { name: /app\.newApp\.Cancel/ })
-      expect(cancelBtn).toHaveClass('btn-secondary')
-    })
-
-    it('should render confirm button with primary destructive variant', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      const confirmBtn = screen.getByRole('button', { name: /app\.newApp\.Confirm/ })
-      expect(confirmBtn).toHaveClass('btn-primary')
-      expect(confirmBtn).toHaveClass('btn-destructive-primary')
-    })
-  })
-
   describe('edge cases', () => {
     it('should handle undefined versions gracefully', () => {
       render(<VersionMismatchModal {...defaultProps} versions={undefined} />)

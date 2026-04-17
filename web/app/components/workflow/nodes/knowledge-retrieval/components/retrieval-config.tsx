@@ -5,6 +5,7 @@ import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -18,7 +19,6 @@ import {
 import { Button } from '@/app/components/base/ui/button'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   payload: {

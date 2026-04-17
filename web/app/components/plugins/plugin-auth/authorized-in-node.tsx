@@ -2,6 +2,7 @@ import type {
   Credential,
   PluginPayload,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +12,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import {
   Authorized,
   usePluginAuth,

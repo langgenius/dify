@@ -1,6 +1,7 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,6 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ConfigContent from './config-content'
 
 type ParamsConfigProps = {

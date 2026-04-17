@@ -39,6 +39,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
@@ -73,6 +74,10 @@ class AccountNamePayload(BaseModel):
 
 class AccountAvatarPayload(BaseModel):
     avatar: str
+
+
+class AccountAvatarQuery(BaseModel):
+    avatar: str = Field(..., description="Avatar file ID")
 
 
 class AccountInterfaceLanguagePayload(BaseModel):
@@ -160,6 +165,7 @@ def reg(cls: type[BaseModel]):
 reg(AccountInitPayload)
 reg(AccountNamePayload)
 reg(AccountAvatarPayload)
+reg(AccountAvatarQuery)
 reg(AccountInterfaceLanguagePayload)
 reg(AccountInterfaceThemePayload)
 reg(AccountTimezonePayload)
@@ -309,6 +315,18 @@ class AccountNameApi(Resource):
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
+    @console_ns.expect(console_ns.models[AccountAvatarQuery.__name__])
+    @console_ns.doc("get_account_avatar")
+    @console_ns.doc(description="Get account avatar url")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        avatar_url = file_helpers.get_signed_file_url(args.avatar)
+        return {"avatar_url": avatar_url}
+
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
     @setup_required
     @login_required

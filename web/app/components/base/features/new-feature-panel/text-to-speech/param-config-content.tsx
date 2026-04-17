@@ -2,6 +2,7 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Item } from '@/app/components/base/select'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { Fragment } from 'react'
@@ -15,7 +16,6 @@ import { languages } from '@/i18n-config/language'
 import { usePathname } from '@/next/navigation'
 import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type VoiceParamConfigProps = {
   onClose: () => void
@@ -65,7 +65,7 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-text-primary system-xl-semibold">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
         <div
           className="cursor-pointer p-1"
           role="button"
@@ -83,7 +83,7 @@ const VoiceParamConfig = ({
         </div>
       </div>
       <div className="mb-3">
-        <div className="mb-1 flex items-center py-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.language', { ns: 'appDebug' })}
           <Tooltip
             popupContent={(
@@ -107,7 +107,7 @@ const VoiceParamConfig = ({
         >
           <div className="relative h-8">
             <ListboxButton
-              className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-hidden group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
+              className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pr-10 pl-3 group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6"
             >
               <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
                 {languageItem?.name
@@ -131,7 +131,7 @@ const VoiceParamConfig = ({
                 {languages.map(item => (
                   <ListboxOption
                     key={item.value}
-                    className="relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-active:bg-state-base-active"
+                    className="relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover data-active:bg-state-base-active"
                     value={item}
                     disabled={false}
                   >
@@ -159,7 +159,7 @@ const VoiceParamConfig = ({
         </Listbox>
       </div>
       <div className="mb-3">
-        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
@@ -174,7 +174,7 @@ const VoiceParamConfig = ({
           >
             <div className="relative h-8 grow">
               <ListboxButton
-                className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-hidden group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
+                className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pr-10 pl-3 group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6"
               >
                 <span
                   className={cn('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}
@@ -198,7 +198,7 @@ const VoiceParamConfig = ({
                   {voiceItems?.map((item: Item) => (
                     <ListboxOption
                       key={item.value}
-                      className="relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-active:bg-state-base-active"
+                      className="relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover data-active:bg-state-base-active"
                       value={item}
                       disabled={false}
                     >
@@ -233,13 +233,13 @@ const VoiceParamConfig = ({
         </div>
       </div>
       <div>
-        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
         </div>
         <Switch
           className="shrink-0"
-          value={text2speech?.autoPlay === TtsAutoPlay.enabled}
-          onChange={(value: boolean) => {
+          checked={text2speech?.autoPlay === TtsAutoPlay.enabled}
+          onCheckedChange={(value: boolean) => {
             handleChange({
               autoPlay: value ? TtsAutoPlay.enabled : TtsAutoPlay.disabled,
             })

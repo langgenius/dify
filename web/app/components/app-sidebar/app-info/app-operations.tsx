@@ -188,7 +188,7 @@ const AppOperations = ({
               </Button>
             </PortalToFollowElemTrigger>
             <PortalToFollowElemContent className="z-30">
-              <div className="flex min-w-[264px] flex-col radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+              <div className="flex min-w-[264px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
                 {moreOperations.map(item => item.type === 'divider'
                   ? (
                       <div key={item.id} className="my-1 h-px bg-divider-subtle" />

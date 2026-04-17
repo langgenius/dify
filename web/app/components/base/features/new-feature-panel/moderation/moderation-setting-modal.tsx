@@ -1,6 +1,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,6 @@ import { useDocLink, useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -205,8 +205,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }))
+        if (!localeData.config?.[currentProvider.form_schema[i]!.variable] && currentProvider.form_schema[i]!.required) {
+          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i]!.label['en-US'] : currentProvider.form_schema[i]!.label['zh-Hans'] }))
           return
         }
       }
