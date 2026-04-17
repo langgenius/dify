@@ -41,7 +41,7 @@ const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,

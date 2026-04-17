@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useCallback } from 'react'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
 
 type DialogProps = {
   className?: string

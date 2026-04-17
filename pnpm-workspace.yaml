@@ -55,6 +55,7 @@ catalog:
   '@storybook/addon-themes': 10.3.5
   '@storybook/nextjs-vite': 10.3.5
   '@storybook/react': 10.3.5
+  '@storybook/react-vite': 10.3.5
   '@streamdown/math': 1.0.2
   '@svgdotjs/svg.js': 3.2.5
   '@t3-oss/env-nextjs': 0.13.11

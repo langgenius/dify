@@ -35,7 +35,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/avatar', () => ({
+vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
   default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))

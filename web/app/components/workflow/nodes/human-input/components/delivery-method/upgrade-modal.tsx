@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiMailSendFill,
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { Button } from '@/app/components/base/ui/button'
 import { useModalContextSelector } from '@/context/modal-context'
 
 type UpgradeModalProps = {

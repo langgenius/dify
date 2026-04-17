@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import Header from '../header'
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }))
 

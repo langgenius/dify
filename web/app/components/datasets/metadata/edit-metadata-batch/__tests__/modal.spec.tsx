@@ -30,7 +30,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 
 // Mock Toast to verify notifications
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
   },

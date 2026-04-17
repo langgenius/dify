@@ -1,14 +1,10 @@
 {
-  "extends": "@dify/tsconfig/base.json",
+  "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
-    "outDir": "dist",
-    "sourceMap": true,
+    "rootDir": ".",
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "tests", ".storybook", "tailwind.config.ts", "vite.config.ts"]
 }

@@ -1,7 +1,7 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
 type UsagePrioritySectionProps = {

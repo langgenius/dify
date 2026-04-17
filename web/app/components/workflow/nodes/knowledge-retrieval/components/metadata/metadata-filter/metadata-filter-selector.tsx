@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {

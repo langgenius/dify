@@ -1,10 +1,4 @@
 import type { ConversationItem } from '@/models/share'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import AppIcon from '@/app/components/base/app-icon'
-import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,7 +7,13 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
 import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'

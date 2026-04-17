@@ -14,16 +14,16 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import Loading from '@/app/components/base/loading'
 import {
   Popover,
   PopoverClose,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import Loading from '@/app/components/base/loading'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import {

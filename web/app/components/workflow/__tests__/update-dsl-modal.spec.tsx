@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
@@ -19,7 +19,7 @@ vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),

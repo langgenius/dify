@@ -19,8 +19,8 @@ type MockSliderProps = {
 const mockSwitch = vi.fn<(props: MockSwitchProps) => void>()
 const mockSlider = vi.fn<(props: MockSliderProps) => void>()
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: (props: MockSwitchProps) => {
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: MockSwitchProps) => {
     mockSwitch(props)
     return (
       <button

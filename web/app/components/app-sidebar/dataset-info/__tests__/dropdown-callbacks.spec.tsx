@@ -112,7 +112,7 @@ vi.mock('@/service/datasets', () => ({
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
 }))
 

@@ -32,7 +32,7 @@ vi.mock('@/context/global-public-context', () => ({
   useSystemFeaturesQuery: () => ({ data: { trial_models: ['langgenius/openai/openai'] } }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mockToastNotify },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),

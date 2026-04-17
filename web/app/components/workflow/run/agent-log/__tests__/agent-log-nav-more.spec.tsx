@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AgentLogNavMore from '../agent-log-nav-more'
 
-vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
   const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
 

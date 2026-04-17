@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
 import type { Member } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiContactsBookLine,
@@ -9,7 +10,6 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'

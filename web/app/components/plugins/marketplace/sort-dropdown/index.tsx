@@ -1,12 +1,12 @@
 'use client'
 import { useTranslation } from '#i18n'
-import { useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useState } from 'react'
 import { useMarketplaceSort } from '../atoms'
 
 const PLUGIN_SORT_OPTIONS = [

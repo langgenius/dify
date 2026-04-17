@@ -1,4 +1,12 @@
 import type { Node } from './types'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
   memo,
@@ -8,14 +16,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'

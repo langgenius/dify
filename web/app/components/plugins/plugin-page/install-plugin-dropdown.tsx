@@ -1,6 +1,13 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
@@ -8,13 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { Button } from '@/app/components/base/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
