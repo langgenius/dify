@@ -1,12 +1,4 @@
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,7 +7,15 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { IS_CE_EDITION } from '@/config'
 
 const i18nPrefix = 'batchAction'

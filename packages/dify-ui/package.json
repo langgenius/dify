@@ -21,6 +21,10 @@
       "types": "./src/overlay-shared.ts",
       "import": "./src/overlay-shared.ts"
     },
+    "./alert-dialog": {
+      "types": "./src/alert-dialog/index.tsx",
+      "import": "./src/alert-dialog/index.tsx"
+    },
     "./avatar": {
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"

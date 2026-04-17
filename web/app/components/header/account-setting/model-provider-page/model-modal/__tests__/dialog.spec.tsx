@@ -40,7 +40,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
   DialogCloseButton: () => <button type="button">close</button>,
 }))
 
-vi.mock('@/app/components/base/ui/alert-dialog', () => ({
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({ children, onOpenChange }: AlertDialogProps) => {
     latestAlertDialogOnOpenChange = onOpenChange
     return <div>{children}</div>

@@ -1,12 +1,5 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
-import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,7 +7,14 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 

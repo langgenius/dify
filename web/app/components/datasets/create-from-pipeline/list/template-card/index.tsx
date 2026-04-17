@@ -1,10 +1,4 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
-import Modal from '@/app/components/base/modal'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,7 +7,13 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Modal from '@/app/components/base/modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
