@@ -1,5 +1,6 @@
 import type { NavIcon } from './nav-link'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiMenuLine,
 } from '@remixicon/react'
@@ -15,7 +16,6 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import { useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
 import Effect from '../base/effect'
@@ -65,7 +65,7 @@ const DatasetSidebarDropdown = ({
 
   return (
     <>
-      <div className="fixed left-2 top-2 z-20">
+      <div className="fixed top-2 left-2 z-20">
         <PortalToFollowElem
           open={open}
           onOpenChange={setOpen}
@@ -77,7 +77,7 @@ const DatasetSidebarDropdown = ({
           <PortalToFollowElemTrigger onClick={handleTrigger}>
             <div
               className={cn(
-                'flex cursor-pointer items-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
+                'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
                 open && 'bg-background-default-hover',
               )}
             >
@@ -93,7 +93,7 @@ const DatasetSidebarDropdown = ({
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-50">
             <div className="relative w-[216px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg">
-              <Effect className="-left-5 top-[-22px] opacity-15" />
+              <Effect className="top-[-22px] -left-5 opacity-15" />
               <div className="flex flex-col gap-y-2 p-4">
                 <div className="flex items-center justify-between">
                   <AppIcon
@@ -107,12 +107,12 @@ const DatasetSidebarDropdown = ({
                 </div>
                 <div className="flex flex-col gap-y-1 pb-0.5">
                   <div
-                    className="truncate text-text-secondary system-md-semibold"
+                    className="truncate system-md-semibold text-text-secondary"
                     title={dataset.name}
                   >
                     {dataset.name}
                   </div>
-                  <div className="text-text-tertiary system-2xs-medium-uppercase">
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">
                     {isExternalProvider && t('externalTag', { ns: 'dataset' })}
                     {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                       <div className="flex items-center gap-x-2">
@@ -123,7 +123,7 @@ const DatasetSidebarDropdown = ({
                   </div>
                 </div>
                 {!!dataset.description && (
-                  <p className="line-clamp-3 text-text-tertiary system-xs-regular first-letter:capitalize">
+                  <p className="line-clamp-3 system-xs-regular text-text-tertiary first-letter:capitalize">
                     {dataset.description}
                   </p>
                 )}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Transition, TransitionChild } from '@headlessui/react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ContentDialogProps = {
   className?: string
@@ -19,7 +19,7 @@ const ContentDialog = ({
     <Transition
       show={show}
       as="div"
-      className="absolute left-0 top-0 z-30 box-border h-full w-full p-2"
+      className="absolute top-0 left-0 z-[70] box-border h-full w-full p-2"
     >
       <TransitionChild>
         <div

@@ -1,5 +1,6 @@
 'use client'
 import type { SimpleSubscription } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { SubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import { cn } from '@/utils/classnames'
 import { SubscriptionListMode } from './types'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -76,7 +76,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       onClick={onClick}
     >
       <RiWebhookLine className={cn('h-3.5 w-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')} />
-      <span className={cn('system-xs-medium truncate text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
+      <span className={cn('truncate system-xs-medium text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
         {statusConfig.label}
       </span>
       <RiArrowDownSLine

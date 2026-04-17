@@ -61,7 +61,7 @@ export const Gallery: Story = {
         {examples.map(type => (
           <div key={type} className="flex flex-col items-center gap-1">
             <FileIcon type={type} className="h-9 w-9" />
-            <span className="text-xs uppercase text-text-tertiary">{type}</span>
+            <span className="text-xs text-text-tertiary uppercase">{type}</span>
           </div>
         ))}
       </div>

@@ -5,19 +5,10 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from flask_login import current_user
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
-from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base.node import Node
-from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.runtime import VariablePool
-from graphon.variables.variables import Variable, VariableBase
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -53,6 +44,15 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from graphon.runtime import VariablePool
+from graphon.variables.variables import Variable, VariableBase
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.dataset import (  # type: ignore
@@ -104,7 +104,7 @@ class RagPipelineService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @classmethod
-    def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:
+    def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict[str, Any]:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
@@ -120,7 +120,7 @@ class RagPipelineService:
             return result
 
     @classmethod
-    def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict | None:
+    def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict[str, Any] | None:
         """
         Get pipeline template detail.
 
@@ -131,7 +131,7 @@ class RagPipelineService:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(template_id)
             if built_in_result is None:
                 logger.warning(
                     "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
@@ -142,7 +142,7 @@ class RagPipelineService:
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            customized_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(template_id)
             return customized_result
 
     @classmethod
@@ -297,7 +297,7 @@ class RagPipelineService:
         self,
         *,
         pipeline: Pipeline,
-        graph: dict,
+        graph: dict[str, Any],
         unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[VariableBase],
@@ -467,7 +467,9 @@ class RagPipelineService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> Mapping[str, object] | None:
+    def get_default_block_config(
+        self, node_type: str, filters: dict[str, Any] | None = None
+    ) -> Mapping[str, object] | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -500,7 +502,7 @@ class RagPipelineService:
         return default_config
 
     def run_draft_workflow_node(
-        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
+        self, pipeline: Pipeline, node_id: str, user_inputs: dict[str, Any], account: Account
     ) -> WorkflowNodeExecutionModel | None:
         """
         Run draft workflow node
@@ -555,7 +557,7 @@ class RagPipelineService:
             workflow_node_execution.id
         )
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -569,7 +571,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
             enqueue_draft_node_execution_trace(
                 execution=workflow_node_execution_db_model,
@@ -583,7 +584,7 @@ class RagPipelineService:
         self,
         pipeline: Pipeline,
         node_id: str,
-        user_inputs: dict,
+        user_inputs: dict[str, Any],
         account: Account,
         datasource_type: str,
         is_published: bool,
@@ -750,7 +751,7 @@ class RagPipelineService:
         self,
         pipeline: Pipeline,
         node_id: str,
-        user_inputs: dict,
+        user_inputs: dict[str, Any],
         account: Account,
         datasource_type: str,
         is_published: bool,
@@ -980,7 +981,7 @@ class RagPipelineService:
         return workflow_node_execution
 
     def update_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
+        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict[str, Any]
     ) -> Workflow | None:
         """
         Update workflow attributes
@@ -1100,7 +1101,9 @@ class RagPipelineService:
         ]
         return datasource_provider_variables
 
-    def get_rag_pipeline_paginate_workflow_runs(self, pipeline: Pipeline, args: dict) -> InfiniteScrollPagination:
+    def get_rag_pipeline_paginate_workflow_runs(
+        self, pipeline: Pipeline, args: dict[str, Any]
+    ) -> InfiniteScrollPagination:
         """
         Get debug workflow run list
         Only return triggered_from == debugging
@@ -1170,7 +1173,7 @@ class RagPipelineService:
         return list(node_executions)
 
     @classmethod
-    def publish_customized_pipeline_template(cls, pipeline_id: str, args: dict):
+    def publish_customized_pipeline_template(cls, pipeline_id: str, args: dict[str, Any]):
         """
         Publish customized pipeline template
         """
@@ -1260,7 +1263,7 @@ class RagPipelineService:
         )
         return node_exec
 
-    def set_datasource_variables(self, pipeline: Pipeline, args: dict, current_user: Account):
+    def set_datasource_variables(self, pipeline: Pipeline, args: dict[str, Any], current_user: Account):
         """
         Set datasource variables
         """
@@ -1325,7 +1328,7 @@ class RagPipelineService:
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -1339,7 +1342,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution_db_model,
             outputs=workflow_node_execution.outputs,
@@ -1348,7 +1350,7 @@ class RagPipelineService:
         )
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self, type: str) -> dict:
+    def get_recommended_plugins(self, type: str) -> dict[str, Any]:
         # Query active recommended plugins
         stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
         if type and type != "all":
@@ -1389,7 +1391,7 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Union[Account, EndUser]):
+    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
         """
         Retry error document
         """

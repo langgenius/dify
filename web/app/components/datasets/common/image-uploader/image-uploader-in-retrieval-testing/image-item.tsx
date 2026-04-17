@@ -6,10 +6,10 @@ import {
   memo,
   useCallback,
 } from 'react'
-import Button from '@/app/components/base/button'
 import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { Button } from '@/app/components/base/ui/button'
 import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {
@@ -54,7 +54,7 @@ const ImageItem = ({
       {
         showDeleteAction && (
           <Button
-            className="absolute -right-1.5 -top-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+            className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
             onClick={handleRemove}
           >
             <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />

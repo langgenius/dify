@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiPlayList2Line,
   RiSparklingFill,
@@ -20,7 +21,6 @@ import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 import GenerationActionGroups from './action-groups'
 import {
   buildPromptLogItem,
@@ -213,7 +213,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 workflowProcessData={workflowProcessData}
               />
               {!workflowProcessData && taskId && (
-                <div className={cn('system-2xs-medium-uppercase sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary', isError && 'text-text-destructive')}>
+                <div className={cn('sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className="mr-1 h-3 w-3" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
@@ -221,7 +221,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </div>
               )}
               {isError && (
-                <div className="body-lg-regular p-4 pt-0 text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
+                <div className="p-4 pt-0 body-lg-regular text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
@@ -231,7 +231,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             </div>
             {/* meta data */}
             <div className={cn(
-              'system-xs-regular relative mt-1 h-4 px-4 text-text-quaternary',
+              'relative mt-1 h-4 px-4 system-xs-regular text-text-quaternary',
               isMobile && ((childMessageId || isQuerying) && depth < MAX_GENERATION_DEPTH) && 'pl-10',
             )}
             >
@@ -243,7 +243,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </span>
               )}
               {/* action buttons */}
-              <div className="absolute bottom-1 right-2 flex items-center">
+              <div className="absolute right-2 bottom-1 flex items-center">
                 <GenerationActionGroups
                   appSourceType={appSourceType}
                   content={content}

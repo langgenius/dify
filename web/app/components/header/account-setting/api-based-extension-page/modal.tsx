@@ -3,9 +3,9 @@ import type { ApiBasedExtension } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
@@ -68,7 +68,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
           : t('apiBasedExtension.modal.title', { ns: 'common' })}
       </div>
       <div className="py-2">
-        <div className="text-sm font-medium leading-9 text-text-primary">
+        <div className="text-sm leading-9 font-medium text-text-primary">
           {t('apiBasedExtension.modal.name.title', { ns: 'common' })}
         </div>
         <input value={localeData.name || ''} onChange={e => handleDataChange('name', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''} />
@@ -84,7 +84,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
         <input value={localeData.api_endpoint || ''} onChange={e => handleDataChange('api_endpoint', e.target.value)} className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden" placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''} />
       </div>
       <div className="py-2">
-        <div className="text-sm font-medium leading-9 text-text-primary">
+        <div className="text-sm leading-9 font-medium text-text-primary">
           {t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })}
         </div>
         <div className="flex items-center">

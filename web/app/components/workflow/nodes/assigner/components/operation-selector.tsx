@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { WriteMode } from '../types'
 import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -14,7 +15,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { getOperationItems, isOperationItem } from '../utils'
 
 type OperationSelectorProps = {
@@ -63,7 +63,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         >
           <div className="flex items-center p-1">
             <span
-              className={`system-sm-regular overflow-hidden truncate text-ellipsis
+              className={`truncate overflow-hidden system-sm-regular text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
             >
               {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
@@ -76,8 +76,8 @@ const OperationSelector: FC<OperationSelectorProps> = ({
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div className="flex w-[140px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="flex flex-col items-start self-stretch p-1">
-            <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t('nodes.assigner.operations.title', { ns: 'workflow' })}</div>
+            <div className="flex items-start self-stretch px-3 pt-1 pb-0.5">
+              <div className="flex grow system-xs-medium-uppercase text-text-tertiary">{t('nodes.assigner.operations.title', { ns: 'workflow' })}</div>
             </div>
             {items.map(item => (
               !isOperationItem(item)
@@ -94,7 +94,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                       }}
                     >
                       <div className="flex min-h-5 grow items-center gap-1 px-1">
-                        <span className="system-sm-medium flex grow text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
+                        <span className="flex grow system-sm-medium text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
                       </div>
                       {item.value === value && (
                         <div className="flex items-center justify-center">

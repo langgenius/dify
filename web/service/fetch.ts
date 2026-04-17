@@ -38,16 +38,38 @@ export type ResponseError = {
   status: number
 }
 
+const createResponseFromHTTPError = (error: HTTPError): Response => {
+  const headers = new Headers(error.response.headers)
+  headers.delete('content-length')
+
+  let body: BodyInit | null = null
+  if (typeof error.data === 'string')
+    body = error.data
+  else if (error.data !== undefined)
+    body = JSON.stringify(error.data)
+
+  if (body !== null && !headers.has('content-type'))
+    headers.set('content-type', ContentType.json)
+
+  return new Response(body, {
+    status: error.response.status,
+    statusText: error.response.statusText,
+    headers,
+  })
+}
+
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
-      const errorData = await response.clone()
-        .json()
-        .then(data => data as ResponseError)
-        .catch(() => null)
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError)
+      if (shouldNotifyError && errorData)
         toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
@@ -209,7 +231,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
   catch (error) {
     if (error instanceof HTTPError)
-      throw error.response.clone()
+      throw createResponseFromHTTPError(error)
     throw error
   }
 

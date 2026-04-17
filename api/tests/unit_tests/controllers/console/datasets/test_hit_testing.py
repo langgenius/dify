@@ -99,6 +99,57 @@ class TestHitTestingApi:
         assert "records" in result
         assert result["records"] == []
 
+    def test_hit_testing_success_with_optional_record_fields(self, app, dataset, dataset_id):
+        api = HitTestingApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "query": "what is vector search",
+        }
+        records = [
+            {
+                "segment": None,
+                "child_chunks": [],
+                "score": None,
+                "tsne_position": None,
+                "files": [],
+                "summary": None,
+            }
+        ]
+
+        with (
+            app.test_request_context("/"),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
+            patch.object(
+                HitTestingPayload,
+                "model_validate",
+                return_value=MagicMock(model_dump=lambda **_: payload),
+            ),
+            patch.object(
+                HitTestingApi,
+                "get_and_validate_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                HitTestingApi,
+                "hit_testing_args_check",
+            ),
+            patch.object(
+                HitTestingApi,
+                "perform_hit_testing",
+                return_value={"query": payload["query"], "records": records},
+            ),
+        ):
+            result = method(api, dataset_id)
+
+        assert result["query"] == payload["query"]
+        assert result["records"] == records
+
     def test_hit_testing_dataset_not_found(self, app, dataset_id):
         api = HitTestingApi()
         method = unwrap(api.post)

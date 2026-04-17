@@ -2,6 +2,9 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -17,9 +20,6 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 
 
 def create_mock_usage(prompt_tokens: int = 10, completion_tokens: int = 5) -> LLMUsage:

@@ -6,6 +6,7 @@ import threading
 from collections.abc import Iterator
 from typing import Self
 
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from redis import Redis, RedisCluster
@@ -35,7 +36,7 @@ class StreamsTopic:
     def __init__(self, redis_client: Redis | RedisCluster, topic: str, *, retention_seconds: int = 600):
         self._client = redis_client
         self._topic = topic
-        self._key = f"stream:{topic}"
+        self._key = serialize_redis_name(f"stream:{topic}")
         self._retention_seconds = retention_seconds
         self.max_length = 5000
 

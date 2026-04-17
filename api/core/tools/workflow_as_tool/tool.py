@@ -5,8 +5,6 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
@@ -22,6 +20,8 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from models import Account, Tenant
 from models.model import App, EndUser
 from models.utils.file_input_compat import build_file_from_stored_mapping
@@ -277,7 +277,7 @@ class WorkflowTool(Tool):
             session.expunge(app)
             return app
 
-    def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
+    def _transform_args(self, tool_parameters: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
         """
         transform the tool parameters
 
@@ -305,14 +305,15 @@ class WorkflowTool(Tool):
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
-                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
-                                file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file.generate_url()
+                            match file.transfer_method:
+                                case FileTransferMethod.TOOL_FILE:
+                                    file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.LOCAL_FILE:
+                                    file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.DATASOURCE_FILE:
+                                    file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.REMOTE_URL:
+                                    file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception:
@@ -322,7 +323,7 @@ class WorkflowTool(Tool):
 
         return parameters_result, files
 
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
+    def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """
         extract files from the result
 
@@ -354,11 +355,14 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict):
+    def _update_file_mapping(self, file_dict: dict[str, Any]) -> dict[str, Any]:
         file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_id
-        elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_id
+        match transfer_method:
+            case FileTransferMethod.TOOL_FILE:
+                file_dict["tool_file_id"] = file_id
+            case FileTransferMethod.LOCAL_FILE:
+                file_dict["upload_file_id"] = file_id
+            case FileTransferMethod.REMOTE_URL | FileTransferMethod.DATASOURCE_FILE:
+                pass
         return file_dict

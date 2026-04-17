@@ -1,25 +1,10 @@
 import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.file.file_manager import file_manager
-from graphon.graph.graph import NodeFactory
-from graphon.model_runtime.memory import PromptMessageMemory
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from graphon.nodes.base.node import Node
-from graphon.nodes.code.code_node import WorkflowCodeExecutor
-from graphon.nodes.code.entities import CodeLanguage
-from graphon.nodes.code.limits import CodeNodeLimits
-from graphon.nodes.document_extractor import UnstructuredApiConfig
-from graphon.nodes.http_request import build_http_request_config
-from graphon.nodes.llm.entities import LLMNodeData
-from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -55,6 +40,22 @@ from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.ext_database import db
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file.file_manager import file_manager
+from graphon.graph.graph import NodeFactory
+from graphon.model_runtime.memory import PromptMessageMemory
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.nodes.base.node import Node
+from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.nodes.document_extractor import UnstructuredApiConfig
+from graphon.nodes.http_request import build_http_request_config
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from models.model import Conversation
 
 if TYPE_CHECKING:
@@ -65,6 +66,31 @@ LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
     (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
 )
+
+
+@dataclass(frozen=True, slots=True)
+class DifyGraphInitContext:
+    """Explicit graph-init values owned by the workflow layer.
+
+    Dify is gradually removing direct `GraphInitParams` construction from its
+    production call sites. Keep the translation here until `graphon` exposes an
+    equivalent explicit API.
+    """
+
+    workflow_id: str
+    graph_config: Mapping[str, Any]
+    run_context: Mapping[str, Any]
+    call_depth: int
+
+    def to_graph_init_params(self) -> "GraphInitParams":
+        from graphon.entities import GraphInitParams
+
+        return GraphInitParams(
+            workflow_id=self.workflow_id,
+            graph_config=self.graph_config,
+            run_context=self.run_context,
+            call_depth=self.call_depth,
+        )
 
 
 def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] = frozenset()) -> None:
@@ -236,6 +262,19 @@ class DifyNodeFactory(NodeFactory):
     """
     Default implementation of NodeFactory that resolves node classes from the live registry.
     """
+
+    @classmethod
+    def from_graph_init_context(
+        cls,
+        *,
+        graph_init_context: DifyGraphInitContext,
+        graph_runtime_state: "GraphRuntimeState",
+    ) -> "DifyNodeFactory":
+        """Bridge Dify's explicit init context into the current `graphon` API."""
+        return cls(
+            graph_init_params=graph_init_context.to_graph_init_params(),
+            graph_runtime_state=graph_runtime_state,
+        )
 
     def __init__(
         self,

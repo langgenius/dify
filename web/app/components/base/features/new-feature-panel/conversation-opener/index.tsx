@@ -6,11 +6,11 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
+import { Button } from '@/app/components/base/ui/button'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {
@@ -96,12 +96,12 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">
+              <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
                 {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
               </div>
             )}

@@ -38,14 +38,14 @@ const ModerationContent: FC<ModerationContentProps> = ({
             }
             <Switch
               size="lg"
-              value={config.enabled}
-              onChange={v => handleConfigChange('enabled', v)}
+              checked={config.enabled}
+              onCheckedChange={v => handleConfigChange('enabled', v)}
             />
           </div>
         </div>
         {
           config.enabled && showPreset && (
-            <div className="rounded-lg bg-components-panel-bg px-3 pb-3 pt-1">
+            <div className="rounded-lg bg-components-panel-bg px-3 pt-1 pb-3">
               <div className="flex h-8 items-center justify-between text-[13px] font-medium text-text-secondary">
                 {t('feature.moderation.modal.content.preset', { ns: 'appDebug' })}
                 <span className="text-xs font-normal text-text-tertiary">{t('feature.moderation.modal.content.supportMarkdown', { ns: 'appDebug' })}</span>
@@ -57,7 +57,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
                   placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
                   onChange={e => handleConfigChange('preset_response', e.target.value)}
                 />
-                <div className="absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
+                <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
                   <span>{(config.preset_response || '').length}</span>
                   /
                   <span className="text-text-tertiary">100</span>

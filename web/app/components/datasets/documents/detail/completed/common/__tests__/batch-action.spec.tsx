@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BatchAction from '../batch-action'
 
@@ -104,6 +104,21 @@ describe('BatchAction', () => {
       await waitFor(() => {
         expect(mockOnBatchDelete).toHaveBeenCalledTimes(1)
       })
+    })
+
+    it('should close delete confirmation when cancel is clicked', async () => {
+      const mockOnBatchDelete = vi.fn()
+      render(<BatchAction {...defaultProps} onBatchDelete={mockOnBatchDelete} />)
+
+      fireEvent.click(screen.getByText(/batchAction\.delete/i))
+      const dialog = await screen.findByRole('alertdialog')
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      })
+      expect(mockOnBatchDelete).not.toHaveBeenCalled()
     })
   })
 

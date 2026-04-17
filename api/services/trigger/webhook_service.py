@@ -7,12 +7,9 @@ from typing import Any, NotRequired, TypedDict
 
 import orjson
 from flask import request
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.file import FileTransferMethod
-from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -31,6 +28,9 @@ from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -105,32 +105,32 @@ class WebhookService:
         """
         with Session(db.engine) as session:
             # Get webhook trigger
-            webhook_trigger = (
-                session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
+            webhook_trigger = session.scalar(
+                select(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).limit(1)
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
 
             if is_debug:
-                workflow = (
-                    session.query(Workflow)
-                    .filter(
+                workflow = session.scalar(
+                    select(Workflow)
+                    .where(
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version == Workflow.VERSION_DRAFT,
                     )
                     .order_by(Workflow.created_at.desc())
-                    .first()
+                    .limit(1)
                 )
             else:
                 # Check if the corresponding AppTrigger exists
-                app_trigger = (
-                    session.query(AppTrigger)
-                    .filter(
+                app_trigger = session.scalar(
+                    select(AppTrigger)
+                    .where(
                         AppTrigger.app_id == webhook_trigger.app_id,
                         AppTrigger.node_id == webhook_trigger.node_id,
                         AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
                     )
-                    .first()
+                    .limit(1)
                 )
 
                 if not app_trigger:
@@ -147,14 +147,14 @@ class WebhookService:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
                 # Get workflow
-                workflow = (
-                    session.query(Workflow)
-                    .filter(
+                workflow = session.scalar(
+                    select(Workflow)
+                    .where(
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version != Workflow.VERSION_DRAFT,
                     )
                     .order_by(Workflow.created_at.desc())
-                    .first()
+                    .limit(1)
                 )
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
@@ -598,21 +598,38 @@ class WebhookService:
         Raises:
             ValueError: If the value cannot be converted to the specified type
         """
-        if param_type == SegmentType.STRING:
-            return value
-        elif param_type == SegmentType.NUMBER:
-            if not cls._can_convert_to_number(value):
-                raise ValueError(f"Cannot convert '{value}' to number")
-            numeric_value = float(value)
-            return int(numeric_value) if numeric_value.is_integer() else numeric_value
-        elif param_type == SegmentType.BOOLEAN:
-            lower_value = value.lower()
-            bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
-            if lower_value not in bool_map:
-                raise ValueError(f"Cannot convert '{value}' to boolean")
-            return bool_map[lower_value]
-        else:
-            raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+        match param_type:
+            case SegmentType.STRING:
+                return value
+            case SegmentType.NUMBER:
+                if not cls._can_convert_to_number(value):
+                    raise ValueError(f"Cannot convert '{value}' to number")
+                numeric_value = float(value)
+                return int(numeric_value) if numeric_value.is_integer() else numeric_value
+            case SegmentType.BOOLEAN:
+                lower_value = value.lower()
+                bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
+                if lower_value not in bool_map:
+                    raise ValueError(f"Cannot convert '{value}' to boolean")
+                return bool_map[lower_value]
+            case (
+                SegmentType.OBJECT
+                | SegmentType.FILE
+                | SegmentType.ARRAY_ANY
+                | SegmentType.ARRAY_STRING
+                | SegmentType.ARRAY_NUMBER
+                | SegmentType.ARRAY_OBJECT
+                | SegmentType.ARRAY_FILE
+                | SegmentType.ARRAY_BOOLEAN
+                | SegmentType.SECRET
+                | SegmentType.INTEGER
+                | SegmentType.FLOAT
+                | SegmentType.NONE
+                | SegmentType.GROUP
+            ):
+                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+            case _:
+                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
 
     @classmethod
     def _validate_json_value(cls, param_name: str, value: Any, param_type: SegmentType | str) -> Any:
@@ -918,7 +935,7 @@ class WebhookService:
                 logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
                 raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
 
-            with Session(db.engine) as session:
+            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -947,14 +964,12 @@ class WebhookService:
                     redis_client.set(
                         f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
                     )
-                session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
         except Exception:
             logger.exception("Failed to sync webhook relationships for app %s", app.id)
             raise

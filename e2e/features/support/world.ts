@@ -1,9 +1,11 @@
-import { type IWorldOptions, World, setWorldConstructor } from '@cucumber/cucumber'
+import type { IWorldOptions } from '@cucumber/cucumber'
 import type { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test'
+import type { AuthSessionMetadata } from '../../fixtures/auth'
+import { setWorldConstructor, World } from '@cucumber/cucumber'
 import {
+
   authStatePath,
   readAuthSessionMetadata,
-  type AuthSessionMetadata,
 } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
@@ -25,27 +27,37 @@ export class DifyWorld extends World {
     this.pageErrors = []
   }
 
-  async startAuthenticatedSession(browser: Browser) {
+  async startSession(browser: Browser, authenticated: boolean) {
     this.resetScenarioState()
     this.context = await browser.newContext({
       baseURL,
       locale: defaultLocale,
-      storageState: authStatePath,
+      ...(authenticated ? { storageState: authStatePath } : {}),
     })
     this.context.setDefaultTimeout(30_000)
     this.page = await this.context.newPage()
     this.page.setDefaultTimeout(30_000)
 
     this.page.on('console', (message: ConsoleMessage) => {
-      if (message.type() === 'error') this.consoleErrors.push(message.text())
+      if (message.type() === 'error')
+        this.consoleErrors.push(message.text())
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
     })
   }
 
+  async startAuthenticatedSession(browser: Browser) {
+    await this.startSession(browser, true)
+  }
+
+  async startUnauthenticatedSession(browser: Browser) {
+    await this.startSession(browser, false)
+  }
+
   getPage() {
-    if (!this.page) throw new Error('Playwright page has not been initialized for this scenario.')
+    if (!this.page)
+      throw new Error('Playwright page has not been initialized for this scenario.')
 
     return this.page
   }

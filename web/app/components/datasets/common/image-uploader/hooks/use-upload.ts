@@ -44,7 +44,7 @@ export const useUpload = () => {
 
   const checkFileType = useCallback((file: File) => {
     const ext = getFileType(file)
-    return ACCEPT_TYPES.includes(ext.toLowerCase())
+    return ACCEPT_TYPES.includes(ext!.toLowerCase())
   }, [])
 
   const checkFileSize = useCallback((file: File) => {
@@ -131,13 +131,13 @@ export const useUpload = () => {
     const index = files.findIndex(file => file.id === fileId)
 
     if (index > -1) {
-      const uploadingFile = files[index]
+      const uploadingFile = files[index]!
       const newFiles = produce(files, (draft) => {
-        draft[index].progress = 0
+        draft[index]!.progress = 0
       })
       setFiles(newFiles)
       fileUpload({
-        file: uploadingFile.originalFile!,
+        file: uploadingFile!.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
         },

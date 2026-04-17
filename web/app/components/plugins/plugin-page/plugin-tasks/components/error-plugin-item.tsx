@@ -3,7 +3,7 @@ import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
@@ -30,14 +30,14 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
     const [org, name] = parts
     setIsFetching(true)
     try {
-      const response = await fetchPluginInfoFromMarketPlace({ org, name })
+      const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
       const info = response.data.plugin
       const manifest: Plugin = {
         plugin_id: plugin.plugin_id,
         type: info.category as Plugin['type'],
         category: info.category,
-        name,
-        org,
+        name: name!,
+        org: org!,
         version: info.latest_version,
         latest_version: info.latest_version,
         latest_package_identifier: info.latest_package_identifier,

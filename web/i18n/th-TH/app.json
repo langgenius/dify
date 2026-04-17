@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "คำสั่ง",
   "gotoAnything.groups.knowledgeBases": "ฐานความรู้",
   "gotoAnything.groups.plugins": "ปลั๊กอิน",
+  "gotoAnything.groups.recent": "ล่าสุด",
   "gotoAnything.groups.workflowNodes": "โหนดเวิร์กโฟลว์",
   "gotoAnything.inScope": "ใน {{scope}}s",
   "gotoAnything.noMatchingCommands": "ไม่พบคำสั่งที่ตรงกัน",

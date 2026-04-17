@@ -6,14 +6,6 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -41,6 +33,14 @@ from core.helper.position_helper import is_filtered
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -856,7 +856,7 @@ class ProviderManager:
         secret_variables: list[str],
         cache_type: ProviderCredentialsCacheType,
         is_provider: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get and decrypt credentials with caching."""
         credentials_cache = ProviderCredentialsCache(
             tenant_id=tenant_id,
@@ -961,36 +961,37 @@ class ProviderManager:
                     raise ValueError("quota_used is None")
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
-                if provider_quota.quota_type == ProviderQuotaType.TRIAL and trail_pool is not None:
-                    quota_configuration = QuotaConfiguration(
-                        quota_type=provider_quota.quota_type,
-                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                        quota_used=trail_pool.quota_used,
-                        quota_limit=trail_pool.quota_limit,
-                        is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                        restrict_models=provider_quota.restrict_models,
-                    )
+                match provider_quota.quota_type:
+                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=trail_pool.quota_used,
+                            quota_limit=trail_pool.quota_limit,
+                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
 
-                elif provider_quota.quota_type == ProviderQuotaType.PAID and paid_pool is not None:
-                    quota_configuration = QuotaConfiguration(
-                        quota_type=provider_quota.quota_type,
-                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                        quota_used=paid_pool.quota_used,
-                        quota_limit=paid_pool.quota_limit,
-                        is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
-                        restrict_models=provider_quota.restrict_models,
-                    )
+                    case ProviderQuotaType.PAID if paid_pool is not None:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=paid_pool.quota_used,
+                            quota_limit=paid_pool.quota_limit,
+                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
 
-                else:
-                    quota_configuration = QuotaConfiguration(
-                        quota_type=provider_quota.quota_type,
-                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                        quota_used=provider_record.quota_used,
-                        quota_limit=provider_record.quota_limit,
-                        is_valid=provider_record.quota_limit > provider_record.quota_used
-                        or provider_record.quota_limit == -1,
-                        restrict_models=provider_quota.restrict_models,
-                    )
+                    case _:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=provider_record.quota_used,
+                            quota_limit=provider_record.quota_limit,
+                            is_valid=provider_record.quota_limit > provider_record.quota_used
+                            or provider_record.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
 
             quota_configurations.append(quota_configuration)
 

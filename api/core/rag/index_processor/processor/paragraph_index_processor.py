@@ -3,21 +3,10 @@
 import logging
 import re
 import uuid
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 logger = logging.getLogger(__name__)
 
-from graphon.file import File, FileTransferMethod, FileType, file_manager
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
@@ -44,6 +33,16 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -53,6 +52,12 @@ from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+class ParagraphFormatPreviewDict(TypedDict):
+    chunk_structure: str
+    preview: list[dict[str, Any]]
+    total_segments: int
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -266,16 +271,17 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
-    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:
         if isinstance(chunks, list):
             preview = []
             for content in chunks:
                 preview.append({"content": content})
-            return {
+            result: ParagraphFormatPreviewDict = {
                 "chunk_structure": IndexStructureType.PARAGRAPH_INDEX,
                 "preview": preview,
                 "total_segments": len(chunks),
             }
+            return result
         else:
             raise ValueError("Chunks is not a list")
 

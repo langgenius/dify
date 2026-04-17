@@ -1,11 +1,11 @@
 import type { PluginPayload } from '../types'
-import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import {
   memo,
   useState,
 } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ApiKeyModal from './api-key-modal'
 
 export type AddApiKeyButtonProps = {

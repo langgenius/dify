@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Conversion from '../conversion'
@@ -41,33 +41,10 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, ...props }: Record<string, unknown>) => (
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} {...props}>{children as string}</button>
   ),
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({
-    isShow,
-    onConfirm,
-    onCancel,
-    title,
-  }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-  }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <span>{title}</span>
-            <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-            <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
 }))
 
 vi.mock('../screenshot', () => ({
@@ -112,11 +89,10 @@ describe('Conversion', () => {
   it('should show confirm modal when convert button clicked', () => {
     render(<Conversion />)
 
-    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
 
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
     expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
   })
 
@@ -124,17 +100,19 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+    expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('cancel-btn'))
-    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    return waitFor(() => {
+      expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+    })
   })
 
   it('should call convert when confirm is clicked', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockConvert).toHaveBeenCalledWith('ds-123', expect.objectContaining({
       onSuccess: expect.any(Function),
@@ -150,7 +128,7 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage')
     expect(mockInvalidDatasetDetail).toHaveBeenCalled()
@@ -164,7 +142,7 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
@@ -177,7 +155,7 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })

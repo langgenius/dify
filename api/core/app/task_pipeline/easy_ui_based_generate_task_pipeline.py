@@ -4,15 +4,8 @@ from collections.abc import Generator
 from threading import Thread
 from typing import Any, cast
 
-from graphon.file import FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    TextPromptMessageContent,
-)
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -60,6 +53,13 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from graphon.file import FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+)
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
@@ -266,9 +266,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                with Session(db.engine) as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                    session.commit()
                 yield self.error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
@@ -288,10 +287,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         answer=output_moderation_answer
                     )
 
-                with Session(db.engine) as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     # Save message
                     self._save_message(session=session, trace_manager=trace_manager)
-                    session.commit()
                 message_end_resp = self._message_end_to_stream_response()
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):

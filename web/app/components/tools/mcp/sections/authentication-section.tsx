@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import Input from '@/app/components/base/input'
 import Switch from '@/app/components/base/switch'
 import { API_PREFIX } from '@/config'
-import { cn } from '@/utils/classnames'
 
 type AuthenticationSectionProps = {
   isDynamicRegistration: boolean
@@ -32,8 +32,8 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
         <div className="mb-1 flex h-6 items-center">
           <Switch
             className="mr-2"
-            value={isDynamicRegistration}
-            onChange={onDynamicRegistrationChange}
+            checked={isDynamicRegistration}
+            onCheckedChange={onDynamicRegistrationChange}
           />
           <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
         </div>
@@ -42,7 +42,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
             <div className="system-xs-regular text-text-secondary">
               <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
-              <code className="system-xs-medium block break-all rounded-sm bg-state-warning-active px-2 py-1 text-text-secondary">
+              <code className="block rounded-sm bg-state-warning-active px-2 py-1 system-xs-medium break-all text-text-secondary">
                 {`${API_PREFIX}/mcp/oauth/callback`}
               </code>
             </div>

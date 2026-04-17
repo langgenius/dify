@@ -2,14 +2,14 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInput, UserAction
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.nodes.human_input.entities import FormInput, UserAction
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -521,7 +521,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -547,7 +547,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -571,7 +571,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
@@ -602,7 +602,7 @@ class LoopNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -653,7 +653,7 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus

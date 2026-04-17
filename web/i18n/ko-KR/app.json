@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "명령어",
   "gotoAnything.groups.knowledgeBases": "기술 자료",
   "gotoAnything.groups.plugins": "플러그인",
+  "gotoAnything.groups.recent": "최근",
   "gotoAnything.groups.workflowNodes": "워크플로 노드",
   "gotoAnything.inScope": "{{scope}}s 내에서",
   "gotoAnything.noMatchingCommands": "일치하는 명령을 찾을 수 없습니다.",
