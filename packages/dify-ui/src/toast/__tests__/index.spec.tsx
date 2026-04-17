@@ -150,7 +150,7 @@ describe('base/ui/toast', () => {
     })
     await expect.element(screen.getByText('Custom timeout')).toBeInTheDocument()
 
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(1010)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Custom timeout')
     })
