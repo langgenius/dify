@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ComponentProps } from 'react'
 import { useState, useTransition } from 'react'
 import { Switch, SwitchSkeleton } from '.'
 
 const meta = {
-  title: 'Base/Data Entry/Switch',
+  title: 'Base/UI/Switch',
   component: Switch,
   parameters: {
     layout: 'centered',

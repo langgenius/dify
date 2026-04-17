@@ -6,5 +6,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", ".storybook", "tailwind.config.ts", "vite.config.ts"]
 }
