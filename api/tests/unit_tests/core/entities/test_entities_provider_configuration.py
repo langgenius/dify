@@ -379,9 +379,7 @@ def test_validate_provider_credentials_without_credential_id() -> None:
     mock_factory = Mock()
     mock_factory.provider_credentials_validate.return_value = {"region": "us"}
 
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
-    ):
+    with patch("core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory):
         validated = configuration.validate_provider_credentials(credentials={"region": "us"})
 
     assert validated == {"region": "us"}
@@ -1085,9 +1083,7 @@ def test_validate_custom_model_credentials_supports_hidden_reuse_and_sessionless
 
     mock_factory2 = Mock()
     mock_factory2.model_credentials_validate.return_value = {"region": "us"}
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory2
-    ):
+    with patch("core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory2):
         validated = configuration.validate_custom_model_credentials(
             model_type=ModelType.LLM,
             model="gpt-4o",
