@@ -18,6 +18,7 @@ import {
 import { parsePlacement } from '@langgenius/dify-ui/placement'
 
 // Type-only re-export: zero runtime cost under `verbatimModuleSyntax` (compiled away).
+/** @public */
 // eslint-disable-next-line no-barrel-files/no-barrel-files
 export type { Placement }
 
