@@ -11,11 +11,18 @@ type KeyPressRegistration = {
   }
 }
 
+type ReactFlowNodeMock = {
+  id: string
+  data: {
+    _isBundled?: boolean
+  }
+}
+
 const keyPressRegistrations = vi.hoisted<KeyPressRegistration[]>(() => [])
 const mockZoomTo = vi.hoisted(() => vi.fn())
 const mockGetZoom = vi.hoisted(() => vi.fn(() => 1))
 const mockFitView = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() => vi.fn(() => []))
+const mockGetNodes = vi.hoisted(() => vi.fn<() => ReactFlowNodeMock[]>(() => []))
 const mockHandleNodesDelete = vi.hoisted(() => vi.fn())
 const mockHandleEdgeDelete = vi.hoisted(() => vi.fn())
 const mockHandleNodesCopy = vi.hoisted(() => vi.fn())
