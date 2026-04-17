@@ -26,7 +26,6 @@ class MessageGenerator:
         idle_timeout: float = 300,
         ping_interval: float = 10.0,
         on_subscribe: Callable[[], None] | None = None,
-        replay: bool = False,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         return stream_topic_events(
@@ -34,5 +33,4 @@ class MessageGenerator:
             idle_timeout=idle_timeout,
             ping_interval=ping_interval,
             on_subscribe=on_subscribe,
-            replay=replay,
         )

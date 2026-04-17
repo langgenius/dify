@@ -44,7 +44,7 @@ class Topic:
     def as_subscriber(self) -> Subscriber:
         return self
 
-    def subscribe(self, *, replay: bool = False) -> Subscription:
+    def subscribe(self) -> Subscription:
         return _RedisSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),

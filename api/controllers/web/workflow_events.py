@@ -81,10 +81,12 @@ class WorkflowEventsApi(WebApiResource):
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
-            replay = request.args.get("replay", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot:
+                    # TODO(wylswz): events between shapshot and live tail may be lost.
+                    # TODO(wylswz): previous message chunks are not replayed. In order to support replay, we need
+                    # to figure out a way to deduplicate events between snapshot and stream.
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
@@ -92,11 +94,10 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
-                            replay=replay,
                         )
                     )
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(app_mode, workflow_run.id, replay=replay),
+                    msg_generator.retrieve_events(app_mode, workflow_run.id),
                 )
 
             event_generator = _generate_stream_events

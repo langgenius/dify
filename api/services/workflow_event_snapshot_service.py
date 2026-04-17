@@ -61,8 +61,30 @@ def build_workflow_event_stream(
     session_maker: sessionmaker[Session],
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
-    replay: bool = False,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
+    """Yield a stream of workflow events composed of a DB-derived snapshot followed by live tail.
+
+    The stream is assembled in two phases that are kept **structurally disjoint** so no
+    per-event deduplication is required:
+
+    1. Snapshot phase: events rebuilt from persistent state via ``_build_snapshot_events``
+       (``workflow_started``, optional ``message_replace``, ``node_started``/``node_finished``
+       for each persisted execution, and an optional terminal ``workflow_paused``). This
+       represents the history that already happened from the client's point of view.
+    2. Tail phase: events delivered by the broadcast subscription **from the moment of
+       subscription onward only**. Anything that was published before the subscription was
+       established is intentionally ignored here, because it has already been covered by
+       the snapshot phase.
+
+    The application layer does not use the broadcast channel's replay capability on any path
+    (see ``stream_topic_events``). Mixing replay with the snapshot produces events that
+    overlap along the history axis, and the frontend handlers are not idempotent across the
+    whole event set (string content is accumulated, ``workflow_paused`` re-opens a new SSE
+    subscription, iteration/loop starts and file entries are pushed into lists, etc.). A
+    future feature that wants to recover events published *after* the snapshot was read but
+    *before* this function subscribed should solve it at the subscription layer
+    (cursor/position) rather than by re-sending the historical prefix.
+    """
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -104,7 +126,7 @@ def build_workflow_event_stream(
         last_msg_time = time.time()
         last_ping_time = last_msg_time
 
-        with topic.subscribe(replay=replay) as sub:
+        with topic.subscribe() as sub:
             buffer_state = _start_buffering(sub)
             try:
                 task_id = _resolve_task_id(resumption_context, buffer_state, workflow_run.id)

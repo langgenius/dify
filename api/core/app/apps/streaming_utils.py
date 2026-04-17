@@ -17,7 +17,6 @@ def stream_topic_events(
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-    replay: bool = False,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #
@@ -28,7 +27,10 @@ def stream_topic_events(
     terminal_values = _normalize_terminal_events(terminal_events)
     last_msg_time = time.time()
     last_ping_time = last_msg_time
-    with topic.subscribe(replay=replay) as sub:
+    # The application layer intentionally does not use broadcast-channel replay;
+    # callers that need historical events should compose them from persisted state
+    # (see ``build_workflow_event_stream``) and then tail the live stream.
+    with topic.subscribe() as sub:
         # on_subscribe fires only after the Redis subscription is active.
         # This is used to gate task start and reduce pub/sub race for the first event.
         if on_subscribe is not None:

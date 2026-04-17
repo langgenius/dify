@@ -50,6 +50,7 @@ def make_message():
     msg.user_feedback = MagicMock(rating=None)
     msg.status = "normal"
     msg.error = None
+    msg.workflow_run_id = "22222222-2222-2222-2222-222222222222"
     return msg
 
 
@@ -84,6 +85,8 @@ class TestMessageListApi:
         assert result["limit"] == 20
         assert result["has_more"] is False
         assert len(result["data"]) == 2
+        assert result["data"][0]["workflow_run_id"] == "22222222-2222-2222-2222-222222222222"
+        assert result["data"][1]["workflow_run_id"] == "22222222-2222-2222-2222-222222222222"
 
     def test_get_not_chat_app(self):
         api = module.MessageListApi()

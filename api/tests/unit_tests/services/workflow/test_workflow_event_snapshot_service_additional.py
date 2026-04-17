@@ -96,9 +96,8 @@ class _SessionMaker:
 
 
 class _SubscriptionContext:
-    def __init__(self, subscription: Any, replay: bool = False) -> None:
+    def __init__(self, subscription: Any) -> None:
         self._subscription = subscription
-        self._replay = replay
 
     def __enter__(self) -> Any:
         return self._subscription
@@ -111,8 +110,8 @@ class _Topic:
     def __init__(self, subscription: Any) -> None:
         self._subscription = subscription
 
-    def subscribe(self, replay: bool = False) -> _SubscriptionContext:
-        return _SubscriptionContext(self._subscription, replay)
+    def subscribe(self) -> _SubscriptionContext:
+        return _SubscriptionContext(self._subscription)
 
 
 class _StaticSubscription:
