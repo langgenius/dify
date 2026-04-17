@@ -1,6 +1,6 @@
 import inspect
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -32,11 +32,6 @@ class TestApiToolManageService:
             mock_encrypter.encrypt.return_value = {"encrypted": "credentials"}
             mock_provider_controller.from_db.return_value = mock_provider_controller
             mock_provider_controller.load_bundled_tools.return_value = None
-
-            # Firmware fix for cache.delete()
-            mock_cache = MagicMock()
-            mock_cache.delete.return_value = None
-            mock_encrypter.return_value = (mock_encrypter, mock_cache)
 
             yield {
                 "tool_label_manager": mock_tool_label_manager,
@@ -604,6 +599,14 @@ class TestApiToolManageService:
     ):
         fake = Faker()
 
+        # Firmware fix for cache.delete() in update flow
+        mock_encrypter = mock_external_service_dependencies["encrypter"]
+        from unittest.mock import MagicMock
+
+        mock_cache = MagicMock()
+        mock_cache.delete.return_value = None
+        mock_encrypter.return_value = (mock_encrypter, mock_cache)
+
         # Get fake account and tenant
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
@@ -629,6 +632,11 @@ class TestApiToolManageService:
         # new provide name and new labels for update
         new_name = "updated-provider"
         new_labels = ["new-label-1", "new-label-2"]
+
+        # Reset mock history so assertions focus on update path only
+        mock_external_service_dependencies["encrypter"].reset_mock()
+        mock_external_service_dependencies["provider_controller"].from_db.reset_mock()
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.reset_mock()
 
         # Act: Update the provider with new values
         result = ApiToolManageService.update_api_tool_provider(
@@ -676,6 +684,19 @@ class TestApiToolManageService:
         assert updated_provider.privacy_policy == "https://new-policy.com"
         # - changed 4
         assert updated_provider.custom_disclaimer == "New disclaimer"
+
+        # Verify old provider name no longer exists after rename
+        original_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == original_name)
+            .first()
+        )
+        assert original_provider is None
+
+        # Verify update flow calls critical collaborators
+        mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
+        mock_external_service_dependencies["encrypter"].assert_called_once()
+        mock_cache.delete.assert_called_once()
 
         # Deeply verify on session propagation of labels update logics:
         # Since in refactoring, we pass session down to label manager to keep atomicity.
