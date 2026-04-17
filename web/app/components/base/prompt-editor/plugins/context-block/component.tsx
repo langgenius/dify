@@ -1,13 +1,9 @@
 import type { FC } from 'react'
 import type { Dataset } from './index'
 
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
@@ -18,6 +14,11 @@ type ContextBlockComponentProps = {
   datasets?: Dataset[]
   onAddContext: () => void
   canNotAddContext?: boolean
+}
+
+type DatasetsEventPayload = {
+  type?: string
+  payload?: Dataset[]
 }
 
 const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
@@ -32,9 +33,9 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [localDatasets, setLocalDatasets] = useState<Dataset[]>(datasets)
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === UPDATE_DATASETS_EVENT_EMITTER)
-      setLocalDatasets(v.payload)
+  eventEmitter?.useSubscription((event?: DatasetsEventPayload) => {
+    if (event?.type === UPDATE_DATASETS_EVENT_EMITTER && event.payload)
+      setLocalDatasets(event.payload)
   })
 
   return (
@@ -49,24 +50,29 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
       <span className="mr-1 i-custom-vender-solid-files-file-05 h-[14px] w-[14px]" data-testid="file-icon" />
       <div className="mr-1 text-xs font-medium">{t('promptEditor.context.item.title', { ns: 'common' })}</div>
       {!canNotAddContext && (
-        <PortalToFollowElem
+        <Popover
           open={open}
           onOpenChange={setOpen}
-          placement="bottom-end"
-          offset={{
-            mainAxis: 3,
-            alignmentAxis: -147,
-          }}
         >
-          <PortalToFollowElemTrigger ref={triggerRef}>
-            <div className={`
+          <PopoverTrigger
+            nativeButton={false}
+            ref={triggerRef}
+            render={(
+              <div className={`
             flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded text-[11px] font-semibold
             ${open ? 'bg-[#6938EF] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
-          `}>
-              {localDatasets.length}
-            </div>
-          </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent style={{ zIndex: 100 }}>
+          `}
+              >
+                {localDatasets.length}
+              </div>
+            )}
+          />
+          <PopoverContent
+            placement="bottom-end"
+            sideOffset={3}
+            alignOffset={-147}
+            popupClassName="border-none bg-transparent shadow-none"
+          >
             <div className="w-[360px] rounded-xl bg-white shadow-lg">
               <div className="p-4">
                 <div className="mb-2 text-xs font-medium text-gray-500">
@@ -95,8 +101,8 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                 {t('promptEditor.context.modal.footer', { ns: 'common' })}
               </div>
             </div>
-          </PortalToFollowElemContent>
-        </PortalToFollowElem>
+          </PopoverContent>
+        </Popover>
       )}
 
     </div>

@@ -3,6 +3,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Popup from '../popup'
 
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
+  AlertDialog: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => (
+    open
+      ? (
+          <div role="alertdialog">
+            {children}
+            <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
+              Close
+            </button>
+          </div>
+        )
+      : null
+  ),
+  AlertDialogActions: ({ children }: { children: unknown }) => <div>{children}</div>,
+  AlertDialogCancelButton: ({ children }: { children: unknown }) => <button>{children}</button>,
+  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined}>{children}</button>,
+  AlertDialogContent: ({ children }: { children: unknown }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: unknown }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: unknown }) => <div>{children}</div>,
+}))
+
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
 const toastMocks = vi.hoisted(() => ({
@@ -36,6 +57,8 @@ let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
+const mockUseBoolean = vi.hoisted(() => vi.fn())
+const mockUseKeyPress = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
   useRouter: () => ({ push: mockPush }),
@@ -48,14 +71,8 @@ vi.mock('@/next/link', () => ({
 }))
 
 vi.mock('ahooks', () => ({
-  useBoolean: (initial: boolean) => {
-    const state = { value: initial }
-    return [state.value, {
-      setFalse: vi.fn(),
-      setTrue: vi.fn(),
-    }]
-  },
-  useKeyPress: vi.fn(),
+  useBoolean: (initial: boolean) => mockUseBoolean(initial),
+  useKeyPress: (...args: unknown[]) => mockUseKeyPress(...args),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -126,7 +143,8 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: () => mockSetShowPricingModal,
+  useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T) =>
+    selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -194,6 +212,11 @@ describe('Popup', () => {
     mockDraftUpdatedAt = '2024-06-01T00:00:00Z'
     mockPipelineId = 'pipeline-123'
     mockIsAllowPublishAsCustom = true
+    mockUseBoolean.mockImplementation((initial: boolean) => [initial, {
+      setFalse: vi.fn(),
+      setTrue: vi.fn(),
+    }])
+    mockUseKeyPress.mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -289,11 +312,60 @@ describe('Popup', () => {
   describe('Publish As Knowledge Pipeline', () => {
     it('should show pricing modal when not allowed', () => {
       mockIsAllowPublishAsCustom = false
-      render(<Popup />)
+      const onRequestClose = vi.fn()
+      render(<Popup onRequestClose={onRequestClose} />)
 
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
+      expect(onRequestClose).toHaveBeenCalledTimes(1)
       expect(mockSetShowPricingModal).toHaveBeenCalled()
+    })
+
+    it('should request closing the outer popover before opening publish-as modal', () => {
+      const onRequestClose = vi.fn()
+      render(<Popup onRequestClose={onRequestClose} />)
+
+      fireEvent.click(screen.getByText('pipeline.common.publishAs'))
+
+      expect(onRequestClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('Overlay cleanup', () => {
+    it('should close confirm dialog when alert dialog requests close', () => {
+      const hideConfirm = vi.fn()
+      mockUseBoolean
+        .mockImplementationOnce(() => [true, { setFalse: hideConfirm, setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+
+      render(<Popup />)
+
+      fireEvent.click(screen.getByTestId('alert-dialog-close'))
+
+      expect(hideConfirm).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('Publish params', () => {
+    it('should publish as template with empty pipeline id fallback', async () => {
+      mockPipelineId = undefined
+      mockUseBoolean
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce(() => [true, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+      render(<Popup />)
+
+      fireEvent.click(screen.getByTestId('publish-as-confirm'))
+
+      expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
+        pipelineId: '',
+        name: 'My Pipeline',
+        icon_info: { icon_type: 'emoji' },
+        description: 'desc',
+      })
     })
   })
 

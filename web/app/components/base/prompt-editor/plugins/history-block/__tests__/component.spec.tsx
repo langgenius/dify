@@ -6,6 +6,8 @@ import { UPDATE_HISTORY_EVENT_EMITTER } from '../../../constants'
 import HistoryBlockComponent from '../component'
 import { DELETE_HISTORY_BLOCK_COMMAND } from '../index'
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 type HistoryEventPayload = {
   type?: string
   payload?: RoleName

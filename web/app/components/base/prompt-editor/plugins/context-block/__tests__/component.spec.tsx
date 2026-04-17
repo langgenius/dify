@@ -2,6 +2,9 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../../constants'
 import ContextBlockComponent from '../component'
+
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 // Mock the hooks used by ContextBlockComponent
 const mockUseSelectOrDelete = vi.fn()
 const mockUseTrigger = vi.fn()

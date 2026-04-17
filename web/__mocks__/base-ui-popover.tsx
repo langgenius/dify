@@ -14,6 +14,7 @@ type PopoverProps = {
 
 type PopoverTriggerProps = React.HTMLAttributes<HTMLElement> & {
   children?: ReactNode
+  nativeButton?: boolean
   render?: React.ReactElement
 }
 
@@ -31,6 +32,32 @@ export const Popover = ({
   open = false,
   onOpenChange,
 }: PopoverProps) => {
+  React.useEffect(() => {
+    if (!open)
+      return
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Element | null
+      if (target?.closest?.('[data-popover-trigger="true"], [data-popover-content="true"]'))
+        return
+
+      onOpenChange?.(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape')
+        onOpenChange?.(false)
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onOpenChange])
+
   return (
     <PopoverContext.Provider value={{
       open,
@@ -47,6 +74,7 @@ export const Popover = ({
 export const PopoverTrigger = ({
   children,
   render,
+  nativeButton: _nativeButton,
   onClick,
   ...props
 }: PopoverTriggerProps) => {
@@ -61,9 +89,12 @@ export const PopoverTrigger = ({
       ...props,
       ...childProps,
       'data-testid': childProps['data-testid'] ?? 'popover-trigger',
+      'data-popover-trigger': 'true',
       'onClick': (event: React.MouseEvent<HTMLElement>) => {
         childProps.onClick?.(event)
         onClick?.(event)
+        if (event.defaultPrevented)
+          return
         onOpenChange(!open)
       },
     })
@@ -72,8 +103,11 @@ export const PopoverTrigger = ({
   return (
     <div
       data-testid="popover-trigger"
+      data-popover-trigger="true"
       onClick={(event) => {
         onClick?.(event)
+        if (event.defaultPrevented)
+          return
         onOpenChange(!open)
       }}
       {...props}
@@ -101,6 +135,7 @@ export const PopoverContent = ({
   return (
     <div
       data-testid="popover-content"
+      data-popover-content="true"
       data-placement={placement}
       data-side-offset={sideOffset}
       data-align-offset={alignOffset}
