@@ -1,5 +1,3 @@
-// @ts-check
-
 import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
@@ -17,6 +15,13 @@ export default antfu(
       '!vite.config.ts',
       ...original,
     ],
+    react: {
+      files: ['packages/dify-ui/**/*.{ts,tsx}'],
+      overrides: {
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
+      },
+    },
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -35,7 +40,12 @@ export default antfu(
         'antfu/top-level-function': 'off',
       },
     },
-    e18e: false,
+  },
+  {
+    files: ['packages/dify-ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
   },
   markdownPreferences.configs.standard,
   {
@@ -55,11 +65,6 @@ export default antfu(
       ],
       'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/sort-definitions': 'error',
-    },
-  },
-  {
-    rules: {
-      'node/prefer-global/process': 'off',
     },
   },
 )

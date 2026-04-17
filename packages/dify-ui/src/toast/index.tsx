@@ -81,7 +81,7 @@ type ToastApi = {
 const toastManager = BaseToast.createToastManager<ToastData>()
 
 function isToastType(type: string): type is ToastType {
-  return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
+  return Object.hasOwn(TOAST_TONE_STYLES, type)
 }
 
 function getToastType(type?: string): ToastType | undefined {
