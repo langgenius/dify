@@ -156,7 +156,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText('workflow.common.exportPNG')[0])
+    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
 
     await waitFor(() => {
       expect(mockToPng).toHaveBeenCalledTimes(1)
@@ -184,7 +184,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1])
+    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -209,7 +209,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText(label)[0])
+    await user.click(screen.getAllByText(label)[0]!)
 
     await waitFor(() => {
       expect(exporter).toHaveBeenCalledTimes(1)
@@ -227,7 +227,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getAllByText('workflow.common.exportSVG')[1])
+    fireEvent.click(screen.getAllByText('workflow.common.exportSVG')[1]!)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -248,7 +248,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText('workflow.common.exportPNG')[0])
+    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
 
     expect(mockToPng).not.toHaveBeenCalled()
     expect(mockDownloadUrl).not.toHaveBeenCalled()
@@ -261,7 +261,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText('workflow.common.exportPNG')[0])
+    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
 
     expect(mockToPng).not.toHaveBeenCalled()
     expect(mockDownloadUrl).not.toHaveBeenCalled()
@@ -274,7 +274,7 @@ describe('MoreActions', () => {
 
     await user.click(screen.getByRole('button'))
     mockGetNodesReadOnly.mockReturnValue(true)
-    await user.click(screen.getAllByText('workflow.common.exportJPEG')[0])
+    await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
 
     expect(mockToJpeg).not.toHaveBeenCalled()
     expect(mockDownloadUrl).not.toHaveBeenCalled()
@@ -288,7 +288,7 @@ describe('MoreActions', () => {
     render(<MoreActions />)
 
     await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText('workflow.common.exportJPEG')[0])
+    await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Export image failed:', expect.any(Error))
@@ -297,7 +297,7 @@ describe('MoreActions', () => {
 
     mockToPng.mockResolvedValueOnce('data:image/png;base64,current')
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1])
+    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
     await waitFor(() => {
       expect(screen.getByTestId('image-preview')).toBeInTheDocument()
     })

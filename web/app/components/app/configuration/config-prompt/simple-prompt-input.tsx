@@ -94,8 +94,8 @@ const Prompt: FC<ISimplePromptInput> = ({
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
+          if (promptVariables[i]!.key === newExternalDataTool.variable) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }

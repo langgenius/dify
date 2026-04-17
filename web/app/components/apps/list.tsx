@@ -2,11 +2,10 @@
 
 import type { FC } from 'react'
 import type { StudioPageType } from '.'
-import type { App } from '@/types/app'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -23,7 +22,6 @@ import { useInfiniteAppList } from '@/service/use-apps'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetCard from '../snippets/components/snippet-card'
 import SnippetCreateCard from '../snippets/components/snippet-create-card'
-import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import AppTypeFilter from './app-type-filter'
@@ -173,7 +171,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isPageLoading && !isNextPageFetching && !currentError && hasMore) {
+        if (entries[0]!.isIntersecting && !isPageLoading && !isNextPageFetching && !currentError && hasMore) {
           if (isAppsPage)
             fetchNextPage()
           else
@@ -217,10 +215,6 @@ const List: FC<Props> = ({
     setTagFilterValue(value)
     handleTagsUpdate(value)
   }, [handleTagsUpdate])
-
-  const appItems = useMemo<App[]>(() => {
-    return (data?.pages ?? []).flatMap(({ data: apps }) => apps)
-  }, [data?.pages])
 
   const snippetItems = useMemo(() => {
     return (snippetData?.pages ?? []).flatMap(({ data }) => data)
@@ -288,7 +282,8 @@ const List: FC<Props> = ({
     <>
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2" />
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
+          </div>
         )}
 
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">

@@ -8,8 +8,8 @@ import {
   Select,
   SelectContent,
   SelectGroup,
-  SelectGroupLabel,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
 } from '@/app/components/base/ui/select'
 import { useEvaluationStore } from '../../store'
@@ -46,7 +46,7 @@ const AddConditionSelect = ({
       <SelectContent placement="bottom-start" popupClassName="w-[320px]">
         {metricOptionGroups.map(group => (
           <SelectGroup key={group.label}>
-            <SelectGroupLabel className="system-xs-medium-uppercase px-3 pt-2 pb-1 text-text-tertiary">{group.label}</SelectGroupLabel>
+            <SelectLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{group.label}</SelectLabel>
             {group.options.map(option => (
               <SelectItem
                 key={option.id}
@@ -58,8 +58,8 @@ const AddConditionSelect = ({
                 }}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="system-sm-medium truncate text-text-secondary">{option.itemLabel}</span>
-                  <span className="system-xs-medium ml-auto shrink-0 text-text-tertiary">
+                  <span className="truncate system-sm-medium text-text-secondary">{option.itemLabel}</span>
+                  <span className="ml-auto shrink-0 system-xs-medium text-text-tertiary">
                     {t(getConditionMetricValueTypeTranslationKey(option.valueType))}
                   </span>
                 </div>
