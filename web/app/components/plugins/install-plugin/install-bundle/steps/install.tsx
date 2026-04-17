@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
-import { Button } from '@/app/components/base/ui/button'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
@@ -83,7 +83,7 @@ const Install: FC<Props> = ({
         onInstalled(selectedPlugins, res.map((r, i) => {
           return ({
             success: r.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[i]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
           })
         }))
         const hasInstallSuccess = res.some(r => r.status === TaskStatus.success)
@@ -101,7 +101,7 @@ const Install: FC<Props> = ({
         if (item.status !== TaskStatus.running) {
           return {
             success: item.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
           }
         }
         const { status } = await check({
@@ -110,7 +110,7 @@ const Install: FC<Props> = ({
         })
         return {
           success: status === TaskStatus.success,
-          isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+          isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
         }
       }))
       onInstalled(selectedPlugins, installStatus)

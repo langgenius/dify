@@ -1,12 +1,12 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileTypeIcon from '../file-type-icon'
@@ -36,6 +36,7 @@ const FileItem = ({
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
+  const [typeCategory = '', typeSubtype = ''] = type?.split('/') ?? []
 
   let tmp_preview_url = url || base64Url
   if (!tmp_preview_url && file?.originalFile)
@@ -121,7 +122,7 @@ const FileItem = ({
         </div>
       </div>
       {
-        type.split('/')[0] === 'audio' && canPreview && previewUrl && (
+        typeCategory === 'audio' && canPreview && previewUrl && (
           <AudioPreview
             title={name}
             url={previewUrl}
@@ -130,7 +131,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[0] === 'video' && canPreview && previewUrl && (
+        typeCategory === 'video' && canPreview && previewUrl && (
           <VideoPreview
             title={name}
             url={previewUrl}
@@ -139,7 +140,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[1] === 'pdf' && canPreview && previewUrl && (
+        typeSubtype === 'pdf' && canPreview && previewUrl && (
           <PdfPreview url={previewUrl} onCancel={() => { setPreviewUrl('') }} />
         )
       }

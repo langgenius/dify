@@ -1,11 +1,11 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { Pagination } from './pagination'
 
 export type Props = {
@@ -98,7 +98,7 @@ const CustomizedPagination: FC<Props> = ({
       truncableClassName="flex items-center justify-center w-8 px-1 py-2 system-sm-medium text-text-tertiary"
       truncableText="..."
     >
-      <div className="flex items-center gap-0.5 radius-lg bg-background-section-burn p-0.5">
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
         <Pagination.PrevButton
           as={<div></div>}
           disabled={current === 0}
@@ -160,7 +160,7 @@ const CustomizedPagination: FC<Props> = ({
         <div className="flex shrink-0 items-center gap-2">
           <div className="w-[51px] shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
           <div
-            className="flex items-center gap-px radius-lg bg-components-segmented-control-bg-normal p-0.5"
+            className="flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
             onMouseEnter={() => setShowPerPageTip(true)}
             onMouseLeave={() => setShowPerPageTip(false)}
           >

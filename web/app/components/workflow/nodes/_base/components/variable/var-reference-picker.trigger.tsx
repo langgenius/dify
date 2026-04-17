@@ -6,15 +6,15 @@ import type { CredentialFormSchema, CredentialFormSchemaSelect } from '@/app/com
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiCloseLine, RiErrorWarningFill, RiLoader4Line, RiMoreLine } from '@remixicon/react'
 import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { cn } from '@/utils/classnames'
 import RemoveButton from '../remove-button'
 import ConstantField from './constant-field'
 
@@ -149,7 +149,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                         <TypeSelector
                           noLeft
                           trigger={(
-                            <div className="flex h-8 items-center radius-md bg-components-input-bg-normal px-2">
+                            <div className="flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2">
                               <div className="mr-1 system-sm-regular text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
                               <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
                             </div>

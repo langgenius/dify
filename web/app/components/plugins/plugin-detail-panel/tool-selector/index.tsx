@@ -7,6 +7,7 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,7 +17,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 import {
   ToolAuthorizationSection,
   ToolBaseForm,
@@ -192,7 +192,7 @@ const ToolSelector: FC<Props> = ({
         )}
         >
           {/* Header */}
-          <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">
+          <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">
             {t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}
           </div>
 

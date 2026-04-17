@@ -1,16 +1,16 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -26,7 +26,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
@@ -112,12 +112,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         return
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        // Track app creation from DSL import
-        trackEvent('create_app_with_dsl', {
-          app_mode,
-          creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
-          has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
-        })
+        trackCreateApp({ appMode: app_mode })
 
         if (onSuccess)
           onSuccess()
@@ -179,6 +174,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
+        trackCreateApp({ appMode: app_mode })
         if (onSuccess)
           onSuccess()
         if (onClose)

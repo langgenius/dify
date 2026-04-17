@@ -1,6 +1,7 @@
 import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBracesLine, RiEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -11,7 +12,6 @@ import Textarea from '@/app/components/base/textarea'
 import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {
@@ -52,15 +52,15 @@ const DisplayContent = (props: DisplayContentProps) => {
   }, [previewType, schemaType, jsonString])
 
   return (
-    <div className={cn('flex h-full flex-col radius-lg bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline-solid outline-1 outline-components-input-border-active', className)}>
+    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline-1 outline-components-input-border-active outline-solid', className)}>
       <div className="flex shrink-0 items-center justify-end p-1">
         {previewType === PreviewType.Markdown && (
-          <div className="system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary">
+          <div className="flex grow items-center px-2 py-0.5 system-xs-semibold-uppercase text-text-secondary">
             {previewType.toUpperCase()}
           </div>
         )}
         {previewType === PreviewType.Chunks && (
-          <div className="system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary">
+          <div className="flex grow items-center px-2 py-0.5 system-xs-semibold-uppercase text-text-secondary">
             {varType.toUpperCase()}
             {schemaType ? `(${schemaType})` : ''}
           </div>
@@ -79,7 +79,7 @@ const DisplayContent = (props: DisplayContentProps) => {
           className="shrink-0"
         />
       </div>
-      <div className="flex flex-1 overflow-auto rounded-b-[10px] pl-3 pr-1">
+      <div className="flex flex-1 overflow-auto rounded-b-[10px] pr-1 pl-3">
         {viewMode === ViewMode.Code && (
           previewType === PreviewType.Markdown
             ? (

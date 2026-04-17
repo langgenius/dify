@@ -11,7 +11,7 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/base/ui/slider', () => ({
+vi.mock('@langgenius/dify-ui/slider', () => ({
   Slider: ({ onValueChange }: { onValueChange: (v: number) => void }) => (
     <button onClick={() => onValueChange(2)} data-testid="slider-btn">Slide 2</button>
   ),
@@ -68,7 +68,7 @@ describe('ParameterItem', () => {
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '1.4' } })
     expect(onChange).toHaveBeenCalledWith(1)
-    expect(screen.getByTestId('slider-btn')).toBeInTheDocument()
+    expect(screen.getByTestId('slider-btn'))!.toBeInTheDocument()
   })
 
   it('should clamp float numeric input to min', () => {
@@ -91,19 +91,19 @@ describe('ParameterItem', () => {
 
   it('should adjust step based on max for int type', () => {
     const { rerender } = render(<ParameterItem parameterRule={createRule({ type: 'int', min: 0, max: 50 })} value={5} />)
-    expect(screen.getByRole('spinbutton')).toHaveAttribute('step', '1')
+    expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '1')
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'int', min: 0, max: 500 })} value={50} />)
-    expect(screen.getByRole('spinbutton')).toHaveAttribute('step', '10')
+    expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '10')
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'int', min: 0, max: 2000 })} value={50} />)
-    expect(screen.getByRole('spinbutton')).toHaveAttribute('step', '100')
+    expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '100')
   })
 
   it('should render int input without slider if min or max is missing', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'int', min: 0 })} value={5} />)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-    expect(screen.getByRole('spinbutton')).toHaveAttribute('step', '0')
+    expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '0')
   })
 
   it('should handle slide change and clamp values', () => {
@@ -125,20 +125,20 @@ describe('ParameterItem', () => {
     const onChange = vi.fn()
     const { container } = render(<ParameterItem parameterRule={createRule({ type: 'text' })} value="long text" onChange={onChange} />)
     const textarea = container.querySelector('textarea')!
-    expect(textarea).toBeInTheDocument()
+    expect(textarea)!.toBeInTheDocument()
     fireEvent.change(textarea, { target: { value: 'new long text' } })
     expect(onChange).toHaveBeenCalledWith('new long text')
   })
 
   it('should render select for string with options', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'string', options: ['a', 'b'] })} value="a" />)
-    expect(screen.getByText('a')).toBeInTheDocument()
+    expect(screen.getByText('a'))!.toBeInTheDocument()
   })
 
   it('should render tag input for tag type', () => {
     const onChange = vi.fn()
     render(<ParameterItem parameterRule={createRule({ type: 'tag', tagPlaceholder: { en_US: 'placeholder', zh_Hans: 'placeholder' } })} value={['a']} onChange={onChange} />)
-    expect(screen.getByText('placeholder')).toBeInTheDocument()
+    expect(screen.getByText('placeholder'))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('tag-input'))
     expect(onChange).toHaveBeenCalledWith(['tag1', 'tag2'])
   })
@@ -166,17 +166,17 @@ describe('ParameterItem', () => {
 
   it('should use default values if value is undefined', () => {
     const { rerender } = render(<ParameterItem parameterRule={createRule({ type: 'float', default: 0.5 })} />)
-    expect(screen.getByRole('spinbutton')).toHaveValue(0.5)
+    expect(screen.getByRole('spinbutton'))!.toHaveValue(0.5)
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'string', default: 'hello' })} />)
-    expect(screen.getByRole('textbox')).toHaveValue('hello')
+    expect(screen.getByRole('textbox'))!.toHaveValue('hello')
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'boolean', default: true })} />)
-    expect(screen.getByText('True')).toBeInTheDocument()
-    expect(screen.getByText('False')).toBeInTheDocument()
+    expect(screen.getByText('True'))!.toBeInTheDocument()
+    expect(screen.getByText('False'))!.toBeInTheDocument()
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'float' })} />)
-    expect(screen.getByRole('spinbutton')).toHaveValue(0)
+    expect(screen.getByRole('spinbutton'))!.toHaveValue(0)
   })
 
   it('should reset input to actual bound value on blur-sm', () => {
@@ -184,7 +184,7 @@ describe('ParameterItem', () => {
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '5' } })
     fireEvent.blur(input)
-    expect(input).toHaveValue(1)
+    expect(input)!.toHaveValue(1)
   })
 
   it('should render no input for unsupported parameter type', () => {
@@ -216,12 +216,12 @@ describe('ParameterItem', () => {
       )
 
       const editor = screen.getByTestId('prompt-editor')
-      expect(editor).toBeInTheDocument()
-      expect(editor).toHaveAttribute('data-has-workflow-vars', 'true')
+      expect(editor)!.toBeInTheDocument()
+      expect(editor)!.toHaveAttribute('data-has-workflow-vars', 'true')
       expect(capturedWorkflowNodesMap).toBeDefined()
-      expect(capturedWorkflowNodesMap!.node1.title).toBe('LLM Node')
-      expect(capturedWorkflowNodesMap!.sys.title).toBe('workflow.blocks.start')
-      expect(capturedWorkflowNodesMap!.sys.type).toBe(BlockEnum.Start)
+      expect(capturedWorkflowNodesMap!.node1!.title).toBe('LLM Node')
+      expect(capturedWorkflowNodesMap!.sys!.title).toBe('workflow.blocks.start')
+      expect(capturedWorkflowNodesMap!.sys!.type).toBe(BlockEnum.Start)
 
       promptEditorOnChange?.('updated text')
       expect(onChange).toHaveBeenCalledWith('updated text')
@@ -241,8 +241,8 @@ describe('ParameterItem', () => {
       )
 
       const editor = screen.getByTestId('prompt-editor')
-      expect(editor).toBeInTheDocument()
-      expect(editor).toHaveAttribute('data-has-workflow-vars', 'true')
+      expect(editor)!.toBeInTheDocument()
+      expect(editor)!.toHaveAttribute('data-has-workflow-vars', 'true')
       expect(capturedWorkflowNodesMap).toBeDefined()
 
       promptEditorOnChange?.('new long text')
@@ -258,7 +258,7 @@ describe('ParameterItem', () => {
       )
 
       expect(screen.queryByTestId('prompt-editor')).not.toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should return undefined workflowNodesMap when not in workflow mode', () => {

@@ -48,30 +48,30 @@ const Empty: FC<IEmptyProps> = ({
       <div className="flex flex-col items-center">
         <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border border-divider-subtle bg-components-card-bg shadow-lg shadow-shadow-shadow-5">
           <RiFileList2Line className="h-6 w-6 text-text-secondary" />
-          <Line className="absolute -right-px top-1/2 -translate-y-1/2" />
-          <Line className="absolute -left-px top-1/2 -translate-y-1/2" />
-          <Line className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-          <Line className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90" />
+          <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
+          <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
+          <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+          <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
         </div>
-        <div className="system-md-regular mt-3 text-text-tertiary">
+        <div className="mt-3 system-md-regular text-text-tertiary">
           {t('segment.empty', { ns: 'datasetDocuments' })}
         </div>
         <button
           type="button"
-          className="system-sm-medium mt-1 text-text-accent"
+          className="mt-1 system-sm-medium text-text-accent"
           onClick={onClearFilter}
         >
           {t('segment.clearFilter', { ns: 'datasetDocuments' })}
         </button>
       </div>
-      <div className="absolute left-0 top-0 -z-20 flex h-full w-full flex-col gap-y-3 overflow-hidden">
+      <div className="absolute top-0 left-0 -z-20 flex h-full w-full flex-col gap-y-3 overflow-hidden">
         {
           Array.from({ length: 10 }).map((_, i) => (
             <EmptyCard key={i} />
           ))
         }
       </div>
-      <div className="absolute left-0 top-0 -z-10 h-full w-full bg-dataset-chunk-list-mask-bg" />
+      <div className="absolute top-0 left-0 -z-10 h-full w-full bg-dataset-chunk-list-mask-bg" />
     </div>
   )
 }

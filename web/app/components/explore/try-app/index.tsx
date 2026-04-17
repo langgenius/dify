@@ -2,12 +2,12 @@
 'use client'
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
-import { Button } from '@/app/components/base/ui/button'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
@@ -67,7 +67,7 @@ const TryApp: FC<Props> = ({
             <Button
               size="large"
               variant="tertiary"
-              className="flex size-7 items-center justify-center radius-lg p-0 text-components-button-tertiary-text"
+              className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
               <span className="i-ri-close-line size-5" />

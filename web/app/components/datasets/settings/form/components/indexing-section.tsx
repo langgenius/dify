@@ -73,7 +73,7 @@ const IndexingSection = ({
           <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
           <div className={rowClass}>
             <div className="flex w-[180px] shrink-0 flex-col">
-              <div className="system-sm-semibold flex h-8 items-center text-text-secondary">
+              <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
                 {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
@@ -116,7 +116,7 @@ const IndexingSection = ({
             />
             {showUpgradeWarning && (
               <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="absolute left-0 top-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
+                <div className="absolute top-0 left-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
                 <div className="p-1">
                   <RiAlertFill className="size-4 text-text-warning-secondary" />
                 </div>
@@ -166,7 +166,7 @@ const IndexingSection = ({
           <div className={rowClass}>
             <div className={labelClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
-                <div className="system-sm-semibold flex h-7 items-center pt-1 text-text-secondary">
+                <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
                   {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">

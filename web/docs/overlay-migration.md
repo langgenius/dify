@@ -9,19 +9,16 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/tooltip`
   - `@/app/components/base/modal`
   - `@/app/components/base/select` (including `custom` / `pure`)
-  - `@/app/components/base/popover`
-  - `@/app/components/base/dropdown`
   - `@/app/components/base/dialog`
-  - `@/app/components/base/toast` (including `context`)
 - Replacement primitives:
-  - `@/app/components/base/ui/tooltip`
-  - `@/app/components/base/ui/dropdown-menu`
-  - `@/app/components/base/ui/context-menu`
-  - `@/app/components/base/ui/popover`
-  - `@/app/components/base/ui/dialog`
-  - `@/app/components/base/ui/alert-dialog`
-  - `@/app/components/base/ui/select`
-  - `@/app/components/base/ui/toast`
+  - `@langgenius/dify-ui/tooltip`
+  - `@langgenius/dify-ui/dropdown-menu`
+  - `@langgenius/dify-ui/context-menu`
+  - `@langgenius/dify-ui/popover`
+  - `@langgenius/dify-ui/dialog`
+  - `@langgenius/dify-ui/alert-dialog`
+  - `@langgenius/dify-ui/select`
+  - `@langgenius/dify-ui/toast`
 - Tracking issue: <https://github.com/langgenius/dify/issues/32767>
 
 ## ESLint policy
@@ -42,12 +39,6 @@ This document tracks the migration away from legacy overlay APIs.
 1. Cleanup
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
-
-## Toast migration strategy
-
-- `@/app/components/base/toast` has been replaced by `@/app/components/base/ui/toast`.
-- All new toast usage must go through `@/app/components/base/ui/toast`.
-- When a file with legacy toast usage is touched, prefer migrating that call site in the same change; full-repo toast cleanup is not required in one PR.
 
 ## Allowlist maintenance
 

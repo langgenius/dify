@@ -1,6 +1,8 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -13,8 +15,6 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { checkKeys, getNewVar } from '@/utils/var'
 
 type OpeningSettingModalProps = {

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -8,7 +9,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { WorkflowVersionFilterOptions } from '../../../types'
 import FilterItem from './filter-item'
 import FilterSwitch from './filter-switch'
@@ -53,7 +53,7 @@ const Filter: FC<FilterProps> = ({
             isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
           )}
         >
-          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
+          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-12">

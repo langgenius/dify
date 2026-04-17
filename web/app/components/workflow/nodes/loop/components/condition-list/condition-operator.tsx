@@ -1,5 +1,7 @@
 import type { ComparisonOperator } from '../../types'
 import type { VarType } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
@@ -11,8 +13,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
 const i18nPrefix = 'nodes.ifElse'

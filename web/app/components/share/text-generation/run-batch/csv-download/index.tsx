@@ -33,7 +33,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
           <thead className="text-text-tertiary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className="h-9 border-b border-divider-regular pl-3 pr-2">{item.name}</td>
+                <td key={i} className="h-9 border-b border-divider-regular pr-2 pl-3">{item.name}</td>
               ))}
             </tr>
           </thead>
@@ -62,7 +62,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
           template,
         ]}
       >
-        <div className="system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent">
+        <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
           <DownloadIcon className="h-3 w-3" />
           <span>{t('generation.downloadTemplate', { ns: 'share' })}</span>
         </div>

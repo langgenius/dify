@@ -30,15 +30,15 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={createFile()} />)
 
     const img = screen.getByRole('img')
-    expect(img).toBeInTheDocument()
-    expect(img).toHaveAttribute('src', 'data:image/png;base64,abc')
+    expect(img)!.toBeInTheDocument()
+    expect(img)!.toHaveAttribute('src', 'data:image/png;base64,abc')
   })
 
   it('should use url when base64Url is not available', () => {
     render(<FileImageItem file={createFile({ base64Url: undefined })} />)
 
     const img = screen.getByRole('img')
-    expect(img).toHaveAttribute('src', 'https://example.com/photo.png')
+    expect(img)!.toHaveAttribute('src', 'https://example.com/photo.png')
   })
 
   it('should render delete button when showDeleteAction is true', () => {
@@ -53,7 +53,7 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={createFile()} showDeleteAction onRemove={onRemove} />)
 
     const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
+    fireEvent.click(buttons[0]!)
 
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
@@ -65,7 +65,7 @@ describe('FileImageItem', () => {
 
     const svgs = container.querySelectorAll('svg')
     const progressSvg = Array.from(svgs).find(svg => svg.querySelector('circle'))
-    expect(progressSvg).toBeInTheDocument()
+    expect(progressSvg)!.toBeInTheDocument()
   })
 
   it('should render replay icon when upload failed', () => {
@@ -73,7 +73,7 @@ describe('FileImageItem', () => {
 
     // ReplayLine renders as an SVG icon with data-icon attribute
     const replaySvg = container.querySelector('svg[data-icon="ReplayLine"]')
-    expect(replaySvg).toBeInTheDocument()
+    expect(replaySvg)!.toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
@@ -96,7 +96,8 @@ describe('FileImageItem', () => {
     fireEvent.click(img.parentElement!)
 
     // ImagePreview renders via createPortal with class "image-preview-container", not role="dialog"
-    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
+    // ImagePreview renders via createPortal with class "image-preview-container", not role="dialog"
+    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
   })
 
   it('should not show image preview when canPreview is false', () => {
@@ -115,7 +116,7 @@ describe('FileImageItem', () => {
     fireEvent.click(img.parentElement!)
     // ImagePreview renders via createPortal with class "image-preview-container"
     const previewContainer = document.querySelector('.image-preview-container')!
-    expect(previewContainer).toBeInTheDocument()
+    expect(previewContainer)!.toBeInTheDocument()
 
     // Close button is the last clickable div with an SVG in the preview container
     const closeIcon = screen.getByTestId('image-preview-close-button')
@@ -156,14 +157,14 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={createFile({ base64Url: undefined, url: 'https://example.com/img.png' })} />)
 
     const img = screen.getByRole('img')
-    expect(img).toHaveAttribute('src', 'https://example.com/img.png')
+    expect(img)!.toHaveAttribute('src', 'https://example.com/img.png')
   })
 
   it('should render image element even when both base64Url and url are undefined', () => {
     render(<FileImageItem file={createFile({ base64Url: undefined, url: undefined })} />)
 
     const img = screen.getByRole('img')
-    expect(img).toBeInTheDocument()
+    expect(img)!.toBeInTheDocument()
   })
 
   it('should use url with attachment param for download_url when url is available', async () => {
@@ -205,7 +206,7 @@ describe('FileImageItem', () => {
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
+    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
   })
 
   it('should set preview url using url when base64Url is not available', () => {
@@ -214,7 +215,7 @@ describe('FileImageItem', () => {
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
+    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
   })
 
   it('should set preview url to empty string when both base64Url and url are undefined', () => {
@@ -223,6 +224,37 @@ describe('FileImageItem', () => {
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
+    // Preview won't show because imagePreviewUrl is empty string (falsy)
     // Preview won't show because imagePreviewUrl is empty string (falsy)
     expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
   })

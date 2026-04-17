@@ -1,8 +1,8 @@
 import type { DataSourceCredential } from '@/types/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
-import { cn } from '@/utils/classnames'
 
 type TriggerProps = {
   currentCredential: DataSourceCredential | undefined
@@ -31,7 +31,7 @@ const Trigger = ({
         size={20}
       />
       <div className="flex grow items-center gap-x-1 overflow-hidden">
-        <span className="system-md-semibold grow truncate text-text-secondary">
+        <span className="grow truncate system-md-semibold text-text-secondary">
           {name}
         </span>
         <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />

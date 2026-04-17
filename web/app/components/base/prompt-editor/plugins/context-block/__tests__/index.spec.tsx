@@ -184,7 +184,7 @@ describe('ContextBlock', () => {
       renderWithEditor(<ContextBlock />)
 
       dispatchInsert()
-      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0][1] as () => void
+      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0]![1] as () => void
 
       expect(typeof onAddContextArg).toBe('function')
       expect(() => onAddContextArg()).not.toThrow()
