@@ -178,6 +178,87 @@ def test_index_already_exists(mock_client_cls: MagicMock) -> None:
     mock_collection.create_search_index.assert_called_once()
 
 
+# --- Delete / existence tests ---
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_text_exists_returns_true(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.find_one.return_value = {"text": "found"}
+
+    vector = MongoDBVector("col", "grp", _make_config())
+    assert vector.text_exists("d1") is True
+    mock_collection.find_one.assert_called_once_with({"metadata.doc_id": "d1", "group_id": "grp"})
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_text_exists_returns_false(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.find_one.return_value = None
+
+    vector = MongoDBVector("col", "grp", _make_config())
+    assert vector.text_exists("missing") is False
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_delete_by_ids(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+
+    vector = MongoDBVector("col", "grp", _make_config())
+    vector.delete_by_ids(["id1", "id2"])
+
+    mock_collection.delete_many.assert_called_once_with(
+        {"metadata.doc_id": {"$in": ["id1", "id2"]}, "group_id": "grp"}
+    )
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_delete_by_metadata_field(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+
+    vector = MongoDBVector("col", "grp", _make_config())
+    vector.delete_by_metadata_field("document_id", "doc-abc")
+
+    mock_collection.delete_many.assert_called_once_with(
+        {"metadata.document_id": "doc-abc", "group_id": "grp"}
+    )
+
+
+@patch("dify_vdb_mongodb.mongodb_vector.MongoClient")
+def test_delete(mock_client_cls: MagicMock) -> None:
+    mock_instance = MagicMock()
+    mock_client_cls.return_value = mock_instance
+    mock_db = MagicMock()
+    mock_instance.__getitem__.return_value = mock_db
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+
+    vector = MongoDBVector("col", "grp", _make_config())
+    vector.delete()
+
+    mock_collection.delete_many.assert_called_once_with({"group_id": "grp"})
+
+
 # --- URI sanitization tests ---
 
 
