@@ -161,7 +161,7 @@ describe('RunOnce', () => {
       expect(onVisionFilesChange).toHaveBeenCalledWith([])
     })
 
-    expect(screen.getByText('common.imageUploader.imageUpload')).toBeInTheDocument()
+    expect(screen.getByText('common.imageUploader.imageUpload'))!.toBeInTheDocument()
   })
 
   it('should update inputs when user edits fields', async () => {
@@ -187,7 +187,7 @@ describe('RunOnce', () => {
     expect(checkbox).toBeTruthy()
     fireEvent.click(checkbox as HTMLElement)
 
-    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1][0]
+    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1]![0]
     expect(latest).toEqual({
       textInput: 'new text',
       paragraphInput: 'paragraph value',
@@ -248,7 +248,7 @@ describe('RunOnce', () => {
       expect(onInputsChange).toHaveBeenCalled()
     })
     const stopButton = screen.getByTestId('stop-button')
-    expect(stopButton).toBeDisabled()
+    expect(stopButton)!.toBeDisabled()
   })
 
   describe('select input type', () => {
@@ -271,7 +271,7 @@ describe('RunOnce', () => {
           selectInput: 'Option A',
         })
       })
-      expect(screen.getByText('Select Input')).toBeInTheDocument()
+      expect(screen.getByText('Select Input'))!.toBeInTheDocument()
     })
   })
 
@@ -293,7 +293,7 @@ describe('RunOnce', () => {
           fileInput: undefined,
         })
       })
-      expect(screen.getByText('File Input')).toBeInTheDocument()
+      expect(screen.getByText('File Input'))!.toBeInTheDocument()
     })
 
     it('should render file uploader for file-list input', async () => {
@@ -313,7 +313,7 @@ describe('RunOnce', () => {
           fileListInput: [],
         })
       })
-      expect(screen.getByText('File List Input')).toBeInTheDocument()
+      expect(screen.getByText('File List Input'))!.toBeInTheDocument()
     })
   })
 
@@ -336,8 +336,8 @@ describe('RunOnce', () => {
           jsonInput: undefined,
         })
       })
-      expect(screen.getByText('JSON Input')).toBeInTheDocument()
-      expect(screen.getByTestId('code-editor-mock')).toBeInTheDocument()
+      expect(screen.getByText('JSON Input'))!.toBeInTheDocument()
+      expect(screen.getByTestId('code-editor-mock'))!.toBeInTheDocument()
     })
 
     it('should update json_object input when code editor changes', async () => {
@@ -391,7 +391,7 @@ describe('RunOnce', () => {
         expect(onInputsChange).toHaveBeenCalled()
       })
       expect(screen.queryByText('Hidden Input')).not.toBeInTheDocument()
-      expect(screen.getByText('Visible Input')).toBeInTheDocument()
+      expect(screen.getByText('Visible Input'))!.toBeInTheDocument()
     })
 
     it('should show optional label for non-required fields', async () => {
@@ -410,7 +410,7 @@ describe('RunOnce', () => {
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      expect(screen.getByText('workflow.panel.optional')).toBeInTheDocument()
+      expect(screen.getByText('workflow.panel.optional'))!.toBeInTheDocument()
     })
   })
 
@@ -489,7 +489,7 @@ describe('RunOnce', () => {
         expect(onInputsChange).toHaveBeenCalled()
       })
       const input = screen.getByPlaceholderText('Text Input')
-      expect(input).toHaveAttribute('maxLength', '100')
+      expect(input)!.toHaveAttribute('maxLength', '100')
     })
   })
 })

@@ -10,7 +10,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 import { Slider } from '@/app/components/base/ui/slider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -299,7 +299,10 @@ function ParameterItem({
           </SelectTrigger>
           <SelectContent>
             {parameterRule.options!.map(option => (
-              <SelectItem key={option} value={option}>{option}</SelectItem>
+              <SelectItem key={option} value={option}>
+                <SelectItemText>{option}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

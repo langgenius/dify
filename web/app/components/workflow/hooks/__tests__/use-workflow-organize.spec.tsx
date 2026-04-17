@@ -120,7 +120,7 @@ describe('useWorkflowOrganize', () => {
     })
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const nextNodes = mockSetNodes.mock.calls[0][0]
+    const nextNodes = mockSetNodes.mock.calls[0]![0]
     expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
       width: expect.any(Number),
       height: expect.any(Number),

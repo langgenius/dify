@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden
 
@@ -14,6 +13,7 @@ from controllers.console.workspace.model_providers import (
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"

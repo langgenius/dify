@@ -1,9 +1,8 @@
 from collections.abc import Mapping
 from typing import Any
 
-from graphon.file import FileUploadConfig
-
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from graphon.file import FileUploadConfig
 
 
 class FileUploadConfigManager:

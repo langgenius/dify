@@ -110,7 +110,7 @@ describe('Card Component', () => {
         type: CredentialTypeEnum.API_KEY,
         is_default: true,
         avatar_url: 'avatar1',
-      },
+      }!,
     ],
   }
 
@@ -144,11 +144,12 @@ describe('Card Component', () => {
       render(<Card item={mockItem} />)
 
       // Assert
-      expect(screen.getByText('Test Label')).toBeInTheDocument()
-      expect(screen.getByText(/Test Author/)).toBeInTheDocument()
-      expect(screen.getByText(/test-name/)).toBeInTheDocument()
-      expect(screen.getByRole('img')).toHaveAttribute('src', 'test-icon-url')
-      expect(screen.getByText('Credential 1')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
+      expect(screen.getByText(/Test Author/))!.toBeInTheDocument()
+      expect(screen.getByText(/test-name/))!.toBeInTheDocument()
+      expect(screen.getByRole('img'))!.toHaveAttribute('src', 'test-icon-url')
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       expect(usePluginAuthAction).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -168,7 +169,8 @@ describe('Card Component', () => {
       render(<Card item={emptyItem} />)
 
       // Assert
-      expect(screen.getByText(/plugin.auth.emptyAuth/)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/plugin.auth.emptyAuth/))!.toBeInTheDocument()
     })
   })
 
@@ -186,10 +188,12 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.edit/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
-        apiKey: 'key1',
-        __name__: 'Credential 1',
-        __credential_id__: 'c1',
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
+          apiKey: 'key1',
+          __name__: 'Credential 1',
+          __credential_id__: 'c1',
+        })
       })
     })
 
@@ -200,7 +204,9 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.remove/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
+      })
     })
 
     it('should handle "setDefault" action from Item component', async () => {
@@ -210,7 +216,9 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/auth.setDefault/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+      })
     })
 
     it('should handle "rename" action from Item component', async () => {
@@ -218,7 +226,7 @@ describe('Card Component', () => {
       const oAuthItem = {
         ...mockItem,
         credentials_list: [{
-          ...mockItem.credentials_list[0],
+          ...mockItem.credentials_list[0]!,
           type: CredentialTypeEnum.OAUTH2,
         }],
       }
@@ -229,14 +237,16 @@ describe('Card Component', () => {
       fireEvent.click(screen.getByText(/operation.rename/))
 
       // Now it should show an input
-      const input = screen.getByPlaceholderText(/placeholder.input/)
+      const input = await screen.findByPlaceholderText(/placeholder.input/)
       fireEvent.change(input, { target: { value: 'New Name' } })
       fireEvent.click(screen.getByText(/operation.save/))
 
       // Assert
-      expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({
-        credential_id: 'c1',
-        name: 'New Name',
+      await waitFor(() => {
+        expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({
+          credential_id: 'c1',
+          name: 'New Name',
+        })
       })
     })
 
@@ -245,7 +255,7 @@ describe('Card Component', () => {
       const oAuthItem = {
         ...mockItem,
         credentials_list: [{
-          ...mockItem.credentials_list[0],
+          ...mockItem.credentials_list[0]!,
           type: CredentialTypeEnum.OAUTH2,
         }],
       }
@@ -268,7 +278,7 @@ describe('Card Component', () => {
       const oAuthItem = {
         ...mockItem,
         credentials_list: [{
-          ...mockItem.credentials_list[0],
+          ...mockItem.credentials_list[0]!,
           type: CredentialTypeEnum.OAUTH2,
         }],
       }
@@ -297,9 +307,10 @@ describe('Card Component', () => {
       render(<Card item={mockItem} />)
 
       // Assert
-      expect(screen.getByText(/list.delete.title/)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/list.delete.title/))!.toBeInTheDocument()
       const confirmButton = screen.getByText(/operation.confirm/).closest('button')
-      expect(confirmButton).toBeEnabled()
+      expect(confirmButton)!.toBeEnabled()
 
       // Act - Cancel
       fireEvent.click(screen.getByText(/operation.cancel/))
@@ -317,8 +328,9 @@ describe('Card Component', () => {
       render(<Card item={mockItem} disabled={false} />)
 
       // Assert
-      expect(screen.getByTestId('mock-api-key-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'false')
+      // Assert
+      expect(screen.getByTestId('mock-api-key-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('mock-api-key-modal'))!.toHaveAttribute('data-disabled', 'false')
 
       // Act
       fireEvent.click(screen.getByTestId('modal-close'))
@@ -337,7 +349,8 @@ describe('Card Component', () => {
       render(<Card item={mockItem} disabled={false} />)
 
       // Assert
-      expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'true')
+      // Assert
+      expect(screen.getByTestId('mock-api-key-modal'))!.toHaveAttribute('data-disabled', 'true')
     })
   })
 

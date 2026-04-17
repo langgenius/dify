@@ -27,7 +27,7 @@ const MenuDialog = ({
       }}
     >
       <DialogContent
-        overlayClassName="bg-transparent"
+        backdropClassName="bg-transparent"
         className={cn(
           'top-0 left-0 h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-background-sidenav-bg p-0 shadow-none backdrop-blur-md',
           className,

@@ -11,7 +11,7 @@ export const getFileType = (currentFile: File) => {
     return ''
 
   const arr = currentFile.name.split('.')
-  return arr[arr.length - 1]
+  return arr[arr.length - 1]!
 }
 
 type FileWithPath = {

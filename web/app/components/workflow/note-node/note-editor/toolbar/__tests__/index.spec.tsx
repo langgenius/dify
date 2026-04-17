@@ -86,7 +86,7 @@ describe('NoteEditor Toolbar', () => {
 
     expect(onThemeChange).toHaveBeenCalledWith(NoteTheme.violet)
 
-    fireEvent.click(container.querySelectorAll('[data-state="closed"]')[container.querySelectorAll('[data-state="closed"]').length - 1] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(screen.getByText('workflow.common.copy'))
 
     expect(onCopy).toHaveBeenCalledTimes(1)

@@ -97,7 +97,7 @@ describe('app-chart-utils', () => {
       expect(dataset.dimensions).toEqual(['date', 'count'])
       expect(dataset.source).toHaveLength(2)
       expect(yAxis.max).toBe(100)
-      expect(series[0].lineStyle.color).toBe('rgba(6, 148, 162, 1)')
+      expect(series[0]!.lineStyle.color).toBe('rgba(6, 148, 162, 1)')
     })
 
     it('should build token-aware tooltip content and split-line intervals for cost charts', () => {
@@ -112,11 +112,11 @@ describe('app-chart-utils', () => {
       })
 
       const xAxis = options.xAxis as Array<Record<string, any>>
-      const formatter = xAxis[0].axisLabel.formatter as (value: string) => string
-      const outerInterval = xAxis[0].splitLine.interval as (index: number) => boolean
-      const innerInterval = xAxis[1].splitLine.interval as (_index: number, value: string) => boolean
+      const formatter = xAxis[0]!.axisLabel.formatter as (value: string) => string
+      const outerInterval = xAxis[0]!.splitLine.interval as (index: number) => boolean
+      const innerInterval = xAxis[1]!.splitLine.interval as (_index: number, value: string) => boolean
       const series = options.series as Array<Record<string, any>>
-      const tooltipFormatter = series[0].tooltip.formatter as (params: { name: string, data: { total_cost: number, total_price: string } }) => string
+      const tooltipFormatter = series[0]!.tooltip.formatter as (params: { name: string, data: { total_cost: number, total_price: string } }) => string
 
       expect(formatter('Jan 2, 2024')).toBe('Jan 2, 2024')
       expect(outerInterval(0)).toBe(true)

@@ -6,18 +6,18 @@ This package provides shared design tokens (colors, shadows, typography), the `c
 
 The Figma design system uses `--radius/*` tokens whose scale is **offset by one step** from Tailwind CSS v4 defaults. When translating Figma specs to code, always use this mapping — never use `radius-*` as a CSS class, and never extend `borderRadius` in the preset.
 
-| Figma Token | Value | Tailwind Class |
-|---|---|---|
-| `--radius/2xs` | 2px | `rounded-xs` |
-| `--radius/xs` | 4px | `rounded-sm` |
-| `--radius/sm` | 6px | `rounded-md` |
-| `--radius/md` | 8px | `rounded-lg` |
-| `--radius/lg` | 10px | `rounded-[10px]` |
-| `--radius/xl` | 12px | `rounded-xl` |
-| `--radius/2xl` | 16px | `rounded-2xl` |
-| `--radius/3xl` | 20px | `rounded-[20px]` |
-| `--radius/6xl` | 28px | `rounded-[28px]` |
-| `--radius/full` | 999px | `rounded-full` |
+| Figma Token     | Value | Tailwind Class   |
+| --------------- | ----- | ---------------- |
+| `--radius/2xs`  | 2px   | `rounded-xs`     |
+| `--radius/xs`   | 4px   | `rounded-sm`     |
+| `--radius/sm`   | 6px   | `rounded-md`     |
+| `--radius/md`   | 8px   | `rounded-lg`     |
+| `--radius/lg`   | 10px  | `rounded-[10px]` |
+| `--radius/xl`   | 12px  | `rounded-xl`     |
+| `--radius/2xl`  | 16px  | `rounded-2xl`    |
+| `--radius/3xl`  | 20px  | `rounded-[20px]` |
+| `--radius/6xl`  | 28px  | `rounded-[28px]` |
+| `--radius/full` | 999px | `rounded-full`   |
 
 ### Rules
 

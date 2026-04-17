@@ -46,7 +46,8 @@ describe('ApiBasedExtensionSelector', () => {
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
 
       // Assert
-      expect(screen.getByText('common.apiBasedExtension.selector.placeholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.apiBasedExtension.selector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render selected item name', async () => {
@@ -54,7 +55,8 @@ describe('ApiBasedExtensionSelector', () => {
       render(<ApiBasedExtensionSelector value="1" onChange={mockOnChange} />)
 
       // Assert
-      expect(screen.getByText('Extension 1')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
     })
   })
 
@@ -66,7 +68,8 @@ describe('ApiBasedExtensionSelector', () => {
       fireEvent.click(trigger)
 
       // Assert
-      expect(await screen.findByText('common.apiBasedExtension.selector.title')).toBeInTheDocument()
+      // Assert
+      expect(await screen.findByText('common.apiBasedExtension.selector.title'))!.toBeInTheDocument()
     })
 
     it('should call onChange and closes dropdown when an extension is selected', async () => {
@@ -111,7 +114,7 @@ describe('ApiBasedExtensionSelector', () => {
       }))
 
       // Trigger callback
-      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0][0]
+      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
       if (typeof lastCall === 'object' && lastCall !== null && 'onSaveCallback' in lastCall) {
         if (lastCall.onSaveCallback) {
           lastCall.onSaveCallback()

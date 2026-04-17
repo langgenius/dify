@@ -253,10 +253,11 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
-      expect(screen.getByText('plugin.action.delete')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
     })
 
     it('should display plugin name in delete confirm content', () => {
@@ -270,10 +271,11 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
-      expect(screen.getByText('my-awesome-plugin')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('my-awesome-plugin'))!.toBeInTheDocument()
     })
 
     it('should hide confirm modal when cancel is clicked', () => {
@@ -286,8 +288,8 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
-      expect(screen.getByText('plugin.action.delete')).toBeInTheDocument()
+      fireEvent.click(getActionButtons()[0]!)
+      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
 
       fireEvent.click(getDeleteCancelButton())
 
@@ -308,7 +310,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -330,7 +332,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -352,7 +354,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -374,7 +376,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -401,12 +403,12 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert - Loading state
       await waitFor(() => {
-        expect(getDeleteConfirmButton()).toBeDisabled()
+        expect(getDeleteConfirmButton())!.toBeDisabled()
       })
 
       // Resolve and check modal closes
@@ -434,13 +436,14 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
-      expect(screen.getByTestId('plugin-info-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('plugin-info-modal')).toHaveAttribute('data-repo', 'owner/repo-name')
-      expect(screen.getByTestId('plugin-info-modal')).toHaveAttribute('data-release', '2.0.0')
-      expect(screen.getByTestId('plugin-info-modal')).toHaveAttribute('data-package', 'my-package.difypkg')
+      // Assert
+      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-repo', 'owner/repo-name')
+      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-release', '2.0.0')
+      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-package', 'my-package.difypkg')
     })
 
     it('should hide plugin info modal when close is clicked', () => {
@@ -453,11 +456,42 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
-      expect(screen.getByTestId('plugin-info-modal')).toBeInTheDocument()
+      fireEvent.click(getActionButtons()[0]!)
+      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-plugin-info'))
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
     })
@@ -481,7 +515,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
       await waitFor(() => {
@@ -507,7 +541,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
       await waitFor(() => {
@@ -526,7 +560,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
       await waitFor(() => {
@@ -550,7 +584,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert - toast is called with the translated payload
       await waitFor(() => {
@@ -581,7 +615,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
       await waitFor(() => {
@@ -621,7 +655,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Wait for modal to be called
       await waitFor(() => {
@@ -629,7 +663,7 @@ describe('Action Component', () => {
       })
 
       // Invoke the callback
-      const call = mockSetShowUpdatePluginModal.mock.calls[0][0]
+      const call = mockSetShowUpdatePluginModal.mock.calls[0]![0]
       call.onSaveCallback()
 
       // Assert
@@ -653,7 +687,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
       await waitFor(() => {
@@ -678,7 +712,7 @@ describe('Action Component', () => {
 
       // Act - First render and delete
       const { rerender } = render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -688,7 +722,7 @@ describe('Action Component', () => {
       // Re-render with same props
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -714,7 +748,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -723,7 +757,7 @@ describe('Action Component', () => {
 
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -751,7 +785,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -760,7 +794,7 @@ describe('Action Component', () => {
       expect(onDelete2).not.toHaveBeenCalled()
 
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -802,7 +836,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert - Should use author and pluginName as fallback
       await waitFor(() => {
@@ -826,11 +860,12 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
       fireEvent.click(getDeleteConfirmButton())
 
       // The confirm button should be disabled during deletion
-      expect(getDeleteConfirmButton()).toBeDisabled()
+      // The confirm button should be disabled during deletion
+      expect(getDeleteConfirmButton())!.toBeDisabled()
 
       // Resolve the deletion
       resolveFirst!({ success: true })
@@ -851,10 +886,11 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0])
+      fireEvent.click(getActionButtons()[0]!)
 
       // Assert
-      expect(screen.getByText('plugin-with-special@chars#123')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
     })
   })
 

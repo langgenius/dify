@@ -84,9 +84,9 @@ const WorkflowToolAsModal: FC<Props> = ({
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
-        draft[index].description = value
+        draft[index]!.description = value
       else
-        draft[index].form = value
+        draft[index]!.form = value
     })
     setParameters(newData)
   }

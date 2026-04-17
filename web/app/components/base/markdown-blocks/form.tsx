@@ -10,7 +10,7 @@ import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-tim
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { Button } from '@/app/components/base/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -316,7 +316,10 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 </SelectTrigger>
                 <SelectContent>
                   {options.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

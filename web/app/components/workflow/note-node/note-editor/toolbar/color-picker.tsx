@@ -14,33 +14,33 @@ import { NoteTheme } from '../../types'
 export const COLOR_LIST = [
   {
     key: NoteTheme.blue,
-    inner: THEME_MAP[NoteTheme.blue].title,
-    outer: THEME_MAP[NoteTheme.blue].outer,
+    inner: THEME_MAP[NoteTheme.blue]!.title,
+    outer: THEME_MAP[NoteTheme.blue]!.outer,
   },
   {
     key: NoteTheme.cyan,
-    inner: THEME_MAP[NoteTheme.cyan].title,
-    outer: THEME_MAP[NoteTheme.cyan].outer,
+    inner: THEME_MAP[NoteTheme.cyan]!.title,
+    outer: THEME_MAP[NoteTheme.cyan]!.outer,
   },
   {
     key: NoteTheme.green,
-    inner: THEME_MAP[NoteTheme.green].title,
-    outer: THEME_MAP[NoteTheme.green].outer,
+    inner: THEME_MAP[NoteTheme.green]!.title,
+    outer: THEME_MAP[NoteTheme.green]!.outer,
   },
   {
     key: NoteTheme.yellow,
-    inner: THEME_MAP[NoteTheme.yellow].title,
-    outer: THEME_MAP[NoteTheme.yellow].outer,
+    inner: THEME_MAP[NoteTheme.yellow]!.title,
+    outer: THEME_MAP[NoteTheme.yellow]!.outer,
   },
   {
     key: NoteTheme.pink,
-    inner: THEME_MAP[NoteTheme.pink].title,
-    outer: THEME_MAP[NoteTheme.pink].outer,
+    inner: THEME_MAP[NoteTheme.pink]!.title,
+    outer: THEME_MAP[NoteTheme.pink]!.outer,
   },
   {
     key: NoteTheme.violet,
-    inner: THEME_MAP[NoteTheme.violet].title,
-    outer: THEME_MAP[NoteTheme.violet].outer,
+    inner: THEME_MAP[NoteTheme.violet]!.title,
+    outer: THEME_MAP[NoteTheme.violet]!.outer,
   },
 ]
 
@@ -70,7 +70,7 @@ const ColorPicker = ({
           <div
             className={cn(
               'h-4 w-4 rounded-full border border-black/5',
-              THEME_MAP[theme].title,
+              THEME_MAP[theme]!.title,
             )}
           >
           </div>

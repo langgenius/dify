@@ -55,6 +55,7 @@ const CustomEdge = ({
     curvature: 0.16,
   })
   const [open, setOpen] = useState(false)
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
@@ -142,8 +143,8 @@ const CustomEdge = ({
       <EdgeLabelRenderer>
         <div
           className={cn(
-            'nopan nodrag hover:scale-125',
-            data?._hovering ? 'block' : 'hidden',
+            'nopan nodrag',
+            (data?._hovering || isTriggerHovered) ? 'block' : 'hidden',
             open && 'block!',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
             data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
@@ -154,6 +155,8 @@ const CustomEdge = ({
             pointerEvents: 'all',
             opacity: data._waitingRun ? 0.7 : 1,
           }}
+          onMouseEnter={() => setIsTriggerHovered(true)}
+          onMouseLeave={() => setIsTriggerHovered(false)}
         >
           <BlockSelector
             open={open}
