@@ -159,49 +159,6 @@ describe('useShortcuts', () => {
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(4)
   })
 
-  it('copies selected nodes when the current text selection is inside the workflow canvas', () => {
-    const getSelectionSpy = vi.spyOn(document, 'getSelection')
-    const canvas = document.createElement('div')
-    canvas.className = 'react-flow'
-    const selectedText = document.createElement('span')
-    selectedText.textContent = 'Selected node label'
-    canvas.appendChild(selectedText)
-
-    getSelectionSpy.mockReturnValue(createSelectionMock(selectedText))
-
-    renderWorkflowHook(() => useShortcuts())
-
-    const copyShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.c' || registration.keyFilter === 'meta.c')
-    const event = createKeyboardEvent()
-    copyShortcut.handler(event)
-
-    expect(event.preventDefault).toHaveBeenCalled()
-    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
-
-    getSelectionSpy.mockRestore()
-  })
-
-  it('keeps native text copy when the current text selection is outside the workflow canvas', () => {
-    const getSelectionSpy = vi.spyOn(document, 'getSelection')
-    const textContainer = document.createElement('div')
-    const selectedText = document.createElement('span')
-    selectedText.textContent = 'Panel help text'
-    textContainer.appendChild(selectedText)
-
-    getSelectionSpy.mockReturnValue(createSelectionMock(selectedText))
-
-    renderWorkflowHook(() => useShortcuts())
-
-    const copyShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.c' || registration.keyFilter === 'meta.c')
-    const event = createKeyboardEvent()
-    copyShortcut.handler(event)
-
-    expect(event.preventDefault).not.toHaveBeenCalled()
-    expect(mockHandleNodesCopy).not.toHaveBeenCalled()
-
-    getSelectionSpy.mockRestore()
-  })
-
   it('copies bundled nodes even when an incidental text selection exists outside the workflow canvas', () => {
     const getSelectionSpy = vi.spyOn(document, 'getSelection')
     const textContainer = document.createElement('div')
