@@ -226,19 +226,26 @@ class MongoDBVector(BaseVector):
         if len(documents) != len(embeddings):
             raise ValueError(f"Mismatch between documents ({len(documents)}) and embeddings ({len(embeddings)}) count")
 
-        docs = [
-            {
-                "text": doc.page_content,
-                "embedding": embeddings[i],
-                "metadata": doc.metadata,
-                "group_id": self._group_id,
-            }
-            for i, doc in enumerate(documents)
-        ]
+        docs = []
+        doc_ids = []
+        for i, doc in enumerate(documents):
+            doc_id = doc.metadata.get("doc_id")
+            if not doc_id:
+                raise ValueError("Each document must include metadata['doc_id']")
+
+            docs.append(
+                {
+                    "text": doc.page_content,
+                    "embedding": embeddings[i],
+                    "metadata": doc.metadata,
+                    "group_id": self._group_id,
+                }
+            )
+            doc_ids.append(str(doc_id))
 
         try:
-            result = self._collection.insert_many(docs)
-            return [str(oid) for oid in result.inserted_ids]
+            self._collection.insert_many(docs)
+            return doc_ids
         except (WriteError, OperationFailure):
             logger.exception("Failed to insert documents into MongoDB")
             raise
