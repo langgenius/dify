@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '@langgenius/dify-ui/cn'
-import './scroll-area.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
 type ScrollAreaRootProps = BaseScrollArea.Root.Props
@@ -25,7 +24,7 @@ type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
 }
 
 const scrollAreaScrollbarClassName = cn(
-  'flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
+  'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
   'pointer-events-none data-hovering:pointer-events-auto',
   'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
@@ -36,6 +35,9 @@ const scrollAreaThumbClassName = cn(
   'shrink-0 rounded-sm bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
+  'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+  'group-data-scrolling/scrollbar:bg-state-base-handle-hover',
+  'active:bg-state-base-handle-hover',
 )
 
 const scrollAreaViewportClassName = cn(

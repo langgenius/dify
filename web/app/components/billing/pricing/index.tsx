@@ -28,7 +28,7 @@ type PricingProps = {
 }
 
 const pricingScrollAreaClassNames = {
-  root: 'relative h-full w-full overflow-hidden [--scroll-area-edge-hint-bg:var(--color-saas-background)]',
+  root: 'relative h-full w-full overflow-hidden',
   viewport: 'overscroll-contain',
   content: 'min-h-full min-w-[1200px]',
   verticalScrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:me-1',
