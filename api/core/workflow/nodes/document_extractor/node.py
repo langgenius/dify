@@ -138,13 +138,6 @@ class DocumentExtractorNode(GraphonDocumentExtractorNode):
                 error=error_message,
             )
 
-        if variable is None:
-            msg = f"File variable not found for selector: {variable_selector}"
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=msg,
-            )
-
         value = variable.value
         inputs = {"variable_selector": variable_selector}
         if isinstance(value, list):

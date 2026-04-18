@@ -14,7 +14,11 @@ from core.workflow.nodes.knowledge_retrieval.entities import (
     SingleRetrievalConfig,
 )
 from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import (
+    KnowledgeRetrievalNode,
+    _normalize_metadata_filter_scalar,
+    _normalize_metadata_filter_sequence_item,
+)
 from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -83,6 +87,12 @@ def sample_node_data():
             ),
         ),
     )
+
+
+def test_metadata_filter_normalizers_preserve_numeric_scalars_and_stringify_other_values() -> None:
+    assert _normalize_metadata_filter_scalar(3) == 3
+    assert _normalize_metadata_filter_scalar(True) == "True"
+    assert _normalize_metadata_filter_sequence_item(4) == "4"
 
 
 class TestKnowledgeRetrievalNode:

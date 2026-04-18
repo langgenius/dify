@@ -11,17 +11,19 @@ from core.workflow.nodes.document_extractor import (
     DocumentExtractorNodeData,
     extract_text_from_excel,
 )
+from core.workflow.nodes.document_extractor.node import _extract_text_from_file
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
+from graphon.nodes.document_extractor.exc import TextExtractionError, UnsupportedFileTypeError
 from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
-from graphon.variables import ArrayFileSegment
+from graphon.variables import ArrayFileSegment, FileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -399,6 +401,12 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     assert mock_excel_instance.parse.call_count == 2
 
 
+@patch("pandas.ExcelFile", side_effect=RuntimeError("broken workbook"))
+def test_extract_text_from_excel_wraps_workbook_open_errors(mock_excel_file):
+    with pytest.raises(TextExtractionError, match="Failed to extract text from Excel file: broken workbook"):
+        extract_text_from_excel(b"broken")
+
+
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     """Test extracting text from Excel file with numeric column names."""
@@ -420,6 +428,115 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
 
     assert expected_manual == result
+
+
+@pytest.mark.parametrize(
+    ("extension", "mime_type"),
+    [
+        (".xlsx", "text/plain"),
+        (None, "application/vnd.ms-excel"),
+    ],
+)
+def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, extension, mime_type):
+    file = Mock(spec=File)
+    file.extension = extension
+    file.mime_type = mime_type
+
+    with (
+        patch(
+            "core.workflow.nodes.document_extractor.node.graphon_document_extractor_node.download_file_content",
+            return_value=b"excel",
+        ),
+        patch(
+            "core.workflow.nodes.document_extractor.node.extract_text_from_excel",
+            return_value="excel text",
+        ) as mock_extract,
+    ):
+        result = _extract_text_from_file(
+            document_extractor_node.http_client,
+            file,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+
+    assert result == "excel text"
+    mock_extract.assert_called_once_with(b"excel")
+
+
+def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):
+    file = Mock(spec=File)
+    file.extension = None
+    file.mime_type = None
+
+    with patch(
+        "core.workflow.nodes.document_extractor.node.graphon_document_extractor_node.download_file_content",
+        return_value=b"unknown",
+    ):
+        with pytest.raises(UnsupportedFileTypeError, match="Unable to determine file type"):
+            _extract_text_from_file(
+                document_extractor_node.http_client,
+                file,
+                unstructured_api_config=document_extractor_node._unstructured_api_config,
+            )
+
+
+def test_run_list_file_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_list = Mock(spec=ArrayFileSegment)
+    file_list.value = [Mock(spec=File)]
+    mock_graph_runtime_state.variable_pool.get.return_value = file_list
+
+    with patch(
+        "core.workflow.nodes.document_extractor.node._extract_text_from_file",
+        side_effect=TextExtractionError("bad file"),
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "bad file"
+
+
+def test_run_single_file_segment_requires_file_value(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_segment = Mock(spec=FileSegment)
+    file_segment.value = "not-a-file"
+    mock_graph_runtime_state.variable_pool.get.return_value = file_segment
+
+    result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "Variable ['node_id', 'variable_name'] did not resolve to a file"
+
+
+def test_run_single_file_segment_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_segment = Mock(spec=FileSegment)
+    file_segment.value = Mock(spec=File)
+    mock_graph_runtime_state.variable_pool.get.return_value = file_segment
+
+    with patch(
+        "core.workflow.nodes.document_extractor.node._extract_text_from_file",
+        side_effect=TextExtractionError("single file failed"),
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "single file failed"
+
+
+def test_run_single_file_segment_returns_string_output(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_segment = Mock(spec=FileSegment)
+    file_segment.value = Mock(spec=File)
+    mock_graph_runtime_state.variable_pool.get.return_value = file_segment
+
+    with patch(
+        "core.workflow.nodes.document_extractor.node._extract_text_from_file",
+        return_value="single file text",
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "single file text"}
 
 
 def _make_docx_zip(use_backslash: bool) -> bytes:
