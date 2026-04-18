@@ -19,12 +19,13 @@ import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import { MenuItemContent } from './menu-item-content'
 
-enum DocName {
-  SOC2_Type_I = 'SOC2_Type_I',
-  SOC2_Type_II = 'SOC2_Type_II',
-  ISO_27001 = 'ISO_27001',
-  GDPR = 'GDPR',
-}
+const DocName = {
+  SOC2_Type_I: 'SOC2_Type_I',
+  SOC2_Type_II: 'SOC2_Type_II',
+  ISO_27001: 'ISO_27001',
+  GDPR: 'GDPR',
+} as const
+type DocName = typeof DocName[keyof typeof DocName]
 
 type ComplianceDocActionVisualProps = {
   isCurrentPlanCanDownload: boolean
@@ -61,7 +62,6 @@ function ComplianceDocActionVisual({
   return (
     <Tooltip>
       <TooltipTrigger
-        delay={0}
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>

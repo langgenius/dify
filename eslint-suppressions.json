@@ -3081,11 +3081,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-dropdown/compliance.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/api-based-extension-page/modal.tsx": {
     "no-restricted-imports": {
       "count": 1

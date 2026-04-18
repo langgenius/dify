@@ -189,7 +189,6 @@ const DetailHeader = ({
             {isAutoUpgradeEnabled && !isReadmeView && (
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
