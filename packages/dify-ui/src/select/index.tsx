@@ -12,12 +12,10 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-/** @public */
 export type { Placement }
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
-/** @public */
 export const SelectGroup = BaseSelect.Group
 
 const selectTriggerVariants = cva(
@@ -81,7 +79,6 @@ export function SelectLabel({
   )
 }
 
-/** @public */
 export function SelectSeparator({
   className,
   ...props

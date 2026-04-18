@@ -15,7 +15,6 @@ import { Meter as BaseMeter } from '@base-ui/react/meter'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-/** @public */
 export const MeterRoot = BaseMeter.Root
 export type MeterRootProps = BaseMeter.Root.Props
 
@@ -24,7 +23,6 @@ const meterTrackClassName
 
 export type MeterTrackProps = BaseMeter.Track.Props
 
-/** @public */
 export function MeterTrack({ className, ...props }: MeterTrackProps) {
   return (
     <BaseMeter.Track
@@ -56,7 +54,6 @@ export type MeterIndicatorProps = BaseMeter.Indicator.Props & {
   tone?: MeterTone
 }
 
-/** @public */
 export function MeterIndicator({ className, tone, ...props }: MeterIndicatorProps) {
   return (
     <BaseMeter.Indicator
@@ -69,7 +66,6 @@ export function MeterIndicator({ className, tone, ...props }: MeterIndicatorProp
 const meterValueClassName = 'system-xs-regular text-text-tertiary tabular-nums'
 export type MeterValueProps = BaseMeter.Value.Props
 
-/** @public */
 export function MeterValue({ className, ...props }: MeterValueProps) {
   return (
     <BaseMeter.Value
@@ -82,7 +78,6 @@ export function MeterValue({ className, ...props }: MeterValueProps) {
 const meterLabelClassName = 'system-xs-medium text-text-tertiary'
 export type MeterLabelProps = BaseMeter.Label.Props
 
-/** @public */
 export function MeterLabel({ className, ...props }: MeterLabelProps) {
   return (
     <BaseMeter.Label
