@@ -3,7 +3,7 @@ import type { MeterTone } from '@langgenius/dify-ui/meter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 
-type ProgressBarProps = {
+type UsageMeterProps = {
   percent?: number
   tone?: MeterTone
   indeterminate?: boolean
@@ -11,12 +11,12 @@ type ProgressBarProps = {
   indeterminateFull?: boolean
 }
 
-function ProgressBar({
+function UsageMeter({
   percent = 0,
   tone = 'neutral',
   indeterminate = false,
   indeterminateFull = false,
-}: ProgressBarProps) {
+}: UsageMeterProps) {
   if (indeterminate) {
     return (
       <div
@@ -24,7 +24,7 @@ function ProgressBar({
         className="overflow-hidden rounded-md bg-components-progress-bar-bg"
       >
         <div
-          data-testid="billing-progress-bar-indeterminate"
+          data-testid="billing-usage-meter-indeterminate"
           className={cn(
             'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
             indeterminateFull ? 'w-full' : 'w-[30px]',
@@ -37,10 +37,10 @@ function ProgressBar({
   return (
     <MeterRoot value={Math.min(percent, 100)} max={100}>
       <MeterTrack>
-        <MeterIndicator data-testid="billing-progress-bar" tone={tone} />
+        <MeterIndicator data-testid="billing-usage-meter" tone={tone} />
       </MeterTrack>
     </MeterRoot>
   )
 }
 
-export default ProgressBar
+export default UsageMeter

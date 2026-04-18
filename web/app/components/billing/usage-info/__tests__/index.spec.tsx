@@ -81,7 +81,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const normalBarClass = screen.getByTestId('billing-progress-bar').className
+      const normalBarClass = screen.getByTestId('billing-usage-meter').className
 
       rerender(
         <UsageInfo
@@ -92,7 +92,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const warningBarClass = screen.getByTestId('billing-progress-bar').className
+      const warningBarClass = screen.getByTestId('billing-usage-meter').className
       expect(warningBarClass).not.toBe(normalBarClass)
 
       rerender(
@@ -104,7 +104,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const errorBarClass = screen.getByTestId('billing-progress-bar').className
+      const errorBarClass = screen.getByTestId('billing-usage-meter').className
       expect(errorBarClass).not.toBe(normalBarClass)
       expect(errorBarClass).not.toBe(warningBarClass)
     })
@@ -126,7 +126,7 @@ describe('UsageInfo', () => {
 
   describe('Storage Mode', () => {
     describe('Below Threshold', () => {
-      it('should render indeterminate progress bar when usage is below threshold', () => {
+      it('should render indeterminate usage meter when usage is below threshold', () => {
         render(
           <UsageInfo
             Icon={TestIcon}
@@ -139,8 +139,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar')).not.toBeInTheDocument()
+        expect(screen.getByTestId('billing-usage-meter-indeterminate')).toBeInTheDocument()
+        expect(screen.queryByTestId('billing-usage-meter')).not.toBeInTheDocument()
       })
 
       it('should display "< threshold" format when usage is below threshold (non-sandbox)', () => {
@@ -197,7 +197,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const sandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
+        const sandboxBarClass = screen.getByTestId('billing-usage-meter-indeterminate').className
 
         rerender(
           <UsageInfo
@@ -212,13 +212,13 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const nonSandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
+        const nonSandboxBarClass = screen.getByTestId('billing-usage-meter-indeterminate').className
         expect(sandboxBarClass).not.toBe(nonSandboxBarClass)
       })
     })
 
     describe('Sandbox Full Capacity', () => {
-      it('should render determinate progress bar when sandbox usage >= threshold', () => {
+      it('should render determinate usage meter when sandbox usage >= threshold', () => {
         render(
           <UsageInfo
             Icon={TestIcon}
@@ -232,8 +232,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+        expect(screen.getByTestId('billing-usage-meter')).toBeInTheDocument()
+        expect(screen.queryByTestId('billing-usage-meter-indeterminate')).not.toBeInTheDocument()
       })
 
       it('should display "threshold / threshold unit" format when sandbox is at full capacity', () => {
@@ -258,7 +258,7 @@ describe('UsageInfo', () => {
     })
 
     describe('Pro/Team Users Above Threshold', () => {
-      it('should render normal progress bar when usage >= threshold', () => {
+      it('should render normal usage meter when usage >= threshold', () => {
         render(
           <UsageInfo
             Icon={TestIcon}
@@ -273,8 +273,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+        expect(screen.getByTestId('billing-usage-meter')).toBeInTheDocument()
+        expect(screen.queryByTestId('billing-usage-meter-indeterminate')).not.toBeInTheDocument()
       })
 
       it('should display actual usage when usage >= threshold', () => {

@@ -5,8 +5,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { getThresholdTone } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ProgressBar from '@/app/components/billing/progress-bar'
 import { Plan } from '@/app/components/billing/type'
+import UsageMeter from '@/app/components/billing/usage-meter'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -71,7 +71,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             {total}
           </div>
         </div>
-        <ProgressBar percent={percent} tone={tone} />
+        <UsageMeter percent={percent} tone={tone} />
       </div>
     </div>
   )

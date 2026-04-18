@@ -491,7 +491,7 @@ describe('Capacity Full Components Integration', () => {
       // Should show usage/total fraction "5/5"
       expect(screen.getByText(/5\/5/)).toBeInTheDocument()
       // Should have a progress bar rendered
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('billing-usage-meter')).toBeInTheDocument()
     })
 
     it('should display upgrade tip and upgrade button for professional plan', () => {
@@ -533,7 +533,7 @@ describe('Capacity Full Components Integration', () => {
 
       render(<AppsFull loc="test" />)
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
+      const progressBar = screen.getByTestId('billing-usage-meter')
       expect(progressBar).toHaveClass('bg-components-progress-error-progress')
     })
   })
@@ -820,7 +820,7 @@ describe('Usage Display Edge Cases', () => {
       render(<PlanComp loc="test" />)
 
       // Should have an indeterminate progress bar
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      expect(screen.getByTestId('billing-usage-meter-indeterminate')).toBeInTheDocument()
     })
 
     it('should show actual usage for pro plan above threshold', () => {
@@ -849,7 +849,7 @@ describe('Usage Display Edge Cases', () => {
       render(<PlanComp loc="test" />)
 
       // 20% usage - normal color
-      const progressBars = screen.getAllByTestId('billing-progress-bar')
+      const progressBars = screen.getAllByTestId('billing-usage-meter')
       // At least one should have the normal progress color
       const hasNormalColor = progressBars.some(bar =>
         bar.classList.contains('bg-components-progress-bar-progress-solid'),

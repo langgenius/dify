@@ -197,7 +197,7 @@ describe('AppsFull', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should apply distinct progress bar styling at different usage levels', () => {
+    it('should apply distinct usage meter styling at different usage levels', () => {
       const renderWithUsage = (used: number, total: number) => {
         ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
           plan: {
@@ -209,7 +209,7 @@ describe('AppsFull', () => {
           },
         }))
         const { unmount } = render(<AppsFull loc="billing_dialog" />)
-        const className = screen.getByTestId('billing-progress-bar').className
+        const className = screen.getByTestId('billing-usage-meter').className
         unmount()
         return className
       }

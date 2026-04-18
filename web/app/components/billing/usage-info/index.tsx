@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { NUM_INFINITE } from '../config'
-import ProgressBar from '../progress-bar'
+import UsageMeter from '../usage-meter'
 
 type Props = {
   className?: string
@@ -151,17 +151,16 @@ const UsageInfo: FC<Props> = ({
     return children
   }
 
-  // Render progress bar with optional tooltip wrapper
-  const renderProgressBar = () => {
-    const progressBar = (
-      <ProgressBar
+  const renderUsageMeter = () => {
+    const meter = (
+      <UsageMeter
         percent={isBelowThreshold ? 0 : percent}
         tone={isSandboxFull ? 'error' : tone}
         indeterminate={isBelowThreshold}
         indeterminateFull={isBelowThreshold && isSandboxPlan}
       />
     )
-    return renderWithTooltip(progressBar)
+    return renderWithTooltip(meter)
   }
 
   const renderUsageWithTooltip = () => {
@@ -189,7 +188,7 @@ const UsageInfo: FC<Props> = ({
         {renderUsageWithTooltip()}
         {renderRightInfo()}
       </div>
-      {renderProgressBar()}
+      {renderUsageMeter()}
     </div>
   )
 }
