@@ -6,7 +6,6 @@ import pytest
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
-from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -28,13 +27,26 @@ def _node_constructor(*, return_value):
 
 
 class TestResolveWorkflowNodeClass:
-    def test_document_extractor_v1_uses_workflow_override(self) -> None:
+    def test_matching_version_uses_registry_mapping(self, monkeypatch) -> None:
+        document_extractor_class = sentinel.document_extractor_class
+        latest_node_class = sentinel.latest_document_extractor_class
+        monkeypatch.setattr(
+            node_factory,
+            "get_node_type_classes_mapping",
+            lambda: {
+                BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {
+                    "1": document_extractor_class,
+                    node_factory.LATEST_VERSION: latest_node_class,
+                }
+            },
+        )
+
         resolved = node_factory.resolve_workflow_node_class(
             node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
             node_version="1",
         )
 
-        assert resolved is DocumentExtractorNode
+        assert resolved is document_extractor_class
 
     def test_document_extractor_latest_falls_back_to_registry_mapping(self, monkeypatch) -> None:
         latest_node_class = sentinel.latest_document_extractor_class

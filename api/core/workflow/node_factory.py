@@ -121,18 +121,7 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
 
 
 def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
-    """Resolve the production node class for the requested type/version.
-
-    Most nodes come directly from the shared `graphon` registry snapshot. Dify
-    still overrides `document-extractor` v1 because the workflow layer owns the
-    historical Excel extraction behaviour that was intentionally not pushed back
-    into the shared engine.
-    """
-    if node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR and node_version == "1":
-        from core.workflow.nodes.document_extractor import DocumentExtractorNode
-
-        return DocumentExtractorNode
-
+    """Resolve the production node class for the requested type/version."""
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
