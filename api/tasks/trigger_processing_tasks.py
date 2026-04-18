@@ -304,9 +304,7 @@ def dispatch_triggered_workflow(
             quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
         except QuotaExceededError:
             AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
-            logger.info(
-                "Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id
-            )
+            logger.info("Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id)
             return dispatched_count
 
         node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
