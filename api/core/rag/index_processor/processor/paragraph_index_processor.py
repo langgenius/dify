@@ -7,16 +7,6 @@ from typing import Any, TypedDict, cast
 
 logger = logging.getLogger(__name__)
 
-from graphon.file import File, FileTransferMethod, FileType, file_manager
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
@@ -43,6 +33,16 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -609,11 +609,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             try:
                 # Create File object directly (similar to DatasetRetrieval)
                 file_obj = File(
-                    id=upload_file.id,
+                    file_id=upload_file.id,
                     filename=upload_file.name,
                     extension="." + upload_file.extension,
                     mime_type=upload_file.mime_type,
-                    type=FileType.IMAGE,
+                    file_type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.LOCAL_FILE,
                     remote_url=upload_file.source_url,
                     reference=build_file_reference(

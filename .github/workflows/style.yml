@@ -77,6 +77,8 @@ jobs:
         with:
           files: |
             web/**
+            e2e/**
+            sdks/nodejs-client/**
             packages/**
             package.json
             pnpm-lock.yaml
@@ -95,14 +97,14 @@ jobs:
         id: eslint-cache-restore
         uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
-          path: web/.eslintcache
-          key: ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
+          path: .eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
+            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
+        working-directory: .
         run: vp run lint:ci
 
       - name: Web tsslint
@@ -112,7 +114,7 @@ jobs:
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
+        working-directory: .
         run: vp run type-check
 
       - name: Web dead code check
@@ -124,7 +126,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
-          path: web/.eslintcache
+          path: .eslintcache
           key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
   superlinter:

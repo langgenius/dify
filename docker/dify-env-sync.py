@@ -172,7 +172,10 @@ def analyze_value_change(current: str, recommended: str) -> str | None:
         return None
 
     # Boolean comparison
-    if current.lower() in {"true", "false"} and recommended.lower() in {"true", "false"}:
+    if current.lower() in {"true", "false"} and recommended.lower() in {
+        "true",
+        "false",
+    }:
         if current.lower() != recommended.lower():
             return colorize(BLUE, f"  -> Boolean value change ({current} -> {recommended})")
         return None
@@ -187,7 +190,10 @@ def analyze_value_change(current: str, recommended: str) -> str | None:
 
     # String length
     if len(current) != len(recommended):
-        return colorize(YELLOW, f"  -> String length change ({len(current)} -> {len(recommended)} characters)")
+        return colorize(
+            YELLOW,
+            f"  -> String length change ({len(current)} -> {len(recommended)} characters)",
+        )
 
     return None
 
@@ -311,7 +317,10 @@ def sync_env_file(work_dir: Path, env_vars: dict[str, str], diffs: dict[str, tup
 
     env_var_pattern = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
-    with example_file.open(encoding="utf-8") as src, new_env_file.open("w", encoding="utf-8") as dst:
+    with (
+        example_file.open(encoding="utf-8") as src,
+        new_env_file.open("w", encoding="utf-8") as dst,
+    ):
         for line in src:
             raw_line = line.rstrip("\n")
             match = env_var_pattern.match(raw_line)

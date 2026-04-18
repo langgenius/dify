@@ -3,17 +3,17 @@ from typing import Any
 
 import httpx
 import pytest
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.file.file_manager import file_manager
-from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from graphon.nodes.http_request.entities import HttpRequestNodeTimeout, Response
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file.file_manager import file_manager
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.nodes.http_request.entities import HttpRequestNodeData, HttpRequestNodeTimeout, Response
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
@@ -66,8 +66,8 @@ def test_get_default_config_uses_injected_http_request_config():
     assert default_config["retry_config"]["max_retries"] == 7
 
 
-def test_get_default_config_with_malformed_http_request_config_raises_value_error():
-    with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+def test_get_default_config_with_malformed_http_request_config_raises_type_error():
+    with pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"):
         HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"})
 
 
@@ -114,8 +114,8 @@ def _build_http_node(
         start_at=time.perf_counter(),
     )
     return HttpRequestNode(
-        id="http-node",
-        config=node_config,
+        node_id="http-node",
+        config=HttpRequestNodeData.model_validate(node_data),
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,

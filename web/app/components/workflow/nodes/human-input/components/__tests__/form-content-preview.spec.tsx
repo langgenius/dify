@@ -35,9 +35,8 @@ vi.mock('@/app/components/base/badge', () => ({
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  __esModule: true,
-  default: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
     <button type="button" data-testid={`action-${variant}`}>{children}</button>
   ),
 }))
@@ -68,7 +67,7 @@ vi.mock('../variable-in-markdown', () => ({
   Note: ({ defaultInput, nodeName }: {
     defaultInput: { selector: string[] }
     nodeName: (nodeId: string) => string
-  }) => <div data-testid="note">{nodeName(defaultInput.selector[0])}</div>,
+  }) => <div data-testid="note">{nodeName(defaultInput.selector[0]!)}</div>,
 }))
 
 describe('FormContentPreview', () => {
@@ -109,13 +108,13 @@ describe('FormContentPreview', () => {
       />,
     )
 
-    expect(container.firstChild).toHaveStyle({ right: '328px' })
-    expect(screen.getByTestId('badge')).toHaveTextContent('nodes.humanInput.formContent.preview')
-    expect(screen.getByTestId('variable-path')).toHaveTextContent('#Classifier.answer#')
-    expect(screen.getByTestId('note')).toHaveTextContent('Classifier')
-    expect(screen.getByText(/Can't find note:/)).toHaveTextContent('missing_field')
-    expect(screen.getByTestId('action-primary')).toHaveTextContent('Approve')
-    expect(screen.getByText('nodes.humanInput.editor.previewTip')).toBeInTheDocument()
+    expect(container.firstChild)!.toHaveStyle({ right: '328px' })
+    expect(screen.getByTestId('badge'))!.toHaveTextContent('nodes.humanInput.formContent.preview')
+    expect(screen.getByTestId('variable-path'))!.toHaveTextContent('#Classifier.answer#')
+    expect(screen.getByTestId('note'))!.toHaveTextContent('Classifier')
+    expect(screen.getByText(/Can't find note:/))!.toHaveTextContent('missing_field')
+    expect(screen.getByTestId('action-primary'))!.toHaveTextContent('Approve')
+    expect(screen.getByText('nodes.humanInput.editor.previewTip'))!.toBeInTheDocument()
   })
 
   it('should close the preview when the close action is clicked', () => {

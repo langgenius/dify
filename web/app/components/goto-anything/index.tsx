@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC, KeyboardEvent } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Command } from 'cmdk'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import { SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
@@ -22,7 +22,7 @@ type Props = {
   onHide?: () => void
 }
 
-const GotoAnything: FC<Props> = ({
+const GotoAnythingDialog: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
@@ -111,7 +111,7 @@ const GotoAnything: FC<Props> = ({
       // Check if it's a complete slash command
       if (query.startsWith('/')) {
         const commandName = query.substring(1).split(' ')[0]
-        const handler = slashCommandRegistry.findCommand(commandName)
+        const handler = slashCommandRegistry.findCommand(commandName!)
 
         // If it's a direct mode command, execute immediately
         const isAvailable = handler?.isAvailable?.() ?? true
@@ -131,8 +131,10 @@ const GotoAnything: FC<Props> = ({
       return 'loading'
     if (isError)
       return 'error'
-    if (!searchQuery.trim())
-      return 'default'
+    if (!searchQuery.trim()) {
+      // Show default hint only when there are no recent items to display
+      return dedupedResults.length === 0 ? 'default' : null
+    }
     if (dedupedResults.length === 0 && !isCommandsMode)
       return 'no-results'
     return null
@@ -141,14 +143,14 @@ const GotoAnything: FC<Props> = ({
   return (
     <>
       <SlashCommandProvider />
-      <Modal
-        isShow={show}
-        onClose={modalClose}
-        closable={false}
-        className="w-[480px]! p-0!"
-        highPriority={true}
+      <Dialog
+        open={show}
+        onOpenChange={(open) => {
+          if (!open)
+            modalClose()
+        }}
       >
-        <div className="flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl">
+        <DialogContent className="w-[480px]! overflow-hidden p-0!">
           <Command
             className="outline-hidden"
             value={cmdVal}
@@ -217,8 +219,8 @@ const GotoAnything: FC<Props> = ({
               hasQuery={!!searchQuery.trim()}
             />
           </Command>
-        </div>
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
       {activePlugin && (
         <InstallFromMarketplace
@@ -232,15 +234,10 @@ const GotoAnything: FC<Props> = ({
   )
 }
 
-/**
- * GotoAnything component with context provider
- */
-const GotoAnythingWithContext: FC<Props> = (props) => {
+export const GotoAnything: FC<Props> = (props) => {
   return (
     <GotoAnythingProvider>
-      <GotoAnything {...props} />
+      <GotoAnythingDialog {...props} />
     </GotoAnythingProvider>
   )
 }
-
-export default GotoAnythingWithContext

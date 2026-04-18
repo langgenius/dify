@@ -6,8 +6,6 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from graphon.model_runtime.entities.model_entities import AIModelEntity
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
@@ -18,6 +16,8 @@ from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseModel):
@@ -73,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
 
 
 class PluginModelSchemaEntity(BaseModel):

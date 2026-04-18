@@ -5,10 +5,11 @@ import type {
   ModelItem,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
@@ -16,7 +17,6 @@ import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
@@ -181,16 +181,16 @@ const Popup: FC<PopupProps> = ({
   }, [modelProviders])
 
   return (
-    <div className="max-h-[480px] overflow-y-auto no-scrollbar">
-      <div className="sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3">
+    <div className="no-scrollbar max-h-[480px] overflow-y-auto">
+      <div className="sticky top-0 z-10 bg-components-panel-bg pt-3 pr-2 pb-1 pl-3">
         <div className={`
-          flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]
+          flex h-8 items-center rounded-lg border pr-[10px] pl-[9px]
           ${searchText ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-transparent bg-components-input-bg-normal'}
         `}
         >
           <span
             className={`
-              i-ri-search-line mr-[7px] h-[14px] w-[14px] shrink-0
+              mr-[7px] i-ri-search-line h-[14px] w-[14px] shrink-0
               ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
             `}
           />
@@ -203,7 +203,7 @@ const Popup: FC<PopupProps> = ({
           {
             searchText && (
               <span
-                className="i-custom-vender-solid-general-x-circle ml-1.5 h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary"
+                className="ml-1.5 i-custom-vender-solid-general-x-circle h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary"
                 onClick={() => setSearchText('')}
               />
             )
@@ -215,7 +215,7 @@ const Popup: FC<PopupProps> = ({
             className="mt-2 flex items-center gap-1 rounded-lg bg-background-section-burn px-2.5 py-2"
           >
             <span className="i-ri-information-2-fill h-4 w-4 shrink-0 text-text-accent" />
-            <p className="text-text-secondary system-xs-medium">
+            <p className="system-xs-medium text-text-secondary">
               {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
             </p>
           </div>
@@ -237,15 +237,15 @@ const Popup: FC<PopupProps> = ({
           ))
         }
         {!filteredModelList.length && !installedModelList.length && (
-          <div className="flex flex-col gap-2 radius-lg bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
-            <div className="flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
+          <div className="flex flex-col gap-2 rounded-[10px] bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
               <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-text-secondary system-sm-medium">
+              <p className="system-sm-medium text-text-secondary">
                 {t('modelProvider.selector.noProviderConfigured', { ns: 'common' })}
               </p>
-              <p className="text-text-tertiary system-xs-regular">
+              <p className="system-xs-regular text-text-tertiary">
                 {t('modelProvider.selector.noProviderConfiguredDesc', { ns: 'common' })}
               </p>
             </div>
@@ -263,7 +263,7 @@ const Popup: FC<PopupProps> = ({
           </div>
         )}
         {!filteredModelList.length && installedModelList.length > 0 && (
-          <div className="break-all px-3 py-1.5 text-center text-xs leading-[18px] text-text-tertiary">
+          <div className="px-3 py-1.5 text-center text-xs leading-[18px] break-all text-text-tertiary">
             {`No model found for \u201C${searchText}\u201D`}
           </div>
         )}
@@ -273,7 +273,7 @@ const Popup: FC<PopupProps> = ({
             <div className="mb-1">
               <div className="flex h-[22px] items-center px-3">
                 <div
-                  className="flex flex-1 cursor-pointer items-center text-text-primary system-sm-medium"
+                  className="flex flex-1 cursor-pointer items-center system-sm-medium text-text-primary"
                   onClick={() => setMarketplaceCollapsed(prev => !prev)}
                 >
                   {t('modelProvider.selector.fromMarketplace', { ns: 'common' })}
@@ -288,11 +288,11 @@ const Popup: FC<PopupProps> = ({
                     return (
                       <div
                         key={key}
-                        className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pl-3 pr-0.5 hover:bg-state-base-hover"
+                        className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 hover:bg-state-base-hover"
                       >
                         <div className="flex flex-1 items-center gap-2 py-0.5">
                           <Icon className="h-5 w-5 shrink-0 rounded-md" />
-                          <span className="text-text-secondary system-sm-regular">{modelNameMap[key]}</span>
+                          <span className="system-sm-regular text-text-secondary">{modelNameMap[key]}</span>
                         </div>
                         <Button
                           variant="secondary"
@@ -318,7 +318,7 @@ const Popup: FC<PopupProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <span className="flex-1 text-text-accent system-xs-regular">
+                    <span className="flex-1 system-xs-regular text-text-accent">
                       {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
                     </span>
                     <span className="i-ri-arrow-right-up-line h-3! w-3! text-text-accent" />

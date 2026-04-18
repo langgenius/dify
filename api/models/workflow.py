@@ -8,19 +8,6 @@ from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from graphon.enums import (
-    BuiltinNodeTypes,
-    NodeType,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from graphon.file import File
-from graphon.file.constants import maybe_file_object
-from graphon.variables import utils as variable_utils
-from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from sqlalchemy import (
     DateTime,
     Index,
@@ -37,13 +24,26 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    NodeType,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import File
+from graphon.file.constants import maybe_file_object
+from graphon.variables import utils as variable_utils
+from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -53,19 +53,21 @@ if TYPE_CHECKING:
     from .model import AppMode, UploadFile
 
 
-from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
-
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from factories import variable_factory
+from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsMixin, TypeBase
+from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
-from .utils.file_input_compat import build_file_from_stored_mapping
+from .utils.file_input_compat import (
+    build_file_from_mapping_without_lookup,
+    build_file_from_stored_mapping,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +293,7 @@ class Workflow(Base):  # bug
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
-        return NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
+        return NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
 
     @staticmethod
     def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
@@ -490,7 +492,7 @@ class Workflow(Base):  # bug
 
         :return: hash
         """
-        entity = {"graph": self.graph_dict, "features": self.features_dict}
+        entity = {"graph": self.graph_dict}
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
@@ -671,6 +673,29 @@ class Workflow(Base):  # bug
         return str(d)
 
 
+class WorkflowRunDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    type: WorkflowType
+    triggered_from: WorkflowRunTriggeredFrom
+    version: str
+    graph: Mapping[str, Any]
+    inputs: Mapping[str, Any]
+    status: WorkflowExecutionStatus
+    outputs: Mapping[str, Any]
+    error: str | None
+    elapsed_time: float
+    total_tokens: int
+    total_steps: int
+    created_by_role: CreatorUserRole
+    created_by: str
+    created_at: datetime
+    finished_at: datetime | None
+    exceptions_count: int
+
+
 class WorkflowRun(Base):
     """
     Workflow Run
@@ -742,8 +767,8 @@ class WorkflowRun(Base):
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
-        "WorkflowPause",
-        primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
+        lambda: WorkflowPause,
+        primaryjoin=lambda: WorkflowRun.id == orm.foreign(WorkflowPause.workflow_run_id),
         uselist=False,
         # require explicit preloading.
         lazy="raise",
@@ -790,29 +815,29 @@ class WorkflowRun(Base):
     def workflow(self):
         return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "app_id": self.app_id,
-            "workflow_id": self.workflow_id,
-            "type": self.type,
-            "triggered_from": self.triggered_from,
-            "version": self.version,
-            "graph": self.graph_dict,
-            "inputs": self.inputs_dict,
-            "status": self.status,
-            "outputs": self.outputs_dict,
-            "error": self.error,
-            "elapsed_time": self.elapsed_time,
-            "total_tokens": self.total_tokens,
-            "total_steps": self.total_steps,
-            "created_by_role": self.created_by_role,
-            "created_by": self.created_by,
-            "created_at": self.created_at,
-            "finished_at": self.finished_at,
-            "exceptions_count": self.exceptions_count,
-        }
+    def to_dict(self) -> WorkflowRunDict:
+        return WorkflowRunDict(
+            id=self.id,
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            type=self.type,
+            triggered_from=self.triggered_from,
+            version=self.version,
+            graph=self.graph_dict,
+            inputs=self.inputs_dict,
+            status=self.status,
+            outputs=self.outputs_dict,
+            error=self.error,
+            elapsed_time=self.elapsed_time,
+            total_tokens=self.total_tokens,
+            total_steps=self.total_steps,
+            created_by_role=self.created_by_role,
+            created_by=self.created_by,
+            created_at=self.created_at,
+            finished_at=self.finished_at,
+            exceptions_count=self.exceptions_count,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
@@ -1196,6 +1221,18 @@ class WorkflowAppLogCreatedFrom(StrEnum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
+class WorkflowAppLogDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    workflow_run_id: str
+    created_from: WorkflowAppLogCreatedFrom
+    created_by_role: CreatorUserRole
+    created_by: str
+    created_at: datetime
+
+
 class WorkflowAppLog(TypeBase):
     """
     Workflow App execution log, excluding workflow debugging records.
@@ -1273,8 +1310,8 @@ class WorkflowAppLog(TypeBase):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> WorkflowAppLogDict:
+        result: WorkflowAppLogDict = {
             "id": self.id,
             "tenant_id": self.tenant_id,
             "app_id": self.app_id,
@@ -1285,6 +1322,7 @@ class WorkflowAppLog(TypeBase):
             "created_by": self.created_by,
             "created_at": self.created_at,
         }
+        return result
 
 
 class WorkflowArchiveLog(TypeBase):
@@ -1653,7 +1691,7 @@ class WorkflowDraftVariable(Base):
                 return cast(Any, value)
             normalized_file = dict(value)
             normalized_file.pop("tenant_id", None)
-            return File.model_validate(normalized_file)
+            return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
         elif isinstance(value, list) and value:
             value_list = cast(list[Any], value)
             first: Any = value_list[0]
@@ -1663,7 +1701,7 @@ class WorkflowDraftVariable(Base):
             for item in value_list:
                 normalized_file = dict(cast(dict[str, Any], item))
                 normalized_file.pop("tenant_id", None)
-                file_list.append(File.model_validate(normalized_file))
+                file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
             return cast(Any, file_list)
         else:
             return cast(Any, value)
@@ -1941,7 +1979,7 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPause(DefaultFieldsMixin, Base):
+class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
 
@@ -1980,6 +2018,11 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         nullable=False,
     )
 
+    # state_object_key stores the object key referencing the serialized runtime state
+    # of the `GraphEngine`. This object captures the complete execution context of the
+    # workflow at the moment it was paused, enabling accurate resumption.
+    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
     # `resumed_at` records the timestamp when the suspended workflow was resumed.
     # It is set to `NULL` if the workflow has not been resumed.
     #
@@ -1988,25 +2031,23 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
+        default=None,
     )
 
-    # state_object_key stores the object key referencing the serialized runtime state
-    # of the `GraphEngine`. This object captures the complete execution context of the
-    # workflow at the moment it was paused, enabling accurate resumption.
-    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
-
-    # Relationship to WorkflowRun
+    # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+        lambda: WorkflowRun,
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
+        primaryjoin=lambda: WorkflowPause.workflow_run_id == WorkflowRun.id,
         back_populates="pause",
+        init=False,
     )
 
 
-class WorkflowPauseReason(DefaultFieldsMixin, Base):
+class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
@@ -2049,16 +2090,20 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+        init=False,
     )
 
     @classmethod
-    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
         if isinstance(pause_reason, HumanInputRequired):
             return cls(
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+                pause_id=pause_id,
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                form_id=pause_reason.form_id,
+                node_id=pause_reason.node_id,
             )
         elif isinstance(pause_reason, SchedulingPause):
-            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
         else:
             raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 

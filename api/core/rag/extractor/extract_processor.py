@@ -95,9 +95,9 @@ class ExtractProcessor:
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
             with tempfile.TemporaryDirectory() as temp_dir:
+                upload_file = extract_setting.upload_file
                 if not file_path:
-                    assert extract_setting.upload_file is not None, "upload_file is required"
-                    upload_file: UploadFile = extract_setting.upload_file
+                    assert upload_file is not None, "upload_file is required"
                     suffix = Path(upload_file.key).suffix
                     # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
                     file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
@@ -113,6 +113,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
+                        assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -123,6 +124,7 @@ class ExtractProcessor:
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
+                        assert upload_file is not None
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -149,12 +151,14 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
+                        assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
+                        assert upload_file is not None
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)

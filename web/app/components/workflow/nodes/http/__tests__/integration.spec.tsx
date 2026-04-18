@@ -289,7 +289,7 @@ describe('http path', () => {
       const inputs = screen.getAllByRole('textbox')
       fireEvent.change(inputs[0] as HTMLInputElement, { target: { value: 'X-Token' } })
       fireEvent.focus(inputs[1] as HTMLInputElement)
-      expect(inputs[1]).toHaveClass('border-components-input-border-active')
+      expect(inputs[1])!.toHaveClass('border-components-input-border-active')
       fireEvent.change(inputs[1] as HTMLInputElement, { target: { value: 'secret-token' } })
       fireEvent.blur(inputs[1] as HTMLInputElement)
       await user.click(screen.getByText('common.operation.save'))
@@ -339,7 +339,7 @@ describe('http path', () => {
       )
 
       expect(container.querySelector('svg')).toBeNull()
-      expect(screen.getByDisplayValue('https://api.example.com')).toHaveAttribute('placeholder', '')
+      expect(screen.getByDisplayValue('https://api.example.com'))!.toHaveAttribute('placeholder', '')
     })
 
     it('should update focus styling for editable inputs and show the remove action again on blur-sm', () => {
@@ -357,7 +357,7 @@ describe('http path', () => {
 
       const input = screen.getByDisplayValue('alice')
       fireEvent.focus(input)
-      expect(input).toHaveClass('bg-components-input-bg-active')
+      expect(input)!.toHaveClass('bg-components-input-bg-active')
       expect(container.querySelector('button')).toBeNull()
       fireEvent.blur(input)
       expect(container.querySelector('button')).not.toBeNull()
@@ -373,7 +373,7 @@ describe('http path', () => {
         />,
       )
 
-      expect(screen.getByText('missing-value')).toBeInTheDocument()
+      expect(screen.getByText('missing-value'))!.toBeInTheDocument()
     })
 
     it('should clamp timeout values and propagate changes', async () => {
@@ -436,8 +436,8 @@ describe('http path', () => {
         </div>,
       )
 
-      fireEvent.change(screen.getAllByDisplayValue('name:alice')[0], { target: { value: 'name:bob' } })
-      fireEvent.blur(screen.getAllByDisplayValue('name:bob')[0])
+      fireEvent.change(screen.getAllByDisplayValue('name:alice')[0]!, { target: { value: 'name:bob' } })
+      fireEvent.blur(screen.getAllByDisplayValue('name:bob')[0]!)
       await user.click(screen.getByText('workflow.nodes.http.keyValueEdit'))
 
       expect(onChange).toHaveBeenCalled()
@@ -455,7 +455,7 @@ describe('http path', () => {
         />,
       )
 
-      expect(container).toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should edit standalone input items and key-value rows', async () => {
@@ -494,11 +494,39 @@ describe('http path', () => {
         </div>,
       )
 
-      fireEvent.change(screen.getAllByDisplayValue('alice')[0], { target: { value: 'bob' } })
-      await user.click(screen.getByText('text'))
-      await user.click(screen.getByText('file'))
+      fireEvent.change(screen.getAllByDisplayValue('alice')[0]!, { target: { value: 'bob' } })
+      await user.click(screen.getAllByRole('combobox', { name: 'workflow.nodes.http.type' })[0]!)
+      await user.click(screen.getByRole('option', { name: /file/i }))
 
       expect(onChange).toHaveBeenCalled()
+    })
+
+    it('should only append a new key-value row after the last value field receives content', () => {
+      const onChange = vi.fn()
+      const onRemove = vi.fn()
+      const onAdd = vi.fn()
+      render(
+        <KeyValueItem
+          instanceId="kv-append"
+          nodeId="node-1"
+          readonly={false}
+          canRemove
+          payload={{ id: 'kv-append', key: 'name', value: '', type: 'text' } as any}
+          onChange={onChange}
+          onRemove={onRemove}
+          isLastItem
+          onAdd={onAdd}
+        />,
+      )
+
+      const valueInput = screen.getAllByPlaceholderText('workflow.nodes.http.insertVarPlaceholder')[1]!
+
+      fireEvent.click(valueInput)
+      expect(onAdd).not.toHaveBeenCalled()
+
+      fireEvent.change(valueInput, { target: { value: 'alice' } })
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ value: 'alice' }))
+      expect(onAdd).toHaveBeenCalledTimes(1)
     })
 
     it('should edit key-only rows and select file payload rows', async () => {
@@ -522,12 +550,41 @@ describe('http path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('attachment'), { target: { value: 'upload' } })
-      expect(screen.getByText('file-filter:true:false')).toBeInTheDocument()
+      expect(screen.getByText('file-filter:true:false'))!.toBeInTheDocument()
       await user.click(screen.getByText('pick-file'))
       await user.click(screen.getByText('remove-file'))
 
       expect(onChange).toHaveBeenCalled()
       expect(onRemove).toHaveBeenCalled()
+    })
+
+    it('should show the full file-type menu and update the row type selection', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <KeyValueItem
+          instanceId="kv-type"
+          nodeId="node-1"
+          readonly={false}
+          canRemove
+          payload={{ id: 'kv-type', key: 'attachment', value: '', type: 'text' } as any}
+          onChange={onChange}
+          onRemove={vi.fn()}
+          isLastItem={false}
+          onAdd={vi.fn()}
+          isSupportFile
+        />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'workflow.nodes.http.type' }))
+
+      const fileOption = screen.getByRole('option', { name: /file/i })
+      expect(screen.getByRole('option', { name: /text/i }))!.toBeInTheDocument()
+      expect(fileOption.closest('.h-7')).toBeNull()
+
+      await user.click(fileOption)
+
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ type: 'file' }))
     })
 
     it('should update the raw-text body payload', () => {
@@ -573,7 +630,7 @@ describe('http path', () => {
         />,
       )
 
-      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(screen.getByRole('textbox'))!.toHaveValue('')
     })
 
     it('should switch to key-value body types and propagate key-value edits', () => {
@@ -641,7 +698,7 @@ describe('http path', () => {
         />,
       )
 
-      expect(screen.getByText('file-filter:true:false')).toBeInTheDocument()
+      expect(screen.getByText('file-filter:true:false'))!.toBeInTheDocument()
       await user.click(screen.getByText('pick-file'))
 
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -662,8 +719,8 @@ describe('http path', () => {
         { nodes: [], edges: [] },
       )
 
-      expect(screen.getByText(Method.get)).toBeInTheDocument()
-      expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
+      expect(screen.getByText(Method.get))!.toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com'))!.toBeInTheDocument()
     })
 
     it('should render nothing when the request url is empty', () => {
@@ -682,13 +739,13 @@ describe('http path', () => {
     it('should render the panel sections and output vars', async () => {
       renderPanel()
 
-      expect(screen.getByText('body:string')).toBeInTheDocument()
-      expect(screen.getByText('status_code:number')).toBeInTheDocument()
-      expect(screen.getByText('headers:object')).toBeInTheDocument()
-      expect(screen.getByText('files:Array[File]')).toBeInTheDocument()
+      expect(screen.getByText('body:string'))!.toBeInTheDocument()
+      expect(screen.getByText('status_code:number'))!.toBeInTheDocument()
+      expect(screen.getByText('headers:object'))!.toBeInTheDocument()
+      expect(screen.getByText('files:Array[File]'))!.toBeInTheDocument()
       expect(screen.getAllByText('workflow.nodes.http.authorization.authorization').length).toBeGreaterThan(0)
-      expect(screen.getByText('workflow.nodes.http.curl.title')).toBeInTheDocument()
-      expect(screen.getByText('curl-panel')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.http.curl.title'))!.toBeInTheDocument()
+      expect(screen.getByText('curl-panel'))!.toBeInTheDocument()
     })
 
     it('should hide modal overlays when the panel is readonly', () => {

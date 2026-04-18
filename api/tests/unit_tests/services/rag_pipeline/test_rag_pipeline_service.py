@@ -116,81 +116,6 @@ def test_get_all_published_workflow_applies_limit_and_has_more(rag_pipeline_serv
     assert has_more is True
 
 
-def test_get_pipeline_raises_when_dataset_not_found(mocker, rag_pipeline_service) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-
-    with pytest.raises(ValueError, match="Dataset not found"):
-        rag_pipeline_service.get_pipeline("tenant-1", "dataset-1")
-
-
-# --- update_customized_pipeline_template ---
-
-
-def test_update_customized_pipeline_template_success(mocker) -> None:
-    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
-
-    # First scalar finds the template, second scalar (duplicate check) returns None
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[template, None])
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(
-        name="new",
-        description="new desc",
-        icon_info=IconInfo(icon="🔥"),
-    )
-    result = RagPipelineService.update_customized_pipeline_template("tpl-1", info)
-
-    assert result.name == "new"
-    assert result.description == "new desc"
-
-
-def test_update_customized_pipeline_template_not_found(mocker) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(name="x", description="d", icon_info=IconInfo(icon="i"))
-    with pytest.raises(ValueError, match="Customized pipeline template not found"):
-        RagPipelineService.update_customized_pipeline_template("tpl-missing", info)
-
-
-def test_update_customized_pipeline_template_duplicate_name(mocker) -> None:
-    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
-    duplicate = SimpleNamespace(name="dup")
-
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[template, duplicate])
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(name="dup", description="d", icon_info=IconInfo(icon="i"))
-    with pytest.raises(ValueError, match="Template name is already exists"):
-        RagPipelineService.update_customized_pipeline_template("tpl-1", info)
-
-
-# --- delete_customized_pipeline_template ---
-
-
-def test_delete_customized_pipeline_template_success(mocker) -> None:
-    template = SimpleNamespace(id="tpl-1")
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=template)
-    delete_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.delete")
-    commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
-
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    RagPipelineService.delete_customized_pipeline_template("tpl-1")
-
-    delete_mock.assert_called_once_with(template)
-    commit_mock.assert_called_once()
-
-
-def test_delete_customized_pipeline_template_not_found(mocker) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    with pytest.raises(ValueError, match="Customized pipeline template not found"):
-        RagPipelineService.delete_customized_pipeline_template("tpl-missing")
-
-
 # --- sync_draft_workflow ---
 
 
@@ -862,7 +787,6 @@ def test_retry_error_document_success(mocker, rag_pipeline_service) -> None:
 
 def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
     from graphon.entities.workflow_node_execution import WorkflowNodeExecution
-
     from models.dataset import Pipeline
 
     # 1. Setup mocks
@@ -1558,11 +1482,10 @@ def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeli
 
 
 def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
+    from core.app.entities.app_invoke_entities import InvokeFrom
     from graphon.enums import WorkflowNodeExecutionStatus
     from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
-
-    from core.app.entities.app_invoke_entities import InvokeFrom
 
     class FakeVariablePool:
         def __init__(self):

@@ -1,4 +1,5 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
@@ -6,7 +7,6 @@ import { getFileType } from '@/app/components/datasets/common/image-uploader/uti
 import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 import { PROGRESS_ERROR } from '../constants'
 

@@ -35,7 +35,7 @@ function parseMarketplaceIdentifier(identifier?: string): MarketplacePluginInfo 
     return null
 
   const withoutHash = identifier.split('@')[0]
-  const [organization, nameAndVersionPart] = withoutHash.split('/')
+  const [organization, nameAndVersionPart] = withoutHash!.split('/')
   if (!organization || !nameAndVersionPart)
     return null
 

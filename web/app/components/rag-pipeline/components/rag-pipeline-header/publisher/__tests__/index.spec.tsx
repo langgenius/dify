@@ -79,7 +79,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -688,15 +688,11 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        const cancelButtons = screen.getAllByRole('button')
-        const cancelButton = cancelButtons.find(btn =>
-          btn.className.includes('cancel') || btn.textContent?.includes('Cancel'),
-        )
-        if (cancelButton)
-          fireEvent.click(cancelButton)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-        // Note: This test verifies the confirm modal can be displayed
-        expect(screen.getByText('pipeline.common.confirmPublishContent')).toBeInTheDocument()
+        await waitFor(() => {
+          expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        })
       })
 
       it('should publish when confirm is clicked in confirm modal', async () => {
@@ -711,7 +707,11 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        expect(screen.getByText('pipeline.common.confirmPublishContent')).toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+        await waitFor(() => {
+          expect(mockPublishWorkflow).toHaveBeenCalled()
+        })
       })
     })
 

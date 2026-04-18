@@ -20,7 +20,7 @@ const {
   useDocumentTitleMock: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: notifyMock,
   },

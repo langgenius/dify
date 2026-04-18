@@ -260,14 +260,14 @@ describe('InstallMulti Component', () => {
     it('should render without crashing', () => {
       render(<InstallMulti {...defaultProps} />)
 
-      expect(screen.getByTestId('package-item')).toBeInTheDocument()
+      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
     })
 
     it('should render PackageItem for package type dependency', () => {
       render(<InstallMulti {...defaultProps} />)
 
-      expect(screen.getByTestId('package-item')).toBeInTheDocument()
-      expect(screen.getByTestId('package-item-name')).toHaveTextContent('Package Plugin 0')
+      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('package-item-name'))!.toHaveTextContent('Package Plugin 0')
     })
 
     it('should render GithubItem for github type dependency', async () => {
@@ -279,9 +279,9 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
-      expect(screen.getByTestId('github-item-repo')).toHaveTextContent('test-org/plugin-0')
+      expect(screen.getByTestId('github-item-repo'))!.toHaveTextContent('test-org/plugin-0')
     })
 
     it('should render MarketplaceItem for marketplace type dependency', async () => {
@@ -293,7 +293,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
       })
     })
 
@@ -309,8 +309,8 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...mixedProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
     })
 
@@ -328,7 +328,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('github-item')).toBeInTheDocument()
+        expect(screen.queryByTestId('github-item'))!.toBeInTheDocument()
       })
     })
   })
@@ -355,13 +355,13 @@ describe('InstallMulti Component', () => {
 
       render(<InstallMulti {...propsWithSelected} />)
 
-      expect(screen.getByTestId('package-item-checked')).toHaveTextContent('checked')
+      expect(screen.getByTestId('package-item-checked'))!.toHaveTextContent('checked')
     })
 
     it('should show unchecked state when plugin is not selected', () => {
       render(<InstallMulti {...defaultProps} />)
 
-      expect(screen.getByTestId('package-item-checked')).toHaveTextContent('unchecked')
+      expect(screen.getByTestId('package-item-checked'))!.toHaveTextContent('unchecked')
     })
   })
 
@@ -427,7 +427,7 @@ describe('InstallMulti Component', () => {
       // The getVersionInfo function returns hasInstalled, installedVersion, toInstallVersion
       // These are passed to child components
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
     })
   })
@@ -443,7 +443,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
 
       // The onFetchedPayload callback should have been called by the mock
@@ -462,7 +462,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
       })
     })
   })
@@ -485,7 +485,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
     })
 
@@ -498,7 +498,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithMarketplace} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
     })
   })
@@ -509,7 +509,8 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       // Package plugins are initialized immediately
-      expect(screen.getByTestId('package-item')).toBeInTheDocument()
+      // Package plugins are initialized immediately
+      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
     })
 
     it('should update plugins when GitHub plugin is fetched', async () => {
@@ -521,7 +522,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
     })
   })
@@ -553,7 +554,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
     })
 
@@ -613,11 +614,12 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
       })
 
       // Version should be displayed
-      expect(screen.getByTestId('marketplace-item-version')).toBeInTheDocument()
+      // Version should be displayed
+      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
     })
   })
 
@@ -706,7 +708,8 @@ describe('InstallMulti Component', () => {
 
       await waitFor(() => {
         // Component should render
-        expect(document.body).toBeInTheDocument()
+        // Component should render
+        expect(document.body)!.toBeInTheDocument()
       })
     })
   })
@@ -717,7 +720,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
 
       // The getVersionInfo callback should return correct structure
@@ -738,10 +741,10 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
 
-      expect(screen.getByTestId('github-item-checked')).toHaveTextContent('checked')
+      expect(screen.getByTestId('github-item-checked'))!.toHaveTextContent('checked')
     })
 
     it('should show checked state for marketplace item when selected', async () => {
@@ -755,7 +758,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
       })
 
       // The checked prop should be passed to the item
@@ -771,10 +774,10 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithoutSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
       })
 
-      expect(screen.getByTestId('github-item-checked')).toHaveTextContent('unchecked')
+      expect(screen.getByTestId('github-item-checked'))!.toHaveTextContent('unchecked')
     })
   })
 
@@ -823,7 +826,7 @@ describe('InstallMulti Component', () => {
 
       const packageItems = screen.getAllByTestId('package-item')
       await act(async () => {
-        fireEvent.click(packageItems[0])
+        fireEvent.click(packageItems[0]!)
       })
 
       // onSelect should be called with filtered plugin count
@@ -842,11 +845,12 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
       })
 
       // The version should be displayed (from dependency or plugin)
-      expect(screen.getByTestId('marketplace-item-version')).toBeInTheDocument()
+      // The version should be displayed (from dependency or plugin)
+      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
     })
   })
 
@@ -856,7 +860,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
       })
 
       // The component should pass versionInfo to items
@@ -868,7 +872,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
         expect(defaultProps.onLoadedAllPlugin).toHaveBeenCalled()
       })
     })

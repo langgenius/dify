@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppPublisher from '@/app/components/app/app-publisher'
@@ -26,6 +27,27 @@ let mockAppDetail: {
     access_token: string
   }
 } | null = null
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
+}
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -84,7 +106,7 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -104,6 +126,18 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
         )
       : null
   ),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: vi.fn(() => null),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppPublishUpdate: vi.fn(() => vi.fn()),
+  },
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
@@ -183,7 +217,7 @@ describe('App Publisher Flow', () => {
   it('publishes from the summary panel and tracks the publish event', async () => {
     const onPublish = vi.fn().mockResolvedValue(undefined)
 
-    render(
+    renderWithQueryClient(
       <AppPublisher
         publishedAt={1700000000}
         onPublish={onPublish}
@@ -210,7 +244,7 @@ describe('App Publisher Flow', () => {
   })
 
   it('opens embedded modal and resolves the installed explore target', async () => {
-    render(<AppPublisher publishedAt={1700000000} />)
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('common.embedIntoSite'))
@@ -231,7 +265,7 @@ describe('App Publisher Flow', () => {
       installed_apps: [],
     })
 
-    render(<AppPublisher publishedAt={1700000000} />)
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('common.openInExplore'))

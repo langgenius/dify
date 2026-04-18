@@ -18,7 +18,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
     <div>
       {renderTrigger(false)}
       <button onClick={() => authParams?.onUpdate?.({ provider: 'x' }, { key: 'value' })}>Run update</button>
-      <button onClick={() => onItemClick?.(items[0].credentials[0])}>Select first</button>
+      <button onClick={() => onItemClick?.(items[0]!.credentials[0]!)}>Select first</button>
     </div>
   ),
 }))
@@ -57,7 +57,7 @@ describe('AddCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should forward update payload when update action happens', () => {
@@ -127,7 +127,7 @@ describe('AddCredentialInLoadBalancing', () => {
       // The trigger div rendered by renderTrigger(true) should have bg-state-base-hover
       // (the static class applied when open=true via cn())
       const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
-      expect(triggerDiv).toBeInTheDocument()
+      expect(triggerDiv)!.toBeInTheDocument()
       expect(triggerDiv!.className).toContain('bg-state-base-hover')
     }
     finally {
@@ -148,7 +148,7 @@ describe('AddCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should handle undefined available_credentials gracefully using nullish coalescing', () => {
@@ -169,7 +169,8 @@ describe('AddCredentialInLoadBalancing', () => {
     )
 
     // Component should render without error - the ?? [] fallback is used
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    // Component should render without error - the ?? [] fallback is used
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should not throw when update action fires without onUpdate prop', () => {

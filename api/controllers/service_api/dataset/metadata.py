@@ -2,9 +2,9 @@ from typing import Literal
 
 from flask_login import current_user
 from flask_restx import marshal
-from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
@@ -17,11 +17,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
-
-
-class MetadataUpdatePayload(BaseModel):
-    name: str
-
 
 register_schema_model(service_api_ns, MetadataUpdatePayload)
 register_schema_models(

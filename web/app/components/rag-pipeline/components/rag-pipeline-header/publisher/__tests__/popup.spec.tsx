@@ -12,7 +12,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -74,8 +74,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
     <button
       onClick={onClick as () => void}
       disabled={disabled as boolean}
@@ -85,24 +85,6 @@ vi.mock('@/app/components/base/button', () => ({
       {children as React.ReactNode}
     </button>
   ),
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-  }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <span>{title}</span>
-            <button data-testid="publish-confirm" onClick={onConfirm}>OK</button>
-            <button data-testid="publish-cancel" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -183,7 +165,7 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
 }))
 

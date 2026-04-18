@@ -3,6 +3,8 @@ import type {
   ChatItem,
   Feedback,
 } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -18,8 +20,6 @@ import Modal from '@/app/components/base/modal/modal'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
 
 type OperationProps = {
@@ -165,8 +165,8 @@ const Operation: FC<OperationProps> = ({
       <div
         className={cn(
           'absolute flex justify-end gap-1',
-          hasWorkflowProcess && '-bottom-4 right-2',
-          !positionRight && '-bottom-4 right-2',
+          hasWorkflowProcess && 'right-2 -bottom-4',
+          !positionRight && 'right-2 -bottom-4',
           !hasWorkflowProcess && positionRight && 'top-[9px]!',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
@@ -174,7 +174,7 @@ const Operation: FC<OperationProps> = ({
       >
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -214,7 +214,7 @@ const Operation: FC<OperationProps> = ({
         )}
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -290,7 +290,7 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {!isOpeningStatement && (
-          <div className="ml-1 hidden items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
+          <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
             {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}
@@ -353,7 +353,7 @@ const Operation: FC<OperationProps> = ({
         >
           <div className="space-y-3">
             <div>
-              <label className="mb-2 block text-text-secondary system-sm-semibold">
+              <label className="mb-2 block system-sm-semibold text-text-secondary">
                 {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
               </label>
               <Textarea

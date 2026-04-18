@@ -254,7 +254,7 @@ def resolve_dify_schema_refs(
     return resolver.resolve(schema)
 
 
-def _remove_metadata_fields(schema: dict) -> dict:
+def _remove_metadata_fields(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Remove metadata fields from schema that shouldn't be included in resolved output
 

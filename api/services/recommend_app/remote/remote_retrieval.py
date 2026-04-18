@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import httpx
 
@@ -35,7 +36,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return RecommendAppType.REMOTE
 
     @classmethod
-    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> dict | None:
+    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> dict[str, Any] | None:
         """
         Fetch recommended app detail from dify official.
         :param app_id: App ID
@@ -46,7 +47,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             return None
-        data: dict = response.json()
+        data: dict[str, Any] = response.json()
         return data
 
     @classmethod
@@ -62,7 +63,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
-        result: dict = response.json()
+        result: dict[str, Any] = response.json()
 
         if "categories" in result:
             result["categories"] = sorted(result["categories"])

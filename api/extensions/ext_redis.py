@@ -3,7 +3,7 @@ import logging
 import ssl
 from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Union
+from typing import Any, Union, cast
 
 import redis
 from redis import RedisError
@@ -14,18 +14,28 @@ from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.retry import Retry
 from redis.sentinel import Sentinel
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
+from extensions.redis_names import (
+    normalize_redis_key_prefix,
+    serialize_redis_name,
+    serialize_redis_name_arg,
+    serialize_redis_name_args,
+)
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
 from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
-if TYPE_CHECKING:
-    from redis.lock import Lock
-
 logger = logging.getLogger(__name__)
+
+
+_normalize_redis_key_prefix = normalize_redis_key_prefix
+_serialize_redis_name = serialize_redis_name
+_serialize_redis_name_arg = serialize_redis_name_arg
+_serialize_redis_name_args = serialize_redis_name_args
 
 
 class RedisClientWrapper:
@@ -58,72 +68,187 @@ class RedisClientWrapper:
         if self._client is None:
             self._client = client
 
-    if TYPE_CHECKING:
-        # Type hints for IDE support and static analysis
-        # These are not executed at runtime but provide type information
-        def get(self, name: str | bytes) -> Any: ...
-
-        def set(
-            self,
-            name: str | bytes,
-            value: Any,
-            ex: int | None = None,
-            px: int | None = None,
-            nx: bool = False,
-            xx: bool = False,
-            keepttl: bool = False,
-            get: bool = False,
-            exat: int | None = None,
-            pxat: int | None = None,
-        ) -> Any: ...
-
-        def setex(self, name: str | bytes, time: int | timedelta, value: Any) -> Any: ...
-        def setnx(self, name: str | bytes, value: Any) -> Any: ...
-        def delete(self, *names: str | bytes) -> Any: ...
-        def incr(self, name: str | bytes, amount: int = 1) -> Any: ...
-        def expire(
-            self,
-            name: str | bytes,
-            time: int | timedelta,
-            nx: bool = False,
-            xx: bool = False,
-            gt: bool = False,
-            lt: bool = False,
-        ) -> Any: ...
-        def lock(
-            self,
-            name: str,
-            timeout: float | None = None,
-            sleep: float = 0.1,
-            blocking: bool = True,
-            blocking_timeout: float | None = None,
-            thread_local: bool = True,
-        ) -> Lock: ...
-        def zadd(
-            self,
-            name: str | bytes,
-            mapping: dict[str | bytes | int | float, float | int | str | bytes],
-            nx: bool = False,
-            xx: bool = False,
-            ch: bool = False,
-            incr: bool = False,
-            gt: bool = False,
-            lt: bool = False,
-        ) -> Any: ...
-        def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any: ...
-        def zcard(self, name: str | bytes) -> Any: ...
-        def getdel(self, name: str | bytes) -> Any: ...
-        def pubsub(self) -> PubSub: ...
-        def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any: ...
-
-    def __getattr__(self, item: str) -> Any:
+    def _require_client(self) -> redis.Redis | RedisCluster:
         if self._client is None:
             raise RuntimeError("Redis client is not initialized. Call init_app first.")
-        return getattr(self._client, item)
+        return self._client
+
+    def _get_prefix(self) -> str:
+        return dify_config.REDIS_KEY_PREFIX
+
+    def get(self, name: str | bytes) -> Any:
+        return self._require_client().get(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def set(
+        self,
+        name: str | bytes,
+        value: Any,
+        ex: int | None = None,
+        px: int | None = None,
+        nx: bool = False,
+        xx: bool = False,
+        keepttl: bool = False,
+        get: bool = False,
+        exat: int | None = None,
+        pxat: int | None = None,
+    ) -> Any:
+        return self._require_client().set(
+            _serialize_redis_name_arg(name, self._get_prefix()),
+            value,
+            ex=ex,
+            px=px,
+            nx=nx,
+            xx=xx,
+            keepttl=keepttl,
+            get=get,
+            exat=exat,
+            pxat=pxat,
+        )
+
+    def setex(self, name: str | bytes, time: int | timedelta, value: Any) -> Any:
+        return self._require_client().setex(_serialize_redis_name_arg(name, self._get_prefix()), time, value)
+
+    def setnx(self, name: str | bytes, value: Any) -> Any:
+        return self._require_client().setnx(_serialize_redis_name_arg(name, self._get_prefix()), value)
+
+    def delete(self, *names: str | bytes) -> Any:
+        return self._require_client().delete(*_serialize_redis_name_args(names, self._get_prefix()))
+
+    def incr(self, name: str | bytes, amount: int = 1) -> Any:
+        return self._require_client().incr(_serialize_redis_name_arg(name, self._get_prefix()), amount)
+
+    def expire(
+        self,
+        name: str | bytes,
+        time: int | timedelta,
+        nx: bool = False,
+        xx: bool = False,
+        gt: bool = False,
+        lt: bool = False,
+    ) -> Any:
+        return self._require_client().expire(
+            _serialize_redis_name_arg(name, self._get_prefix()),
+            time,
+            nx=nx,
+            xx=xx,
+            gt=gt,
+            lt=lt,
+        )
+
+    def exists(self, *names: str | bytes) -> Any:
+        return self._require_client().exists(*_serialize_redis_name_args(names, self._get_prefix()))
+
+    def ttl(self, name: str | bytes) -> Any:
+        return self._require_client().ttl(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def getdel(self, name: str | bytes) -> Any:
+        return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def lock(
+        self,
+        name: str,
+        timeout: float | None = None,
+        sleep: float = 0.1,
+        blocking: bool = True,
+        blocking_timeout: float | None = None,
+        thread_local: bool = True,
+    ) -> Any:
+        return self._require_client().lock(
+            _serialize_redis_name(name, self._get_prefix()),
+            timeout=timeout,
+            sleep=sleep,
+            blocking=blocking,
+            blocking_timeout=blocking_timeout,
+            thread_local=thread_local,
+        )
+
+    def hset(self, name: str | bytes, *args: Any, **kwargs: Any) -> Any:
+        return self._require_client().hset(_serialize_redis_name_arg(name, self._get_prefix()), *args, **kwargs)
+
+    def hgetall(self, name: str | bytes) -> Any:
+        return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def hdel(self, name: str | bytes, *keys: str | bytes) -> Any:
+        return self._require_client().hdel(_serialize_redis_name_arg(name, self._get_prefix()), *keys)
+
+    def hlen(self, name: str | bytes) -> Any:
+        return self._require_client().hlen(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def zadd(
+        self,
+        name: str | bytes,
+        mapping: dict[str | bytes | int | float, float | int | str | bytes],
+        nx: bool = False,
+        xx: bool = False,
+        ch: bool = False,
+        incr: bool = False,
+        gt: bool = False,
+        lt: bool = False,
+    ) -> Any:
+        return self._require_client().zadd(
+            _serialize_redis_name_arg(name, self._get_prefix()),
+            cast(Any, mapping),
+            nx=nx,
+            xx=xx,
+            ch=ch,
+            incr=incr,
+            gt=gt,
+            lt=lt,
+        )
+
+    def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any:
+        return self._require_client().zremrangebyscore(_serialize_redis_name_arg(name, self._get_prefix()), min, max)
+
+    def zcard(self, name: str | bytes) -> Any:
+        return self._require_client().zcard(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def pubsub(self) -> PubSub:
+        return self._require_client().pubsub()
+
+    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
+        return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._require_client(), item)
 
 
 redis_client: RedisClientWrapper = RedisClientWrapper()
 _pubsub_redis_client: redis.Redis | RedisCluster | None = None
+
+
+class RedisSSLParamsDict(TypedDict):
+    ssl_cert_reqs: int
+    ssl_ca_certs: str | None
+    ssl_certfile: str | None
+    ssl_keyfile: str | None
+
+
+class RedisHealthParamsDict(TypedDict):
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+    health_check_interval: int | None
+
+
+class RedisClusterHealthParamsDict(TypedDict):
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+
+
+class RedisBaseParamsDict(TypedDict):
+    username: str | None
+    password: str | None
+    db: int
+    encoding: str
+    encoding_errors: str
+    decode_responses: bool
+    protocol: int
+    cache_config: CacheConfig | None
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+    health_check_interval: int | None
 
 
 def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
@@ -171,17 +296,17 @@ def _get_retry_policy() -> Retry:
     )
 
 
-def _get_connection_health_params() -> dict[str, Any]:
+def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
-    return {
-        "retry": _get_retry_policy(),
-        "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
-        "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
-        "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
-    }
+    return RedisHealthParamsDict(
+        retry=_get_retry_policy(),
+        socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
+        socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
+        health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+    )
 
 
-def _get_cluster_connection_health_params() -> dict[str, Any]:
+def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
     """Get retry and timeout parameters for Redis Cluster clients.
 
     RedisCluster does not support ``health_check_interval`` as a constructor
@@ -189,26 +314,31 @@ def _get_cluster_connection_health_params() -> dict[str, Any]:
     here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
     are passed through.
     """
-    params = _get_connection_health_params()
-    return {k: v for k, v in params.items() if k != "health_check_interval"}
-
-
-def _get_base_redis_params() -> dict[str, Any]:
-    """Get base Redis connection parameters including retry and health policy."""
-    return {
-        "username": dify_config.REDIS_USERNAME,
-        "password": dify_config.REDIS_PASSWORD or None,
-        "db": dify_config.REDIS_DB,
-        "encoding": "utf-8",
-        "encoding_errors": "strict",
-        "decode_responses": False,
-        "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
-        "cache_config": _get_cache_configuration(),
-        **_get_connection_health_params(),
+    health_params = _get_connection_health_params()
+    result: RedisClusterHealthParamsDict = {
+        "retry": health_params["retry"],
+        "socket_timeout": health_params["socket_timeout"],
+        "socket_connect_timeout": health_params["socket_connect_timeout"],
     }
+    return result
 
 
-def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
+def _get_base_redis_params() -> RedisBaseParamsDict:
+    """Get base Redis connection parameters including retry and health policy."""
+    return RedisBaseParamsDict(
+        username=dify_config.REDIS_USERNAME,
+        password=dify_config.REDIS_PASSWORD or None,
+        db=dify_config.REDIS_DB,
+        encoding="utf-8",
+        encoding_errors="strict",
+        decode_responses=False,
+        protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        cache_config=_get_cache_configuration(),
+        **_get_connection_health_params(),
+    )
+
+
+def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
@@ -232,7 +362,8 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
         sentinel_kwargs=sentinel_kwargs,
     )
 
-    master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
+    params: dict[str, Any] = {**redis_params}
+    master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **params)
     return master
 
 
@@ -259,18 +390,16 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
+def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 
-    params = {**redis_params}
-    params.update(
-        {
-            "host": dify_config.REDIS_HOST,
-            "port": dify_config.REDIS_PORT,
-            "connection_class": connection_class,
-        }
-    )
+    params: dict[str, Any] = {
+        **redis_params,
+        "host": dify_config.REDIS_HOST,
+        "port": dify_config.REDIS_PORT,
+        "connection_class": connection_class,
+    }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
         params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
@@ -293,8 +422,8 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
             kwargs["max_connections"] = max_conns
         return RedisCluster.from_url(pubsub_url, **kwargs)
 
-    health_params = _get_connection_health_params()
-    kwargs = {**health_params}
+    standalone_health_params: dict[str, Any] = dict(_get_connection_health_params())
+    kwargs = {**standalone_health_params}
     if max_conns:
         kwargs["max_connections"] = max_conns
     return redis.Redis.from_url(pubsub_url, **kwargs)

@@ -175,7 +175,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },

@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, overload
 
+from configs import dify_config
 from graphon.file import File
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
 from graphon.variables.segments import (
@@ -20,8 +21,6 @@ from graphon.variables.segments import (
     StringSegment,
 )
 from graphon.variables.utils import dumps_with_segments
-
-from configs import dify_config
 
 _MAX_DEPTH = 100
 
@@ -170,7 +169,7 @@ class VariableTruncator(BaseTruncator):
                 return TruncationResult(StringSegment(value=fallback_result.value), True)
 
             # Apply final fallback - convert to JSON string and truncate
-            json_str = dumps_with_segments(result.value, ensure_ascii=False)
+            json_str = dumps_with_segments(result.value)
             if len(json_str) > self._max_size_bytes:
                 json_str = json_str[: self._max_size_bytes] + "..."
             return TruncationResult(result=StringSegment(value=json_str), truncated=True)
