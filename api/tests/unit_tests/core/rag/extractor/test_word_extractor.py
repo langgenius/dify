@@ -392,8 +392,7 @@ def test_close_handles_async_close_mock():
     assert not [
         warning
         for warning in caught
-        if issubclass(warning.category, RuntimeWarning)
-        and "AsyncMockMixin._execute_mock_call" in str(warning.message)
+        if issubclass(warning.category, RuntimeWarning) and "AsyncMockMixin._execute_mock_call" in str(warning.message)
     ]
 
 
