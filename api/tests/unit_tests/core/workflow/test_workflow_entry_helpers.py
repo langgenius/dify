@@ -11,7 +11,6 @@ from core.model_manager import ModelInstance
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
@@ -27,7 +26,7 @@ from tests.workflow_test_utils import build_test_graph_init_params, build_test_v
 
 
 def _build_typed_node_config(node_type: NodeType):
-    return NodeConfigDictAdapter.validate_python({"id": "node-id", "data": {"type": node_type}})
+    return {"id": "node-id", "data": BaseNodeData(type=node_type)}
 
 
 def _build_wrapped_model_instance() -> tuple[SimpleNamespace, ModelInstance]:
@@ -165,14 +164,11 @@ class TestWorkflowChildEngineBuilder:
         def build_graph(*, graph_config, node_factory, root_node_id):
             _ = graph_config
             node = node_cls(
-                id=root_node_id,
-                config={
-                    "id": root_node_id,
-                    "data": {
-                        "type": node_cls.node_type,
-                        "title": "Child Model",
-                    },
-                },
+                node_id=root_node_id,
+                config=BaseNodeData(
+                    type=node_cls.node_type,
+                    title="Child Model",
+                ),
                 graph_init_params=node_factory.graph_init_params,
                 graph_runtime_state=node_factory.graph_runtime_state,
             )
@@ -764,7 +760,7 @@ class TestWorkflowEntryHelpers:
 
     def test_handle_special_values_serializes_nested_files(self):
         file = File(
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image.png",
             filename="image.png",

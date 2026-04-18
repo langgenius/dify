@@ -14,7 +14,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.graph import Graph
-from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
+from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -75,8 +75,8 @@ def init_http_node(config: dict):
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=HttpRequestNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
@@ -723,8 +723,8 @@ def test_nested_object_variable_selector(setup_http_mock):
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
-        id=str(uuid.uuid4()),
-        config=graph_config["nodes"][1],
+        node_id=str(uuid.uuid4()),
+        config=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
