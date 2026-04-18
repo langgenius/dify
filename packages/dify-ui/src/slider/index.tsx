@@ -3,7 +3,6 @@
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
 
-/** @public */
 export const SliderRoot = BaseSlider.Root
 
 type SliderRootProps = BaseSlider.Root.Props<number>
@@ -15,7 +14,6 @@ const sliderControlClassName = cn(
 
 type SliderControlProps = BaseSlider.Control.Props
 
-/** @public */
 export function SliderControl({ className, ...props }: SliderControlProps) {
   return (
     <BaseSlider.Control
@@ -32,7 +30,6 @@ const sliderTrackClassName = cn(
 
 type SliderTrackProps = BaseSlider.Track.Props
 
-/** @public */
 export function SliderTrack({ className, ...props }: SliderTrackProps) {
   return (
     <BaseSlider.Track
@@ -49,7 +46,6 @@ const sliderIndicatorClassName = cn(
 
 type SliderIndicatorProps = BaseSlider.Indicator.Props
 
-/** @public */
 export function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
   return (
     <BaseSlider.Indicator
@@ -71,7 +67,6 @@ const sliderThumbClassName = cn(
 
 type SliderThumbProps = BaseSlider.Thumb.Props
 
-/** @public */
 export function SliderThumb({ className, ...props }: SliderThumbProps) {
   return (
     <BaseSlider.Thumb
