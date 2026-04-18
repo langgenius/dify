@@ -136,6 +136,12 @@ const getUniquePastedNodeTitle = (
   return titleCandidate
 }
 
+const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
+  return node.type === CUSTOM_NOTE_NODE
+    && target instanceof HTMLElement
+    && !!target.closest('.note-editor-theme_link')
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
@@ -470,9 +476,11 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
-    (_, node) => {
+    (event, node) => {
       const { controlMode } = workflowStore.getState()
       if (controlMode === ControlMode.Comment)
+        return
+      if (isNoteLinkClickTarget(event.target, node))
         return
       if (node.type === CUSTOM_ITERATION_START_NODE)
         return
