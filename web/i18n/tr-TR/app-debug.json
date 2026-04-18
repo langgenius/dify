@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Başlangıç promptu değişkeni içermiyor: {{key}}. Lütfen bunu başlangıç promptuna ekleyin.",
   "openingStatement.openingQuestion": "Açılış Soruları",
   "openingStatement.openingQuestionDescription": "Acilis mesajindan sonra gosterilen istege bagli yonlendirmeler; kullanicilarin konusmayi surdurmesine yardimci olur.",
-  "openingStatement.openingQuestionPlaceholder": "Değişkenler kullanabilirsiniz, {{variable}} yazmayı deneyin.",
+  "openingStatement.openingQuestionPlaceholder": "Bir acilis sorusu girin.",
   "openingStatement.placeholderLine1": "Buradan baslayin. Yapay zekanin gondermesi gereken ilk mesaji yazin.",
   "openingStatement.placeholderLine2": "Değişkenler kullanabilirsiniz, {{variable}} yazmayı deneyin.",
   "openingStatement.title": "Konuşma Başlatıcı",

@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "O prompt inicial não inclui a variável: {{key}}. Por favor, adicione-a ao prompt inicial.",
   "openingStatement.openingQuestion": "Perguntas de Abertura",
   "openingStatement.openingQuestionDescription": "Sugestoes opcionais exibidas apos a mensagem de abertura para ajudar os usuarios a continuar a conversa.",
-  "openingStatement.openingQuestionPlaceholder": "Você pode usar variáveis, tente digitar {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Digite uma pergunta de abertura.",
   "openingStatement.placeholderLine1": "Comece aqui. Escreva a primeira mensagem que a IA deve enviar.",
   "openingStatement.placeholderLine2": "Você pode usar variáveis, tente digitar {{variable}}.",
   "openingStatement.title": "Abertura da Conversa",

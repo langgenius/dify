@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Початковий запит не включає змінну: {{key}}. Будь ласка, додайте її до початкового запиту.",
   "openingStatement.openingQuestion": "Відкриваючі питання",
   "openingStatement.openingQuestionDescription": "Необовʼязкові підказки, що показуються після вступного повідомлення та допомагають користувачам продовжити розмову.",
-  "openingStatement.openingQuestionPlaceholder": "Ви можете використовувати змінні, спробуйте ввести {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Введіть вступне запитання.",
   "openingStatement.placeholderLine1": "Почніть тут. Напишіть перше повідомлення, яке ШІ має надіслати.",
   "openingStatement.placeholderLine2": "Ви можете використовувати змінні, спробуйте ввести {{variable}}.",
   "openingStatement.title": "Вступ до розмови",

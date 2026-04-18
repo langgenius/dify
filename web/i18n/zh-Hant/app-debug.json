@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "字首提示詞中不包含變數 {{key}}。請在字首提示詞中新增該變數",
   "openingStatement.openingQuestion": "開場問題",
   "openingStatement.openingQuestionDescription": "可選的引導問題，會在開場白之後顯示，幫助使用者繼續對話。",
-  "openingStatement.openingQuestionPlaceholder": "可以使用變數，嘗試輸入 {{variable}}。",
+  "openingStatement.openingQuestionPlaceholder": "輸入一個開場問題。",
   "openingStatement.placeholderLine1": "先在這裡寫下 AI 要傳送的第一句話。",
   "openingStatement.placeholderLine2": "可以使用變數，嘗試輸入 {{variable}}。",
   "openingStatement.title": "對話開場白",

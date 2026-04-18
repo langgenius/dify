@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "پیام اولیه شامل متغیر {{key}} نیست. لطفاً آن را به پیام اولیه اضافه کنید.",
   "openingStatement.openingQuestion": "سوالات آغازین",
   "openingStatement.openingQuestionDescription": "پیشنهادهای اختیاری که پس از پیام آغازین نمایش داده می شوند تا به کاربران در ادامه گفتگو کمک کنند.",
-  "openingStatement.openingQuestionPlaceholder": "می‌توانید از متغیرها استفاده کنید، امتحان کنید {{variable}} را تایپ کنید.",
+  "openingStatement.openingQuestionPlaceholder": "یک سوال آغازین وارد کنید.",
   "openingStatement.placeholderLine1": "از اینجا شروع کنید. اولین پیامی را که هوش مصنوعی باید ارسال کند بنویسید.",
   "openingStatement.placeholderLine2": "می‌توانید از متغیرها استفاده کنید، امتحان کنید {{variable}} را تایپ کنید.",
   "openingStatement.title": "افتتاحیه مکالمه",

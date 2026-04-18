@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Il prompt iniziale non include la variabile: {{key}}. Per favore aggiungila al prompt iniziale.",
   "openingStatement.openingQuestion": "Domande iniziali",
   "openingStatement.openingQuestionDescription": "Suggerimenti opzionali mostrati dopo il messaggio iniziale per aiutare gli utenti a continuare la conversazione.",
-  "openingStatement.openingQuestionPlaceholder": "Puoi usare variabili, prova a digitare {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Inserisci una domanda iniziale.",
   "openingStatement.placeholderLine1": "Inizia da qui. Scrivi il primo messaggio che l'IA dovrebbe inviare.",
   "openingStatement.placeholderLine2": "Puoi usare variabili, prova a digitare {{variable}}.",
   "openingStatement.title": "Iniziatore di conversazione",

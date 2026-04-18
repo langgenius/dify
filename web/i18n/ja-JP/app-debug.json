@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "初期プロンプトに変数 {{key}} が含まれていません。初期プロンプトに追加してください。",
   "openingStatement.openingQuestion": "開始質問",
   "openingStatement.openingQuestionDescription": "会話のきっかけの後に表示される任意の候補で、ユーザーが会話を続けやすくするためのものです。",
-  "openingStatement.openingQuestionPlaceholder": "変数を使用できます。{{variable}} と入力してみてください。",
+  "openingStatement.openingQuestionPlaceholder": "開始用の質問を入力してください。",
   "openingStatement.placeholderLine1": "ここから始めましょう。AI が最初に送るメッセージを書いてください。",
   "openingStatement.placeholderLine2": "変数を使用できます。{{variable}} と入力してみてください。",
   "openingStatement.title": "会話開始",

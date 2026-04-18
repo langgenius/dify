@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Promptarea inițială nu include variabila: {{key}}. Vă rugăm să o adăugați la promptarea inițială.",
   "openingStatement.openingQuestion": "Întrebări de deschidere",
   "openingStatement.openingQuestionDescription": "Sugestii optionale afisate dupa mesajul de deschidere pentru a-i ajuta pe utilizatori sa continue conversatia.",
-  "openingStatement.openingQuestionPlaceholder": "Puteți utiliza variabile, încercați să tastați {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Introdu o intrebare de deschidere.",
   "openingStatement.placeholderLine1": "Incepe aici. Scrie primul mesaj pe care AI-ul ar trebui sa il trimita.",
   "openingStatement.placeholderLine2": "Puteți utiliza variabile, încercați să tastați {{variable}}.",
   "openingStatement.title": "Deschizător de conversație",

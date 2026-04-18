@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "前缀提示词中不包含变量 {{key}}。请在前缀提示词中添加该变量",
   "openingStatement.openingQuestion": "开场问题",
   "openingStatement.openingQuestionDescription": "可选的引导问题，会在开场白之后展示，帮助用户继续对话。",
-  "openingStatement.openingQuestionPlaceholder": "可以使用变量，尝试输入 {{variable}}。",
+  "openingStatement.openingQuestionPlaceholder": "输入一个开场问题。",
   "openingStatement.placeholderLine1": "先在这里写 AI 要发送的第一句话。",
   "openingStatement.placeholderLine2": "你可以使用变量，尝试输入 {{variable}}。",
   "openingStatement.title": "对话开场白",

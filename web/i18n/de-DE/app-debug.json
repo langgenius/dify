@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Das Anfangsprompt enthält nicht die Variable: {{key}}. Bitte fügen Sie sie dem Anfangsprompt hinzu.",
   "openingStatement.openingQuestion": "Eröffnungsfragen",
   "openingStatement.openingQuestionDescription": "Optionale Vorschlage, die nach der Eroffnungsnachricht angezeigt werden, damit Benutzer das Gesprach leichter fortsetzen konnen.",
-  "openingStatement.openingQuestionPlaceholder": "Sie können Variablen verwenden, versuchen Sie {{variable}} einzugeben.",
+  "openingStatement.openingQuestionPlaceholder": "Geben Sie eine Einstiegsfrage ein.",
   "openingStatement.placeholderLine1": "Beginnen Sie hier. Schreiben Sie die erste Nachricht, die die KI senden soll.",
   "openingStatement.placeholderLine2": "Sie können Variablen verwenden, versuchen Sie {{variable}} einzugeben.",
   "openingStatement.title": "Gesprächseröffner",

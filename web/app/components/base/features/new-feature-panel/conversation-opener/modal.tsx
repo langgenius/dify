@@ -100,6 +100,7 @@ const OpeningSettingModal = ({
 
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
+  const [autoFocusQuestionID, setAutoFocusQuestionID] = useState<number | null>(null)
   const openerPlaceholder = (
     <span className="block break-words whitespace-pre-wrap">
       {t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
@@ -160,8 +161,8 @@ const OpeningSettingModal = ({
               <div
                 className={cn(
                   'group relative flex items-center rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
-                  focusID === index && 'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
                   deletingID === index && 'border-components-input-border-destructive bg-state-destructive-hover hover:border-components-input-border-destructive hover:bg-state-destructive-hover',
+                  focusID === index && 'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
                 )}
                 key={index}
               >
@@ -179,8 +180,13 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
+                  autoFocus={autoFocusQuestionID === index}
                   className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm leading-9 text-text-secondary focus:outline-hidden"
-                  onFocus={() => setFocusID(index)}
+                  onFocus={() => {
+                    setFocusID(index)
+                    if (autoFocusQuestionID === index)
+                      setAutoFocusQuestionID(null)
+                  }}
                   onBlur={() => setFocusID(null)}
                 />
 
@@ -200,7 +206,12 @@ const OpeningSettingModal = ({
         </ReactSortable>
         {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
           <div
-            onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
+            onClick={() => {
+              const nextIndex = tempSuggestedQuestions.length
+              setDeletingID(null)
+              setAutoFocusQuestionID(nextIndex)
+              setTempSuggestedQuestions([...tempSuggestedQuestions, ''])
+            }}
             className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
           >
             <span className="i-ri-add-line h-4 w-4" />
@@ -240,7 +251,7 @@ const OpeningSettingModal = ({
             <div className="mb-3 text-sm font-medium text-text-primary">
               {t('openingStatement.editorTitle', { ns: 'appDebug' })}
             </div>
-            <div className="relative min-h-[120px] rounded-lg bg-components-input-bg-normal px-3 py-2">
+            <div className="relative min-h-[80px] rounded-lg bg-components-input-bg-normal px-3 py-2">
               <PromptEditor
                 value={tempValue}
                 onChange={setTempValue}

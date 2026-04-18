@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Lời nhắc ban đầu không bao gồm biến: {{key}}. Vui lòng thêm nó vào lời nhắc ban đầu.",
   "openingStatement.openingQuestion": "Câu hỏi mở đầu",
   "openingStatement.openingQuestionDescription": "Cac goi y tuy chon hien thi sau loi mo dau de giup nguoi dung tiep tuc cuoc tro chuyen.",
-  "openingStatement.openingQuestionPlaceholder": "Bạn có thể sử dụng biến, hãy thử nhập {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Nhap cau hoi mo dau.",
   "openingStatement.placeholderLine1": "Bat dau tai day. Viet tin nhan dau tien ma AI nen gui.",
   "openingStatement.placeholderLine2": "Bạn có thể sử dụng biến, hãy thử nhập {{variable}}.",
   "openingStatement.title": "Mở đầu cuộc trò chuyện",

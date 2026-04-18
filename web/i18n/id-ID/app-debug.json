@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Prompt awal tidak menyertakan variabel: {{key}}. Harap tambahkan ke prompt awal.",
   "openingStatement.openingQuestion": "Pertanyaan Pembuka",
   "openingStatement.openingQuestionDescription": "Prompt opsional yang ditampilkan setelah pesan pembuka untuk membantu pengguna melanjutkan percakapan.",
-  "openingStatement.openingQuestionPlaceholder": "Anda bisa menggunakan variabel, coba ketik {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Masukkan pertanyaan pembuka.",
   "openingStatement.placeholderLine1": "Mulai dari sini. Tulis pesan pertama yang harus dikirim AI.",
   "openingStatement.placeholderLine2": "Anda bisa menggunakan variabel, coba ketik {{variable}}.",
   "openingStatement.title": "Pembuka Percakapan",

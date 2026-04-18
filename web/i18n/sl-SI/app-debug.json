@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Začetni poziv ne vključuje spremenljivke: {{key}}. Prosimo, dodajte jo v začetni poziv.",
   "openingStatement.openingQuestion": "Uvodna vprašanja",
   "openingStatement.openingQuestionDescription": "Izbirni predlogi, prikazani po uvodnem sporocilu, ki uporabnikom pomagajo nadaljevati pogovor.",
-  "openingStatement.openingQuestionPlaceholder": "Lahko uporabljaš spremenljivke, poskusi vpisati {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Vnesite uvodno vprasanje.",
   "openingStatement.placeholderLine1": "Zacnite tukaj. Napisite prvo sporocilo, ki ga mora poslati AI.",
   "openingStatement.placeholderLine2": "Lahko uporabljaš spremenljivke, poskusi vpisati {{variable}}.",
   "openingStatement.title": "Odpiralec pogovorov",

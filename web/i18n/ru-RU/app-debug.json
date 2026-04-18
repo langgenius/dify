@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Начальный промпт не включает переменную: {{key}}. Пожалуйста, добавьте её в начальную промпт.",
   "openingStatement.openingQuestion": "Начальные вопросы",
   "openingStatement.openingQuestionDescription": "Необязательные подсказки, которые показываются после вступительного сообщения и помогают пользователям продолжить разговор.",
-  "openingStatement.openingQuestionPlaceholder": "Вы можете использовать переменные, попробуйте ввести {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Введите начальный вопрос.",
   "openingStatement.placeholderLine1": "Начните здесь. Напишите первое сообщение, которое ИИ должен отправить.",
   "openingStatement.placeholderLine2": "Вы можете использовать переменные, попробуйте ввести {{variable}}.",
   "openingStatement.title": "Начальное сообщение",

@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "La indicación inicial no incluye la variable: {{key}}. Por favor agrégala a la indicación inicial.",
   "openingStatement.openingQuestion": "Preguntas de Apertura",
   "openingStatement.openingQuestionDescription": "Sugerencias opcionales que se muestran despues del mensaje de apertura para ayudar a los usuarios a continuar la conversacion.",
-  "openingStatement.openingQuestionPlaceholder": "Puede usar variables, intente escribir {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Introduce una pregunta de apertura.",
   "openingStatement.placeholderLine1": "Empieza aqui. Escribe el primer mensaje que la IA debe enviar.",
   "openingStatement.placeholderLine2": "Puede usar variables, intente escribir {{variable}}.",
   "openingStatement.title": "Apertura de Conversación",

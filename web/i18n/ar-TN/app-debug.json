@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "لا تتضمن المطالبة الأولية المتغير: {{key}}. يرجى إضافته إلى المطالبة الأولية.",
   "openingStatement.openingQuestion": "أسئلة افتتاحية",
   "openingStatement.openingQuestionDescription": "مطالبات اختيارية تظهر بعد الرسالة الافتتاحية لمساعدة المستخدمين على متابعة المحادثة.",
-  "openingStatement.openingQuestionPlaceholder": "يمكنك استخدام المتغيرات، حاول كتابة {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "أدخل سؤالاً افتتاحياً.",
   "openingStatement.placeholderLine1": "ابدأ من هنا. اكتب الرسالة الأولى التي يجب أن يرسلها الذكاء الاصطناعي.",
   "openingStatement.placeholderLine2": "يمكنك استخدام المتغيرات، حاول كتابة {{variable}}.",
   "openingStatement.title": "فاتحة المحادثة",

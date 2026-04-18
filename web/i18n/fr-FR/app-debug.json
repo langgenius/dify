@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "The initial prompt does not include the variable: {{key}}. Please add it to the initial prompt.",
   "openingStatement.openingQuestion": "Questions d'ouverture",
   "openingStatement.openingQuestionDescription": "Suggestions facultatives affichees apres le message d'ouverture pour aider les utilisateurs a poursuivre la conversation.",
-  "openingStatement.openingQuestionPlaceholder": "Vous pouvez utiliser des variables, essayez de taper {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Saisissez une question d'ouverture.",
   "openingStatement.placeholderLine1": "Commencez ici. Redigez le premier message que l'IA doit envoyer.",
   "openingStatement.placeholderLine2": "Vous pouvez utiliser des variables, essayez de taper {{variable}}.",
   "openingStatement.title": "Ouverture de Conversation",

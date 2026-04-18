@@ -257,6 +257,26 @@ describe('OpeningSettingModal', () => {
     expect(allInputs.length).toBeGreaterThanOrEqual(1)
   })
 
+  it('should focus a new suggested question without destructive styling', async () => {
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByText(/variableConfig\.addOption/))
+
+    const newInput = screen.getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')
+      .find(input => (input as HTMLInputElement).value === '') as HTMLInputElement
+    const questionRow = newInput.parentElement
+
+    expect(newInput).toHaveFocus()
+    expect(questionRow).not.toHaveClass('border-components-input-border-destructive')
+    expect(questionRow).toHaveClass('border-components-input-border-active')
+  })
+
   it('should delete a suggested question via save verification', async () => {
     const onSave = vi.fn()
     await render(

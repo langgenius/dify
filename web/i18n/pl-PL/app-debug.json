@@ -257,7 +257,7 @@
   "openingStatement.notIncludeKey": "Wstępny monit nie zawiera zmiennej: {{key}}. Proszę dodać ją do wstępnego monitu.",
   "openingStatement.openingQuestion": "Pytania otwierające",
   "openingStatement.openingQuestionDescription": "Opcjonalne podpowiedzi wyswietlane po wiadomosci otwierajacej, aby pomoc uzytkownikom kontynuowac rozmowe.",
-  "openingStatement.openingQuestionPlaceholder": "Możesz używać zmiennych, spróbuj wpisać {{variable}}.",
+  "openingStatement.openingQuestionPlaceholder": "Wpisz pytanie otwierające.",
   "openingStatement.placeholderLine1": "Zacznij tutaj. Napisz pierwsza wiadomosc, ktora AI powinno wyslac.",
   "openingStatement.placeholderLine2": "Możesz używać zmiennych, spróbuj wpisać {{variable}}.",
   "openingStatement.title": "Wstęp do rozmowy",
