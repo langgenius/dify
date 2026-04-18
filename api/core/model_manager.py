@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
-from typing import IO, Any, Literal, Optional, Union, cast, overload
+from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload
 
 from configs import dify_config
 from core.entities import PluginCredentialType
@@ -27,6 +27,8 @@ from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class ModelInstance:
@@ -168,7 +170,7 @@ class ModelInstance:
         return cast(
             Union[LLMResult, Generator],
             self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
+                self.model_type_instance.invoke,
                 model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=list(prompt_messages),
@@ -193,7 +195,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.get_num_tokens,
+            self.model_type_instance.get_num_tokens,
             model=self.model_name,
             credentials=self.credentials,
             prompt_messages=list(prompt_messages),
@@ -213,7 +215,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             texts=texts,
@@ -235,7 +237,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             multimodel_documents=multimodel_documents,
@@ -252,7 +254,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.get_num_tokens,
+            self.model_type_instance.get_num_tokens,
             model=self.model_name,
             credentials=self.credentials,
             texts=texts,
@@ -277,7 +279,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             query=query,
@@ -305,7 +307,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke_multimodal_rerank,
+            self.model_type_instance.invoke_multimodal_rerank,
             model=self.model_name,
             credentials=self.credentials,
             query=query,
@@ -324,7 +326,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, ModerationModel):
             raise Exception("Model type instance is not ModerationModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             text=text,
@@ -340,7 +342,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, Speech2TextModel):
             raise Exception("Model type instance is not Speech2TextModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             file=file,
@@ -357,14 +359,14 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
         return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
+            self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             content_text=content_text,
             voice=voice,
         )
 
-    def _round_robin_invoke[**P, R](self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    def _round_robin_invoke(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
         Round-robin invoke
         :param function: function to invoke

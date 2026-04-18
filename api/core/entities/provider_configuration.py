@@ -363,7 +363,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         for key, value in validated_credentials.items():
-            if key in provider_credential_secret_variables:
+            if key in provider_credential_secret_variables and isinstance(value, str):
                 validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return validated_credentials
@@ -912,7 +912,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         for key, value in validated_credentials.items():
-            if key in provider_credential_secret_variables:
+            if key in provider_credential_secret_variables and isinstance(value, str):
                 validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return validated_credentials

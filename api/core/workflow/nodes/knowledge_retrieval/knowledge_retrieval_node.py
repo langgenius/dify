@@ -49,6 +49,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
+    if value is None or isinstance(value, (str, float)):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return str(value)
+
+
+def _normalize_metadata_filter_sequence_item(value: object) -> str:
+    return value if isinstance(value, str) else str(value)
+
+
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
     node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
@@ -282,18 +294,21 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         resolved_conditions: list[Condition] = []
         for cond in conditions.conditions or []:
             value = cond.value
+            resolved_value: str | Sequence[str] | int | float | None
             if isinstance(value, str):
                 segment_group = variable_pool.convert_template(value)
                 if len(segment_group.value) == 1:
-                    resolved_value = segment_group.value[0].to_object()
+                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                 else:
                     resolved_value = segment_group.text
             elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values = []
-                for v in value:  # type: ignore
+                resolved_values: list[str] = []
+                for v in value:
                     segment_group = variable_pool.convert_template(v)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(segment_group.value[0].to_object())
+                        resolved_values.append(
+                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                        )
                     else:
                         resolved_values.append(segment_group.text)
                 resolved_value = resolved_values

@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import cast, override
+from collections.abc import Callable
+from typing import Any, cast, override
 
 import pandas as pd
 
@@ -20,12 +21,12 @@ from graphon.file.models import File
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.document_extractor import DocumentExtractorNode as GraphonDocumentExtractorNode
 from graphon.nodes.document_extractor import node as graphon_document_extractor_node
+from graphon.nodes.document_extractor.entities import UnstructuredApiConfig
 from graphon.nodes.document_extractor.exc import (
     DocumentExtractorError,
     TextExtractionError,
     UnsupportedFileTypeError,
 )
-from graphon.nodes.document_extractor.node import UnstructuredApiConfig
 from graphon.nodes.protocols import HttpClientProtocol
 from graphon.variables.segments import ArrayFileSegment, ArrayStringSegment, FileSegment
 
@@ -38,6 +39,11 @@ _EXCEL_MIME_TYPES = frozenset(
         "application/vnd.ms-excel",
     )
 )
+
+
+def _call_graphon_extractor(extractor_name: str, **kwargs: Any) -> str:
+    extractor = cast(Callable[..., str], getattr(graphon_document_extractor_node, extractor_name))
+    return extractor(**kwargs)
 
 
 def _construct_markdown_table(df: pd.DataFrame) -> str:
@@ -60,7 +66,7 @@ def extract_text_from_excel(file_content: bytes) -> str:
         markdown_table = ""
         for sheet_name in excel_file.sheet_names:
             try:
-                df = cast("pd.DataFrame", excel_file.parse(sheet_name=sheet_name))
+                df = excel_file.parse(sheet_name=sheet_name)
                 df = df.dropna(how="all")
                 df = df.map(lambda value: " ".join(str(value).splitlines()) if isinstance(value, str) else value)
                 df.columns = pd.Index([" ".join(str(column).splitlines()) for column in df.columns])
@@ -88,14 +94,16 @@ def _extract_text_from_file(
         return extract_text_from_excel(file_content)
 
     if file.extension:
-        return graphon_document_extractor_node._extract_text_by_file_extension(
+        return _call_graphon_extractor(
+            "_extract_text_by_file_extension",
             file_content=file_content,
             file_extension=file.extension,
             unstructured_api_config=unstructured_api_config,
         )
 
     if file.mime_type:
-        return graphon_document_extractor_node._extract_text_by_mime_type(
+        return _call_graphon_extractor(
+            "_extract_text_by_mime_type",
             file_content=file_content,
             mime_type=file.mime_type,
             unstructured_api_config=unstructured_api_config,
@@ -169,8 +177,16 @@ class DocumentExtractorNode(GraphonDocumentExtractorNode):
                     inputs=inputs,
                     process_data=process_data,
                 )
-            outputs = {"text": ArrayStringSegment(value=extracted_text_list)}
+            outputs: dict[str, ArrayStringSegment | str] = {"text": ArrayStringSegment(value=extracted_text_list)}
         else:
+            if not isinstance(value, File):
+                msg = f"Variable {variable_selector} did not resolve to a file"
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=msg,
+                    inputs=inputs,
+                    process_data=process_data,
+                )
             try:
                 extracted_text = _extract_text_from_file(
                     self.http_client,

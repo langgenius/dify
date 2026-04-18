@@ -791,7 +791,7 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum = cast(NodeType, node_type)
+        node_type_enum: NodeType = node_type
         node_mapping = get_node_type_classes_mapping()
 
         # return default block config

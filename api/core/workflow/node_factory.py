@@ -15,7 +15,7 @@ from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
 )
-from core.helper.ssrf_proxy import ssrf_proxy
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
@@ -309,7 +309,7 @@ class DifyNodeFactory(NodeFactory):
         )
         self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
-        self._http_request_http_client = ssrf_proxy
+        self._http_request_http_client = graphon_ssrf_proxy
         self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
             self._dify_context,
             conversation_id_getter=self._conversation_id,

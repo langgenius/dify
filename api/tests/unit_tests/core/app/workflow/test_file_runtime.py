@@ -351,7 +351,7 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.M
 
     assert runtime.multimodal_send_format == "url"
 
-    with patch.object(file_runtime.ssrf_proxy, "get", return_value="response") as mock_get:
+    with patch.object(file_runtime.graphon_ssrf_proxy, "get", return_value="response") as mock_get:
         assert runtime.http_get("http://example", follow_redirects=False) == "response"
         mock_get.assert_called_once_with("http://example", follow_redirects=False)
 

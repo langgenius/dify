@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -173,6 +173,28 @@ class DifyPreparedLLM(PreparedLLMProtocol):
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunk, None, None]: ...
+
     def invoke_llm(
         self,
         *,
@@ -189,6 +211,28 @@ class DifyPreparedLLM(PreparedLLMProtocol):
             stop=list(stop or []),
             stream=stream,
         )
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        json_schema: Mapping[str, Any],
+        model_parameters: Mapping[str, Any],
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResultWithStructuredOutput: ...
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        json_schema: Mapping[str, Any],
+        model_parameters: Mapping[str, Any],
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 
     def invoke_llm_with_structured_output(
         self,
