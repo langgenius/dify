@@ -126,16 +126,16 @@ class DocumentExtractorNode(GraphonDocumentExtractorNode):
         variable_selector = self.node_data.variable_selector
         variable = self.graph_runtime_state.variable_pool.get(variable_selector)
 
-        error_message = None
         if variable is None:
-            error_message = f"File variable not found for selector: {variable_selector}"
-        elif variable.value and not isinstance(variable, ArrayFileSegment | FileSegment):
-            error_message = f"Variable {variable_selector} is not an ArrayFileSegment"
-
-        if error_message is not None:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
-                error=error_message,
+                error=f"File variable not found for selector: {variable_selector}",
+            )
+
+        if variable.value and not isinstance(variable, ArrayFileSegment | FileSegment):
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=f"Variable {variable_selector} is not an ArrayFileSegment",
             )
 
         value = variable.value
