@@ -1,4 +1,4 @@
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContextSelector } from '@/context/modal-context'
@@ -25,7 +25,6 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
   const hasTotal = totalCredits > 0
   const meterValue = hasTotal ? Math.min(usedCredits, totalCredits) : 1
   const meterMax = hasTotal ? totalCredits : 1
-  const usageLabel = t('modelProvider.card.usageLabel', { ns: 'common' })
 
   return (
     <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
@@ -49,11 +48,11 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
           />
         </div>
       </div>
-      <div className="mt-3 flex flex-col gap-1">
+      <MeterRoot value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span className="system-xs-medium text-text-tertiary">
-            {usageLabel}
-          </span>
+          <MeterLabel className="system-xs-medium text-text-tertiary">
+            {t('modelProvider.card.usageLabel', { ns: 'common' })}
+          </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
             <CreditsCoin className="h-3 w-3" />
             <span>
@@ -63,12 +62,10 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             </span>
           </div>
         </div>
-        <MeterRoot value={meterValue} max={meterMax} aria-label={usageLabel}>
-          <MeterTrack className="bg-components-progress-error-bg">
-            <MeterIndicator tone="error" />
-          </MeterTrack>
-        </MeterRoot>
-      </div>
+        <MeterTrack className="bg-components-progress-error-bg">
+          <MeterIndicator tone="error" />
+        </MeterTrack>
+      </MeterRoot>
     </div>
   )
 }
