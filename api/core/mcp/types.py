@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Any, Generic, Literal, TypeAlias, TypeVar
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, FileUrl, RootModel
 from pydantic.networks import AnyUrl, UrlConstraints
@@ -31,7 +31,6 @@ ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
 RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
-AnyFunction: TypeAlias = Callable[..., Any]
 
 
 class RequestParams(BaseModel):
@@ -68,12 +67,7 @@ class NotificationParams(BaseModel):
     """
 
 
-RequestParamsT = TypeVar("RequestParamsT", bound=RequestParams | dict[str, Any] | None)
-NotificationParamsT = TypeVar("NotificationParamsT", bound=NotificationParams | dict[str, Any] | None)
-MethodT = TypeVar("MethodT", bound=str)
-
-
-class Request(BaseModel, Generic[RequestParamsT, MethodT]):
+class Request[RequestParamsT: RequestParams | dict[str, Any] | None, MethodT: str](BaseModel):
     """Base class for JSON-RPC requests."""
 
     method: MethodT
@@ -81,14 +75,14 @@ class Request(BaseModel, Generic[RequestParamsT, MethodT]):
     model_config = ConfigDict(extra="allow")
 
 
-class PaginatedRequest(Request[PaginatedRequestParams | None, MethodT], Generic[MethodT]):
+class PaginatedRequest[T: str](Request[PaginatedRequestParams | None, T]):
     """Base class for paginated requests,
     matching the schema's PaginatedRequest interface."""
 
     params: PaginatedRequestParams | None = None
 
 
-class Notification(BaseModel, Generic[NotificationParamsT, MethodT]):
+class Notification[NotificationParamsT: NotificationParams | dict[str, Any] | None, MethodT: str](BaseModel):
     """Base class for JSON-RPC notifications."""
 
     method: MethodT
@@ -736,7 +730,7 @@ class ResourceLink(Resource):
 ContentBlock = TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource
 """A content block that can be used in prompts and tool results."""
 
-Content: TypeAlias = ContentBlock
+type Content = ContentBlock
 # """DEPRECATED: Content is deprecated, you should use ContentBlock directly."""
 
 

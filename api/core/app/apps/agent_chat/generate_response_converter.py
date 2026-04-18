@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import cast
+from typing import Any, cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -56,7 +56,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
     @classmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -87,7 +87,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
     @classmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -113,7 +113,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 metadata = sub_stream_response_dict.get("metadata", {})
                 sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
                 response_chunk.update(sub_stream_response_dict)
-            if isinstance(sub_stream_response, ErrorStreamResponse):
+            elif isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:

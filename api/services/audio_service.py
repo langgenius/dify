@@ -2,14 +2,15 @@ import io
 import logging
 import uuid
 from collections.abc import Generator
+from typing import cast
 
 from flask import Response, stream_with_context
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
 from services.errors.audio import (
@@ -60,7 +61,7 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
         )
@@ -70,7 +71,7 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = "temp.mp3"
 
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
+        return {"text": model_instance.invoke_speech2text(file=buffer)}
 
     @classmethod
     def transcript_tts(
@@ -106,9 +107,9 @@ class AudioService:
                         if not text_to_speech_dict.get("enabled"):
                             raise ValueError("TTS is not enabled")
 
-                        voice = text_to_speech_dict.get("voice")
+                        voice = cast(str | None, text_to_speech_dict.get("voice"))
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=app_model.tenant_id, model_type=ModelType.TTS
             )
@@ -122,9 +123,7 @@ class AudioService:
                     else:
                         raise ValueError("Sorry, no voice available.")
 
-                return model_instance.invoke_tts(
-                    content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice
-                )
+                return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
             except Exception as e:
                 raise e
 
@@ -133,10 +132,10 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = db.session.query(Message).where(Message.id == message_id).first()
+            message = db.session.get(Message, message_id)
             if message is None:
                 return None
-            if message.answer == "" and message.status == MessageStatus.NORMAL:
+            if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:
                 return None
 
             else:
@@ -154,7 +153,7 @@ class AudioService:
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.TTS)
         if model_instance is None:
             raise ProviderNotSupportTextToSpeechServiceError()

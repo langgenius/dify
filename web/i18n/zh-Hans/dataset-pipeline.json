@@ -35,6 +35,7 @@
   "details.structureTooltip": "文档结构决定了文档的拆分和索引方式，Dify 提供了通用、父子和问答模式，每个知识库的文档结构是唯一的。",
   "documentSettings.title": "文档设置",
   "editPipelineInfo": "编辑知识流水线信息",
+  "editPipelineInfoNameRequired": "请输入知识库的名称。",
   "exportDSL.errorTip": "导出知识流水线 DSL 失败",
   "exportDSL.successTip": "成功导出知识流水线 DSL",
   "inputField": "输入字段",

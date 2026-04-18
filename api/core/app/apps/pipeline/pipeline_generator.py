@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -33,14 +34,15 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -60,7 +62,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -75,7 +77,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -90,28 +92,28 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -120,7 +122,7 @@ class PipelineGenerator(BaseAppGenerator):
                 raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
-        datasource_type: str = args["datasource_type"]
+        datasource_type = DatasourceProviderType(args["datasource_type"])
         datasource_info_list: list[Mapping[str, Any]] = self._format_datasource_info_list(
             datasource_type, args["datasource_info_list"], pipeline, workflow, start_node_id, user
         )
@@ -276,7 +278,7 @@ class PipelineGenerator(BaseAppGenerator):
         context: contextvars.Context,
         pipeline: Pipeline,
         workflow_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -284,7 +286,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -300,7 +302,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
+            workflow = db.session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -419,11 +421,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -514,11 +517,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -620,10 +624,10 @@ class PipelineGenerator(BaseAppGenerator):
         application_generate_entity: RagPipelineGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -660,25 +664,25 @@ class PipelineGenerator(BaseAppGenerator):
         tenant_id: str,
         dataset_id: str,
         built_in_field_enabled: bool,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Union[Account, EndUser],
+        account: Account | EndUser,
         batch: str,
         document_form: str,
     ):
-        if datasource_type == "local_file":
-            name = datasource_info.get("name", "untitled")
-        elif datasource_type == "online_document":
-            name = datasource_info.get("page", {}).get("page_name", "untitled")
-        elif datasource_type == "website_crawl":
-            name = datasource_info.get("title", "untitled")
-        elif datasource_type == "online_drive":
-            name = datasource_info.get("name", "untitled")
-        else:
-            raise ValueError(f"Unsupported datasource type: {datasource_type}")
-
+        match datasource_type:
+            case DatasourceProviderType.LOCAL_FILE:
+                name = datasource_info.get("name", "untitled")
+            case DatasourceProviderType.ONLINE_DOCUMENT:
+                name = datasource_info.get("page", {}).get("page_name", "untitled")
+            case DatasourceProviderType.WEBSITE_CRAWL:
+                name = datasource_info.get("title", "untitled")
+            case DatasourceProviderType.ONLINE_DRIVE:
+                name = datasource_info.get("name", "untitled")
+            case _:
+                raise ValueError(f"Unsupported datasource type: {datasource_type}")
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -706,17 +710,17 @@ class PipelineGenerator(BaseAppGenerator):
 
     def _format_datasource_info_list(
         self,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info_list: list[Mapping[str, Any]],
         pipeline: Pipeline,
         workflow: Workflow,
         start_node_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
         Format datasource info list.
         """
-        if datasource_type == "online_drive":
+        if datasource_type == DatasourceProviderType.ONLINE_DRIVE:
             all_files: list[Mapping[str, Any]] = []
             datasource_node_data = None
             datasource_nodes = workflow.graph_dict.get("nodes", [])
@@ -778,7 +782,7 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
     ):
         """
         Get files in a folder.

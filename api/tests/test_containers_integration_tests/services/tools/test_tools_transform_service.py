@@ -1,11 +1,24 @@
+from __future__ import annotations
+
 from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
-from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.__base.tool import Tool
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    ToolDescription,
+    ToolEntity,
+    ToolIdentity,
+    ToolParameter,
+    ToolProviderEntity,
+    ToolProviderIdentity,
+    ToolProviderType,
+)
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -27,7 +40,7 @@ class TestToolTransformService:
                 }
 
     def _create_test_tool_provider(
-        self, db_session_with_containers, mock_external_service_dependencies, provider_type="api"
+        self, db_session_with_containers: Session, mock_external_service_dependencies, provider_type="api"
     ):
         """
         Helper method to create a test tool provider for testing.
@@ -47,41 +60,42 @@ class TestToolTransformService:
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                credentials={"auth_type": "api_key_header", "api_key": "test_key"},
-                provider_type="api",
+                credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
+                schema="{}",
+                schema_type_str=ApiProviderSchemaType.OPENAPI,
+                tools_str="[]",
             )
         elif provider_type == "builtin":
             provider = BuiltinToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon="🔧",
-                icon_dark="🔧",
                 tenant_id="test_tenant_id",
+                user_id="test_user_id",
                 provider="test_provider",
                 credential_type="api_key",
-                credentials={"api_key": "test_key"},
+                encrypted_credentials='{"api_key": "test_key"}',
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                workflow_id="test_workflow_id",
+                app_id="test_workflow_id",
+                label="Test Workflow",
+                version="1.0.0",
+                parameter_configuration="[]",
             )
         elif provider_type == "mcp":
             provider = MCPToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                provider_icon='{"background": "#FF6B6B", "content": "🔧"}',
+                icon='{"background": "#FF6B6B", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
                 server_url="https://mcp.example.com",
+                server_url_hash="test_server_url_hash",
                 server_identifier="test_server",
                 tools='[{"name": "test_tool", "description": "Test tool"}]',
                 authed=True,
@@ -89,14 +103,12 @@ class TestToolTransformService:
         else:
             raise ValueError(f"Unknown provider type: {provider_type}")
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         return provider
 
-    def test_get_plugin_icon_url_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_plugin_icon_url_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful plugin icon URL generation.
 
@@ -126,7 +138,7 @@ class TestToolTransformService:
         assert result == expected_url
 
     def test_get_plugin_icon_url_with_empty_console_url(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test plugin icon URL generation when CONSOLE_API_URL is empty.
@@ -156,7 +168,7 @@ class TestToolTransformService:
         assert result == expected_url
 
     def test_get_tool_provider_icon_url_builtin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for builtin providers.
@@ -194,7 +206,7 @@ class TestToolTransformService:
         assert result == expected_encoded
 
     def test_get_tool_provider_icon_url_api_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for API providers.
@@ -220,7 +232,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_api_invalid_json(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tool provider icon URL generation for API providers with invalid JSON.
@@ -246,7 +258,7 @@ class TestToolTransformService:
         assert result["content"] == "😁" or result["content"] == "\ud83d\ude01"
 
     def test_get_tool_provider_icon_url_workflow_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for workflow providers.
@@ -271,7 +283,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_mcp_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for MCP providers.
@@ -296,7 +308,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_unknown_type(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tool provider icon URL generation for unknown provider types.
@@ -317,7 +329,9 @@ class TestToolTransformService:
         # Assert: Verify the expected outcomes
         assert result == ""
 
-    def test_repack_provider_dict_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_dict_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful provider repacking with dictionary input.
 
@@ -341,7 +355,9 @@ class TestToolTransformService:
         # Note: provider name may contain spaces that get URL encoded
         assert provider["name"].replace(" ", "%20") in provider["icon"] or provider["name"] in provider["icon"]
 
-    def test_repack_provider_entity_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_entity_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful provider repacking with ToolProviderApiEntity input.
 
@@ -389,7 +405,7 @@ class TestToolTransformService:
         assert "test_icon_dark.png" in provider.icon_dark
 
     def test_repack_provider_entity_no_plugin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful provider repacking with ToolProviderApiEntity input without plugin_id.
@@ -435,7 +451,9 @@ class TestToolTransformService:
         assert provider.icon_dark["background"] == "#252525"
         assert provider.icon_dark["content"] == "🔧"
 
-    def test_repack_provider_entity_no_dark_icon(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_entity_no_dark_icon(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test provider repacking with ToolProviderApiEntity input without dark icon.
 
@@ -477,7 +495,7 @@ class TestToolTransformService:
         assert provider.icon_dark == ""
 
     def test_builtin_provider_to_user_provider_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of builtin provider to user provider.
@@ -545,7 +563,7 @@ class TestToolTransformService:
         assert result.original_credentials == {"api_key": "decrypted_key"}
 
     def test_builtin_provider_to_user_provider_plugin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of builtin provider to user provider with plugin.
@@ -589,7 +607,7 @@ class TestToolTransformService:
         assert result.allow_delete is False
 
     def test_builtin_provider_to_user_provider_no_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of builtin provider to user provider without credentials.
@@ -630,7 +648,9 @@ class TestToolTransformService:
         assert result.allow_delete is False
         assert result.masked_credentials == {"api_key": ""}
 
-    def test_api_provider_to_controller_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_api_provider_to_controller_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful conversion of API provider to controller.
 
@@ -651,14 +671,12 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -669,7 +687,7 @@ class TestToolTransformService:
         # Additional assertions would depend on the actual controller implementation
 
     def test_api_provider_to_controller_api_key_query(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of API provider to controller with api_key_query auth type.
@@ -689,14 +707,12 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_query", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -706,7 +722,7 @@ class TestToolTransformService:
         assert hasattr(result, "from_db")
 
     def test_api_provider_to_controller_backward_compatibility(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of API provider to controller with backward compatibility auth types.
@@ -727,14 +743,12 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -744,7 +758,7 @@ class TestToolTransformService:
         assert hasattr(result, "from_db")
 
     def test_workflow_provider_to_controller_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of workflow provider to controller.
@@ -769,10 +783,8 @@ class TestToolTransformService:
             parameter_configuration="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Mock the WorkflowToolProviderController.from_db method to avoid app dependency
         with patch("services.tools.tools_transform_service.WorkflowToolProviderController.from_db") as mock_from_db:
@@ -786,3 +798,192 @@ class TestToolTransformService:
             assert result is not None
             assert result == mock_controller
             mock_from_db.assert_called_once_with(provider)
+
+
+def _mock_tool(*, base_params, runtime_params):
+    """Helper to build a Mock tool with real entity objects.
+
+    Tool is abstract and requires runtime behaviour (fork_tool_runtime,
+    get_runtime_parameters), so it stays as a Mock.  Everything else uses
+    real Pydantic instances.
+    """
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="test_author",
+            name="test_tool",
+            label=I18nObject(en_US="Test Tool"),
+            provider="test_provider",
+        ),
+        parameters=base_params or [],
+        description=ToolDescription(
+            human=I18nObject(en_US="Test description"),
+            llm="Test description for LLM",
+        ),
+        output_schema={},
+    )
+    mock_tool = Mock(spec=Tool)
+    mock_tool.entity = entity
+    mock_tool.get_runtime_parameters.return_value = runtime_params
+    mock_tool.fork_tool_runtime.return_value = mock_tool
+    return mock_tool
+
+
+def _param(name, *, form=ToolParameter.ToolParameterForm.FORM, label=None):
+    return ToolParameter(
+        name=name,
+        label=I18nObject(en_US=label or name),
+        human_description=I18nObject(en_US=name),
+        type=ToolParameter.ToolParameterType.STRING,
+        form=form,
+    )
+
+
+class TestConvertToolEntityToApiEntity:
+    """Tests for ToolTransformService.convert_tool_entity_to_api_entity."""
+
+    def test_parameter_override(self):
+        base = [_param("param1", label="Base 1"), _param("param2", label="Base 2")]
+        runtime = [_param("param1", label="Runtime 1")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 2
+        assert next(p for p in result.parameters if p.name == "param1").label.en_US == "Runtime 1"
+        assert next(p for p in result.parameters if p.name == "param2").label.en_US == "Base 2"
+
+    def test_additional_runtime_parameters(self):
+        base = [_param("param1", label="Base 1")]
+        runtime = [_param("param1", label="Runtime 1"), _param("runtime_only", label="Runtime Only")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert len(result.parameters) == 2
+        names = [p.name for p in result.parameters]
+        assert "param1" in names
+        assert "runtime_only" in names
+
+    def test_non_form_runtime_parameters_excluded(self):
+        base = [_param("param1")]
+        runtime = [
+            _param("param1", label="Runtime 1"),
+            _param("llm_param", form=ToolParameter.ToolParameterForm.LLM),
+        ]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert len(result.parameters) == 1
+        assert result.parameters[0].name == "param1"
+
+    def test_empty_parameters(self):
+        tool = _mock_tool(base_params=[], runtime_params=[])
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 0
+
+    def test_none_parameters(self):
+        tool = _mock_tool(base_params=None, runtime_params=[])
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 0
+
+    def test_parameter_order_preserved(self):
+        base = [_param("p1", label="B1"), _param("p2", label="B2"), _param("p3", label="B3")]
+        runtime = [_param("p2", label="R2"), _param("p4", label="R4")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert [p.name for p in result.parameters] == ["p1", "p2", "p3", "p4"]
+        assert result.parameters[1].label.en_US == "R2"
+
+
+class TestWorkflowProviderToUserProvider:
+    """Tests for ToolTransformService.workflow_provider_to_user_provider."""
+
+    @staticmethod
+    def _make_controller(provider_id="provider_123", **identity_overrides):
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        defaults = {
+            "author": "test_author",
+            "name": "test_workflow_tool",
+            "description": I18nObject(en_US="Test description"),
+            "icon": '{"type": "emoji", "content": "🔧"}',
+            "icon_dark": None,
+            "label": I18nObject(en_US="Test Workflow Tool"),
+        }
+        defaults.update(identity_overrides)
+        identity = ToolProviderIdentity(**defaults)
+        entity = ToolProviderEntity(identity=identity)
+        return WorkflowToolProviderController(entity=entity, provider_id=provider_id)
+
+    def test_with_workflow_app_id(self):
+        ctrl = self._make_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl,
+            labels=["l1", "l2"],
+            workflow_app_id="app_123",
+        )
+
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == "provider_123"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == "app_123"
+        assert result.labels == ["l1", "l2"]
+        assert result.is_team_authorization is True
+
+    def test_without_workflow_app_id(self):
+        ctrl = self._make_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl,
+            labels=["l1"],
+        )
+
+        assert result.workflow_app_id is None
+
+    def test_workflow_app_id_none_explicit(self):
+        ctrl = self._make_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl,
+            labels=None,
+            workflow_app_id=None,
+        )
+
+        assert result.workflow_app_id is None
+        assert result.labels == []
+
+    def test_preserves_other_fields(self):
+        ctrl = self._make_controller(
+            "provider_456",
+            author="another_author",
+            name="another_workflow_tool",
+            description=I18nObject(en_US="Another desc", zh_Hans="Another desc"),
+            icon='{"type": "emoji", "content": "⚙️"}',
+            icon_dark='{"type": "emoji", "content": "🔧"}',
+            label=I18nObject(en_US="Another Tool", zh_Hans="Another Tool"),
+        )
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl,
+            labels=["automation"],
+            workflow_app_id="app_456",
+        )
+
+        assert result.id == "provider_456"
+        assert result.author == "another_author"
+        assert result.name == "another_workflow_tool"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == "app_456"
+        assert result.is_team_authorization is True
+        assert result.allow_delete is True

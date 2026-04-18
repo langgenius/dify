@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { Collection } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
 type Props = {
@@ -53,7 +53,7 @@ const ConfigCredential: FC<Props> = ({
   const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }) })
+        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }))
         return
       }
     }
@@ -73,11 +73,11 @@ const ConfigCredential: FC<Props> = ({
       onHide={onCancel}
       title={t('auth.setupModalTitle', { ns: 'tools' }) as string}
       titleDescription={t('auth.setupModalTitleDescription', { ns: 'tools' }) as string}
-      panelClassName="mt-[64px] mb-2 !w-[420px] border-components-panel-border"
-      maxWidthClassName="!max-w-[420px]"
+      panelClassName="mt-[64px] mb-2 w-[420px]! border-components-panel-border"
+      maxWidthClassName="max-w-[420px]!"
       height="calc(100vh - 64px)"
-      contentClassName="!bg-components-panel-bg"
-      headerClassName="!border-b-divider-subtle"
+      contentClassName="bg-components-panel-bg!"
+      headerClassName="border-b-divider-subtle!"
       body={(
         <div className="h-full px-6 py-3">
           {!credentialSchema
@@ -93,7 +93,7 @@ const ConfigCredential: FC<Props> = ({
                     isEditMode={true}
                     showOnVariableMap={{}}
                     validating={false}
-                    inputClassName="!bg-components-input-bg-normal"
+                    inputClassName="bg-components-input-bg-normal!"
                     fieldMoreInfo={item => item.url
                       ? (
                           <a
@@ -108,7 +108,7 @@ const ConfigCredential: FC<Props> = ({
                         )
                       : null}
                   />
-                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')}>
+                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
                     {
                       (collection.is_team_authorization && !isHideRemoveBtn) && (
                         <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>

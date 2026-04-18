@@ -14,11 +14,11 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationError
 from extensions.ext_database import db
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class AgentChatAppRunner(AppRunner):
 
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         if not model_schema:
             raise ValueError("Model schema not found")
 

@@ -2,10 +2,13 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 
@@ -32,7 +35,7 @@ class TestMetadataService:
                 "document_service": mock_document_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -53,18 +56,16 @@ class TestMetadataService:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -73,15 +74,17 @@ class TestMetadataService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def _create_test_dataset(self, db_session_with_containers, mock_external_service_dependencies, account, tenant):
+    def _create_test_dataset(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, account, tenant
+    ):
         """
         Helper method to create a test dataset for testing.
 
@@ -100,19 +103,19 @@ class TestMetadataService:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             built_in_field_enabled=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers, mock_external_service_dependencies, dataset, account):
+    def _create_test_document(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, dataset, account
+    ):
         """
         Helper method to create a test document for testing.
 
@@ -131,24 +134,22 @@ class TestMetadataService:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info="{}",
             batch="test-batch",
             name=fake.file_name(),
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
-    def test_create_metadata_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_metadata_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful metadata creation with valid parameters.
         """
@@ -164,7 +165,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
 
         # Act: Execute the method under test
         result = MetadataService.create_metadata(dataset.id, metadata_args)
@@ -178,13 +179,14 @@ class TestMetadataService:
         assert result.created_by == account.id
 
         # Verify database state
-        from extensions.ext_database import db
 
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.id is not None
         assert result.created_at is not None
 
-    def test_create_metadata_name_too_long(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_metadata_name_too_long(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test metadata creation fails when name exceeds 255 characters.
         """
@@ -201,13 +203,15 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         long_name = "a" * 256  # 256 characters, exceeding 255 limit
-        metadata_args = MetadataArgs(type="string", name=long_name)
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=long_name)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
             MetadataService.create_metadata(dataset.id, metadata_args)
 
-    def test_create_metadata_name_already_exists(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_metadata_name_already_exists(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test metadata creation fails when name already exists in the same dataset.
         """
@@ -224,18 +228,18 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create first metadata
-        first_metadata_args = MetadataArgs(type="string", name="duplicate_name")
+        first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="duplicate_name")
         MetadataService.create_metadata(dataset.id, first_metadata_args)
 
         # Try to create second metadata with same name
-        second_metadata_args = MetadataArgs(type="number", name="duplicate_name")
+        second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="duplicate_name")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name already exists."):
             MetadataService.create_metadata(dataset.id, second_metadata_args)
 
     def test_create_metadata_name_conflicts_with_built_in_field(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata creation fails when name conflicts with built-in field names.
@@ -254,13 +258,15 @@ class TestMetadataService:
 
         # Try to create metadata with built-in field name
         built_in_field_name = BuiltInField.document_name
-        metadata_args = MetadataArgs(type="string", name=built_in_field_name)
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=built_in_field_name)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
             MetadataService.create_metadata(dataset.id, metadata_args)
 
-    def test_update_metadata_name_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_metadata_name_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful metadata name update with valid parameters.
         """
@@ -277,7 +283,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
@@ -291,12 +297,13 @@ class TestMetadataService:
         assert result.updated_at is not None
 
         # Verify database state
-        from extensions.ext_database import db
 
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.name == new_name
 
-    def test_update_metadata_name_too_long(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_metadata_name_too_long(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test metadata name update fails when new name exceeds 255 characters.
         """
@@ -313,7 +320,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with too long name
@@ -323,7 +330,9 @@ class TestMetadataService:
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
             MetadataService.update_metadata_name(dataset.id, metadata.id, long_name)
 
-    def test_update_metadata_name_already_exists(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_metadata_name_already_exists(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test metadata name update fails when new name already exists in the same dataset.
         """
@@ -340,10 +349,10 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create two metadata entries
-        first_metadata_args = MetadataArgs(type="string", name="first_metadata")
+        first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="first_metadata")
         first_metadata = MetadataService.create_metadata(dataset.id, first_metadata_args)
 
-        second_metadata_args = MetadataArgs(type="number", name="second_metadata")
+        second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="second_metadata")
         second_metadata = MetadataService.create_metadata(dataset.id, second_metadata_args)
 
         # Try to update first metadata with second metadata's name
@@ -351,7 +360,7 @@ class TestMetadataService:
             MetadataService.update_metadata_name(dataset.id, first_metadata.id, "second_metadata")
 
     def test_update_metadata_name_conflicts_with_built_in_field(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata name update fails when new name conflicts with built-in field names.
@@ -369,7 +378,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with built-in field name
@@ -378,7 +387,9 @@ class TestMetadataService:
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
             MetadataService.update_metadata_name(dataset.id, metadata.id, built_in_field_name)
 
-    def test_update_metadata_name_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_metadata_name_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test metadata name update fails when metadata ID does not exist.
         """
@@ -406,7 +417,7 @@ class TestMetadataService:
         # Assert: Verify the method returns None when metadata is not found
         assert result is None
 
-    def test_delete_metadata_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_metadata_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful metadata deletion with valid parameters.
         """
@@ -423,7 +434,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="to_be_deleted")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="to_be_deleted")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
@@ -434,12 +445,11 @@ class TestMetadataService:
         assert result.id == metadata.id
 
         # Verify metadata was deleted from database
-        from extensions.ext_database import db
 
-        deleted_metadata = db.session.query(DatasetMetadata).filter_by(id=metadata.id).first()
+        deleted_metadata = db_session_with_containers.query(DatasetMetadata).filter_by(id=metadata.id).first()
         assert deleted_metadata is None
 
-    def test_delete_metadata_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_metadata_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test metadata deletion fails when metadata ID does not exist.
         """
@@ -467,7 +477,7 @@ class TestMetadataService:
         assert result is None
 
     def test_delete_metadata_with_document_bindings(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata deletion successfully removes document metadata bindings.
@@ -488,7 +498,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create metadata binding
@@ -500,15 +510,13 @@ class TestMetadataService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(binding)
-        db.session.commit()
+        db_session_with_containers.add(binding)
+        db_session_with_containers.commit()
 
         # Set document metadata
         document.doc_metadata = {"test_metadata": "test_value"}
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = MetadataService.delete_metadata(dataset.id, metadata.id)
@@ -517,13 +525,13 @@ class TestMetadataService:
         assert result is not None
 
         # Verify metadata was deleted from database
-        deleted_metadata = db.session.query(DatasetMetadata).filter_by(id=metadata.id).first()
+        deleted_metadata = db_session_with_containers.query(DatasetMetadata).filter_by(id=metadata.id).first()
         assert deleted_metadata is None
 
         # Note: The service attempts to update document metadata but may not succeed
         # due to mock configuration. The main functionality (metadata deletion) is verified.
 
-    def test_get_built_in_fields_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_built_in_fields_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of built-in metadata fields.
         """
@@ -548,7 +556,9 @@ class TestMetadataService:
         assert "string" in field_types
         assert "time" in field_types
 
-    def test_enable_built_in_field_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_enable_built_in_field_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful enabling of built-in fields for a dataset.
         """
@@ -579,16 +589,15 @@ class TestMetadataService:
         MetadataService.enable_built_in_field(dataset)
 
         # Assert: Verify the expected outcomes
-        from extensions.ext_database import db
 
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is True
 
         # Note: Document metadata update depends on DocumentService mock working correctly
         # The main functionality (enabling built-in fields) is verified
 
     def test_enable_built_in_field_already_enabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test enabling built-in fields when they are already enabled.
@@ -607,10 +616,9 @@ class TestMetadataService:
 
         # Enable built-in fields first
         dataset.built_in_field_enabled = True
-        from extensions.ext_database import db
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Mock DocumentService.get_working_documents_by_dataset_id
         mock_external_service_dependencies["document_service"].get_working_documents_by_dataset_id.return_value = []
@@ -619,11 +627,11 @@ class TestMetadataService:
         MetadataService.enable_built_in_field(dataset)
 
         # Assert: Verify the method returns early without changes
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is True
 
     def test_enable_built_in_field_with_no_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test enabling built-in fields for a dataset with no documents.
@@ -647,12 +655,13 @@ class TestMetadataService:
         MetadataService.enable_built_in_field(dataset)
 
         # Assert: Verify the expected outcomes
-        from extensions.ext_database import db
 
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is True
 
-    def test_disable_built_in_field_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_disable_built_in_field_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful disabling of built-in fields for a dataset.
         """
@@ -673,10 +682,9 @@ class TestMetadataService:
 
         # Enable built-in fields first
         dataset.built_in_field_enabled = True
-        from extensions.ext_database import db
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Set document metadata with built-in fields
         document.doc_metadata = {
@@ -686,8 +694,8 @@ class TestMetadataService:
             BuiltInField.last_update_date: 1234567890.0,
             BuiltInField.source: "test_source",
         }
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Mock DocumentService.get_working_documents_by_dataset_id
         mock_external_service_dependencies["document_service"].get_working_documents_by_dataset_id.return_value = [
@@ -698,14 +706,14 @@ class TestMetadataService:
         MetadataService.disable_built_in_field(dataset)
 
         # Assert: Verify the expected outcomes
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is False
 
         # Note: Document metadata update depends on DocumentService mock working correctly
         # The main functionality (disabling built-in fields) is verified
 
     def test_disable_built_in_field_already_disabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test disabling built-in fields when they are already disabled.
@@ -732,13 +740,12 @@ class TestMetadataService:
         MetadataService.disable_built_in_field(dataset)
 
         # Assert: Verify the method returns early without changes
-        from extensions.ext_database import db
 
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is False
 
     def test_disable_built_in_field_with_no_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test disabling built-in fields for a dataset with no documents.
@@ -757,10 +764,9 @@ class TestMetadataService:
 
         # Enable built-in fields first
         dataset.built_in_field_enabled = True
-        from extensions.ext_database import db
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Mock DocumentService.get_working_documents_by_dataset_id to return empty list
         mock_external_service_dependencies["document_service"].get_working_documents_by_dataset_id.return_value = []
@@ -769,10 +775,12 @@ class TestMetadataService:
         MetadataService.disable_built_in_field(dataset)
 
         # Assert: Verify the expected outcomes
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert dataset.built_in_field_enabled is False
 
-    def test_update_documents_metadata_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_documents_metadata_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful update of documents metadata.
         """
@@ -792,7 +800,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Mock DocumentService.get_document
@@ -815,24 +823,25 @@ class TestMetadataService:
         MetadataService.update_documents_metadata(dataset, operation_data)
 
         # Assert: Verify the expected outcomes
-        from extensions.ext_database import db
 
         # Verify document metadata was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.doc_metadata is not None
         assert "test_metadata" in document.doc_metadata
         assert document.doc_metadata["test_metadata"] == "test_value"
 
         # Verify metadata binding was created
         binding = (
-            db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata.id, document_id=document.id).first()
+            db_session_with_containers.query(DatasetMetadataBinding)
+            .filter_by(metadata_id=metadata.id, document_id=document.id)
+            .first()
         )
         assert binding is not None
         assert binding.tenant_id == tenant.id
         assert binding.dataset_id == dataset.id
 
     def test_update_documents_metadata_with_built_in_fields_enabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test update of documents metadata when built-in fields are enabled.
@@ -850,17 +859,16 @@ class TestMetadataService:
 
         # Enable built-in fields
         dataset.built_in_field_enabled = True
-        from extensions.ext_database import db
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Setup mocks
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Mock DocumentService.get_document
@@ -884,7 +892,7 @@ class TestMetadataService:
 
         # Assert: Verify the expected outcomes
         # Verify document metadata was updated with both custom and built-in fields
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.doc_metadata is not None
         assert "test_metadata" in document.doc_metadata
         assert document.doc_metadata["test_metadata"] == "test_value"
@@ -893,7 +901,7 @@ class TestMetadataService:
         # The main functionality (custom metadata update) is verified
 
     def test_update_documents_metadata_document_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test update of documents metadata when document is not found.
@@ -911,11 +919,8 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
-
-        # Mock DocumentService.get_document to return None (document not found)
-        mock_external_service_dependencies["document_service"].get_document.return_value = None
 
         # Create metadata operation data
         from services.entities.knowledge_entities.knowledge_entities import (
@@ -926,19 +931,20 @@ class TestMetadataService:
 
         metadata_detail = MetadataDetail(id=metadata.id, name=metadata.name, value="test_value")
 
-        operation = DocumentMetadataOperation(document_id="non-existent-document-id", metadata_list=[metadata_detail])
+        # Use a valid UUID format that does not exist in the database
+        operation = DocumentMetadataOperation(
+            document_id="00000000-0000-0000-0000-000000000000", metadata_list=[metadata_detail]
+        )
 
         operation_data = MetadataOperationData(operation_data=[operation])
 
-        # Act: Execute the method under test
-        # The method should handle the error gracefully and continue
-        MetadataService.update_documents_metadata(dataset, operation_data)
-
-        # Assert: Verify the method completes without raising exceptions
-        # The main functionality (error handling) is verified
+        # Act & Assert: The method should raise ValueError("Document not found.")
+        # because the exception is now re-raised after rollback
+        with pytest.raises(ValueError, match="Document not found"):
+            MetadataService.update_documents_metadata(dataset, operation_data)
 
     def test_knowledge_base_metadata_lock_check_dataset_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata lock check for dataset operations.
@@ -961,7 +967,7 @@ class TestMetadataService:
         assert call_args[0][0] == f"dataset_metadata_lock_{dataset_id}"
 
     def test_knowledge_base_metadata_lock_check_document_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata lock check for document operations.
@@ -984,7 +990,7 @@ class TestMetadataService:
         assert call_args[0][0] == f"document_metadata_lock_{document_id}"
 
     def test_knowledge_base_metadata_lock_check_lock_exists(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata lock check when lock already exists.
@@ -1001,7 +1007,7 @@ class TestMetadataService:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
 
     def test_knowledge_base_metadata_lock_check_document_lock_exists(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test metadata lock check when document lock already exists.
@@ -1015,7 +1021,9 @@ class TestMetadataService:
         with pytest.raises(ValueError, match="Another document metadata operation is running, please wait a moment."):
             MetadataService.knowledge_base_metadata_lock_check(None, document_id)
 
-    def test_get_dataset_metadatas_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_dataset_metadatas_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of dataset metadata information.
         """
@@ -1032,7 +1040,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create document and metadata binding
@@ -1048,10 +1056,8 @@ class TestMetadataService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(binding)
-        db.session.commit()
+        db_session_with_containers.add(binding)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = MetadataService.get_dataset_metadatas(dataset)
@@ -1073,7 +1079,7 @@ class TestMetadataService:
         assert result["built_in_field_enabled"] is False
 
     def test_get_dataset_metadatas_with_built_in_fields_enabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test retrieval of dataset metadata when built-in fields are enabled.
@@ -1088,17 +1094,16 @@ class TestMetadataService:
 
         # Enable built-in fields
         dataset.built_in_field_enabled = True
-        from extensions.ext_database import db
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Setup mocks
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
@@ -1116,7 +1121,9 @@ class TestMetadataService:
         # Verify built-in field status
         assert result["built_in_field_enabled"] is True
 
-    def test_get_dataset_metadatas_no_metadata(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_dataset_metadatas_no_metadata(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test retrieval of dataset metadata when no metadata exists.
         """

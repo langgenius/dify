@@ -2,29 +2,31 @@
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext, useContextSelector } from 'use-context-selector'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import ExploreContext from '@/context/explore-context'
+import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
 } from '@/models/app'
 import { fetchAppDetail } from '@/service/explore'
+import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
-import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import TryApp from '../try-app'
 import s from './style.module.css'
 
@@ -36,9 +38,12 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { systemFeatures } = useGlobalPublicStore()
-  const { hasEditPermission } = useContext(ExploreContext)
+  const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
+  const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)
+  const hasEditPermission = !!userAccount && userAccount.role !== 'normal'
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -85,8 +90,8 @@ const Apps = ({
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = React.useState<App | null>(null)
-  const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const [currApp, setCurrApp] = useState<App | null>(null)
+  const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const {
     handleImportDSL,
@@ -96,18 +101,27 @@ const Apps = ({
   } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
-  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
+  const isShowTryAppPanel = !!currentTryApp
   const hideTryAppPanel = useCallback(() => {
-    setShowTryAppPanel(false)
-  }, [setShowTryAppPanel])
-  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
+    setCurrentTryApp(undefined)
+  }, [])
+  const handleTryApp = useCallback((params: TryAppSelection) => {
+    setCurrentTryApp(params)
+  }, [])
   const handleShowFromTryApp = useCallback(() => {
-    setCurrApp(appParams?.app || null)
+    setCurrApp(currentTryApp?.app || null)
     setIsShowCreateModal(true)
-  }, [appParams?.app])
+  }, [currentTryApp?.app])
+  const trackCurrentCreateApp = useCallback(() => {
+    if (!currentCreateAppModeRef.current)
+      return
 
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+  }, [])
+
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
     icon,
@@ -116,9 +130,10 @@ const Apps = ({
   }) => {
     hideTryAppPanel()
 
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
+    currentCreateAppModeRef.current = mode
     const payload = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: export_data,
@@ -130,19 +145,23 @@ const Apps = ({
     }
     await handleImportDSL(payload, {
       onSuccess: () => {
+        trackCurrentCreateApp()
         setIsShowCreateModal(false)
       },
       onPending: () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }
+  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess,
+      onSuccess: () => {
+        trackCurrentCreateApp()
+        onSuccess?.()
+      },
     })
-  }, [handleImportDSLConfirm, onSuccess])
+  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
   if (isLoading) {
     return (
@@ -159,69 +178,74 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
+      'flex h-full min-h-0 flex-col overflow-hidden border-l-[0.5px] border-divider-regular',
     )}
     >
-      {systemFeatures.enable_explore_banner && (
-        <div className="mt-4 px-12">
-          <Banner />
-        </div>
-      )}
-      <div className={cn(
-        'mt-6 flex items-center justify-between px-12',
-      )}
-      >
-        <div className="flex items-center">
-          <div className="system-xl-semibold grow truncate text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
-          {hasFilterCondition && (
-            <>
-              <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-              <Button size="medium" onClick={handleResetFilter}>{t('apps.resetFilter', { ns: 'explore' })}</Button>
-            </>
-          )}
-        </div>
-        <Input
-          showLeftIcon
-          showClearIcon
-          wrapperClassName="w-[200px] self-start"
-          value={keywords}
-          onChange={e => handleKeywordsChange(e.target.value)}
-          onClear={() => handleKeywordsChange('')}
-        />
-      </div>
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        {systemFeatures.enable_explore_banner && (
+          <div className="mt-4 px-12">
+            <Banner />
+          </div>
+        )}
 
-      <div className="mt-2 px-12">
-        <Category
-          list={categories}
-          value={currCategory}
-          onChange={setCurrCategory}
-          allCategoriesEn={allCategoriesEn}
-        />
-      </div>
-
-      <div className={cn(
-        'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
-      )}
-      >
-        <nav
-          className={cn(
-            s.appList,
-            'grid shrink-0 content-start gap-4 px-6 sm:px-12',
+        <div className="sticky top-0 z-10 bg-background-body">
+          <div className={cn(
+            'flex items-center justify-between px-12 pt-6',
           )}
-        >
-          {searchFilteredList.map(app => (
-            <AppCard
-              key={app.app_id}
-              isExplore
-              app={app}
-              canCreate={hasEditPermission}
-              onCreate={() => {
-                setCurrApp(app)
-                setIsShowCreateModal(true)
-              }}
+          >
+            <div className="flex items-center">
+              <div className="grow truncate system-xl-semibold text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              {hasFilterCondition && (
+                <>
+                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
+                  <Button size="medium" onClick={handleResetFilter}>{t('apps.resetFilter', { ns: 'explore' })}</Button>
+                </>
+              )}
+            </div>
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName="w-[200px] self-start"
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
             />
-          ))}
-        </nav>
+          </div>
+
+          <div className="px-12 pt-2 pb-4">
+            <Category
+              list={categories}
+              value={currCategory}
+              onChange={setCurrCategory}
+              allCategoriesEn={allCategoriesEn}
+            />
+          </div>
+        </div>
+
+        <div className={cn(
+          'relative flex flex-1 shrink-0 grow flex-col pb-6',
+        )}
+        >
+          <nav
+            className={cn(
+              s.appList,
+              'grid shrink-0 content-start gap-4 px-6 sm:px-12',
+            )}
+          >
+            {searchFilteredList.map(app => (
+              <AppCard
+                key={app.app_id}
+                app={app}
+                canCreate={hasEditPermission}
+                onCreate={() => {
+                  setCurrApp(app)
+                  setIsShowCreateModal(true)
+                }}
+                onTry={handleTryApp}
+              />
+            ))}
+          </nav>
+        </div>
       </div>
       {isShowCreateModal && (
         <CreateAppModal
@@ -250,9 +274,9 @@ const Apps = ({
 
       {isShowTryAppPanel && (
         <TryApp
-          appId={appParams?.appId || ''}
-          app={appParams?.app}
-          category={appParams?.app?.category}
+          appId={currentTryApp?.appId || ''}
+          app={currentTryApp?.app}
+          category={currentTryApp?.app?.category}
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />

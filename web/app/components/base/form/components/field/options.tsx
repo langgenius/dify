@@ -1,7 +1,7 @@
 import type { LabelProps } from '../label'
 import type { Options } from '@/app/components/app/configuration/config-var/config-select'
+import { cn } from '@langgenius/dify-ui/cn'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Label from '../label'
 

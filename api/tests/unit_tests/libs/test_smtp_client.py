@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -5,15 +6,13 @@ import pytest
 from libs.smtp import SMTPClient
 
 
-def _mail() -> dict:
+def _mail() -> dict[str, Any]:
     return {"to": "user@example.com", "subject": "Hi", "html": "<b>Hi</b>"}
 
 
-@patch("libs.smtp.smtplib.SMTP")
+@patch("libs.smtp.smtplib.SMTP", autospec=True)
 def test_smtp_plain_success(mock_smtp_cls: MagicMock):
-    mock_smtp = MagicMock()
-    mock_smtp_cls.return_value = mock_smtp
-
+    mock_smtp = mock_smtp_cls.return_value
     client = SMTPClient(server="smtp.example.com", port=25, username="", password="", _from="noreply@example.com")
     client.send(_mail())
 
@@ -22,11 +21,9 @@ def test_smtp_plain_success(mock_smtp_cls: MagicMock):
     mock_smtp.quit.assert_called_once()
 
 
-@patch("libs.smtp.smtplib.SMTP")
+@patch("libs.smtp.smtplib.SMTP", autospec=True)
 def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock):
-    mock_smtp = MagicMock()
-    mock_smtp_cls.return_value = mock_smtp
-
+    mock_smtp = mock_smtp_cls.return_value
     client = SMTPClient(
         server="smtp.example.com",
         port=587,
@@ -46,7 +43,7 @@ def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock):
     mock_smtp.quit.assert_called_once()
 
 
-@patch("libs.smtp.smtplib.SMTP_SSL")
+@patch("libs.smtp.smtplib.SMTP_SSL", autospec=True)
 def test_smtp_tls_ssl_branch_and_timeout(mock_smtp_ssl_cls: MagicMock):
     # Cover SMTP_SSL branch and TimeoutError handling
     mock_smtp = MagicMock()
@@ -67,7 +64,7 @@ def test_smtp_tls_ssl_branch_and_timeout(mock_smtp_ssl_cls: MagicMock):
     mock_smtp.quit.assert_called_once()
 
 
-@patch("libs.smtp.smtplib.SMTP")
+@patch("libs.smtp.smtplib.SMTP", autospec=True)
 def test_smtp_generic_exception_propagates(mock_smtp_cls: MagicMock):
     mock_smtp = MagicMock()
     mock_smtp.sendmail.side_effect = RuntimeError("oops")
@@ -79,7 +76,7 @@ def test_smtp_generic_exception_propagates(mock_smtp_cls: MagicMock):
     mock_smtp.quit.assert_called_once()
 
 
-@patch("libs.smtp.smtplib.SMTP")
+@patch("libs.smtp.smtplib.SMTP", autospec=True)
 def test_smtp_smtplib_exception_in_login(mock_smtp_cls: MagicMock):
     # Ensure we hit the specific SMTPException except branch
     import smtplib

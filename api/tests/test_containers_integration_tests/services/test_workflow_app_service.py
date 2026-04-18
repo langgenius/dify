@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
-from models.enums import CreatorUserRole
+from graphon.enums import WorkflowExecutionStatus
+from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
 # Delay import of AppService to avoid circular dependency
 # from services.app_service import AppService
-from services.workflow_app_service import WorkflowAppService
+from services.workflow_app_service import LogView, WorkflowAppService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWorkflowAppService:
@@ -25,7 +31,7 @@ class TestWorkflowAppService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
@@ -48,7 +54,7 @@ class TestWorkflowAppService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
@@ -71,7 +77,7 @@ class TestWorkflowAppService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -96,7 +102,7 @@ class TestWorkflowAppService:
 
         return app, account
 
-    def _create_test_tenant_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_tenant_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test tenant and account for testing.
 
@@ -119,14 +125,14 @@ class TestWorkflowAppService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
         return tenant, account
 
-    def _create_test_app(self, db_session_with_containers, tenant, account):
+    def _create_test_app(self, db_session_with_containers: Session, tenant, account):
         """
         Helper method to create a test app for testing.
 
@@ -160,7 +166,7 @@ class TestWorkflowAppService:
 
         return app
 
-    def _create_test_workflow_data(self, db_session_with_containers, app, account):
+    def _create_test_workflow_data(self, db_session_with_containers: Session, app, account):
         """
         Helper method to create test workflow data for testing.
 
@@ -174,8 +180,6 @@ class TestWorkflowAppService:
         """
         fake = Faker()
 
-        from extensions.ext_database import db
-
         # Create workflow
         workflow = Workflow(
             id=str(uuid.uuid4()),
@@ -188,8 +192,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create workflow run
         workflow_run = WorkflowRun(
@@ -212,8 +216,8 @@ class TestWorkflowAppService:
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
-        db.session.add(workflow_run)
-        db.session.commit()
+        db_session_with_containers.add(workflow_run)
+        db_session_with_containers.commit()
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
@@ -221,19 +225,19 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log.id = str(uuid.uuid4())
         workflow_app_log.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log)
+        db_session_with_containers.commit()
 
         return workflow, workflow_run, workflow_app_log
 
     def test_get_paginate_workflow_app_logs_basic_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful pagination of workflow app logs with basic parameters.
@@ -268,13 +272,12 @@ class TestWorkflowAppService:
         assert log_entry.workflow_run_id == workflow_run.id
 
         # Verify database state
-        from extensions.ext_database import db
 
-        db.session.refresh(workflow_app_log)
+        db_session_with_containers.refresh(workflow_app_log)
         assert workflow_app_log.id is not None
 
     def test_get_paginate_workflow_app_logs_with_keyword_search(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with keyword search functionality.
@@ -287,11 +290,10 @@ class TestWorkflowAppService:
         )
 
         # Update workflow run with searchable content
-        from extensions.ext_database import db
 
         workflow_run.inputs = json.dumps({"search_term": "test_keyword", "input2": "other_value"})
         workflow_run.outputs = json.dumps({"result": "test_keyword_found", "status": "success"})
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test with keyword search
         service = WorkflowAppService()
@@ -317,7 +319,7 @@ class TestWorkflowAppService:
         assert len(result_no_match["data"]) == 0
 
     def test_get_paginate_workflow_app_logs_with_special_characters_in_keyword(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         r"""
         Test workflow app logs pagination with special characters in keyword to verify SQL injection prevention.
@@ -331,8 +333,6 @@ class TestWorkflowAppService:
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
-
-        from extensions.ext_database import db
 
         service = WorkflowAppService()
 
@@ -353,22 +353,22 @@ class TestWorkflowAppService:
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
-        db.session.add(workflow_run_1)
-        db.session.flush()
+        db_session_with_containers.add(workflow_run_1)
+        db_session_with_containers.flush()
 
         workflow_app_log_1 = WorkflowAppLog(
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_1.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log_1.id = str(uuid.uuid4())
         workflow_app_log_1.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log_1)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log_1)
+        db_session_with_containers.commit()
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers, app_model=app, keyword="50%", page=1, limit=20
@@ -395,22 +395,22 @@ class TestWorkflowAppService:
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
-        db.session.add(workflow_run_2)
-        db.session.flush()
+        db_session_with_containers.add(workflow_run_2)
+        db_session_with_containers.flush()
 
         workflow_app_log_2 = WorkflowAppLog(
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_2.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log_2.id = str(uuid.uuid4())
         workflow_app_log_2.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log_2)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log_2)
+        db_session_with_containers.commit()
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers, app_model=app, keyword="test_data", page=1, limit=20
@@ -437,22 +437,22 @@ class TestWorkflowAppService:
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
-        db.session.add(workflow_run_4)
-        db.session.flush()
+        db_session_with_containers.add(workflow_run_4)
+        db_session_with_containers.flush()
 
         workflow_app_log_4 = WorkflowAppLog(
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_4.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log_4.id = str(uuid.uuid4())
         workflow_app_log_4.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log_4)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log_4)
+        db_session_with_containers.commit()
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers, app_model=app, keyword="50%", page=1, limit=20
@@ -467,7 +467,7 @@ class TestWorkflowAppService:
         assert workflow_run_4.id not in found_run_ids
 
     def test_get_paginate_workflow_app_logs_with_status_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with status filtering.
@@ -475,8 +475,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data with different statuses
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -490,8 +488,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create workflow runs with different statuses
         statuses = ["succeeded", "failed", "running", "stopped"]
@@ -519,22 +517,22 @@ class TestWorkflowAppService:
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status != "running" else None,
             )
-            db.session.add(workflow_run)
-            db.session.commit()
+            db_session_with_containers.add(workflow_run)
+            db_session_with_containers.commit()
 
             workflow_app_log = WorkflowAppLog(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             workflow_app_log.id = str(uuid.uuid4())
             workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
-            db.session.add(workflow_app_log)
-            db.session.commit()
+            db_session_with_containers.add(workflow_app_log)
+            db_session_with_containers.commit()
 
             workflow_runs.append(workflow_run)
             workflow_app_logs.append(workflow_app_log)
@@ -568,7 +566,7 @@ class TestWorkflowAppService:
         assert result_running["data"][0].workflow_run.status == "running"
 
     def test_get_paginate_workflow_app_logs_with_time_filtering(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with time-based filtering.
@@ -576,8 +574,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data with different timestamps
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -591,8 +587,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create workflow runs with different timestamps
         base_time = datetime.now(UTC)
@@ -627,22 +623,22 @@ class TestWorkflowAppService:
                 created_at=timestamp,
                 finished_at=timestamp + timedelta(minutes=1),
             )
-            db.session.add(workflow_run)
-            db.session.commit()
+            db_session_with_containers.add(workflow_run)
+            db_session_with_containers.commit()
 
             workflow_app_log = WorkflowAppLog(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             workflow_app_log.id = str(uuid.uuid4())
             workflow_app_log.created_at = timestamp
-            db.session.add(workflow_app_log)
-            db.session.commit()
+            db_session_with_containers.add(workflow_app_log)
+            db_session_with_containers.commit()
 
             workflow_runs.append(workflow_run)
             workflow_app_logs.append(workflow_app_log)
@@ -682,7 +678,7 @@ class TestWorkflowAppService:
         assert result_range["total"] == 2  # Should get logs from 2 hours ago and 1 hour ago
 
     def test_get_paginate_workflow_app_logs_with_pagination(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with different page sizes and limits.
@@ -690,8 +686,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data with multiple logs
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -705,8 +699,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create 25 workflow runs and logs
         total_logs = 25
@@ -734,22 +728,22 @@ class TestWorkflowAppService:
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
             )
-            db.session.add(workflow_run)
-            db.session.commit()
+            db_session_with_containers.add(workflow_run)
+            db_session_with_containers.commit()
 
             workflow_app_log = WorkflowAppLog(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             workflow_app_log.id = str(uuid.uuid4())
             workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
-            db.session.add(workflow_app_log)
-            db.session.commit()
+            db_session_with_containers.add(workflow_app_log)
+            db_session_with_containers.commit()
 
             workflow_runs.append(workflow_run)
             workflow_app_logs.append(workflow_app_log)
@@ -798,7 +792,7 @@ class TestWorkflowAppService:
         assert len(result_large_limit["data"]) == total_logs
 
     def test_get_paginate_workflow_app_logs_with_user_role_filtering(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with user role and session filtering.
@@ -806,8 +800,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data with different user roles
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -821,8 +813,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create end user
         end_user = EndUser(
@@ -835,8 +827,8 @@ class TestWorkflowAppService:
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         # Create workflow runs and logs for both account and end user
         workflow_runs = []
@@ -864,22 +856,22 @@ class TestWorkflowAppService:
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
             )
-            db.session.add(workflow_run)
-            db.session.commit()
+            db_session_with_containers.add(workflow_run)
+            db_session_with_containers.commit()
 
             workflow_app_log = WorkflowAppLog(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             workflow_app_log.id = str(uuid.uuid4())
             workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
-            db.session.add(workflow_app_log)
-            db.session.commit()
+            db_session_with_containers.add(workflow_app_log)
+            db_session_with_containers.commit()
 
             workflow_runs.append(workflow_run)
             workflow_app_logs.append(workflow_app_log)
@@ -906,22 +898,22 @@ class TestWorkflowAppService:
                 created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 11),
             )
-            db.session.add(workflow_run)
-            db.session.commit()
+            db_session_with_containers.add(workflow_run)
+            db_session_with_containers.commit()
 
             workflow_app_log = WorkflowAppLog(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="web-app",
+                created_from=WorkflowAppLogCreatedFrom.WEB_APP,
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
             )
             workflow_app_log.id = str(uuid.uuid4())
             workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i + 10)
-            db.session.add(workflow_app_log)
-            db.session.commit()
+            db_session_with_containers.add(workflow_app_log)
+            db_session_with_containers.commit()
 
             workflow_runs.append(workflow_run)
             workflow_app_logs.append(workflow_app_log)
@@ -994,7 +986,7 @@ class TestWorkflowAppService:
         assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_uuid_keyword_search(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with UUID keyword search functionality.
@@ -1002,8 +994,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -1017,8 +1007,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create workflow run with specific UUID
         workflow_run_id = str(uuid.uuid4())
@@ -1042,8 +1032,8 @@ class TestWorkflowAppService:
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC) + timedelta(minutes=1),
         )
-        db.session.add(workflow_run)
-        db.session.commit()
+        db_session_with_containers.add(workflow_run)
+        db_session_with_containers.commit()
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
@@ -1051,14 +1041,14 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log.id = str(uuid.uuid4())
         workflow_app_log.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log)
+        db_session_with_containers.commit()
 
         # Act & Assert: Test UUID keyword search
         service = WorkflowAppService()
@@ -1085,7 +1075,7 @@ class TestWorkflowAppService:
         assert result_invalid_uuid["total"] == 0
 
     def test_get_paginate_workflow_app_logs_with_edge_cases(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with edge cases and boundary conditions.
@@ -1093,8 +1083,6 @@ class TestWorkflowAppService:
         # Arrange: Create test data
         fake = Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        from extensions.ext_database import db
 
         # Create workflow
         workflow = Workflow(
@@ -1108,8 +1096,8 @@ class TestWorkflowAppService:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create workflow run with edge case data
         workflow_run = WorkflowRun(
@@ -1132,8 +1120,8 @@ class TestWorkflowAppService:
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
-        db.session.add(workflow_run)
-        db.session.commit()
+        db_session_with_containers.add(workflow_run)
+        db_session_with_containers.commit()
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
@@ -1141,14 +1129,14 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         workflow_app_log.id = str(uuid.uuid4())
         workflow_app_log.created_at = datetime.now(UTC)
-        db.session.add(workflow_app_log)
-        db.session.commit()
+        db_session_with_containers.add(workflow_app_log)
+        db_session_with_containers.commit()
 
         # Act & Assert: Test edge cases
         service = WorkflowAppService()
@@ -1185,7 +1173,7 @@ class TestWorkflowAppService:
         assert result_high_page["has_more"] is False
 
     def test_get_paginate_workflow_app_logs_with_empty_results(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with empty results and no data scenarios.
@@ -1252,7 +1240,7 @@ class TestWorkflowAppService:
         assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_complex_query_combinations(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with complex query combinations.
@@ -1295,7 +1283,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -1352,7 +1340,7 @@ class TestWorkflowAppService:
         assert len(result_time_status_limit["data"]) <= 2
 
     def test_get_paginate_workflow_app_logs_with_large_dataset_performance(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with large dataset for performance validation.
@@ -1395,7 +1383,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -1444,7 +1432,7 @@ class TestWorkflowAppService:
         assert result_last_page["page"] == 3
 
     def test_get_paginate_workflow_app_logs_with_tenant_isolation(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test workflow app logs pagination with proper tenant isolation.
@@ -1497,7 +1485,7 @@ class TestWorkflowAppService:
                     app_id=app.id,
                     workflow_id=workflow.id,
                     workflow_run_id=workflow_run.id,
-                    created_from="service-api",
+                    created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
                 )
@@ -1540,3 +1528,168 @@ class TestWorkflowAppService:
 
         # Should not find tenant2's data when searching from tenant1's context
         assert result_cross_tenant["total"] == 0
+
+    def test_get_paginate_workflow_app_logs_raises_when_account_filter_email_not_found(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        service = WorkflowAppService()
+
+        with pytest.raises(ValueError, match="Account not found: nonexistent@example.com"):
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers,
+                app_model=app,
+                created_by_account="nonexistent@example.com",
+            )
+
+    def test_get_paginate_workflow_app_logs_filters_by_account(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        service = WorkflowAppService()
+        workflow, workflow_run, _log = self._create_test_workflow_data(db_session_with_containers, app, account)
+
+        result = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers,
+            app_model=app,
+            created_by_account=account.email,
+        )
+
+        assert result["total"] >= 0
+        assert isinstance(result["data"], list)
+
+    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers, mock_external_service_dependencies):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        service = WorkflowAppService()
+
+        end_user = EndUser(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type="browser",
+            is_anonymous=False,
+            session_id="session-1",
+        )
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
+
+        now = datetime.now(UTC)
+        archive_defaults = {
+            "workflow_id": str(uuid.uuid4()),
+            "run_version": "1.0.0",
+            "run_status": WorkflowExecutionStatus.SUCCEEDED,
+            "run_triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
+            "run_error": None,
+            "run_elapsed_time": 1.0,
+            "run_total_tokens": 0,
+            "run_total_steps": 0,
+            "run_created_at": now,
+            "run_finished_at": now,
+            "run_exceptions_count": 0,
+            "trigger_metadata": '{"type":"trigger-webhook"}',
+            "log_created_at": now,
+            "log_created_from": WorkflowAppLogCreatedFrom.SERVICE_API,
+        }
+        archive_account = WorkflowArchiveLog(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_run_id=str(uuid.uuid4()),
+            log_id=str(uuid.uuid4()),
+            created_by=account.id,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            **archive_defaults,
+        )
+        archive_end_user = WorkflowArchiveLog(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_run_id=str(uuid.uuid4()),
+            log_id=str(uuid.uuid4()),
+            created_by=end_user.id,
+            created_by_role=CreatorUserRole.END_USER,
+            **archive_defaults,
+        )
+        db_session_with_containers.add_all([archive_account, archive_end_user])
+        db_session_with_containers.commit()
+
+        result = service.get_paginate_workflow_archive_logs(
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=20,
+        )
+
+        assert result["total"] == 2
+        assert len(result["data"]) == 2
+        account_item = next(d for d in result["data"] if d["created_by_account"] is not None)
+        end_user_item = next(d for d in result["data"] if d["created_by_end_user"] is not None)
+        assert account_item["created_by_account"].id == account.id
+        assert end_user_item["created_by_end_user"].id == end_user.id
+
+
+class TestLogView:
+    def test_details_and_proxy_attributes(self):
+        log = SimpleNamespace(id="log-1", status="succeeded")
+        view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
+
+        assert view.details == {"trigger_metadata": {"type": "plugin"}}
+        assert view.status == "succeeded"
+
+
+class TestHandleTriggerMetadata:
+    def test_returns_empty_dict_when_metadata_missing(self):
+        service = WorkflowAppService()
+        assert service.handle_trigger_metadata("tenant-1", None) == {}
+
+    def test_enriches_plugin_icons(self):
+        service = WorkflowAppService()
+        meta = {
+            "type": AppTriggerType.TRIGGER_PLUGIN.value,
+            "icon_filename": "light.png",
+            "icon_dark_filename": "dark.png",
+        }
+        with patch(
+            "services.workflow_app_service.PluginService.get_plugin_icon_url",
+            side_effect=["https://cdn/light.png", "https://cdn/dark.png"],
+        ) as mock_icon:
+            result = service.handle_trigger_metadata("tenant-1", json.dumps(meta))
+
+        assert result["icon"] == "https://cdn/light.png"
+        assert result["icon_dark"] == "https://cdn/dark.png"
+        assert mock_icon.call_count == 2
+
+    def test_non_plugin_metadata_without_icon_lookup(self):
+        service = WorkflowAppService()
+        meta = {"type": AppTriggerType.TRIGGER_WEBHOOK.value}
+        with patch("services.workflow_app_service.PluginService.get_plugin_icon_url") as mock_icon:
+            result = service.handle_trigger_metadata("tenant-1", json.dumps(meta))
+
+        assert result["type"] == AppTriggerType.TRIGGER_WEBHOOK.value
+        mock_icon.assert_not_called()
+
+
+class TestSafeJsonLoads:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (None, None),
+            ("", None),
+            ('{"k":"v"}', {"k": "v"}),
+            ("not-json", None),
+            ({"raw": True}, {"raw": True}),
+        ],
+    )
+    def test_handles_various_inputs(self, value, expected):
+        assert WorkflowAppService._safe_json_loads(value) == expected
+
+
+class TestSafeParseUuid:
+    def test_returns_none_for_short_or_invalid_values(self):
+        service = WorkflowAppService()
+        assert service._safe_parse_uuid("short") is None
+        assert service._safe_parse_uuid("x" * 40) is None
+
+    def test_returns_uuid_for_valid_string(self):
+        service = WorkflowAppService()
+        raw = str(uuid.uuid4())
+        result = service._safe_parse_uuid(raw)
+        assert result is not None
+        assert str(result) == raw

@@ -1,6 +1,7 @@
 import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 
@@ -12,7 +13,6 @@ import {
 } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import Toast from '@/app/components/base/toast'
 import {
   useIsChatMode,
   useNodeDataUpdate,
@@ -24,6 +24,7 @@ import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -69,6 +70,7 @@ const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
+const { checkValid: checkHumanInputValid } = HumanInputDefault
 
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
@@ -86,6 +88,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
+  [BlockEnum.HumanInput]: checkHumanInputValid,
 }
 
 type RequestError = {
@@ -231,10 +234,10 @@ const useOneStepRun = <T>({
       const index = draft.findIndex(node => node.nodeId === nodeId)
       if (index !== -1) {
         const targetNode = draft[index]
-        if (targetNode.isSingRunRunning !== isRunning) {
-          targetNode.isSingRunRunning = isRunning
+        if (targetNode!.isSingRunRunning !== isRunning) {
+          targetNode!.isSingRunRunning = isRunning
           if (isRunning)
-            targetNode.isValueFetched = false
+            targetNode!.isValueFetched = false
           hasChanges = true
         }
       }
@@ -313,20 +316,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [
-    isRunAfterSingleRun,
-    runningStatus,
-    flowId,
-    id,
-    store,
-    appendNodeInspectVars,
-    updateNodeInspectRunningState,
-    invalidLastRun,
-    isStartNode,
-    isTriggerNode,
-    invalidateSysVarValues,
-    invalidateConversationVarValues,
-  ])
+  }, [isRunAfterSingleRun, runningStatus, flowType, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, isTriggerNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -420,14 +410,14 @@ const useOneStepRun = <T>({
       })
 
       if (!response) {
-        const message = 'Schedule trigger run failed'
-        Toast.notify({ type: 'error', message })
+        const message = t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
-        const message = response?.message || 'Schedule trigger run failed'
-        Toast.notify({ type: 'error', message })
+        const message = response?.message || t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        toast.error(message)
         throw new Error(message)
       }
 
@@ -452,10 +442,10 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      Toast.notify({ type: 'error', message: 'Schedule trigger run failed' })
+      toast.error(t('common.scheduleTriggerRunFailed', { ns: 'workflow' }))
       throw error
     }
-  }, [flowId, id, handleNodeDataUpdate, data])
+  }, [flowId, id, handleNodeDataUpdate, data, t])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -477,8 +467,8 @@ const useOneStepRun = <T>({
           return null
 
         if (!response) {
-          const message = response?.message || 'Webhook debug failed'
-          Toast.notify({ type: 'error', message })
+          const message = response?.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
         }
@@ -505,8 +495,8 @@ const useOneStepRun = <T>({
         }
 
         if (response?.status === 'error') {
-          const message = response.message || 'Webhook debug failed'
-          Toast.notify({ type: 'error', message })
+          const message = response.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
         }
@@ -529,7 +519,7 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
+        toast.error(t('common.webhookDebugRequestFailed', { ns: 'workflow' }))
         cancelWebhookSingleRun()
         if (error instanceof Error)
           throw error
@@ -541,7 +531,7 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
+  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -576,14 +566,14 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        Toast.notify({ type: 'error', message: requestError.message })
+        toast.error(requestError.message)
         cancelPluginSingleRun()
         throw requestError
       }
 
       if (!response) {
         const message = 'Plugin debug failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         cancelPluginSingleRun()
         throw new Error(message)
       }
@@ -610,7 +600,7 @@ const useOneStepRun = <T>({
 
       if (response?.status === 'error') {
         const message = response.message || 'Plugin debug failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         cancelPluginSingleRun()
         throw new Error(message)
       }
@@ -643,10 +633,8 @@ const useOneStepRun = <T>({
           _isSingleRun: false,
         },
       })
-      Toast.notify({
-        type: 'error',
-        message: res.errorMessage || '',
-      })
+      if (res.errorMessage)
+        toast.error(res.errorMessage)
     }
     return res
   }
@@ -818,7 +806,7 @@ const useOneStepRun = <T>({
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -922,7 +910,7 @@ const useOneStepRun = <T>({
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -1121,13 +1109,13 @@ const useOneStepRun = <T>({
     })
 
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0]!)?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
           nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,
@@ -1141,7 +1129,7 @@ const useOneStepRun = <T>({
 
   const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
     return valueSelectors.filter(item => !!item).map((item) => {
-      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
+      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]!
     })
   }
 

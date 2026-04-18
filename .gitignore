@@ -203,6 +203,7 @@ sdks/python-client/dify_client.egg-info
 
 .vscode/*
 !.vscode/launch.json.template
+!.vscode/settings.example.json
 !.vscode/README.md
 api/.vscode
 # vscode Code History Extension
@@ -212,6 +213,8 @@ api/.vscode
 
 # pnpm
 /.pnpm-store
+node_modules
+.vite-hooks/_
 
 # plugin migrate
 plugins.jsonl
@@ -222,6 +225,7 @@ mise.toml
 
 # AI Assistant
 .roo/
+/.claude/worktrees/
 api/.env.backup
 /clickzetta
 
@@ -236,3 +240,8 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+
+# Code Agent Folder
+.qoder/*
+
+.eslintcache

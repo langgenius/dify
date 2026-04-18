@@ -1,7 +1,13 @@
 'use client'
+/**
+ * @deprecated Use `@langgenius/dify-ui/select` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import type { FC } from 'react'
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -11,7 +17,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import Badge from '../badge/index'
 
 const defaultItems = [
@@ -32,7 +37,7 @@ export type Item = {
   extra?: React.ReactNode
 } & Record<string, any>
 
-export type ISelectProps = {
+type ISelectProps = {
   className?: string
   wrapperClassName?: string
   renderTrigger?: (value: Item | null, isOpen: boolean) => React.JSX.Element | null
@@ -95,11 +100,11 @@ const Select: FC<ISelectProps> = ({
       disabled={disabled}
       value={selectedItem}
       className={className}
-      onChange={(value: Item) => {
+      onChange={(value) => {
         if (!disabled) {
           setSelectedItem(value)
           setOpen(false)
-          onSelect(value)
+          onSelect(value as Item)
         }
       }}
     >
@@ -108,7 +113,7 @@ const Select: FC<ISelectProps> = ({
           {allowSearch
             ? (
                 <ComboboxInput
-                  className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pr-10 pl-3 shadow-sm group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   onChange={(event) => {
                     if (!disabled)
                       setQuery(event.target.value)
@@ -124,13 +129,13 @@ const Select: FC<ISelectProps> = ({
                         setOpen(!open)
                     }
                   }
-                  className={cn(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
+                  className={cn(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pr-10 pl-3 shadow-sm group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6`, optionClassName)}
                 >
                   <div className="w-0 grow truncate text-left" title={selectedItem?.name}>{selectedItem?.name}</div>
                 </ComboboxButton>
               )}
           <ComboboxButton
-            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none"
+            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden"
             onClick={
               () => {
                 if (!disabled)
@@ -143,13 +148,13 @@ const Select: FC<ISelectProps> = ({
         </div>
 
         {(filteredItems.length > 0 && open) && (
-          <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm ${overlayClassName}`}>
+          <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-xs focus:outline-hidden sm:text-sm ${overlayClassName}`}>
             {filteredItems.map((item: Item) => (
               <ComboboxOption
                 key={item.value}
                 value={item}
                 className={({ active }: { active: boolean }) =>
-                  cn('relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', active ? 'bg-state-base-hover' : '', optionClassName)}
+                  cn('relative cursor-default rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover', active ? 'bg-state-base-hover' : '', optionClassName)}
               >
                 {({ /* active, */ selected }) => (
                   <>
@@ -219,10 +224,10 @@ const SimpleSelect: FC<ISelectProps> = ({
     <Listbox
       ref={listboxRef}
       value={selectedItem}
-      onChange={(value: Item) => {
+      onChange={(value) => {
         if (!disabled) {
           setSelectedItem(value)
-          onSelect(value)
+          onSelect(value as Item)
         }
       }}
     >
@@ -234,9 +239,9 @@ const SimpleSelect: FC<ISelectProps> = ({
               onClick={() => {
                 onOpenChange?.(open)
               }}
-              className={cn(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}
+              className={cn(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pr-10 pl-3 group-hover/simple-select:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:outline-hidden sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}
             >
-              <span className={cn('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
+              <span className={cn('block truncate text-left system-sm-regular text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoading
                   ? <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
@@ -272,12 +277,12 @@ const SimpleSelect: FC<ISelectProps> = ({
           )}
 
           {(!disabled) && (
-            <ListboxOptions className={cn('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
+            <ListboxOptions className={cn('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-xs focus:outline-hidden sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) =>
                 item.isGroup ? (
                   <div
                     key={item.value}
-                    className="select-none px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-tertiary"
+                    className="px-3 py-1.5 text-xs font-medium tracking-wide text-text-tertiary uppercase select-none"
                   >
                     {item.name}
                   </div>
@@ -285,7 +290,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                   <ListboxOption
                     key={item.value}
                     className={
-                      cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', optionClassName)
+                      cn('relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover', optionClassName)
                     }
                     value={item}
                     disabled={item.disabled || disabled}
@@ -397,7 +402,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className={cn('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={cn('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

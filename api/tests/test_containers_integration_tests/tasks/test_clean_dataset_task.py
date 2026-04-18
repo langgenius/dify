@@ -16,7 +16,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -28,7 +32,14 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.enums import CreatorUserRole
+from models.enums import (
+    CreatorUserRole,
+    DatasetMetadataType,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+)
 from models.model import UploadFile
 from tasks.clean_dataset_task import clean_dataset_task
 
@@ -37,23 +48,23 @@ class TestCleanDatasetTask:
     """Integration tests for clean_dataset_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
         # Clear all test data using the provided session fixture
-        db_session_with_containers.query(DatasetMetadataBinding).delete()
-        db_session_with_containers.query(DatasetMetadata).delete()
-        db_session_with_containers.query(AppDatasetJoin).delete()
-        db_session_with_containers.query(DatasetQuery).delete()
-        db_session_with_containers.query(DatasetProcessRule).delete()
-        db_session_with_containers.query(DocumentSegment).delete()
-        db_session_with_containers.query(Document).delete()
-        db_session_with_containers.query(Dataset).delete()
-        db_session_with_containers.query(UploadFile).delete()
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(DatasetMetadataBinding))
+        db_session_with_containers.execute(delete(DatasetMetadata))
+        db_session_with_containers.execute(delete(AppDatasetJoin))
+        db_session_with_containers.execute(delete(DatasetQuery))
+        db_session_with_containers.execute(delete(DatasetProcessRule))
+        db_session_with_containers.execute(delete(DocumentSegment))
+        db_session_with_containers.execute(delete(Document))
+        db_session_with_containers.execute(delete(Dataset))
+        db_session_with_containers.execute(delete(UploadFile))
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -63,8 +74,8 @@ class TestCleanDatasetTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.clean_dataset_task.storage") as mock_storage,
-            patch("tasks.clean_dataset_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage,
+            patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_index_processor_factory,
         ):
             # Setup default mock returns
             mock_storage.delete.return_value = None
@@ -82,7 +93,7 @@ class TestCleanDatasetTask:
                 "index_processor": mock_index_processor,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -109,7 +120,7 @@ class TestCleanDatasetTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="active",
+            status="normal",
         )
 
         db_session_with_containers.add(tenant)
@@ -127,7 +138,7 @@ class TestCleanDatasetTask:
 
         return account, tenant
 
-    def _create_test_dataset(self, db_session_with_containers, account, tenant):
+    def _create_test_dataset(self, db_session_with_containers: Session, account, tenant):
         """
         Helper method to create a test dataset for testing.
 
@@ -144,7 +155,7 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             name="test_dataset",
             description="Test dataset for cleanup testing",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
@@ -157,7 +168,7 @@ class TestCleanDatasetTask:
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers, account, tenant, dataset):
+    def _create_test_document(self, db_session_with_containers: Session, account, tenant, dataset):
         """
         Helper method to create a test document for testing.
 
@@ -175,15 +186,15 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name="test_document",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             word_count=100,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -194,7 +205,7 @@ class TestCleanDatasetTask:
 
         return document
 
-    def _create_test_segment(self, db_session_with_containers, account, tenant, dataset, document):
+    def _create_test_segment(self, db_session_with_containers: Session, account, tenant, dataset, document):
         """
         Helper method to create a test document segment for testing.
 
@@ -218,7 +229,7 @@ class TestCleanDatasetTask:
             word_count=20,
             tokens=30,
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
             created_at=datetime.now(),
@@ -230,7 +241,7 @@ class TestCleanDatasetTask:
 
         return segment
 
-    def _create_test_upload_file(self, db_session_with_containers, account, tenant):
+    def _create_test_upload_file(self, db_session_with_containers: Session, account, tenant):
         """
         Helper method to create a test upload file for testing.
 
@@ -246,7 +257,7 @@ class TestCleanDatasetTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -264,7 +275,7 @@ class TestCleanDatasetTask:
         return upload_file
 
     def test_clean_dataset_task_success_basic_cleanup(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful basic dataset cleanup with minimal data.
@@ -292,28 +303,40 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that dataset-related data was cleaned up
-        documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        documents = db_session_with_containers.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(documents) == 0
 
-        segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(segments) == 0
 
         # Check that metadata and bindings were cleaned up
-        metadata = db_session_with_containers.query(DatasetMetadata).filter_by(dataset_id=dataset.id).all()
+        metadata = db_session_with_containers.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+        ).all()
         assert len(metadata) == 0
 
-        bindings = db_session_with_containers.query(DatasetMetadataBinding).filter_by(dataset_id=dataset.id).all()
+        bindings = db_session_with_containers.scalars(
+            select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
+        ).all()
         assert len(bindings) == 0
 
         # Check that process rules and queries were cleaned up
-        process_rules = db_session_with_containers.query(DatasetProcessRule).filter_by(dataset_id=dataset.id).all()
+        process_rules = db_session_with_containers.scalars(
+            select(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset.id)
+        ).all()
         assert len(process_rules) == 0
 
-        queries = db_session_with_containers.query(DatasetQuery).filter_by(dataset_id=dataset.id).all()
+        queries = db_session_with_containers.scalars(
+            select(DatasetQuery).where(DatasetQuery.dataset_id == dataset.id)
+        ).all()
         assert len(queries) == 0
 
         # Check that app dataset joins were cleaned up
-        app_joins = db_session_with_containers.query(AppDatasetJoin).filter_by(dataset_id=dataset.id).all()
+        app_joins = db_session_with_containers.scalars(
+            select(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset.id)
+        ).all()
         assert len(app_joins) == 0
 
         # Verify index processor was called
@@ -325,7 +348,7 @@ class TestCleanDatasetTask:
         mock_storage.delete.assert_not_called()
 
     def test_clean_dataset_task_success_with_documents_and_segments(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful dataset cleanup with documents and segments.
@@ -372,7 +395,7 @@ class TestCleanDatasetTask:
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name="test_metadata",
-            type="string",
+            type=DatasetMetadataType.STRING,
             created_by=account.id,
         )
         metadata.id = str(uuid.uuid4())
@@ -404,24 +427,32 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        remaining_documents = db_session_with_containers.scalars(
+            select(Document).where(Document.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        remaining_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that metadata and bindings were cleaned up
-        remaining_metadata = db_session_with_containers.query(DatasetMetadata).filter_by(dataset_id=dataset.id).all()
+        remaining_metadata = db_session_with_containers.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_metadata) == 0
 
-        remaining_bindings = (
-            db_session_with_containers.query(DatasetMetadataBinding).filter_by(dataset_id=dataset.id).all()
-        )
+        remaining_bindings = db_session_with_containers.scalars(
+            select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_bindings) == 0
 
         # Verify index processor was called
@@ -433,7 +464,7 @@ class TestCleanDatasetTask:
         assert mock_storage.delete.call_count == 3
 
     def test_clean_dataset_task_success_with_invalid_doc_form(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful dataset cleanup with invalid doc_form handling.
@@ -475,12 +506,14 @@ class TestCleanDatasetTask:
 
             # Check that all data was cleaned up
 
-            remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+            remaining_documents = db_session_with_containers.scalars(
+                select(Document).where(Document.dataset_id == dataset.id)
+            ).all()
             assert len(remaining_documents) == 0
 
-            remaining_segments = (
-                db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
-            )
+            remaining_segments = db_session_with_containers.scalars(
+                select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            ).all()
             assert len(remaining_segments) == 0
 
             # Recreate data for next test case
@@ -493,7 +526,7 @@ class TestCleanDatasetTask:
         assert mock_factory.call_count == 4
 
     def test_clean_dataset_task_error_handling_and_rollback(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error handling and rollback mechanism when database operations fail.
@@ -528,11 +561,15 @@ class TestCleanDatasetTask:
         # Verify results - even with vector cleanup failure, documents and segments should be deleted
 
         # Check that documents were still deleted despite vector cleanup failure
-        remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        remaining_documents = db_session_with_containers.scalars(
+            select(Document).where(Document.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_documents) == 0
 
         # Check that segments were still deleted despite vector cleanup failure
-        remaining_segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        remaining_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_segments) == 0
 
         # Verify that index processor was called and failed
@@ -542,7 +579,7 @@ class TestCleanDatasetTask:
         # This demonstrates the resilience of the cleanup process
 
     def test_clean_dataset_task_with_image_file_references(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup with image file references in document segments.
@@ -586,7 +623,7 @@ class TestCleanDatasetTask:
             word_count=len(segment_content),
             tokens=50,
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
             created_at=datetime.now(),
@@ -597,7 +634,7 @@ class TestCleanDatasetTask:
         db_session_with_containers.commit()
 
         # Mock the get_image_upload_file_ids function to return our image file IDs
-        with patch("tasks.clean_dataset_task.get_image_upload_file_ids") as mock_get_image_ids:
+        with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_get_image_ids:
             mock_get_image_ids.return_value = [f.id for f in image_files]
 
             # Execute the task
@@ -612,18 +649,22 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        remaining_documents = db_session_with_containers.scalars(
+            select(Document).where(Document.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        remaining_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_segments) == 0
 
         # Check that all image files were deleted from database
         image_file_ids = [f.id for f in image_files]
-        remaining_image_files = (
-            db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(image_file_ids)).all()
-        )
+        remaining_image_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(image_file_ids))
+        ).all()
         assert len(remaining_image_files) == 0
 
         # Verify that storage.delete was called for each image file
@@ -634,7 +675,7 @@ class TestCleanDatasetTask:
         mock_get_image_ids.assert_called_once()
 
     def test_clean_dataset_task_performance_with_large_dataset(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup performance with large amounts of data.
@@ -685,7 +726,7 @@ class TestCleanDatasetTask:
                 dataset_id=dataset.id,
                 tenant_id=tenant.id,
                 name=f"test_metadata_{i}",
-                type="string",
+                type=DatasetMetadataType.STRING,
                 created_by=account.id,
             )
             metadata.id = str(uuid.uuid4())
@@ -704,11 +745,9 @@ class TestCleanDatasetTask:
             binding.created_at = datetime.now()
             bindings.append(binding)
 
-        from extensions.ext_database import db
-
-        db.session.add_all(metadata_items)
-        db.session.add_all(bindings)
-        db.session.commit()
+        db_session_with_containers.add_all(metadata_items)
+        db_session_with_containers.add_all(bindings)
+        db_session_with_containers.commit()
 
         # Measure cleanup performance
         import time
@@ -730,24 +769,32 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        remaining_documents = db_session_with_containers.scalars(
+            select(Document).where(Document.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        remaining_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata and bindings were deleted
-        remaining_metadata = db_session_with_containers.query(DatasetMetadata).filter_by(dataset_id=dataset.id).all()
+        remaining_metadata = db_session_with_containers.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_metadata) == 0
 
-        remaining_bindings = (
-            db_session_with_containers.query(DatasetMetadataBinding).filter_by(dataset_id=dataset.id).all()
-        )
+        remaining_bindings = db_session_with_containers.scalars(
+            select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_bindings) == 0
 
         # Verify performance expectations
@@ -772,7 +819,7 @@ class TestCleanDatasetTask:
         print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
 
     def test_clean_dataset_task_storage_exception_handling(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup when storage operations fail.
@@ -818,7 +865,9 @@ class TestCleanDatasetTask:
         # Check that upload file was still deleted from database despite storage failure
         # Note: When storage operations fail, the upload file may not be deleted
         # This demonstrates that the cleanup process continues even with storage errors
-        remaining_files = db_session_with_containers.query(UploadFile).filter_by(id=upload_file.id).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id == upload_file.id)
+        ).all()
         # The upload file should still be deleted from the database even if storage cleanup fails
         # However, this depends on the specific implementation of clean_dataset_task
         if len(remaining_files) > 0:
@@ -838,7 +887,7 @@ class TestCleanDatasetTask:
         # consistency in the database
 
     def test_clean_dataset_task_edge_cases_and_boundary_conditions(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup with edge cases and boundary conditions.
@@ -862,7 +911,7 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             name=long_name,
             description=long_description,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph", "max_length": 10000}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
@@ -881,11 +930,11 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info="{}",
             batch="test_batch",
             name=f"test_doc_{special_content}",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -906,7 +955,7 @@ class TestCleanDatasetTask:
             word_count=len(segment_content.split()),
             tokens=len(segment_content) // 4,  # Rough token estimation
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash_" + "x" * 50,  # Long hash within limits
             created_at=datetime.now(),
@@ -919,7 +968,7 @@ class TestCleanDatasetTask:
         special_filename = f"test_file_{special_content}.txt"
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{special_filename}",
             name=special_filename,
             size=1024,
@@ -947,7 +996,7 @@ class TestCleanDatasetTask:
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name=f"metadata_{special_content}",
-            type="string",
+            type=DatasetMetadataType.STRING,
             created_by=account.id,
         )
         special_metadata.id = str(uuid.uuid4())
@@ -968,19 +1017,27 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.query(Document).filter_by(dataset_id=dataset.id).all()
+        remaining_documents = db_session_with_containers.scalars(
+            select(Document).where(Document.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        remaining_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.query(UploadFile).filter_by(id=upload_file_id).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id == upload_file_id)
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata was deleted
-        remaining_metadata = db_session_with_containers.query(DatasetMetadata).filter_by(dataset_id=dataset.id).all()
+        remaining_metadata = db_session_with_containers.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+        ).all()
         assert len(remaining_metadata) == 0
 
         # Verify that storage.delete was called

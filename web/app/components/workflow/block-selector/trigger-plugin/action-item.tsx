@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
@@ -33,7 +33,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       key={payload.name}
       position="right"
       needsDelay={false}
-      popupClassName="!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+      popupClassName="p-0! px-3! py-2.5! w-[224px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
       popupContent={(
         <div>
           <BlockIcon
@@ -49,7 +49,7 @@ const TriggerPluginActionItem: FC<Props> = ({
     >
       <div
         key={payload.name}
-        className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
+        className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
         onClick={() => {
           if (disabled)
             return
@@ -65,10 +65,10 @@ const TriggerPluginActionItem: FC<Props> = ({
             provider_type: provider.type as string,
             provider_name: provider.name,
             event_name: payload.name,
-            event_label: payload.label[language],
-            event_description: payload.description[language],
+            event_label: payload.label[language]!,
+            event_description: payload.description[language]!,
             plugin_unique_identifier: provider.plugin_unique_identifier,
-            title: payload.label[language],
+            title: payload.label[language]!,
             is_team_authorization: provider.is_team_authorization,
             output_schema: payload.output_schema || {},
             paramSchemas: payload.parameters,
@@ -77,11 +77,11 @@ const TriggerPluginActionItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+        <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (
-          <div className="system-xs-regular mr-4 text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+          <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
         )}
       </div>
     </Tooltip>

@@ -1,12 +1,10 @@
-from flask_restx import Namespace, fields
+from __future__ import annotations
 
-dataset_tag_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "type": fields.String,
-    "binding_count": fields.String,
-}
+from fields.base import ResponseModel
 
 
-def build_dataset_tag_fields(api_or_ns: Namespace):
-    return api_or_ns.model("DataSetTag", dataset_tag_fields)
+class DataSetTag(ResponseModel):
+    id: str
+    name: str
+    type: str
+    binding_count: str | None = None

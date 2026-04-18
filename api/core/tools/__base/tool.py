@@ -5,7 +5,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from models.model import File
 
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -183,7 +183,7 @@ class Tool(ABC):
     def create_file_message(self, file: File) -> ToolInvokeMessage:
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
-            message=ToolInvokeMessage.FileMessage(),
+            message=ToolInvokeMessage.FileMessage(file_marker="file_marker"),
             meta={"file": file},
         )
 
@@ -210,7 +210,7 @@ class Tool(ABC):
             message=ToolInvokeMessage.TextMessage(text=text),
         )
 
-    def create_blob_message(self, blob: bytes, meta: dict | None = None) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict[str, Any] | None = None) -> ToolInvokeMessage:
         """
         create a blob message
 
@@ -224,7 +224,7 @@ class Tool(ABC):
             meta=meta,
         )
 
-    def create_json_message(self, object: dict, suppress_output: bool = False) -> ToolInvokeMessage:
+    def create_json_message(self, object: dict[str, Any], suppress_output: bool = False) -> ToolInvokeMessage:
         """
         create a json message
         """

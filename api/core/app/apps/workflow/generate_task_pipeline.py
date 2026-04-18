@@ -4,18 +4,21 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
     QueueAgentLogEvent,
     QueueErrorEvent,
+    QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -32,6 +35,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
@@ -46,16 +50,17 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -99,7 +104,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._invoke_from = queue_manager.invoke_from
         self._draft_var_saver_factory = draft_var_saver_factory
         self._workflow = workflow
-        self._workflow_system_variables = SystemVariable(
+        self._workflow_system_variables = build_system_variables(
             files=application_generate_entity.files,
             user_id=user_session_id,
             app_id=application_generate_entity.app_config.app_id,
@@ -132,6 +137,25 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for stream_response in generator:
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
+            elif isinstance(stream_response, WorkflowPauseStreamResponse):
+                response = WorkflowAppBlockingResponse(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run_id=stream_response.data.workflow_run_id,
+                    data=WorkflowAppBlockingResponse.Data(
+                        id=stream_response.data.workflow_run_id,
+                        workflow_id=self._workflow.id,
+                        status=stream_response.data.status,
+                        outputs=stream_response.data.outputs or {},
+                        error=None,
+                        elapsed_time=stream_response.data.elapsed_time,
+                        total_tokens=stream_response.data.total_tokens,
+                        total_steps=stream_response.data.total_steps,
+                        created_at=stream_response.data.created_at,
+                        finished_at=None,
+                    ),
+                )
+
+                return response
             elif isinstance(stream_response, WorkflowFinishStreamResponse):
                 response = WorkflowAppBlockingResponse(
                     task_id=self._application_generate_entity.task_id,
@@ -146,7 +170,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         total_tokens=stream_response.data.total_tokens,
                         total_steps=stream_response.data.total_steps,
                         created_at=int(stream_response.data.created_at),
-                        finished_at=int(stream_response.data.finished_at),
+                        finished_at=int(stream_response.data.finished_at) if stream_response.data.finished_at else None,
                     ),
                 )
 
@@ -228,13 +252,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            yield session
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
@@ -259,13 +278,15 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         run_id = self._extract_workflow_run_id(runtime_state)
         self._workflow_execution_id = run_id
 
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
+        if event.reason == WorkflowStartReason.INITIAL:
+            with self._database_session() as session:
+                self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
+            reason=event.reason,
         )
         yield start_resp
 
@@ -440,6 +461,21 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield workflow_finish_resp
 
+    def _handle_workflow_paused_event(
+        self,
+        event: QueueWorkflowPausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle workflow paused events."""
+        self._ensure_workflow_initialized()
+        validated_state = self._ensure_graph_runtime_initialized()
+        responses = self._workflow_response_converter.workflow_pause_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            graph_runtime_state=validated_state,
+        )
+        yield from responses
+
     def _handle_workflow_failed_and_stop_events(
         self,
         event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
@@ -495,6 +531,22 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id, event=event
         )
 
+    def _handle_human_input_form_filled_event(
+        self, event: QueueHumanInputFormFilledEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form filled events."""
+        yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
+    def _handle_human_input_form_timeout_event(
+        self, event: QueueHumanInputFormTimeoutEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form timeout events."""
+        yield self._workflow_response_converter.human_input_form_timeout_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
     def _get_event_handlers(self) -> dict[type, Callable]:
         """Get mapping of event types to their handlers using fluent pattern."""
         return {
@@ -506,6 +558,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
+            QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
@@ -520,6 +573,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueLoopCompletedEvent: self._handle_loop_completed_event,
             # Agent events
             QueueAgentLogEvent: self._handle_agent_log_event,
+            QueueHumanInputFormFilledEvent: self._handle_human_input_form_filled_event,
+            QueueHumanInputFormTimeoutEvent: self._handle_human_input_form_timeout_event,
         }
 
     def _dispatch_event(
@@ -602,6 +657,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 case QueueWorkflowFailedEvent():
                     yield from self._handle_workflow_failed_and_stop_events(event)
                     break
+                case QueueWorkflowPausedEvent():
+                    yield from self._handle_workflow_paused_event(event)
+                    break
 
                 case QueueStopEvent():
                     yield from self._handle_workflow_failed_and_stop_events(event)
@@ -624,15 +682,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
+        match invoke_from:
+            case InvokeFrom.SERVICE_API:
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.EXPLORE:
+                created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+            case InvokeFrom.WEB_APP:
+                created_from = WorkflowAppLogCreatedFrom.WEB_APP
+            case InvokeFrom.DEBUGGER | InvokeFrom.TRIGGER | InvokeFrom.PUBLISHED_PIPELINE | InvokeFrom.VALIDATION:
+                # not save log for debugging
+                return
 
         if not workflow_run_id:
             return
@@ -642,7 +701,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             app_id=self._application_generate_entity.app_config.app_id,
             workflow_id=self._workflow.id,
             workflow_run_id=workflow_run_id,
-            created_from=created_from.value,
+            created_from=created_from,
             created_by_role=self._created_by_role,
             created_by=self._user_id,
         )
@@ -665,13 +724,11 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return response
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
-        with Session(db.engine) as session, session.begin():
-            saver = self._draft_var_saver_factory(
-                session=session,
-                app_id=self._application_generate_entity.app_config.app_id,
-                node_id=event.node_id,
-                node_type=event.node_type,
-                node_execution_id=node_execution_id,
-                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
-            )
-            saver.save(event.process_data, event.outputs)
+        saver = self._draft_var_saver_factory(
+            app_id=self._application_generate_entity.app_config.app_id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            node_execution_id=node_execution_id,
+            enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+        )
+        saver.save(event.process_data, event.outputs)

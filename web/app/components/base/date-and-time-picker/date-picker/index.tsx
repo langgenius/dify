@@ -1,6 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
-import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import Calendar from '../calendar'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
@@ -36,7 +35,7 @@ const DatePicker = ({
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname = 'z-[11]',
+  popupZIndexClassname = 'z-11',
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
@@ -218,38 +217,29 @@ const DatePicker = ({
     >
       <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger
-          ? (renderTrigger({
-              value: normalizedValue,
-              selectedDate,
-              isOpen,
-              handleClear,
-              handleClickTrigger,
-            }))
+          ? (
+              renderTrigger({
+                value: normalizedValue,
+                selectedDate,
+                isOpen,
+                handleClear,
+                handleClickTrigger,
+              }))
           : (
               <div
                 className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
                 onClick={handleClickTrigger}
+                data-testid="date-picker-trigger"
               >
                 <input
-                  className="system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
-            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder"
+                  className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular
+            text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder"
                   readOnly
                   value={isOpen ? '' : displayValue}
                   placeholder={placeholderDate}
                 />
-                <RiCalendarLine className={cn(
-                  'h-4 w-4 shrink-0 text-text-quaternary',
-                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-                  (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
-                )}
-                />
-                <RiCloseCircleFill
-                  className={cn(
-                    'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                    (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
-                  )}
-                  onClick={handleClear}
-                />
+                <span className={cn('i-ri-calendar-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden')} />
+                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block hover:text-text-secondary')} onClick={handleClear} data-testid="date-picker-clear-button" />
               </div>
             )}
       </PortalToFollowElemTrigger>

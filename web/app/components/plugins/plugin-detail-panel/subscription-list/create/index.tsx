@@ -1,28 +1,24 @@
 import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import { Button } from '@/app/components/base/button'
 import CustomSelect from '@/app/components/base/select/custom'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
-
-export enum CreateButtonType {
-  FULL_BUTTON = 'full-button',
-  ICON_BUTTON = 'icon-button',
-}
+import { CreateButtonType, DEFAULT_METHOD } from './types'
 
 type Props = {
   className?: string
@@ -31,8 +27,6 @@ type Props = {
 }
 
 const MAX_COUNT = 10
-
-export const DEFAULT_METHOD = 'default'
 
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
@@ -43,7 +37,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const detail = usePluginStore(state => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
-  const supportedMethods = providerInfo?.supported_creation_methods || []
+  const supportedMethods = useMemo(() => providerInfo?.supported_creation_methods || [], [providerInfo?.supported_creation_methods])
   const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
 
@@ -63,11 +57,11 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     }
   }, [t])
 
-  const onClickClientSettings = (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
+  const onClickClientSettings = useCallback((e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
     showClientSettingsModal()
-  }
+  }, [showClientSettingsModal])
 
   const allOptions = useMemo(() => {
     const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
@@ -79,7 +73,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         tag: !showCustomBadge
           ? null
           : (
-              <Badge className="ml-1 mr-0.5">
+              <Badge className="mr-0.5 ml-1">
                 {t('auth.custom', { ns: 'plugin' })}
               </Badge>
             ),
@@ -104,7 +98,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
     ]
-  }, [t, oauthConfig, supportedMethods, methodType])
+  }, [t, oauthConfig, supportedMethods, methodType, onClickClientSettings])
 
   const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
@@ -113,19 +107,13 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           onSuccess: (response) => {
             openOAuthPopup(response.authorization_url, (callbackData) => {
               if (callbackData) {
-                Toast.notify({
-                  type: 'success',
-                  message: t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }),
-                })
+                toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
                 setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder: response.subscription_builder })
               }
             })
           },
           onError: () => {
-            Toast.notify({
-              type: 'error',
-              message: t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }),
-            })
+            toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
           },
         })
       }
@@ -149,7 +137,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
 
     e.stopPropagation()
     e.preventDefault()
-    onChooseCreateType(methodType)
+    onChooseCreateType(methodType!)
   }
 
   if (!supportedMethods.length)
@@ -160,7 +148,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       <CustomSelect<Option & { show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
         options={allOptions.filter(option => option.show)}
         value={methodType}
-        onChange={value => onChooseCreateType(value as any)}
+        onChange={value => onChooseCreateType(value as SupportedCreationMethods)}
         containerProps={{
           open: (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)) ? undefined : false,
           placement: 'bottom-start',
@@ -171,7 +159,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && supportedMethods.length > 1 && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
         }}
         popupProps={{
-          wrapperClassName: 'z-[1000]',
+          wrapperClassName: 'z-1000',
         }}
         CustomTrigger={() => {
           return buttonType === CreateButtonType.FULL_BUTTON
@@ -184,10 +172,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                 >
                   <div className="flex flex-1 items-center justify-center">
                     <RiAddLine className="mr-2 size-4" />
-                    {buttonTextMap[methodType]}
+                    {buttonTextMap[methodType!]}
                     {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && (
                       <Badge
-                        className="ml-1 mr-0.5 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface"
+                        className="mr-0.5 ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface"
                       >
                         {t('auth.custom', { ns: 'plugin' })}
                       </Badge>
@@ -208,14 +196,14 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               )
             : (
                 <Tooltip
-                  popupContent={subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
+                  popupContent={subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
                   disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
                 >
                   <ActionButton
                     onClick={onClickCreate}
                     className={cn(
                       'float-right',
-                      shape === 'circle' && '!rounded-full border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
+                      shape === 'circle' && 'rounded-full! border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
                     )}
                     state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
                   >
@@ -254,3 +242,5 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     </>
   )
 }
+
+export { CreateButtonType, DEFAULT_METHOD } from './types'

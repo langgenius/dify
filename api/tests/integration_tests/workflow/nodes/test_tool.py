@@ -1,18 +1,20 @@
 import time
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.node_events import StreamCompletedEvent
-from core.workflow.nodes.tool.tool_node import ToolNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.protocols import ToolFileManagerProtocol
+from graphon.nodes.tool.entities import ToolNodeData
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def init_tool_node(config: dict):
@@ -27,11 +29,11 @@ def init_tool_node(config: dict):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -40,7 +42,7 @@ def init_tool_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -54,18 +56,22 @@ def init_tool_node(config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+
+    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
 
     node = ToolNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        tool_file_manager_factory=tool_file_manager_factory,
+        runtime=DifyToolNodeRuntime(init_params.run_context),
     )
     return node
 
 
-def test_tool_variable_invoke():
+def test_tool_variable_invoke(monkeypatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -84,20 +90,23 @@ def test_tool_variable_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
+    with patch.object(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        return_value={"format": "%Y-%m-%d %H:%M:%S"},
+    ):
+        node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
-
-    # execute node
-    result = node._run()
-    for item in result:
-        if isinstance(item, StreamCompletedEvent):
-            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.node_run_result.outputs is not None
-            assert item.node_run_result.outputs.get("text") is not None
+        # execute node
+        result = node._run()
+        for item in result:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke():
+def test_tool_mixed_invoke(monkeypatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -118,12 +127,15 @@ def test_tool_mixed_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
-
-    # execute node
-    result = node._run()
-    for item in result:
-        if isinstance(item, StreamCompletedEvent):
-            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.node_run_result.outputs is not None
-            assert item.node_run_result.outputs.get("text") is not None
+    with patch.object(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        return_value={"format": "%Y-%m-%d %H:%M:%S"},
+    ):
+        # execute node
+        result = node._run()
+        for item in result:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None

@@ -1,4 +1,5 @@
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCalendarLine,
   RiCloseCircleFill,
@@ -7,8 +8,8 @@ import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -21,7 +22,7 @@ const WrappedDatePicker = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  // const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone } } = useAppContext()
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
@@ -46,7 +47,7 @@ const WrappedDatePicker = ({
         </div>
         <RiCloseCircleFill
           className={cn(
-            'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
+            'hidden h-4 w-4 cursor-pointer group-hover:block hover:text-components-input-text-filled',
             value && 'text-text-quaternary',
           )}
           onClick={() => handleDateChange()}
@@ -64,11 +65,12 @@ const WrappedDatePicker = ({
   return (
     <DatePicker
       value={dayjs(value ? value * 1000 : Date.now())}
+      timezone={timezone}
       onChange={handleDateChange}
       onClear={handleDateChange}
       renderTrigger={renderTrigger}
       triggerWrapClassName="w-full"
-      popupZIndexClassname="z-[1000]"
+      popupZIndexClassname="z-1000"
     />
   )
 }

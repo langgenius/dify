@@ -2,16 +2,16 @@ import time
 import uuid
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from models.enums import UserFrom
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def test_execute_answer():
@@ -36,11 +36,11 @@ def test_execute_answer():
         ],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -49,7 +49,7 @@ def test_execute_answer():
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -65,22 +65,17 @@ def test_execute_answer():
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
-
-    node_config = {
-        "id": "answer",
-        "data": {
-            "title": "123",
-            "type": "answer",
-            "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
-        },
-    }
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = AnswerNode(
-        id=str(uuid.uuid4()),
+        node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        config=node_config,
+        config=AnswerNodeData(
+            title="123",
+            type="answer",
+            answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        ),
     )
 
     # Mock db.session.close()

@@ -1,18 +1,9 @@
-import {
-  RiCheckboxCircleLine,
-  RiCloseLine,
-  RiErrorWarningLine,
-} from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import {
-  ClockPlay,
-  ClockPlaySlim,
-} from '@/app/components/base/icons/src/vender/line/time'
 import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
@@ -27,7 +18,6 @@ import {
 } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import {
   useIsChatMode,
   useNodesInteractions,
@@ -83,17 +73,18 @@ const ViewHistory = ({
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           {
             withText && (
-              <div className={cn(
-                'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
-                'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
-                open && 'bg-components-button-secondary-bg-hover',
-              )}
+              <button
+                type="button"
+                aria-label={t('common.showRunHistory', { ns: 'workflow' })}
+                className={cn(
+                  'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
+                  'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
+                  open && 'bg-components-button-secondary-bg-hover',
+                )}
               >
-                <ClockPlay
-                  className="mr-1 h-4 w-4"
-                />
+                <span className="mr-1 i-custom-vender-line-time-clock-play h-4 w-4" />
                 {t('common.showRunHistory', { ns: 'workflow' })}
-              </div>
+              </button>
             )
           }
           {
@@ -101,19 +92,21 @@ const ViewHistory = ({
               <Tooltip
                 popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
               >
-                <div
+                <button
+                  type="button"
+                  aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
                   onClick={() => {
                     onClearLogAndMessageModal?.()
                   }}
                 >
-                  <ClockPlay className={cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
-                </div>
+                  <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
+                </button>
               </Tooltip>
             )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[12]">
+        <PortalToFollowElemContent className="z-12">
           <div
             className="ml-2 flex w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
             style={{
@@ -122,15 +115,17 @@ const ViewHistory = ({
           >
             <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
               <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
-              <div
+              <button
+                type="button"
+                aria-label={t('operation.close', { ns: 'common' })}
                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
                   onClearLogAndMessageModal?.()
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-              </div>
+                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              </button>
             </div>
             {
               isLoading && (
@@ -145,7 +140,7 @@ const ViewHistory = ({
                   {
                     !data?.data.length && (
                       <div className="py-12">
-                        <ClockPlaySlim className="mx-auto mb-2 h-8 w-8 text-text-quaternary" />
+                        <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
                           {t('common.notRunning', { ns: 'workflow' })}
                         </div>
@@ -175,28 +170,28 @@ const ViewHistory = ({
                         }}
                       >
                         {
-                          !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
-                            <AlertTriangle className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
+                          !isChatMode && [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(item.status) && (
+                            <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <RiErrorWarningLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <RiCheckboxCircleLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>
                           <div
                             className={cn(
-                              'flex items-center text-[13px] font-medium leading-[18px] text-text-primary',
+                              'flex items-center text-[13px] leading-[18px] font-medium text-text-primary',
                               item.id === historyWorkflowData?.id && 'text-text-accent',
                             )}
                           >
-                            {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at)}`}
+                            {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
                           </div>
                           <div className="flex items-center text-xs leading-[18px] text-text-tertiary">
                             {item.created_by_account?.name}

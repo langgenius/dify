@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
@@ -57,6 +57,126 @@ type DisplayRow = {
   isVirtual: boolean // whether this row is the extra empty row for adding new items
 }
 
+const isEmptyRow = (row: GenericTableRow) => {
+  return Object.values(row).every(v => v === '' || v === null || v === undefined || v === false)
+}
+
+const getDisplayRows = (
+  data: GenericTableRow[],
+  emptyRowData: GenericTableRow,
+  readonly: boolean,
+): DisplayRow[] => {
+  if (readonly)
+    return data.map((row, index) => ({ row, dataIndex: index, isVirtual: false }))
+
+  if (!data.length)
+    return [{ row: { ...emptyRowData }, dataIndex: null, isVirtual: true }]
+
+  const rows = data.reduce<DisplayRow[]>((acc, row, index) => {
+    if (isEmptyRow(row) && index < data.length - 1)
+      return acc
+
+    acc.push({ row, dataIndex: index, isVirtual: false })
+    return acc
+  }, [])
+
+  const lastRow = data.at(-1)
+  if (lastRow && !isEmptyRow(lastRow))
+    rows.push({ row: { ...emptyRowData }, dataIndex: null, isVirtual: true })
+
+  return rows
+}
+
+const getPrimaryKey = (columns: ColumnConfig[]) => {
+  return columns.find(col => col.key === 'key' || col.key === 'name')?.key ?? 'key'
+}
+
+const renderInputCell = (
+  column: ColumnConfig,
+  value: unknown,
+  readonly: boolean,
+  handleChange: (value: unknown) => void,
+) => {
+  return (
+    <Input
+      value={(value as string) || ''}
+      onChange={(e) => {
+        if (column.key === 'key' || column.key === 'name')
+          replaceSpaceWithUnderscoreInVarNameInput(e.target)
+        handleChange(e.target.value)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.blur()
+        }
+      }}
+      placeholder={column.placeholder}
+      disabled={readonly}
+      wrapperClassName="w-full min-w-0"
+      className={cn(
+        'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
+        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
+        'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
+      )}
+    />
+  )
+}
+
+const renderSelectCell = (
+  column: ColumnConfig,
+  value: unknown,
+  readonly: boolean,
+  handleChange: (value: unknown) => void,
+) => {
+  return (
+    <SimpleSelect
+      items={column.options || []}
+      defaultValue={value as string | undefined}
+      onSelect={item => handleChange(item.value)}
+      disabled={readonly}
+      placeholder={column.placeholder}
+      hideChecked={false}
+      notClearable={true}
+      wrapperClassName="h-6 w-full min-w-0"
+      className={cn(
+        'h-6 rounded-none bg-transparent pr-6 pl-0 text-text-secondary',
+        'group-hover/simple-select:bg-transparent hover:bg-transparent focus-visible:bg-transparent',
+      )}
+      optionWrapClassName="w-26 min-w-26 z-60 -ml-3"
+    />
+  )
+}
+
+const renderSwitchCell = (
+  column: ColumnConfig,
+  value: unknown,
+  dataIndex: number | null,
+  readonly: boolean,
+  handleChange: (value: unknown) => void,
+) => {
+  return (
+    <div className="flex h-7 items-center">
+      <Checkbox
+        id={`${column.key}-${String(dataIndex ?? 'v')}`}
+        checked={Boolean(value)}
+        onCheck={() => handleChange(!value)}
+        disabled={readonly}
+      />
+    </div>
+  )
+}
+
+const renderCustomCell = (
+  column: ColumnConfig,
+  value: unknown,
+  row: GenericTableRow,
+  dataIndex: number | null,
+  handleChange: (value: unknown) => void,
+) => {
+  return column.render ? column.render(value, row, (dataIndex ?? -1), handleChange) : null
+}
+
 const GenericTable: FC<GenericTableProps> = ({
   title,
   columns,
@@ -68,39 +188,8 @@ const GenericTable: FC<GenericTableProps> = ({
   className,
   showHeader = false,
 }) => {
-  // Build the rows to display while keeping a stable mapping to original data
   const displayRows = useMemo<DisplayRow[]>(() => {
-    // Helper to check empty
-    const isEmptyRow = (r: GenericTableRow) =>
-      Object.values(r).every(v => v === '' || v === null || v === undefined || v === false)
-
-    if (readonly)
-      return data.map((r, i) => ({ row: r, dataIndex: i, isVirtual: false }))
-
-    const hasData = data.length > 0
-    const rows: DisplayRow[] = []
-
-    if (!hasData) {
-      // Initialize with exactly one empty row when there is no data
-      rows.push({ row: { ...emptyRowData }, dataIndex: null, isVirtual: true })
-      return rows
-    }
-
-    // Add configured rows, hide intermediate empty ones, keep mapping
-    data.forEach((r, i) => {
-      const isEmpty = isEmptyRow(r)
-      // Skip empty rows except the very last configured row
-      if (isEmpty && i < data.length - 1)
-        return
-      rows.push({ row: r, dataIndex: i, isVirtual: false })
-    })
-
-    // If the last configured row has content, append a trailing empty row
-    const lastHasContent = !isEmptyRow(data[data.length - 1])
-    if (lastHasContent)
-      rows.push({ row: { ...emptyRowData }, dataIndex: null, isVirtual: true })
-
-    return rows
+    return getDisplayRows(data, emptyRowData, readonly)
   }, [data, emptyRowData, readonly])
 
   const removeRow = useCallback((dataIndex: number) => {
@@ -131,9 +220,7 @@ const GenericTable: FC<GenericTableProps> = ({
   }, [data, emptyRowData, onChange, readonly])
 
   // Determine the primary identifier column just once
-  const primaryKey = useMemo(() => (
-    columns.find(col => col.key === 'key' || col.key === 'name')?.key ?? 'key'
-  ), [columns])
+  const primaryKey = useMemo(() => getPrimaryKey(columns), [columns])
 
   const renderCell = (column: ColumnConfig, row: GenericTableRow, dataIndex: number | null) => {
     const value = row[column.key]
@@ -141,67 +228,16 @@ const GenericTable: FC<GenericTableProps> = ({
 
     switch (column.type) {
       case 'input':
-        return (
-          <Input
-            value={(value as string) || ''}
-            onChange={(e) => {
-              // Format variable names (replace spaces with underscores)
-              if (column.key === 'key' || column.key === 'name')
-                replaceSpaceWithUnderscoreInVarNameInput(e.target)
-              handleChange(e.target.value)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                e.currentTarget.blur()
-              }
-            }}
-            placeholder={column.placeholder}
-            disabled={readonly}
-            wrapperClassName="w-full min-w-0"
-            className={cn(
-              // Ghost/inline style: looks like plain text until focus/hover
-              'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
-              'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
-              'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
-            )}
-          />
-        )
+        return renderInputCell(column, value, readonly, handleChange)
 
       case 'select':
-        return (
-          <SimpleSelect
-            items={column.options || []}
-            defaultValue={value as string | undefined}
-            onSelect={item => handleChange(item.value)}
-            disabled={readonly}
-            placeholder={column.placeholder}
-            hideChecked={false}
-            notClearable={true}
-            // wrapper provides compact height, trigger is transparent like text
-            wrapperClassName="h-6 w-full min-w-0"
-            className={cn(
-              'h-6 rounded-none bg-transparent pl-0 pr-6 text-text-secondary',
-              'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
-            )}
-            optionWrapClassName="w-26 min-w-26 z-[60] -ml-3"
-          />
-        )
+        return renderSelectCell(column, value, readonly, handleChange)
 
       case 'switch':
-        return (
-          <div className="flex h-7 items-center">
-            <Checkbox
-              id={`${column.key}-${String(dataIndex ?? 'v')}`}
-              checked={Boolean(value)}
-              onCheck={() => handleChange(!value)}
-              disabled={readonly}
-            />
-          </div>
-        )
+        return renderSwitchCell(column, value, dataIndex, readonly, handleChange)
 
       case 'custom':
-        return column.render ? column.render(value, row, (dataIndex ?? -1), handleChange) : null
+        return renderCustomCell(column, value, row, dataIndex, handleChange)
 
       default:
         return null
@@ -212,12 +248,12 @@ const GenericTable: FC<GenericTableProps> = ({
     return (
       <div className="rounded-lg border border-divider-regular">
         {showHeader && (
-          <div className="system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary">
+          <div className="flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
             {columns.map((column, index) => (
               <div
                 key={column.key}
                 className={cn(
-                  'h-full pl-3',
+                  'flex h-full items-center pl-3',
                   column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
                   // Add right border except for last column
@@ -260,13 +296,14 @@ const GenericTable: FC<GenericTableProps> = ({
                   </div>
                 ))}
                 {!readonly && dataIndex !== null && hasContent && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => removeRow(dataIndex)}
                       className="p-1"
                       aria-label="Delete row"
                     >
+                      {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
                       <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
                     </button>
                   </div>
@@ -290,7 +327,7 @@ const GenericTable: FC<GenericTableProps> = ({
 
       {showPlaceholder
         ? (
-            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
+            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-[18px] font-normal text-text-quaternary">
               {placeholder}
             </div>
           )

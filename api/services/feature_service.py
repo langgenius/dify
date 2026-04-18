@@ -3,6 +3,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
 from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingService
@@ -138,6 +139,8 @@ class FeatureModel(BaseModel):
     is_allow_transfer_workspace: bool = True
     trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
+    # Controls whether email delivery is allowed for HumanInput nodes.
+    human_input_email_delivery_enabled: bool = False
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
@@ -155,6 +158,7 @@ class PluginManagerModel(BaseModel):
 
 
 class SystemFeatureModel(BaseModel):
+    app_dsl_version: str = ""
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -162,6 +166,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
+    enable_collaboration_mode: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
@@ -191,6 +196,11 @@ class FeatureService:
             features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
 
+        features.human_input_email_delivery_enabled = cls._resolve_human_input_email_delivery_enabled(
+            features=features,
+            tenant_id=tenant_id,
+        )
+
         return features
 
     @classmethod
@@ -204,8 +214,20 @@ class FeatureService:
         return knowledge_rate_limit
 
     @classmethod
+    def _resolve_human_input_email_delivery_enabled(cls, *, features: FeatureModel, tenant_id: str | None) -> bool:
+        if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
+            return True
+        if not tenant_id:
+            return False
+        return features.billing.enabled and features.billing.subscription.plan in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        )
+
+    @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
+        system_features.app_dsl_version = CURRENT_APP_DSL_VERSION
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -226,6 +248,7 @@ class FeatureService:
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
@@ -294,7 +317,10 @@ class FeatureService:
             features.apps.limit = billing_info["apps"]["limit"]
 
         if "vector_space" in billing_info:
-            features.vector_space.size = billing_info["vector_space"]["size"]
+            # NOTE (hj24): billing API returns vector_space.size as float (e.g. 0.0)
+            # but LimitationModel.size is int; truncate here for compatibility
+            features.vector_space.size = int(billing_info["vector_space"]["size"])
+            # NOTE END
             features.vector_space.limit = billing_info["vector_space"]["limit"]
 
         if "documents_upload_quota" in billing_info:
@@ -315,7 +341,11 @@ class FeatureService:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
         if "knowledge_rate_limit" in billing_info:
+            # NOTE (hj24):
+            # 1. knowledge_rate_limit size is nullable, currently it's defined but never used, only limit is used.
+            # 2. So be careful if later we decide to use [size], we cannot assume it is always present.
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+            # NOTE END
 
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
@@ -361,14 +391,19 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if is_authenticated and (license_info := enterprise_info.get("License")):
+        # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
+        # so the login page can detect an expired/inactive license after force-logout.
+        # All other license details (expiry date, workspace usage) remain auth-gated.
+        # This behavior reflects prior internal review of information-leakage risks.
+        if license_info := enterprise_info.get("License"):
             features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-            features.license.expired_at = license_info.get("expiredAt", "")
 
-            if workspaces_info := license_info.get("workspaces"):
-                features.license.workspaces.enabled = workspaces_info.get("enabled", False)
-                features.license.workspaces.limit = workspaces_info.get("limit", 0)
-                features.license.workspaces.size = workspaces_info.get("used", 0)
+            if is_authenticated:
+                features.license.expired_at = license_info.get("expiredAt", "")
+                if workspaces_info := license_info.get("workspaces"):
+                    features.license.workspaces.enabled = workspaces_info.get("enabled", False)
+                    features.license.workspaces.limit = workspaces_info.get("limit", 0)
+                    features.license.workspaces.size = workspaces_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

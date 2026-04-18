@@ -11,17 +11,17 @@ import type {
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
+import Link from '@/next/link'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
@@ -253,13 +253,13 @@ const AllTools = ({
                   }}
                 />
                 <div className="px-3">
-                  <Divider className="!h-px" />
+                  <Divider className="h-px!" />
                 </div>
               </>
             )}
             {hasToolsListContent && (
               <>
-                <div className="px-3 pb-1 pt-2">
+                <div className="px-3 pt-2 pb-1">
                   <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
                 </div>
                 <Tools

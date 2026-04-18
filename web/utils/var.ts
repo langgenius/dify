@@ -8,6 +8,7 @@ import {
 } from '@/app/components/base/prompt-editor/constants'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getMaxVarNameLength, MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW } from '@/config'
+import { env } from '@/env'
 
 const otherAllowedRegex = /^\w+$/
 
@@ -50,7 +51,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
   }
 }
 
-export type VarKeyErrorMessageKey = I18nKeysByPrefix<'appDebug', 'varKeyError.'>
+type VarKeyErrorMessageKey = I18nKeysByPrefix<'appDebug', 'varKeyError.'>
 
 export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]): true | VarKeyErrorMessageKey => {
   if (key.length === 0 && !canBeEmpty)
@@ -63,7 +64,7 @@ export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]): t
     return 'tooLong'
 
   if (otherAllowedRegex.test(key)) {
-    if (/\d/.test(key[0]))
+    if (/\d/.test(key[0]!))
       return 'notStartWithNumber'
 
     return true
@@ -101,7 +102,7 @@ export const hasDuplicateStr = (strArr: string[]) => {
     else
       strObj[str] = 1
   })
-  return !!Object.keys(strObj).find(key => strObj[key] > 1)
+  return !!Object.keys(strObj).find(key => strObj[key]! > 1)
 }
 
 const varRegex = /\{\{([a-z_]\w*)\}\}/gi
@@ -129,7 +130,7 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+export const basePath = env.NEXT_PUBLIC_BASE_PATH
 
 export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
   const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })

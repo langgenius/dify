@@ -5,7 +5,7 @@ import pytest
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_runtime.entities.llm_entities import (
+from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
@@ -13,13 +13,13 @@ from core.model_runtime.entities.llm_entities import (
     LLMResultWithStructuredOutput,
     LLMUsage,
 )
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
 def create_mock_usage(prompt_tokens: int = 10, completion_tokens: int = 5) -> LLMUsage:
@@ -321,7 +321,9 @@ def test_structured_output_parser():
                     )
         else:
             # Test successful cases
-            with patch("core.llm_generator.output_parser.structured_output.json_repair.loads") as mock_json_repair:
+            with patch(
+                "core.llm_generator.output_parser.structured_output.json_repair.loads", autospec=True
+            ) as mock_json_repair:
                 # Configure json_repair mock for cases that need it
                 if case["name"] == "json_repair_scenario":
                     mock_json_repair.return_value = {"name": "test"}
@@ -334,7 +336,6 @@ def test_structured_output_parser():
                     json_schema=case["json_schema"],
                     stream=case["stream"],
                     model_parameters={"temperature": 0.7, "max_tokens": 100},
-                    user="test_user",
                 )
 
                 if case["expected_result_type"] == "generator":
@@ -365,7 +366,7 @@ def test_structured_output_parser():
                 call_args = model_instance.invoke_llm.call_args
 
                 assert call_args.kwargs["stream"] == case["stream"]
-                assert call_args.kwargs["user"] == "test_user"
+                assert "user" not in call_args.kwargs
                 assert "temperature" in call_args.kwargs["model_parameters"]
                 assert "max_tokens" in call_args.kwargs["model_parameters"]
 
@@ -402,7 +403,9 @@ def test_parse_structured_output_edge_cases():
 
     prompt_messages = [UserPromptMessage(content="Test reasoning")]
 
-    with patch("core.llm_generator.output_parser.structured_output.json_repair.loads") as mock_json_repair:
+    with patch(
+        "core.llm_generator.output_parser.structured_output.json_repair.loads", autospec=True
+    ) as mock_json_repair:
         # Mock json_repair to return a list with dict
         mock_json_repair.return_value = [{"thought": "reasoning process"}, "other content"]
 

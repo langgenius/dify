@@ -3,7 +3,6 @@ import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { RiMoreLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
@@ -12,6 +11,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import Link from '@/next/link'
 import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -121,7 +121,7 @@ const FeaturedTriggers = ({
   const showEmptyState = !isLoading && totalVisible === 0
 
   return (
-    <div className="px-3 pb-3 pt-2">
+    <div className="px-3 pt-2 pb-3">
       <button
         type="button"
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
@@ -140,7 +140,7 @@ const FeaturedTriggers = ({
           )}
 
           {showEmptyState && (
-            <p className="system-xs-regular py-2 text-text-tertiary">
+            <p className="py-2 system-xs-regular text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
@@ -182,7 +182,7 @@ const FeaturedTriggers = ({
 
           {!isLoading && totalVisible > 0 && canToggleVisibility && (
             <div
-              className="group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pl-3 pr-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+              className="group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pr-2 pl-3 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
               onClick={() => {
                 setVisibleCount((count) => {
                   if (count >= maxAvailable)
@@ -254,7 +254,7 @@ function FeaturedTriggerUninstalledItem({
       <Tooltip
         position="right"
         needsDelay={false}
-        popupClassName="!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+        popupClassName="p-0! px-3! py-2.5! w-[224px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
         popupContent={(
           <div>
             <BlockIcon size="md" className="mb-2" type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
@@ -265,18 +265,18 @@ function FeaturedTriggerUninstalledItem({
         disabled={!description || isActionHovered || actionOpen || isInstallModalOpen}
       >
         <div
-          className="group flex h-8 w-full items-center rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
+          className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
         >
           <div className="flex h-full min-w-0 items-center">
             <BlockIcon type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
             <div className="ml-2 min-w-0">
-              <div className="system-sm-medium truncate text-text-secondary">{label}</div>
+              <div className="truncate system-sm-medium text-text-secondary">{label}</div>
             </div>
           </div>
           <div className="ml-auto flex h-full items-center gap-1 pl-1">
             <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
             <div
-              className={`system-xs-medium flex h-full items-center gap-1 text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? 'flex' : 'hidden group-hover:flex'}`}
+              className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
               onMouseEnter={() => setIsActionHovered(true)}
               onMouseLeave={() => {
                 if (!actionOpen)

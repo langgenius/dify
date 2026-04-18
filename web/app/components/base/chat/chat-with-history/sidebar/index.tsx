@@ -1,5 +1,16 @@
 import type { ConversationItem } from '@/models/share'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
   RiEditBoxLine,
   RiExpandRightLine,
   RiLayoutLeft2Line,
@@ -11,14 +22,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import Confirm from '@/app/components/base/confirm'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = {
@@ -78,6 +86,8 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
+  const pinnedTitle = t('chat.pinnedTitle', { ns: 'share' }) || ''
+  const deleteConversationContent = t('chat.deleteConversation.content', { ns: 'share' }) || ''
 
   return (
     <div className={cn(
@@ -98,7 +108,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
             imageUrl={appData?.site.icon_url}
           />
         </div>
-        <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
+        <div className={cn('grow truncate system-md-semibold text-text-secondary')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
             <RiExpandRightLine className="h-[18px] w-[18px]" />
@@ -122,7 +132,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
           <div className="mb-4">
             <List
               isPin
-              title={t('chat.pinnedTitle', { ns: 'share' }) || ''}
+              title={pinnedTitle}
               list={pinnedConversationList}
               onChangeConversation={handleChangeConversation}
               onOperate={handleOperate}
@@ -165,15 +175,24 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
             </div>
           )}
         </div>
-        {!!showConfirm && (
-          <Confirm
-            title={t('chat.deleteConversation.title', { ns: 'share' })}
-            content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
-            isShow
-            onCancel={handleCancelConfirm}
-            onConfirm={handleDelete}
-          />
-        )}
+        <AlertDialog open={!!showConfirm} onOpenChange={open => !open && handleCancelConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('chat.deleteConversation.title', { ns: 'share' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {deleteConversationContent}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
         {showRename && (
           <RenameModal
             isShow

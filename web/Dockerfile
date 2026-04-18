@@ -1,5 +1,5 @@
 # base image
-FROM node:24-alpine AS base
+FROM node:22-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -19,23 +19,29 @@ ENV NEXT_PUBLIC_BASE_PATH="$NEXT_PUBLIC_BASE_PATH"
 # install packages
 FROM base AS packages
 
-WORKDIR /app/web
+WORKDIR /app
 
-COPY package.json pnpm-lock.yaml /app/web/
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+COPY web/package.json /app/web/
+COPY e2e/package.json /app/e2e/
+COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+COPY packages /app/packages
 
 # Use packageManager from package.json
 RUN corepack install
 
-RUN pnpm install --frozen-lockfile
+# Install workspace dependencies for the Docker build environment.
+RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
-WORKDIR /app/web
-COPY --from=packages /app/web/ .
+WORKDIR /app
+COPY --from=packages /app/ .
 COPY . .
 
+WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN pnpm build:docker
+RUN pnpm build && pnpm build:vinext
 
 
 # production stage
@@ -49,34 +55,30 @@ ENV APP_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
+ENV EXPERIMENTAL_ENABLE_VINEXT=false
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PM2_INSTANCES=2
 
 # set timezone
 ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
-# global runtime packages
-RUN pnpm add -g pm2
-
-
 # Create non-root user
 ARG dify_uid=1001
 RUN addgroup -S -g ${dify_uid} dify && \
     adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
     mkdir /app && \
-    mkdir /.pm2 && \
-    chown -R dify:dify /app /.pm2
+    chown -R dify:dify /app
 
 
-WORKDIR /app/web
+WORKDIR /app
 
-COPY --from=builder --chown=dify:dify /app/web/public ./public
-COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
-COPY --from=builder --chown=dify:dify /app/web/.next/static ./.next/static
+COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
+COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
+COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
+COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
 
-COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh ./entrypoint.sh
+COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}

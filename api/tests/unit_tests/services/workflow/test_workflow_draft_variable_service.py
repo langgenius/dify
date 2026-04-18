@@ -7,10 +7,16 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from core.variables.segments import StringSegment
-from core.variables.types import SegmentType
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.enums import NodeType
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType
@@ -54,12 +60,12 @@ class TestDraftVariableSaver:
             session=mock_session,
             app_id=test_app_id,
             node_id="test_node_id",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,
         )
-        assert saver._should_variable_be_visible("123_456", NodeType.IF_ELSE, "output") == False
-        assert saver._should_variable_be_visible("123", NodeType.START, "output") == True
+        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") == False
+        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") == True
 
     def test__normalize_variable_for_start_node(self):
         @dataclasses.dataclass(frozen=True)
@@ -87,6 +93,20 @@ class TestDraftVariableSaver:
                 expected_name="start_input",
             ),
             TestCase(
+                name="name with `env.` prefix should return the environment node_id",
+                input_node_id=_NODE_ID,
+                input_name="env.API_KEY",
+                expected_node_id=ENVIRONMENT_VARIABLE_NODE_ID,
+                expected_name="API_KEY",
+            ),
+            TestCase(
+                name="name with `conversation.` prefix should return the conversation node_id",
+                input_node_id=_NODE_ID,
+                input_name="conversation.session_id",
+                expected_node_id=CONVERSATION_VARIABLE_NODE_ID,
+                expected_name="session_id",
+            ),
+            TestCase(
                 name="dummy_variable should return the original input node_id",
                 input_node_id=_NODE_ID,
                 input_name="__dummy__",
@@ -102,7 +122,7 @@ class TestDraftVariableSaver:
             session=mock_session,
             app_id=test_app_id,
             node_id=_NODE_ID,
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,
         )
@@ -111,6 +131,47 @@ class TestDraftVariableSaver:
             node_id, name = saver._normalize_variable_for_start_node(c.input_name)
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
+
+    def test_build_variables_from_start_mapping_rebuilds_system_files(self):
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = str(uuid.uuid4())
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id=self._get_test_app_id(),
+            node_id="start",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-1",
+            user=mock_user,
+        )
+        rebuilt_file = File(
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference="upload-1",
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+            storage_key="canonical-storage-key",
+        )
+        raw_file = {
+            **rebuilt_file.model_dump(mode="json"),
+            "tenant_id": "legacy-tenant",
+        }
+
+        with (
+            patch.object(saver, "_resolve_app_tenant_id", return_value="tenant-1"),
+            patch(
+                "services.workflow_draft_variable_service.build_file_from_stored_mapping",
+                return_value=rebuilt_file,
+            ) as rebuild_file,
+        ):
+            draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
+
+        sys_var = draft_vars[0]
+        assert sys_var.get_value().value[0] == rebuilt_file
+        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture
     def mock_session(self):
@@ -134,14 +195,14 @@ class TestDraftVariableSaver:
             session=mock_session,
             app_id="test-app-id",
             node_id="test-node-id",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_execution_id="test-execution-id",
             user=mock_user,
         )
 
     def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             _mock_try_offload.return_value = None
             mock_segment = StringSegment(value="small value")
@@ -153,7 +214,7 @@ class TestDraftVariableSaver:
 
     def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
@@ -170,7 +231,7 @@ class TestDraftVariableSaver:
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
 
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable")
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
         """Test complete save workflow."""
         outputs = {"result": {"data": "test_output"}, "metadata": {"type": "llm_response"}}
@@ -181,6 +242,82 @@ class TestDraftVariableSaver:
         mock_batch_upsert.assert_called_once()
         draft_vars = mock_batch_upsert.call_args[0][1]
         assert len(draft_vars) == 2
+
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(self, mock_batch_upsert):
+        """Start node should persist common `sys.*` variables, not only `sys.files`."""
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.tenant_id = "test-tenant-id"
+
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id="test-app-id",
+            node_id="start-node-id",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-id",
+            user=mock_user,
+        )
+
+        outputs = {
+            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.TIMESTAMP}": 1700000000,
+            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.WORKFLOW_EXECUTION_ID}": "run-id-123",
+        }
+
+        saver.save(outputs=outputs)
+
+        mock_batch_upsert.assert_called_once()
+        draft_vars = mock_batch_upsert.call_args[0][1]
+
+        # plus one dummy output because there are no non-sys Start inputs
+        assert len(draft_vars) == 3
+
+        sys_vars = [v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID]
+        assert {v.name for v in sys_vars} == {
+            str(SystemVariableKey.TIMESTAMP),
+            str(SystemVariableKey.WORKFLOW_EXECUTION_ID),
+        }
+
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert):
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.tenant_id = "test-tenant-id"
+
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id="test-app-id",
+            node_id="start-node-id",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-id",
+            user=mock_user,
+        )
+
+        saver.save(
+            outputs={
+                "env.API_KEY": "secret",
+                "conversation.session_id": "conversation-1",
+                "sys.workflow_run_id": "run-id-123",
+            }
+        )
+
+        mock_batch_upsert.assert_called_once()
+        draft_vars = mock_batch_upsert.call_args[0][1]
+
+        assert len(draft_vars) == 3
+
+        env_var = next(v for v in draft_vars if v.node_id == ENVIRONMENT_VARIABLE_NODE_ID)
+        assert env_var.name == "API_KEY"
+        assert env_var.editable is False
+
+        conversation_var = next(v for v in draft_vars if v.node_id == CONVERSATION_VARIABLE_NODE_ID)
+        assert conversation_var.name == "session_id"
+        assert conversation_var.node_execution_id is None
+
+        sys_var = next(v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID)
+        assert sys_var.name == str(SystemVariableKey.WORKFLOW_EXECUTION_ID)
 
 
 class TestWorkflowDraftVariableService:
@@ -222,7 +359,7 @@ class TestWorkflowDraftVariableService:
             name="test_var",
             value=StringSegment(value="reset_value"),
         )
-        with patch.object(service, "_reset_conv_var", return_value=expected_result) as mock_reset_conv:
+        with patch.object(service, "_reset_conv_var", return_value=expected_result, autospec=True) as mock_reset_conv:
             result = service.reset_variable(workflow, variable)
 
             mock_reset_conv.assert_called_once_with(workflow, variable)
@@ -330,8 +467,8 @@ class TestWorkflowDraftVariableService:
         # Mock workflow methods
         mock_node_config = {"type": "test_node"}
         with (
-            patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config),
-            patch.object(workflow, "get_node_type_from_node_config", return_value=NodeType.LLM),
+            patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config, autospec=True),
+            patch.object(workflow, "get_node_type_from_node_config", return_value=BuiltinNodeTypes.LLM, autospec=True),
         ):
             result = service._reset_node_var_or_sys_var(workflow, variable)
 

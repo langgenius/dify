@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ActivePluginType } from '../../marketplace/constants'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
 import NoDataPlaceholder from './no-data-placeholder'
@@ -134,8 +134,8 @@ const ToolPicker: FC<Props> = ({
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+      <PortalToFollowElemContent className="z-1000">
+        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-xs')}>
           <div className="p-2 pb-1">
             <SearchBox
               search={query}

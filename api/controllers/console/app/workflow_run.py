@@ -1,14 +1,18 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from typing import Literal, TypedDict, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.web.error import NotFoundError
+from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -22,13 +26,27 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
-from services.workflow_run_service import WorkflowRunService
+from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
+
+
+def _build_backstage_input_url(form_token: str | None) -> str | None:
+    if not form_token:
+        return None
+    base_url = dify_config.APP_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{form_token}"
+
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
@@ -155,6 +173,23 @@ console_ns.schema_model(
 )
 
 
+class HumanInputPauseTypeResponse(TypedDict):
+    type: Literal["human_input"]
+    form_id: str
+    backstage_input_url: str | None
+
+
+class PausedNodeResponse(TypedDict):
+    node_id: str
+    node_title: str
+    pause_type: HumanInputPauseTypeResponse
+
+
+class WorkflowPauseDetailsResponse(TypedDict):
+    paused_at: str | None
+    paused_nodes: list[PausedNodeResponse]
+
+
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
 class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs")
@@ -179,7 +214,11 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         Get advanced chat app workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args = args_model.model_dump(exclude_none=True)
+        args: WorkflowRunListArgs = {"limit": args_model.limit}
+        if args_model.last_id is not None:
+            args["last_id"] = args_model.last_id
+        if args_model.status is not None:
+            args["status"] = args_model.status
 
         # Default to DEBUGGING if not specified
         triggered_from = (
@@ -321,7 +360,11 @@ class WorkflowRunListApi(Resource):
         Get workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args = args_model.model_dump(exclude_none=True)
+        args: WorkflowRunListArgs = {"limit": args_model.limit}
+        if args_model.last_id is not None:
+            args["last_id"] = args_model.last_id
+        if args_model.status is not None:
+            args["status"] = args_model.status
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
@@ -440,3 +483,74 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
+
+
+@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
+class ConsoleWorkflowPauseDetailsApi(Resource):
+    """Console API for getting workflow pause details."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, workflow_run_id: str):
+        """
+        Get workflow pause details.
+
+        GET /console/api/workflow/<workflow_run_id>/pause-details
+
+        Returns information about why and where the workflow is paused.
+        """
+
+        # Query WorkflowRun to determine if workflow is suspended
+        session_maker = sessionmaker(bind=db.engine)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
+
+        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
+        if not workflow_run:
+            raise NotFoundError("Workflow run not found")
+
+        if workflow_run.tenant_id != current_user.current_tenant_id:
+            raise NotFoundError("Workflow run not found")
+
+        # Check if workflow is suspended
+        is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
+        if not is_paused:
+            empty_response: WorkflowPauseDetailsResponse = {
+                "paused_at": None,
+                "paused_nodes": [],
+            }
+            return empty_response, 200
+
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        form_tokens_by_form_id = _load_form_tokens_by_form_id(
+            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+        )
+
+        # Build response
+        paused_at = pause_entity.paused_at if pause_entity else None
+        paused_nodes: list[PausedNodeResponse] = []
+        response: WorkflowPauseDetailsResponse = {
+            "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
+            "paused_nodes": paused_nodes,
+        }
+
+        for reason in pause_reasons:
+            if isinstance(reason, HumanInputRequired):
+                paused_nodes.append(
+                    {
+                        "node_id": reason.node_id,
+                        "node_title": reason.node_title,
+                        "pause_type": {
+                            "type": "human_input",
+                            "form_id": reason.form_id,
+                            "backstage_input_url": _build_backstage_input_url(
+                                form_tokens_by_form_id.get(reason.form_id)
+                            ),
+                        },
+                    }
+                )
+            else:
+                raise AssertionError("unimplemented.")
+
+        return response, 200

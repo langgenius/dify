@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
-from typing import Literal, Union
+from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from sqlalchemy import Engine, select
@@ -19,10 +19,11 @@ from constants import (
     IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
 )
-from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account
@@ -51,15 +52,16 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
-        # check if filename contains invalid characters
-        if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
+        # Only reject path separators here. The original filename is stored as metadata,
+        # while the storage key is UUID-based.
+        if any(c in filename for c in ["/", "\\"]):
             raise ValueError("Filename contains invalid characters")
 
         if len(filename) > 200:
@@ -92,7 +94,7 @@ class FileService:
         # save file to db
         upload_file = UploadFile(
             tenant_id=current_tenant_id or "",
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=filename,
             size=file_size,
@@ -130,8 +132,8 @@ class FileService:
         return file_size <= file_size_limit
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = (
-            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file = self._session_maker(expire_on_commit=False).scalar(
+            select(UploadFile).where(UploadFile.id == file_id).limit(1)
         )
         if not upload_file:
             raise NotFound("File not found")
@@ -151,7 +153,7 @@ class FileService:
         # save file to db
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=text_name,
             size=len(text),
@@ -176,7 +178,7 @@ class FileService:
         Return a short text preview extracted from a document file.
         """
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
@@ -198,7 +200,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -218,7 +220,7 @@ class FileService:
             raise NotFound("File not found or signature is invalid")
 
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -229,7 +231,7 @@ class FileService:
 
     def get_public_image_preview(self, file_id: str):
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -245,7 +247,7 @@ class FileService:
 
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")

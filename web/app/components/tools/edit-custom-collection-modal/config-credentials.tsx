@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential } from '@/app/components/tools/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio/ui'
 import Tooltip from '@/app/components/base/tooltip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   positionCenter?: boolean
@@ -28,7 +28,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
   return (
     <div
-      className={cn(isChecked ? 'border-[2px] border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm' : 'border border-components-card-border', 'mb-2 flex h-9 w-[150px] cursor-pointer items-center space-x-2 rounded-xl bg-components-panel-on-panel-item-bg pl-3 hover:bg-components-panel-on-panel-item-bg-hover')}
+      className={cn(isChecked ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm' : 'border border-components-card-border', 'mb-2 flex h-9 w-[150px] cursor-pointer items-center space-x-2 rounded-xl bg-components-panel-on-panel-item-bg pl-3 hover:bg-components-panel-on-panel-item-bg-hover')}
       onClick={() => onClick(value)}
     >
       <Radio isChecked={isChecked} />
@@ -52,17 +52,17 @@ const ConfigCredential: FC<Props> = ({
       positionCenter={positionCenter}
       onHide={onHide}
       title={t('createTool.authMethod.title', { ns: 'tools' })!}
-      dialogClassName="z-[60]"
-      dialogBackdropClassName="z-[70]"
-      panelClassName="mt-2 !w-[520px] h-fit z-[80]"
-      maxWidthClassName="!max-w-[520px]"
+      dialogClassName="z-60"
+      dialogBackdropClassName="z-70"
+      panelClassName="mt-2 w-[520px]! h-fit z-80"
+      maxWidthClassName="max-w-[520px]!"
       height="fit-content"
-      headerClassName="!border-b-divider-regular"
+      headerClassName="border-b-divider-regular!"
       body={(
         <div className="px-6 pt-2">
           <div className="space-y-4">
             <div>
-              <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
               <div className="flex space-x-3">
                 <SelectItem
                   text={t('createTool.authMethod.types.none', { ns: 'tools' })}
@@ -98,7 +98,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKeyHeader && (
               <>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authHeaderPrefix.title', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authHeaderPrefix.title', { ns: 'tools' })}</div>
                   <div className="flex space-x-3">
                     <SelectItem
                       text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
@@ -121,7 +121,7 @@ const ConfigCredential: FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                  <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.key', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
@@ -139,7 +139,7 @@ const ConfigCredential: FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
@@ -151,7 +151,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKeyQuery && (
               <>
                 <div>
-                  <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                  <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.queryParam', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
@@ -169,7 +169,7 @@ const ConfigCredential: FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}

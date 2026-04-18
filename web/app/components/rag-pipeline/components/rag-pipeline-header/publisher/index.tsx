@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -5,7 +6,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -44,7 +44,7 @@ const Publisher = () => {
           <RiArrowDownSLine className="h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <Popup />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

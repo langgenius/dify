@@ -1,13 +1,11 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useRouter } from 'next/navigation'
 // Libraries
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 
-import Button from '@/app/components/base/button'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
@@ -28,8 +26,7 @@ import Datasets from './datasets'
 const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -54,17 +51,12 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  useEffect(() => {
-    if (currentWorkspace.role === 'normal')
-      return router.replace('/apps')
-  }, [currentWorkspace, router])
-
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
     <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
+      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
             <CheckboxWithLabel
@@ -90,13 +82,13 @@ const List = () => {
               <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
             )
           }
-          <div className="h-4 w-[1px] bg-divider-regular" />
+          <div className="h-4 w-px bg-divider-regular" />
           <Button
-            className="shadows-shadow-xs gap-0.5"
+            className="gap-0.5 shadow-xs"
             onClick={() => setShowExternalApiPanel(true)}
           >
-            <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <span className="i-custom-vender-solid-development-api-connection-mod h-4 w-4 text-components-button-secondary-text" />
+            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
           </Button>
         </div>
       </div>

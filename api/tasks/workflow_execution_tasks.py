@@ -7,13 +7,14 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from graphon.entities import WorkflowExecution
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,
@@ -94,13 +95,15 @@ def _create_workflow_run_from_execution(
     workflow_run.tenant_id = tenant_id
     workflow_run.app_id = app_id
     workflow_run.workflow_id = execution.workflow_id
-    workflow_run.type = execution.workflow_type.value
-    workflow_run.triggered_from = triggered_from.value
+    from models.workflow import WorkflowType as ModelWorkflowType
+
+    workflow_run.type = ModelWorkflowType(execution.workflow_type.value)
+    workflow_run.triggered_from = triggered_from
     workflow_run.version = execution.workflow_version
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph))
     workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs))
-    workflow_run.status = execution.status.value
+    workflow_run.status = execution.status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
@@ -108,7 +111,7 @@ def _create_workflow_run_from_execution(
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
-    workflow_run.created_by_role = creator_user_role.value
+    workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
     workflow_run.finished_at = execution.finished_at
@@ -121,7 +124,7 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.status = execution.status.value
+    workflow_run.status = execution.status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )

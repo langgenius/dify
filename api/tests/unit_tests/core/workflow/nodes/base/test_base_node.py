@@ -1,13 +1,12 @@
 import pytest
 
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.node import Node
+from core.workflow.node_factory import get_node_type_classes_mapping
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.base.node import Node
 
-# Ensures that all node classes are imported.
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-
-_ = NODE_TYPE_CLASSES_MAPPING
+# Ensures that all production node classes are imported and registered.
+_ = get_node_type_classes_mapping()
 
 
 class _TestNodeData(BaseNodeData):
@@ -42,10 +41,12 @@ def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined
         node_type = cls.node_type
         node_version = cls.version()
 
-        assert isinstance(cls.node_type, NodeType)
+        assert isinstance(cls.node_type, str)
         assert isinstance(node_version, str)
         node_type_and_version = (node_type, node_version)
-        assert node_type_and_version not in type_version_set
+        assert node_type_and_version not in type_version_set, (
+            f"Duplicate node type and version for class: {cls=} {node_type_and_version=}"
+        )
         type_version_set.add(node_type_and_version)
 
 
@@ -53,7 +54,7 @@ def test_extract_node_data_type_from_generic_extracts_type():
     """When a class inherits from Node[T], it should extract T."""
 
     class _ConcreteNode(Node[_TestNodeData]):
-        node_type = NodeType.CODE
+        node_type = BuiltinNodeTypes.CODE
 
         @staticmethod
         def version() -> str:
@@ -105,7 +106,7 @@ def test_init_subclass_rejects_explicit_node_data_type_without_generic():
 
         class _ExplicitNode(Node):
             _node_data_type = _TestNodeData
-            node_type = NodeType.CODE
+            node_type = BuiltinNodeTypes.CODE
 
             @staticmethod
             def version() -> str:
@@ -116,10 +117,27 @@ def test_init_subclass_sets_node_data_type_from_generic():
     """Verify that __init_subclass__ sets _node_data_type from the generic parameter."""
 
     class _AutoNode(Node[_TestNodeData]):
-        node_type = NodeType.CODE
+        node_type = BuiltinNodeTypes.CODE
 
         @staticmethod
         def version() -> str:
             return "1"
 
     assert _AutoNode._node_data_type is _TestNodeData
+
+
+def test_validate_node_data_uses_declared_node_data_type():
+    """Public validation should hydrate the subclass-declared node data model."""
+
+    class _AutoNode(Node[_TestNodeData]):
+        node_type = BuiltinNodeTypes.CODE
+
+        @staticmethod
+        def version() -> str:
+            return "1"
+
+    base_node_data = BaseNodeData.model_validate({"type": BuiltinNodeTypes.CODE, "title": "Test"})
+
+    validated = _AutoNode.validate_node_data(base_node_data)
+
+    assert isinstance(validated, _TestNodeData)

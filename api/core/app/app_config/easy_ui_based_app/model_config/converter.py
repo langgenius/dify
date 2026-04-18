@@ -4,10 +4,10 @@ from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 
 
 class ModelConfigConverter:
@@ -21,7 +21,7 @@ class ModelConfigConverter:
         """
         model_config = app_config.model
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=app_config.tenant_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id=app_config.tenant_id, provider=model_config.provider, model_type=ModelType.LLM
         )

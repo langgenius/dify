@@ -1,21 +1,21 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiExternalLinkLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import {
-  useRouter,
-  useSearchParams,
-} from 'next/navigation'
 import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
-import { useToastContext } from '@/app/components/base/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import {
+  useRouter,
+  useSearchParams,
+} from '@/next/navigation'
 import {
   useEducationAdd,
   useInvalidateEducationStatus,
@@ -39,7 +39,6 @@ const EducationApplyAge = () => {
   const [modalShow, setShowModal] = useState<undefined | { title: string, desc: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
-  const { notify } = useToastContext()
   const router = useRouter()
   const docLink = useDocLink()
 
@@ -67,16 +66,13 @@ const EducationApplyAge = () => {
         })
       }
       else {
-        notify({
-          type: 'error',
-          message: t('submitError', { ns: 'education' }),
-        })
+        toast.error(t('submitError', { ns: 'education' }))
       }
     })
   }
 
   return (
-    <div className="fixed inset-0 z-[31] overflow-y-auto bg-background-body p-6">
+    <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
       <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
           className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
@@ -89,8 +85,8 @@ const EducationApplyAge = () => {
           <DifyLogo size="large" style="monochromeWhite" />
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
-          <div className="mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface">
-            <div className="title-5xl-bold mb-2 shadow-xs">{t('toVerified', { ns: 'education' })}</div>
+          <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
+            <div className="mb-2 title-5xl-bold shadow-xs">{t('toVerified', { ns: 'education' })}</div>
             <div className="system-md-medium shadow-xs">
               {t('toVerifiedTip.front', { ns: 'education' })}
 &nbsp;
@@ -103,7 +99,7 @@ const EducationApplyAge = () => {
             <UserInfo />
           </div>
           <div className="mb-7">
-            <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
+            <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
               {t('form.schoolName.title', { ns: 'education' })}
             </div>
             <SearchInput
@@ -112,7 +108,7 @@ const EducationApplyAge = () => {
             />
           </div>
           <div className="mb-7">
-            <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
+            <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
               {t('form.schoolRole.title', { ns: 'education' })}
             </div>
             <RoleSelector
@@ -121,10 +117,10 @@ const EducationApplyAge = () => {
             />
           </div>
           <div className="mb-7">
-            <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
+            <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
               {t('form.terms.title', { ns: 'education' })}
             </div>
-            <div className="system-md-regular mb-1 text-text-tertiary">
+            <div className="mb-1 system-md-regular text-text-tertiary">
               {t('form.terms.desc.front', { ns: 'education' })}
 &nbsp;
               <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
@@ -134,7 +130,7 @@ const EducationApplyAge = () => {
               <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
               {t('form.terms.desc.end', { ns: 'education' })}
             </div>
-            <div className="system-md-regular py-2 text-text-primary">
+            <div className="py-2 system-md-regular text-text-primary">
               <div className="mb-2 flex">
                 <Checkbox
                   className="mr-2 shrink-0"
@@ -160,9 +156,9 @@ const EducationApplyAge = () => {
           >
             {t('submit', { ns: 'education' })}
           </Button>
-          <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
+          <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
-            className="system-xs-regular flex items-center text-text-accent"
+            className="flex items-center system-xs-regular text-text-accent"
             href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
             target="_blank"
           >

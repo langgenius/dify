@@ -2,20 +2,37 @@ from typing import Literal
 
 import sqlalchemy as sa
 from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.raws import FilesContainedField
+from fields.conversation_fields import (
+    Conversation as ConversationResponse,
+)
+from fields.conversation_fields import (
+    ConversationDetail as ConversationDetailResponse,
+)
+from fields.conversation_fields import (
+    ConversationMessageDetail as ConversationMessageDetailResponse,
+)
+from fields.conversation_fields import (
+    ConversationPagination as ConversationPaginationResponse,
+)
+from fields.conversation_fields import (
+    ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
+)
+from fields.conversation_fields import (
+    ResultResponse,
+)
 from libs.datetime_utils import naive_utc_now, parse_time_range
-from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
@@ -62,266 +79,16 @@ console_ns.schema_model(
     ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register in dependency order: base models first, then dependent models
-
-# Base models
-simple_account_model = console_ns.model(
-    "SimpleAccount",
-    {
-        "id": fields.String,
-        "name": fields.String,
-        "email": fields.String,
-    },
-)
-
-feedback_stat_model = console_ns.model(
-    "FeedbackStat",
-    {
-        "like": fields.Integer,
-        "dislike": fields.Integer,
-    },
-)
-
-status_count_model = console_ns.model(
-    "StatusCount",
-    {
-        "success": fields.Integer,
-        "failed": fields.Integer,
-        "partial_success": fields.Integer,
-    },
-)
-
-message_file_model = console_ns.model(
-    "MessageFile",
-    {
-        "id": fields.String,
-        "filename": fields.String,
-        "type": fields.String,
-        "url": fields.String,
-        "mime_type": fields.String,
-        "size": fields.Integer,
-        "transfer_method": fields.String,
-        "belongs_to": fields.String(default="user"),
-        "upload_file_id": fields.String(default=None),
-    },
-)
-
-agent_thought_model = console_ns.model(
-    "AgentThought",
-    {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "files": fields.List(fields.String),
-    },
-)
-
-simple_model_config_model = console_ns.model(
-    "SimpleModelConfig",
-    {
-        "model": fields.Raw(attribute="model_dict"),
-        "pre_prompt": fields.String,
-    },
-)
-
-model_config_model = console_ns.model(
-    "ModelConfig",
-    {
-        "opening_statement": fields.String,
-        "suggested_questions": fields.Raw,
-        "model": fields.Raw,
-        "user_input_form": fields.Raw,
-        "pre_prompt": fields.String,
-        "agent_mode": fields.Raw,
-    },
-)
-
-# Models that depend on simple_account_model
-feedback_model = console_ns.model(
-    "Feedback",
-    {
-        "rating": fields.String,
-        "content": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account": fields.Nested(simple_account_model, allow_null=True),
-    },
-)
-
-annotation_model = console_ns.model(
-    "Annotation",
-    {
-        "id": fields.String,
-        "question": fields.String,
-        "content": fields.String,
-        "account": fields.Nested(simple_account_model, allow_null=True),
-        "created_at": TimestampField,
-    },
-)
-
-annotation_hit_history_model = console_ns.model(
-    "AnnotationHitHistory",
-    {
-        "annotation_id": fields.String(attribute="id"),
-        "annotation_create_account": fields.Nested(simple_account_model, allow_null=True),
-        "created_at": TimestampField,
-    },
-)
-
-
-class MessageTextField(fields.Raw):
-    def format(self, value):
-        return value[0]["text"] if value else ""
-
-
-# Simple message detail model
-simple_message_detail_model = console_ns.model(
-    "SimpleMessageDetail",
-    {
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "message": MessageTextField,
-        "answer": fields.String,
-    },
-)
-
-# Message detail model that depends on multiple models
-message_detail_model = console_ns.model(
-    "MessageDetail",
-    {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "message": fields.Raw,
-        "message_tokens": fields.Integer,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "answer_tokens": fields.Integer,
-        "provider_response_latency": fields.Float,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account_id": fields.String,
-        "feedbacks": fields.List(fields.Nested(feedback_model)),
-        "workflow_run_id": fields.String,
-        "annotation": fields.Nested(annotation_model, allow_null=True),
-        "annotation_hit_history": fields.Nested(annotation_hit_history_model, allow_null=True),
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
-        "message_files": fields.List(fields.Nested(message_file_model)),
-        "metadata": fields.Raw(attribute="message_metadata_dict"),
-        "status": fields.String,
-        "error": fields.String,
-        "parent_message_id": fields.String,
-    },
-)
-
-# Conversation models
-conversation_fields_model = console_ns.model(
-    "Conversation",
-    {
-        "id": fields.String,
-        "status": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_end_user_session_id": fields.String(),
-        "from_account_id": fields.String,
-        "from_account_name": fields.String,
-        "read_at": TimestampField,
-        "created_at": TimestampField,
-        "updated_at": TimestampField,
-        "annotation": fields.Nested(annotation_model, allow_null=True),
-        "model_config": fields.Nested(simple_model_config_model),
-        "user_feedback_stats": fields.Nested(feedback_stat_model),
-        "admin_feedback_stats": fields.Nested(feedback_stat_model),
-        "message": fields.Nested(simple_message_detail_model, attribute="first_message"),
-    },
-)
-
-conversation_pagination_model = console_ns.model(
-    "ConversationPagination",
-    {
-        "page": fields.Integer,
-        "limit": fields.Integer(attribute="per_page"),
-        "total": fields.Integer,
-        "has_more": fields.Boolean(attribute="has_next"),
-        "data": fields.List(fields.Nested(conversation_fields_model), attribute="items"),
-    },
-)
-
-conversation_message_detail_model = console_ns.model(
-    "ConversationMessageDetail",
-    {
-        "id": fields.String,
-        "status": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account_id": fields.String,
-        "created_at": TimestampField,
-        "model_config": fields.Nested(model_config_model),
-        "message": fields.Nested(message_detail_model, attribute="first_message"),
-    },
-)
-
-conversation_with_summary_model = console_ns.model(
-    "ConversationWithSummary",
-    {
-        "id": fields.String,
-        "status": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_end_user_session_id": fields.String,
-        "from_account_id": fields.String,
-        "from_account_name": fields.String,
-        "name": fields.String,
-        "summary": fields.String(attribute="summary_or_query"),
-        "read_at": TimestampField,
-        "created_at": TimestampField,
-        "updated_at": TimestampField,
-        "annotated": fields.Boolean,
-        "model_config": fields.Nested(simple_model_config_model),
-        "message_count": fields.Integer,
-        "user_feedback_stats": fields.Nested(feedback_stat_model),
-        "admin_feedback_stats": fields.Nested(feedback_stat_model),
-        "status_count": fields.Nested(status_count_model),
-    },
-)
-
-conversation_with_summary_pagination_model = console_ns.model(
-    "ConversationWithSummaryPagination",
-    {
-        "page": fields.Integer,
-        "limit": fields.Integer(attribute="per_page"),
-        "total": fields.Integer,
-        "has_more": fields.Boolean(attribute="has_next"),
-        "data": fields.List(fields.Nested(conversation_with_summary_model), attribute="items"),
-    },
-)
-
-conversation_detail_model = console_ns.model(
-    "ConversationDetail",
-    {
-        "id": fields.String,
-        "status": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account_id": fields.String,
-        "created_at": TimestampField,
-        "updated_at": TimestampField,
-        "annotated": fields.Boolean,
-        "introduction": fields.String,
-        "model_config": fields.Nested(model_config_model),
-        "message_count": fields.Integer,
-        "user_feedback_stats": fields.Nested(feedback_stat_model),
-        "admin_feedback_stats": fields.Nested(feedback_stat_model),
-    },
+register_schema_models(
+    console_ns,
+    CompletionConversationQuery,
+    ChatConversationQuery,
+    ConversationResponse,
+    ConversationPaginationResponse,
+    ConversationMessageDetailResponse,
+    ConversationWithSummaryPaginationResponse,
+    ConversationDetailResponse,
+    ResultResponse,
 )
 
 
@@ -331,13 +98,12 @@ class CompletionConversationApi(Resource):
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
-    @console_ns.response(200, "Success", conversation_pagination_model)
+    @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    @marshal_with(conversation_pagination_model)
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
@@ -375,8 +141,12 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+            query = (
+                query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
+                .join(  # type: ignore
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                )
+                .distinct()
             )
         elif args.annotation_status == "not_annotated":
             query = (
@@ -389,7 +159,9 @@ class CompletionConversationApi(Resource):
 
         conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
-        return conversations
+        return ConversationPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
@@ -397,19 +169,19 @@ class CompletionConversationDetailApi(Resource):
     @console_ns.doc("get_completion_conversation")
     @console_ns.doc(description="Get completion conversation details with messages")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", conversation_message_detail_model)
+    @console_ns.response(200, "Success", console_ns.models[ConversationMessageDetailResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    @marshal_with(conversation_message_detail_model)
     @edit_permission_required
     def get(self, app_model, conversation_id):
         conversation_id = str(conversation_id)
-
-        return _get_conversation(app_model, conversation_id)
+        return ConversationMessageDetailResponse.model_validate(
+            _get_conversation(app_model, conversation_id), from_attributes=True
+        ).model_dump(mode="json")
 
     @console_ns.doc("delete_completion_conversation")
     @console_ns.doc(description="Delete a completion conversation")
@@ -431,7 +203,7 @@ class CompletionConversationDetailApi(Resource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return {"result": "success"}, 204
+        return ResultResponse(result="success").model_dump(mode="json"), 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
@@ -440,22 +212,19 @@ class ChatConversationApi(Resource):
     @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
-    @console_ns.response(200, "Success", conversation_with_summary_pagination_model)
+    @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    @marshal_with(conversation_with_summary_pagination_model)
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         subquery = (
-            db.session.query(
-                Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id")
-            )
+            sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
             .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
             .subquery()
         )
@@ -508,16 +277,23 @@ class ChatConversationApi(Resource):
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
-        if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-            )
-        elif args.annotation_status == "not_annotated":
-            query = (
-                query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(MessageAnnotation.id) == 0)
-            )
+        match args.annotation_status:
+            case "annotated":
+                query = (
+                    query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
+                    .join(  # type: ignore
+                        MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                    )
+                    .distinct()
+                )
+            case "not_annotated":
+                query = (
+                    query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                    .group_by(Conversation.id)
+                    .having(func.count(MessageAnnotation.id) == 0)
+                )
+            case "all":
+                pass
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
@@ -536,7 +312,9 @@ class ChatConversationApi(Resource):
 
         conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
-        return conversations
+        return ConversationWithSummaryPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
@@ -544,19 +322,19 @@ class ChatConversationDetailApi(Resource):
     @console_ns.doc("get_chat_conversation")
     @console_ns.doc(description="Get chat conversation details")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", conversation_detail_model)
+    @console_ns.response(200, "Success", console_ns.models[ConversationDetailResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    @marshal_with(conversation_detail_model)
     @edit_permission_required
     def get(self, app_model, conversation_id):
         conversation_id = str(conversation_id)
-
-        return _get_conversation(app_model, conversation_id)
+        return ConversationDetailResponse.model_validate(
+            _get_conversation(app_model, conversation_id), from_attributes=True
+        ).model_dump(mode="json")
 
     @console_ns.doc("delete_chat_conversation")
     @console_ns.doc(description="Delete a chat conversation")
@@ -578,15 +356,13 @@ class ChatConversationDetailApi(Resource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return {"result": "success"}, 204
+        return ResultResponse(result="success").model_dump(mode="json"), 204
 
 
 def _get_conversation(app_model, conversation_id):
     current_user, _ = current_account_with_tenant()
-    conversation = (
-        db.session.query(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-        .first()
+    conversation = db.session.scalar(
+        sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
     )
 
     if not conversation:
@@ -595,7 +371,12 @@ def _get_conversation(app_model, conversation_id):
     db.session.execute(
         sa.update(Conversation)
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
-        .values(read_at=naive_utc_now(), read_account_id=current_user.id)
+        # Keep updated_at unchanged when only marking a conversation as read.
+        .values(
+            read_at=naive_utc_now(),
+            read_account_id=current_user.id,
+            updated_at=Conversation.updated_at,
+        )
     )
     db.session.commit()
     db.session.refresh(conversation)

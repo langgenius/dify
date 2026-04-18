@@ -1,9 +1,9 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { ModalContextProvider } from '@/context/modal-context'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -13,7 +13,7 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
@@ -71,12 +71,10 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
   },
 })
 
-const renderProvider = () => render(
-  <NuqsTestingAdapter>
-    <ModalContextProvider>
-      <div data-testid="modal-context-test-child" />
-    </ModalContextProvider>
-  </NuqsTestingAdapter>,
+const renderProvider = () => renderWithNuqs(
+  <ModalContextProvider>
+    <div data-testid="modal-context-test-child" />
+  </ModalContextProvider>,
 )
 
 describe('ModalContextProvider trigger events limit modal', () => {
@@ -114,7 +112,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
     expect(latestTriggerEventsModalProps).toMatchObject({
       usage: 3000,
       total: 3000,
@@ -129,7 +127,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await waitFor(() => {
       expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
     })
-    const [key, value] = setItemSpy.mock.calls[0]
+    const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [any, any]
     expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
   })
@@ -152,7 +150,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
 
     act(() => {
       latestTriggerEventsModalProps.onClose()
@@ -180,7 +178,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     renderProvider()
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal'))!.toBeInTheDocument())
 
     act(() => {
       latestTriggerEventsModalProps.onClose()

@@ -1,22 +1,31 @@
 import time
 import uuid
 
-import pytest
-
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
+from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.template_rendering import TemplateRenderError
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
-@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_code(setup_code_executor_mock):
+class _SimpleJinja2Renderer:
+    """Minimal Jinja2-based renderer for integration tests (no code executor)."""
+
+    def render_template(self, template: str, variables: dict[str, object]) -> str:
+        from jinja2 import Template
+
+        try:
+            return Template(template).render(**variables)
+        except Exception as exc:
+            raise TemplateRenderError(str(exc)) from exc
+
+
+def test_execute_template_transform():
     code = """{{args2}}"""
     config = {
         "id": "1",
@@ -45,11 +54,11 @@ def test_execute_code(setup_code_executor_mock):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -58,7 +67,7 @@ def test_execute_code(setup_code_executor_mock):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -68,19 +77,21 @@ def test_execute_code(setup_code_executor_mock):
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-    # Create node factory
+    # Create node factory (graph init path still works regardless of renderer choice below)
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    assert graph is not None
 
     node = TemplateTransformNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        jinja2_template_renderer=_SimpleJinja2Renderer(),
     )
 
     # execute node

@@ -1,5 +1,4 @@
 import type { Branch } from '@/app/components/workflow/types'
-import type { I18nKeysByPrefix } from '@/types/i18n'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from './types'
 
@@ -17,8 +16,7 @@ const notTranslateKey = [
 ] as const
 
 type NotTranslateOperator = typeof notTranslateKey[number]
-export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
-export type IfElseOptionName = I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
 
 export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
 export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator

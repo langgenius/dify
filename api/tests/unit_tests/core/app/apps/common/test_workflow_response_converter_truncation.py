@@ -5,6 +5,7 @@ Unit tests for WorkflowResponseConverter focusing on process_data truncation fun
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import Mock
 
@@ -23,8 +24,9 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from core.workflow.enums import NodeType
-from core.workflow.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
@@ -52,7 +54,7 @@ class TestWorkflowResponseConverter:
         mock_user.name = "Test User"
         mock_user.email = "test@example.com"
 
-        system_variables = SystemVariable(workflow_id="wf-id", workflow_execution_id="initial-run-id")
+        system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(
             application_generate_entity=mock_entity,
             user=mock_user,
@@ -65,7 +67,7 @@ class TestWorkflowResponseConverter:
             node_execution_id=node_execution_id or str(uuid.uuid4()),
             node_id="test-node-id",
             node_title="Test Node",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             start_at=naive_utc_now(),
             in_iteration_id=None,
             in_loop_id=None,
@@ -82,7 +84,7 @@ class TestWorkflowResponseConverter:
         """Create a QueueNodeSucceededEvent for testing."""
         return QueueNodeSucceededEvent(
             node_id="test-node-id",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             node_execution_id=node_execution_id,
             start_at=naive_utc_now(),
             in_iteration_id=None,
@@ -107,7 +109,7 @@ class TestWorkflowResponseConverter:
             error="oops",
             retry_index=1,
             node_id="test-node-id",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             node_title="test code",
             provider_type="built-in",
             provider_id="code",
@@ -124,7 +126,12 @@ class TestWorkflowResponseConverter:
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -160,7 +167,12 @@ class TestWorkflowResponseConverter:
 
         original_data = {"small": "data"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -191,7 +203,12 @@ class TestWorkflowResponseConverter:
         """Test node finish response when process_data is None."""
         converter = self.create_workflow_response_converter()
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -218,6 +235,50 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data == {}
         assert response.data.process_data_truncated is False
 
+    def test_workflow_node_finish_response_prefers_event_finished_at(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Finished timestamps should come from the event, not delayed queue processing time."""
+        converter = self.create_workflow_response_converter()
+        start_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+        finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
+        delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
+
+        monkeypatch.setattr(
+            "core.app.apps.common.workflow_response_converter.naive_utc_now",
+            lambda: delayed_processing_time,
+        )
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+
+        event = QueueNodeSucceededEvent(
+            node_id="test-node-id",
+            node_type=BuiltinNodeTypes.CODE,
+            node_execution_id="node-exec-1",
+            start_at=start_at,
+            finished_at=finished_at,
+            in_iteration_id=None,
+            in_loop_id=None,
+            inputs={},
+            process_data={},
+            outputs={},
+            execution_metadata={},
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test-task-id",
+        )
+
+        assert response is not None
+        assert response.data.elapsed_time == 2.0
+        assert response.data.finished_at == int(finished_at.timestamp())
+
     def test_workflow_node_retry_response_uses_truncated_process_data(self):
         """Test that node retry response uses get_response_process_data()."""
         converter = self.create_workflow_response_converter()
@@ -225,7 +286,12 @@ class TestWorkflowResponseConverter:
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -261,7 +327,12 @@ class TestWorkflowResponseConverter:
 
         original_data = {"small": "data"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -293,7 +364,7 @@ class TestWorkflowResponseConverter:
 
         iteration_event = QueueNodeSucceededEvent(
             node_id="iteration-node",
-            node_type=NodeType.ITERATION,
+            node_type=BuiltinNodeTypes.ITERATION,
             node_execution_id=str(uuid.uuid4()),
             start_at=naive_utc_now(),
             in_iteration_id=None,
@@ -310,7 +381,7 @@ class TestWorkflowResponseConverter:
         )
         assert response is None
 
-        loop_event = iteration_event.model_copy(update={"node_type": NodeType.LOOP})
+        loop_event = iteration_event.model_copy(update={"node_type": BuiltinNodeTypes.LOOP})
         response = converter.workflow_node_finish_to_stream_response(
             event=loop_event,
             task_id="test-task-id",
@@ -380,9 +451,9 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         account.id = "test_user_id"
         return account
 
-    def create_test_system_variables(self) -> SystemVariable:
+    def create_test_system_variables(self):
         """Create test system variables."""
-        return SystemVariable()
+        return build_system_variables()
 
     def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
         """Create WorkflowResponseConverter with specified invoke_from."""
@@ -400,6 +471,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test-task-id",
             workflow_run_id="test-workflow-run-id",
             workflow_id="test-workflow-id",
+            reason=WorkflowStartReason.INITIAL,
         )
         return converter
 
@@ -451,7 +523,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=naive_utc_now(),
             inputs=large_value,
             process_data=large_value,
@@ -496,7 +568,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=naive_utc_now(),
             inputs=large_value,
             process_data=large_value,
@@ -535,7 +607,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=naive_utc_now(),
             inputs=large_value,
             process_data=large_value,
@@ -573,7 +645,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             return QueueNodeSucceededEvent(
                 node_execution_id="test_node_exec_id",
                 node_id="test_node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 start_at=naive_utc_now(),
                 inputs=inputs,
                 process_data=process_data,
@@ -587,7 +659,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             return QueueNodeFailedEvent(
                 node_execution_id="test_node_exec_id",
                 node_id="test_node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 start_at=naive_utc_now(),
                 inputs=inputs,
                 process_data=process_data,
@@ -601,7 +673,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             return QueueNodeExceptionEvent(
                 node_execution_id="test_node_exec_id",
                 node_id="test_node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 start_at=naive_utc_now(),
                 inputs=inputs,
                 process_data=process_data,
@@ -663,7 +735,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         start_event = QueueNodeStartedEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="Test Node",
             node_run_index=1,
             start_at=naive_utc_now(),
@@ -679,7 +751,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         event = QueueNodeRetryEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="Test Node",
             node_run_index=1,
             start_at=naive_utc_now(),
@@ -721,7 +793,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         start_event = QueueIterationStartEvent(
             node_execution_id="test_iter_exec_id",
             node_id="test_iteration",
-            node_type=NodeType.ITERATION,
+            node_type=BuiltinNodeTypes.ITERATION,
             node_title="Test Iteration",
             node_run_index=0,
             start_at=naive_utc_now(),
@@ -749,7 +821,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         start_event = QueueLoopStartEvent(
             node_execution_id="test_loop_exec_id",
             node_id="test_loop",
-            node_type=NodeType.LOOP,
+            node_type=BuiltinNodeTypes.LOOP,
             node_title="Test Loop",
             start_at=naive_utc_now(),
             inputs=large_inputs,
@@ -779,7 +851,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=naive_utc_now(),
             inputs=large_inputs,
             process_data=large_process_data,

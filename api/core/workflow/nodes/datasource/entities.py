@@ -3,7 +3,8 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from core.workflow.nodes.base.entities import BaseNodeData
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
 
 
 class DatasourceEntity(BaseModel):
@@ -16,6 +17,8 @@ class DatasourceEntity(BaseModel):
 
 
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
+    type: NodeType = BuiltinNodeTypes.DATASOURCE
+
     class DatasourceInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]
@@ -39,3 +42,14 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
             return typ
 
     datasource_parameters: dict[str, DatasourceInput] | None = None
+
+
+class DatasourceParameter(BaseModel):
+    workspace_id: str
+    page_id: str
+    type: str
+
+
+class OnlineDriveDownloadFileParam(BaseModel):
+    id: str
+    bucket: str

@@ -1,11 +1,11 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiFilter3Line } from '@remixicon/react'
 import {
   useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -53,7 +53,7 @@ const MetadataTrigger = ({
         >
           <RiFilter3Line className="mr-1 h-3.5 w-3.5" />
           {t('nodes.knowledgeRetrieval.metadata.panel.conditions', { ns: 'workflow' })}
-          <div className="system-2xs-medium-uppercase ml-1 flex items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">
+          <div className="ml-1 flex items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
             {metadataFilteringConditions?.conditions.length || 0}
           </div>
         </Button>

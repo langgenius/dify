@@ -1,10 +1,26 @@
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask, g
-from flask_login import LoginManager, UserMixin
+from flask import Flask, Response, g
+from flask_login import UserMixin
+from pytest_mock import MockerFixture
 
-from libs.login import _get_user, current_user, login_required
+import libs.login as login_module
+from extensions.ext_login import DifyLoginManager
+from libs.login import current_user
+from models.account import Account
+
+
+@pytest.fixture
+def protected_view():
+    """Build a small login-protected view that exercises the decorator logic."""
+
+    @login_module.login_required
+    def _protected_view():
+        return "Protected content"
+
+    return _protected_view
 
 
 class MockUser(UserMixin):
@@ -15,229 +31,239 @@ class MockUser(UserMixin):
         self._is_authenticated = is_authenticated
 
     @property
-    def is_authenticated(self):
+    def is_authenticated(self) -> bool:
         return self._is_authenticated
 
 
-def mock_csrf_check(*args, **kwargs):
-    return
+@pytest.fixture
+def login_app(mocker: MockerFixture) -> Flask:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+
+    login_manager = DifyLoginManager()
+    login_manager.init_app(app)
+    login_manager.unauthorized = mocker.Mock(
+        name="unauthorized",
+        return_value=Response("Unauthorized", status=401, content_type="application/json"),
+    )
+
+    @login_manager.user_loader
+    def load_user(_user_id: str):
+        return None
+
+    return app
+
+
+@pytest.fixture(autouse=True)
+def reset_login_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", False)
+
+
+@pytest.fixture
+def csrf_check(mocker: MockerFixture) -> MagicMock:
+    return mocker.patch.object(login_module, "check_csrf_token")
+
+
+@pytest.fixture
+def resolve_current_user(mocker: MockerFixture):
+    def _patch(user: MockUser | Account | None) -> MagicMock:
+        return mocker.patch.object(login_module, "_resolve_current_user", return_value=user)
+
+    return _patch
 
 
 class TestLoginRequired:
     """Test cases for login_required decorator."""
 
-    @pytest.fixture
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def setup_app(self, app: Flask):
-        """Set up Flask app with login manager."""
-        # Initialize login manager
-        login_manager = LoginManager()
-        login_manager.init_app(app)
-
-        # Mock unauthorized handler
-        login_manager.unauthorized = MagicMock(return_value="Unauthorized")
-
-        # Add a dummy user loader to prevent exceptions
-        @login_manager.user_loader
-        def load_user(user_id):
-            return None
-
-        return app
-
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_authenticated_user_can_access_protected_view(self, setup_app: Flask):
+    def test_authenticated_user_can_access_protected_view(
+        self,
+        login_app: Flask,
+        protected_view,
+        csrf_check: MagicMock,
+        resolve_current_user,
+    ):
         """Test that authenticated users can access protected views."""
 
-        @login_required
-        def protected_view():
-            return "Protected content"
+        mock_user = MockUser("test_user", is_authenticated=True)
+        resolve_user = resolve_current_user(mock_user)
 
-        with setup_app.test_request_context():
-            # Mock authenticated user
-            mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Protected content"
+        with login_app.test_request_context():
+            result = protected_view()
+            csrf_check.assert_called_once()
+            assert csrf_check.call_args.args[0].method == "GET"
+            assert csrf_check.call_args.args[1] == "test_user"
 
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_unauthenticated_user_cannot_access_protected_view(self, setup_app: Flask):
-        """Test that unauthenticated users are redirected."""
+        assert result == "Protected content"
+        resolve_user.assert_called_once_with()
+        login_app.login_manager.unauthorized.assert_not_called()
 
-        @login_required
-        def protected_view():
-            return "Protected content"
+    @pytest.mark.parametrize(
+        ("resolved_user", "description"),
+        [
+            pytest.param(None, "missing user", id="missing-user"),
+            pytest.param(MockUser("test_user", is_authenticated=False), "unauthenticated user", id="unauthenticated"),
+        ],
+    )
+    def test_unauthorized_access_returns_login_manager_response(
+        self,
+        login_app: Flask,
+        protected_view,
+        csrf_check: MagicMock,
+        resolve_current_user,
+        resolved_user: MockUser | None,
+        description: str,
+    ):
+        """Test that missing or unauthenticated users return the manager response."""
 
-        with setup_app.test_request_context():
-            # Mock unauthenticated user
-            mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Unauthorized"
-                setup_app.login_manager.unauthorized.assert_called_once()
+        resolve_user = resolve_current_user(resolved_user)
 
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_login_disabled_allows_unauthenticated_access(self, setup_app: Flask):
-        """Test that LOGIN_DISABLED config bypasses authentication."""
+        with login_app.test_request_context():
+            result = protected_view()
 
-        @login_required
-        def protected_view():
-            return "Protected content"
+        assert result is login_app.login_manager.unauthorized.return_value, description
+        assert isinstance(result, Response)
+        assert result.status_code == 401
+        resolve_user.assert_called_once_with()
+        login_app.login_manager.unauthorized.assert_called_once_with()
+        csrf_check.assert_not_called()
 
-        with setup_app.test_request_context():
-            # Mock unauthenticated user and LOGIN_DISABLED
-            mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
-                with patch("libs.login.dify_config") as mock_config:
-                    mock_config.LOGIN_DISABLED = True
+    def test_unauthorized_access_propagates_response_object(
+        self,
+        login_app: Flask,
+        protected_view,
+        csrf_check: MagicMock,
+        resolve_current_user,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that unauthorized responses are propagated as Flask Response objects."""
+        resolve_user = resolve_current_user(None)
+        response = Response("Unauthorized", status=401, content_type="application/json")
+        mocker.patch.object(
+            login_module, "_get_login_manager", return_value=SimpleNamespace(unauthorized=lambda: response)
+        )
 
-                    result = protected_view()
-                    assert result == "Protected content"
-                    # Ensure unauthorized was not called
-                    setup_app.login_manager.unauthorized.assert_not_called()
+        with login_app.test_request_context():
+            result = protected_view()
 
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_options_request_bypasses_authentication(self, setup_app: Flask):
-        """Test that OPTIONS requests are exempt from authentication."""
+        assert result is response
+        assert isinstance(result, Response)
+        resolve_user.assert_called_once_with()
+        csrf_check.assert_not_called()
 
-        @login_required
-        def protected_view():
-            return "Protected content"
+    @pytest.mark.parametrize(
+        ("method", "login_disabled"),
+        [
+            pytest.param("OPTIONS", False, id="options"),
+            pytest.param("GET", True, id="login-disabled"),
+        ],
+    )
+    def test_bypass_paths_skip_authentication_and_csrf(
+        self,
+        login_app: Flask,
+        protected_view,
+        csrf_check: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        resolve_current_user,
+        method: str,
+        login_disabled: bool,
+    ):
+        """Test that bypass conditions skip auth lookup, CSRF, and unauthorized handling."""
 
-        with setup_app.test_request_context(method="OPTIONS"):
-            # Mock unauthenticated user
-            mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Protected content"
-                # Ensure unauthorized was not called
-                setup_app.login_manager.unauthorized.assert_not_called()
+        resolve_user = resolve_current_user(MockUser("test_user"))
+        monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", login_disabled)
 
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_flask_2_compatibility(self, setup_app: Flask):
-        """Test Flask 2.x compatibility with ensure_sync."""
-
-        @login_required
-        def protected_view():
-            return "Protected content"
-
-        # Mock Flask 2.x ensure_sync
-        setup_app.ensure_sync = MagicMock(return_value=lambda: "Synced content")
-
-        with setup_app.test_request_context():
-            mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Synced content"
-                setup_app.ensure_sync.assert_called_once()
-
-    @patch("libs.login.check_csrf_token", mock_csrf_check)
-    def test_flask_1_compatibility(self, setup_app: Flask):
-        """Test Flask 1.x compatibility without ensure_sync."""
-
-        @login_required
-        def protected_view():
-            return "Protected content"
-
-        # Remove ensure_sync to simulate Flask 1.x
-        if hasattr(setup_app, "ensure_sync"):
-            delattr(setup_app, "ensure_sync")
-
-        with setup_app.test_request_context():
-            mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Protected content"
+        with login_app.test_request_context(method=method):
+            result = protected_view()
+        assert result == "Protected content"
+        resolve_user.assert_not_called()
+        csrf_check.assert_not_called()
+        login_app.login_manager.unauthorized.assert_not_called()
 
 
 class TestGetUser:
     """Test cases for _get_user function."""
 
-    def test_get_user_returns_user_from_g(self, app: Flask):
+    def test_get_user_returns_user_from_g(self, login_app: Flask):
         """Test that _get_user returns user from g._login_user."""
         mock_user = MockUser("test_user")
 
-        with app.test_request_context():
+        with login_app.test_request_context():
             g._login_user = mock_user
-            user = _get_user()
+            user = login_module._get_user()
             assert user == mock_user
             assert user.id == "test_user"
 
-    def test_get_user_loads_user_if_not_in_g(self, app: Flask):
+    def test_get_user_loads_user_if_not_in_g(self, login_app: Flask, mocker: MockerFixture):
         """Test that _get_user loads user if not already in g."""
         mock_user = MockUser("test_user")
 
-        # Mock login manager
-        login_manager = MagicMock()
-        login_manager._load_user = MagicMock()
-        app.login_manager = login_manager
+        def load_user_from_request_context() -> None:
+            g._login_user = mock_user
 
-        with app.test_request_context():
-            # Simulate _load_user setting g._login_user
-            def side_effect():
-                g._login_user = mock_user
+        load_user = mocker.patch.object(
+            login_app.login_manager,
+            "load_user_from_request_context",
+            side_effect=load_user_from_request_context,
+        )
 
-            login_manager._load_user.side_effect = side_effect
+        with login_app.test_request_context():
+            user = login_module._get_user()
 
-            user = _get_user()
-            assert user == mock_user
-            login_manager._load_user.assert_called_once()
+        assert user == mock_user
+        load_user.assert_called_once_with()
 
-    def test_get_user_returns_none_without_request_context(self, app: Flask):
+    def test_get_user_returns_none_without_request_context(self):
         """Test that _get_user returns None outside request context."""
-        # Outside of request context
-        user = _get_user()
+        user = login_module._get_user()
         assert user is None
 
 
 class TestCurrentUser:
     """Test cases for current_user proxy."""
 
-    def test_current_user_proxy_returns_authenticated_user(self, app: Flask):
+    def test_current_user_proxy_returns_authenticated_user(self, login_app: Flask, mocker: MockerFixture):
         """Test that current_user proxy returns authenticated user."""
         mock_user = MockUser("test_user", is_authenticated=True)
+        mocker.patch.object(login_module, "_get_user", return_value=mock_user)
 
-        with app.test_request_context():
-            with patch("libs.login._get_user", return_value=mock_user):
-                assert current_user.id == "test_user"
-                assert current_user.is_authenticated is True
+        with login_app.test_request_context():
+            assert current_user.id == "test_user"
+            assert current_user.is_authenticated is True
 
-    def test_current_user_proxy_returns_none_when_no_user(self, app: Flask):
+    def test_current_user_proxy_raises_attribute_error_when_no_user(self, login_app: Flask, mocker: MockerFixture):
         """Test that current_user proxy handles None user."""
-        with app.test_request_context():
-            with patch("libs.login._get_user", return_value=None):
-                # When _get_user returns None, accessing attributes should fail
-                # or current_user should evaluate to falsy
-                try:
-                    # Try to access an attribute that would exist on a real user
-                    _ = current_user.id
-                    pytest.fail("Should have raised AttributeError")
-                except AttributeError:
-                    # This is expected when current_user is None
-                    pass
+        mocker.patch.object(login_module, "_get_user", return_value=None)
 
-    def test_current_user_proxy_thread_safety(self, app: Flask):
-        """Test that current_user proxy is thread-safe."""
-        import threading
+        with login_app.test_request_context():
+            with pytest.raises(AttributeError):
+                _ = current_user.id
 
-        results = {}
 
-        def check_user_in_thread(user_id: str, index: int):
-            with app.test_request_context():
-                mock_user = MockUser(user_id)
-                with patch("libs.login._get_user", return_value=mock_user):
-                    results[index] = current_user.id
+class TestCurrentAccountWithTenant:
+    """Test cases for current_account_with_tenant helper."""
 
-        # Create multiple threads with different users
-        threads = []
-        for i in range(5):
-            thread = threading.Thread(target=check_user_in_thread, args=(f"user_{i}", i))
-            threads.append(thread)
-            thread.start()
+    def test_returns_account_and_tenant_id(self, mocker: MockerFixture):
+        account = Account(name="Test User", email="test@example.com")
+        account._current_tenant = SimpleNamespace(id="tenant-123")
+        current_user_proxy = mocker.Mock()
+        current_user_proxy._get_current_object.return_value = account
+        mocker.patch.object(login_module, "current_user", new=current_user_proxy)
 
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
+        user, tenant_id = login_module.current_account_with_tenant()
 
-        # Verify each thread got its own user
-        for i in range(5):
-            assert results[i] == f"user_{i}"
+        assert user is account
+        assert tenant_id == "tenant-123"
+        current_user_proxy._get_current_object.assert_called_once_with()
+
+    def test_raises_when_current_user_is_not_account(self, mocker: MockerFixture):
+        mocker.patch.object(login_module, "current_user", new=MockUser("test_user"))
+
+        with pytest.raises(ValueError, match="current_user must be an Account instance"):
+            login_module.current_account_with_tenant()
+
+    def test_raises_when_account_has_no_tenant(self, mocker: MockerFixture):
+        account = Account(name="Test User", email="test@example.com")
+        mocker.patch.object(login_module, "current_user", new=account)
+
+        with pytest.raises(AssertionError, match="tenant information should be loaded"):
+            login_module.current_account_with_tenant()

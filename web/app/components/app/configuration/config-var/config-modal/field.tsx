@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -20,10 +20,10 @@ const Field: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className={cn(className)}>
-      <div className="system-sm-semibold leading-8 text-text-secondary">
+      <div className="system-sm-semibold leading-8! text-text-secondary">
         {title}
         {isOptional && (
-          <span className="system-xs-regular ml-1 text-text-tertiary">
+          <span className="ml-1 system-xs-regular text-text-tertiary">
             (
             {t('variableConfig.optional', { ns: 'appDebug' })}
             )

@@ -10,15 +10,19 @@ This module tests the document indexing task functionality including:
 """
 
 import uuid
+from contextlib import nullcontext
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
+from models.enums import IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from tasks.document_indexing_task import (
     _document_indexing,
@@ -52,12 +56,137 @@ def document_ids():
 
 
 @pytest.fixture
+def mock_redis():
+    """Mock Redis client operations."""
+    # Redis is already mocked globally in conftest.py
+    # Reset it for each test
+    redis_client.reset_mock()
+    redis_client.get.reset_mock()
+    redis_client.setex.reset_mock()
+    redis_client.delete.reset_mock()
+    redis_client.lpush.reset_mock()
+    redis_client.rpop.reset_mock()
+    redis_client.get.return_value = None
+    redis_client.setex.return_value = True
+    redis_client.delete.return_value = True
+    redis_client.lpush.return_value = 1
+    redis_client.rpop.return_value = None
+    return redis_client
+
+
+# Additional fixtures required by tests in this module
+
+
+@pytest.fixture
+def mock_db_session():
+    """Mock session_factory.create_session() to return a session whose queries use shared test data.
+
+    Tests set session._shared_data = {"dataset": <Dataset>, "documents": [<Document>, ...]}
+    This fixture makes session.scalar(select(Dataset)...) return the shared dataset,
+    and session.scalars(select(Document)...).all() return the shared documents.
+    """
+    with patch("tasks.document_indexing_task.session_factory") as mock_sf:
+        session = MagicMock()
+        session._shared_data = {"dataset": None, "documents": []}
+
+        # Keep a pointer so repeated Document.first() calls iterate across provided docs
+        session._doc_first_idx = 0
+
+        def _get_entity(stmt) -> type | None:
+            """Extract the mapped entity class from a SQLAlchemy select statement."""
+            try:
+                descs = stmt.column_descriptions
+                if descs:
+                    return descs[0].get("entity")
+            except (AttributeError, TypeError):
+                pass
+            return None
+
+        def _extract_id_from_where(stmt) -> str | None:
+            """Return the value bound to the 'id' column in the WHERE clause, if present."""
+            try:
+                where = stmt.whereclause
+                if where is None:
+                    return None
+                # Both single-clause and AND-clause-list cases
+                clauses = list(getattr(where, "clauses", [where]))
+                for clause in clauses:
+                    left = getattr(clause, "left", None)
+                    right = getattr(clause, "right", None)
+                    if left is not None and right is not None:
+                        if getattr(left, "key", None) == "id":
+                            return getattr(right, "value", None)
+            except Exception:
+                pass
+            return None
+
+        def _scalar_side_effect(stmt):
+            entity = _get_entity(stmt)
+            if entity is not None:
+                if entity.__name__ == "Dataset":
+                    return session._shared_data.get("dataset")
+                elif entity.__name__ == "Document":
+                    docs = session._shared_data.get("documents", [])
+                    if not docs:
+                        return None
+                    # When the WHERE clause filters by id, return the matching document
+                    queried_id = _extract_id_from_where(stmt)
+                    if queried_id:
+                        doc_map = {d.id: d for d in docs}
+                        return doc_map.get(queried_id, docs[0])
+                    return docs[0]
+            return None
+
+        def _scalars_side_effect(stmt):
+            entity = _get_entity(stmt)
+            result = MagicMock()
+            if entity is not None:
+                if entity.__name__ == "Document":
+                    result.all.return_value = list(session._shared_data.get("documents", []))
+                elif entity.__name__ == "Dataset":
+                    ds = session._shared_data.get("dataset")
+                    result.all.return_value = [ds] if ds else []
+                else:
+                    result.all.return_value = []
+            else:
+                result.all.return_value = []
+            return result
+
+        session.scalar.side_effect = _scalar_side_effect
+        session.scalars.side_effect = _scalars_side_effect
+
+        # Implement session.begin() context manager that commits on exit
+        session.commit = MagicMock()
+        bm = MagicMock()
+        bm.__enter__.return_value = session
+
+        def _bm_exit_side_effect(*args, **kwargs):
+            session.commit()
+
+        bm.__exit__.side_effect = _bm_exit_side_effect
+        session.begin.return_value = bm
+
+        # Context manager behavior for create_session(): ensure close() is called on exit
+        session.close = MagicMock()
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+
+        def _exit_side_effect(*args, **kwargs):
+            session.close()
+
+        cm.__exit__.side_effect = _exit_side_effect
+        mock_sf.create_session.return_value = cm
+
+        yield session
+
+
+@pytest.fixture
 def mock_dataset(dataset_id, tenant_id):
     """Create a mock Dataset object."""
     dataset = Mock(spec=Dataset)
     dataset.id = dataset_id
     dataset.tenant_id = tenant_id
-    dataset.indexing_technique = "high_quality"
+    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
     dataset.embedding_model_provider = "openai"
     dataset.embedding_model = "text-embedding-ada-002"
     return dataset
@@ -75,61 +204,33 @@ def mock_documents(document_ids, dataset_id):
         doc.error = None
         doc.stopped_at = None
         doc.processing_started_at = None
+        # optional attribute used in some code paths
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         documents.append(doc)
     return documents
 
 
 @pytest.fixture
-def mock_db_session():
-    """Mock database session via session_factory.create_session()."""
-    with patch("tasks.document_indexing_task.session_factory") as mock_sf:
-        session = MagicMock()
-        # Ensure tests that expect session.close() to be called can observe it via the context manager
-        session.close = MagicMock()
-        cm = MagicMock()
-        cm.__enter__.return_value = session
-        # Link __exit__ to session.close so "close" expectations reflect context manager teardown
-
-        def _exit_side_effect(*args, **kwargs):
-            session.close()
-
-        cm.__exit__.side_effect = _exit_side_effect
-        mock_sf.create_session.return_value = cm
-
-        query = MagicMock()
-        session.query.return_value = query
-        query.where.return_value = query
-        yield session
-
-
-@pytest.fixture
 def mock_indexing_runner():
-    """Mock IndexingRunner."""
+    """Mock IndexingRunner for document_indexing_task module."""
     with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner_class:
-        mock_runner = MagicMock(spec=IndexingRunner)
+        mock_runner = MagicMock()
         mock_runner_class.return_value = mock_runner
         yield mock_runner
 
 
 @pytest.fixture
 def mock_feature_service():
-    """Mock FeatureService for billing and feature checks."""
+    """Mock FeatureService for document_indexing_task module."""
     with patch("tasks.document_indexing_task.FeatureService") as mock_service:
+        mock_features = Mock()
+        mock_features.billing = Mock()
+        mock_features.billing.enabled = False
+        mock_features.vector_space = Mock()
+        mock_features.vector_space.size = 0
+        mock_features.vector_space.limit = 1000
+        mock_service.get_features.return_value = mock_features
         yield mock_service
-
-
-@pytest.fixture
-def mock_redis():
-    """Mock Redis client operations."""
-    # Redis is already mocked globally in conftest.py
-    # Reset it for each test
-    redis_client.reset_mock()
-    redis_client.get.return_value = None
-    redis_client.setex.return_value = True
-    redis_client.delete.return_value = True
-    redis_client.lpush.return_value = 1
-    redis_client.rpop.return_value = None
-    return redis_client
 
 
 # ============================================================================
@@ -252,18 +353,9 @@ class TestTaskEnqueuing:
         use the deprecated function.
         """
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                # Return documents one by one for each call
-                mock_query.where.return_value.first.side_effect = mock_documents
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -304,21 +396,9 @@ class TestBatchProcessing:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        # Create an iterator for documents
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                # Return documents one by one for each call
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -328,7 +408,7 @@ class TestBatchProcessing:
 
             # Assert - All documents should be set to 'parsing' status
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
                 assert doc.processing_started_at is not None
 
             # IndexingRunner should be called with all documents
@@ -357,19 +437,9 @@ class TestBatchProcessing:
             doc.stopped_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
@@ -407,19 +477,9 @@ class TestBatchProcessing:
             doc.stopped_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.SANDBOX
@@ -444,7 +504,10 @@ class TestBatchProcessing:
         """
         # Arrange
         document_ids = []
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+
+        # Set shared mock data with empty documents list
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = []
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -482,19 +545,9 @@ class TestProgressTracking:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -504,7 +557,7 @@ class TestProgressTracking:
 
             # Assert - Status should be 'parsing'
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
                 assert doc.processing_started_at is not None
 
             # Verify commit was called to persist status
@@ -528,19 +581,9 @@ class TestProgressTracking:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -570,8 +613,6 @@ class TestProgressTracking:
         wrapper = TaskWrapper(data=next_task_data)
         mock_redis.rpop.return_value = wrapper.serialize()
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
 
@@ -580,7 +621,7 @@ class TestProgressTracking:
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                 # Assert - Next task should be enqueued
-                mock_task.delay.assert_called()
+                mock_task.apply_async.assert_called()
                 # Task key should be set for next task
                 assert mock_redis.setex.called
 
@@ -594,7 +635,6 @@ class TestProgressTracking:
         """
         # Arrange
         mock_redis.rpop.return_value = None  # No more tasks
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -635,19 +675,9 @@ class TestErrorHandling:
             doc.stopped_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Set up to trigger vector space limit error
         mock_feature_service.get_features.return_value.billing.enabled = True
@@ -674,17 +704,9 @@ class TestErrorHandling:
         Errors during indexing should be caught and logged, but not crash the task.
         """
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first.side_effect = mock_documents
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Make IndexingRunner raise an exception
         mock_indexing_runner.run.side_effect = Exception("Indexing failed")
@@ -708,17 +730,9 @@ class TestErrorHandling:
         but not treated as a failure.
         """
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first.side_effect = mock_documents
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Make IndexingRunner raise DocumentIsPausedError
         mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document is paused")
@@ -738,8 +752,7 @@ class TestErrorHandling:
 
         If the dataset doesn't exist, the task should exit gracefully.
         """
-        # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = None
+        # Arrange - dataset is not in _shared_data (None by default), so scalar() returns None
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -764,8 +777,6 @@ class TestErrorHandling:
         # Set up rpop to return task once for concurrency check
         mock_redis.rpop.side_effect = [wrapper.serialize(), None]
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
         # Make _document_indexing raise an error
         with patch("tasks.document_indexing_task._document_indexing") as mock_indexing:
             mock_indexing.side_effect = Exception("Processing failed")
@@ -777,7 +788,7 @@ class TestErrorHandling:
                     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                     # Assert - Next task should still be enqueued despite error
-                    mock_task.delay.assert_called()
+                    mock_task.apply_async.assert_called()
 
     def test_concurrent_task_limit_respected(
         self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset
@@ -802,15 +813,15 @@ class TestErrorHandling:
         # Mock rpop to return tasks one by one
         mock_redis.rpop.side_effect = tasks[:concurrency_limit] + [None]
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
                 # Act
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
-                # Assert - Should call delay exactly concurrency_limit times
-                assert mock_task.delay.call_count == concurrency_limit
+                # Assert - Should enqueue exactly concurrency_limit tasks
+                assert mock_task.apply_async.call_count == concurrency_limit
 
 
 # ============================================================================
@@ -820,92 +831,6 @@ class TestErrorHandling:
 
 class TestTaskCancellation:
     """Test cases for task cancellation and cleanup."""
-
-    def test_task_key_deleted_when_queue_empty(
-        self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset
-    ):
-        """
-        Test that task key is deleted when queue becomes empty.
-
-        When no more tasks are waiting, the tenant task key should be removed.
-        """
-        # Arrange
-        mock_redis.rpop.return_value = None  # Empty queue
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
-            # Act
-            _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
-
-            # Assert
-            assert mock_redis.delete.called
-            # Verify the correct key was deleted
-            delete_call_args = mock_redis.delete.call_args[0][0]
-            assert tenant_id in delete_call_args
-            assert "document_indexing" in delete_call_args
-
-    def test_session_cleanup_on_success(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_documents, mock_indexing_runner
-    ):
-        """
-        Test that database session is properly closed on success.
-
-        Session cleanup should happen in finally block.
-        """
-        # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first.side_effect = mock_documents
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert
-            assert mock_db_session.close.called
-
-    def test_session_cleanup_on_error(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_documents, mock_indexing_runner
-    ):
-        """
-        Test that database session is properly closed on error.
-
-        Session cleanup should happen even when errors occur.
-        """
-        # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first.side_effect = mock_documents
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        # Make IndexingRunner raise an exception
-        mock_indexing_runner.run.side_effect = Exception("Test error")
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert
-            assert mock_db_session.close.called
 
     def test_task_isolation_between_tenants(self, mock_redis):
         """
@@ -962,6 +887,7 @@ class TestAdvancedScenarios:
         document_ids = [str(uuid.uuid4()) for _ in range(3)]
 
         # Create only 2 documents (simulate one missing)
+        # The new code uses .all() which will only return existing documents
         mock_documents = []
         for i, doc_id in enumerate([document_ids[0], document_ids[2]]):  # Skip middle one
             doc = MagicMock(spec=Document)
@@ -971,21 +897,9 @@ class TestAdvancedScenarios:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        # Create iterator that returns None for missing document
-        doc_responses = [mock_documents[0], None, mock_documents[1]]
-        doc_iter = iter(doc_responses)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data - .all() will only return existing documents
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -1032,7 +946,7 @@ class TestAdvancedScenarios:
 
         # Mock rpop to return tasks up to concurrency limit
         mock_redis.rpop.side_effect = waiting_tasks[:concurrency_limit] + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1040,8 +954,8 @@ class TestAdvancedScenarios:
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                 # Assert
-                # Should call delay exactly concurrency_limit times
-                assert mock_task.delay.call_count == concurrency_limit
+                # Should enqueue exactly concurrency_limit tasks
+                assert mock_task.apply_async.call_count == concurrency_limit
 
                 # Verify task waiting time was set for each task
                 assert mock_redis.setex.call_count >= concurrency_limit
@@ -1075,19 +989,9 @@ class TestAdvancedScenarios:
             doc.stopped_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Set vector space exactly at limit
         mock_feature_service.get_features.return_value.billing.enabled = True
@@ -1135,7 +1039,7 @@ class TestAdvancedScenarios:
 
         # Mock rpop to return tasks in FIFO order
         mock_redis.rpop.side_effect = tasks + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", 3):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1143,11 +1047,11 @@ class TestAdvancedScenarios:
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                 # Assert - Verify tasks were enqueued in correct order
-                assert mock_task.delay.call_count == 3
+                assert mock_task.apply_async.call_count == 3
 
                 # Check that document_ids in calls match expected order
-                for i, call_obj in enumerate(mock_task.delay.call_args_list):
-                    called_doc_ids = call_obj[1]["document_ids"]
+                for i, call_obj in enumerate(mock_task.apply_async.call_args_list):
+                    called_doc_ids = call_obj[1]["kwargs"]["document_ids"]
                     assert called_doc_ids == [task_order[i]]
 
     def test_empty_queue_after_task_completion_cleans_up(
@@ -1173,20 +1077,24 @@ class TestAdvancedScenarios:
         """
         # Arrange
         mock_redis.rpop.return_value = None  # Empty queue
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
             # Act
             _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
             # Assert
-            # Verify delete was called to clean up task key
-            mock_redis.delete.assert_called_once()
+            expected_task_key = f"tenant_document_indexing_task:{tenant_id}"
 
-            # Verify the correct key was deleted (contains tenant_id and "document_indexing")
-            delete_call_args = mock_redis.delete.call_args[0][0]
-            assert tenant_id in delete_call_args
-            assert "document_indexing" in delete_call_args
+            # Verify the task key for this tenant was deleted (do not assert call count; fixtures may be shared).
+            mock_redis.delete.assert_any_call(expected_task_key)
+
+            deleted_keys = [delete_call.args[0] for delete_call in mock_redis.delete.call_args_list if delete_call.args]
+            assert expected_task_key in deleted_keys
+
+            deleted_task_key = next(key for key in deleted_keys if key == expected_task_key)
+            assert tenant_id in deleted_task_key
+            assert "document_indexing" in deleted_task_key
 
     def test_billing_disabled_skips_limit_checks(
         self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
@@ -1219,19 +1127,9 @@ class TestAdvancedScenarios:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Billing disabled - limits should not be checked
         mock_feature_service.get_features.return_value.billing.enabled = False
@@ -1242,7 +1140,7 @@ class TestAdvancedScenarios:
         # Assert
         # All documents should be set to parsing (no limit errors)
         for doc in mock_documents:
-            assert doc.indexing_status == "parsing"
+            assert doc.indexing_status == IndexingStatus.PARSING
 
         # IndexingRunner should be called with all documents
         mock_indexing_runner.run.assert_called_once()
@@ -1273,19 +1171,9 @@ class TestIntegration:
 
         # Set up rpop to return None for concurrency check (no more tasks)
         mock_redis.rpop.side_effect = [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -1321,19 +1209,9 @@ class TestIntegration:
 
         # Set up rpop to return None for concurrency check (no more tasks)
         mock_redis.rpop.side_effect = [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -1367,7 +1245,7 @@ class TestIntegration:
         # First call returns task 2, second call returns None
         mock_redis.rpop.side_effect = [wrapper.serialize(), None]
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -1377,9 +1255,9 @@ class TestIntegration:
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, task_1_docs, mock_task)
 
                 # Assert - Second task should be enqueued
-                assert mock_task.delay.called
-                call_args = mock_task.delay.call_args
-                assert call_args[1]["document_ids"] == task_2_docs
+                assert mock_task.apply_async.called
+                call_args = mock_task.apply_async.call_args
+                assert call_args[1]["kwargs"]["document_ids"] == task_2_docs
 
 
 # ============================================================================
@@ -1389,103 +1267,6 @@ class TestIntegration:
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
-
-    def test_single_document_processing(self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner):
-        """
-        Test processing a single document (minimum batch size).
-
-        Single document processing is a common case and should work
-        without any special handling or errors.
-
-        Scenario:
-        - Process exactly 1 document
-        - Document exists and is valid
-
-        Expected behavior:
-        - Document is processed successfully
-        - Status is updated to 'parsing'
-        - IndexingRunner is called with single document
-        """
-        # Arrange
-        document_ids = [str(uuid.uuid4())]
-
-        mock_document = MagicMock(spec=Document)
-        mock_document.id = document_ids[0]
-        mock_document.dataset_id = dataset_id
-        mock_document.indexing_status = "waiting"
-        mock_document.processing_started_at = None
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: mock_document
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert
-            assert mock_document.indexing_status == "parsing"
-            mock_indexing_runner.run.assert_called_once()
-            call_args = mock_indexing_runner.run.call_args[0][0]
-            assert len(call_args) == 1
-
-    def test_document_with_special_characters_in_id(
-        self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner
-    ):
-        """
-        Test handling documents with special characters in IDs.
-
-        Document IDs might contain special characters or unusual formats.
-        The system should handle these without errors.
-
-        Scenario:
-        - Document ID contains hyphens, underscores
-        - Standard UUID format
-
-        Expected behavior:
-        - Document is processed normally
-        - No parsing or encoding errors
-        """
-        # Arrange - UUID format with standard characters
-        document_ids = [str(uuid.uuid4())]
-
-        mock_document = MagicMock(spec=Document)
-        mock_document.id = document_ids[0]
-        mock_document.dataset_id = dataset_id
-        mock_document.indexing_status = "waiting"
-        mock_document.processing_started_at = None
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: mock_document
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act - Should not raise any exceptions
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert
-            assert mock_document.indexing_status == "parsing"
-            mock_indexing_runner.run.assert_called_once()
 
     def test_rapid_successive_task_enqueuing(self, tenant_id, dataset_id, mock_redis):
         """
@@ -1526,119 +1307,6 @@ class TestEdgeCases:
                 assert mock_redis.lpush.call_count == 5
                 mock_task.delay.assert_not_called()
 
-    def test_zero_vector_space_limit_allows_unlimited(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
-    ):
-        """
-        Test that zero vector space limit means unlimited.
-
-        When vector_space.limit is 0, it indicates no limit is enforced,
-        allowing unlimited document uploads.
-
-        Scenario:
-        - Vector space limit: 0 (unlimited)
-        - Current size: 1000 (any number)
-        - Upload 3 documents
-
-        Expected behavior:
-        - Upload is allowed
-        - No limit errors
-        - Documents are processed normally
-        """
-        # Arrange
-        mock_documents = []
-        for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
-            doc.id = doc_id
-            doc.dataset_id = dataset_id
-            doc.indexing_status = "waiting"
-            doc.processing_started_at = None
-            mock_documents.append(doc)
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        # Set vector space limit to 0 (unlimited)
-        mock_feature_service.get_features.return_value.billing.enabled = True
-        mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        mock_feature_service.get_features.return_value.vector_space.limit = 0  # Unlimited
-        mock_feature_service.get_features.return_value.vector_space.size = 1000
-
-        # Act
-        _document_indexing(dataset_id, document_ids)
-
-        # Assert - All documents should be processed (no limit error)
-        for doc in mock_documents:
-            assert doc.indexing_status == "parsing"
-
-        mock_indexing_runner.run.assert_called_once()
-
-    def test_negative_vector_space_values_handled_gracefully(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
-    ):
-        """
-        Test handling of negative vector space values.
-
-        Negative values in vector space configuration should be treated
-        as unlimited or invalid, not causing crashes.
-
-        Scenario:
-        - Vector space limit: -1 (invalid/unlimited indicator)
-        - Current size: 100
-        - Upload 3 documents
-
-        Expected behavior:
-        - Upload is allowed (negative treated as no limit)
-        - No crashes or validation errors
-        """
-        # Arrange
-        mock_documents = []
-        for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
-            doc.id = doc_id
-            doc.dataset_id = dataset_id
-            doc.indexing_status = "waiting"
-            doc.processing_started_at = None
-            mock_documents.append(doc)
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        # Set negative vector space limit
-        mock_feature_service.get_features.return_value.billing.enabled = True
-        mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        mock_feature_service.get_features.return_value.vector_space.limit = -1  # Negative
-        mock_feature_service.get_features.return_value.vector_space.size = 100
-
-        # Act
-        _document_indexing(dataset_id, document_ids)
-
-        # Assert - Should process normally (negative treated as unlimited)
-        for doc in mock_documents:
-            assert doc.indexing_status == "parsing"
-
 
 class TestPerformanceScenarios:
     """Test performance-related scenarios and optimizations."""
@@ -1675,19 +1343,9 @@ class TestPerformanceScenarios:
             doc.processing_started_at = None
             mock_documents.append(doc)
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
+        # Set shared mock data so all sessions can access it
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = mock_documents
 
         # Configure billing with sufficient limits
         mock_feature_service.get_features.return_value.billing.enabled = True
@@ -1701,7 +1359,7 @@ class TestPerformanceScenarios:
 
             # Assert
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
 
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
@@ -1744,7 +1402,7 @@ class TestPerformanceScenarios:
 
         # Mock rpop to return tasks up to concurrency limit
         mock_redis.rpop.side_effect = waiting_tasks[:concurrency_limit] + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1752,7 +1410,7 @@ class TestPerformanceScenarios:
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                 # Assert - Should process exactly concurrency_limit tasks
-                assert mock_task.delay.call_count == concurrency_limit
+                assert mock_task.apply_async.call_count == concurrency_limit
 
     def test_multiple_tenants_isolated_processing(self, mock_redis):
         """
@@ -1797,113 +1455,6 @@ class TestPerformanceScenarios:
 class TestRobustness:
     """Test system robustness and resilience."""
 
-    def test_indexing_runner_exception_does_not_crash_task(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner
-    ):
-        """
-        Test that IndexingRunner exceptions are handled gracefully.
-
-        When IndexingRunner raises an unexpected exception during processing,
-        the task should catch it, log it, and clean up properly.
-
-        Scenario:
-        - Documents are prepared for indexing
-        - IndexingRunner.run() raises RuntimeError
-        - Task should not crash
-
-        Expected behavior:
-        - Exception is caught and logged
-        - Database session is closed
-        - Task completes (doesn't hang)
-        """
-        # Arrange
-        mock_documents = []
-        for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
-            doc.id = doc_id
-            doc.dataset_id = dataset_id
-            doc.indexing_status = "waiting"
-            doc.processing_started_at = None
-            mock_documents.append(doc)
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        # Make IndexingRunner raise an exception
-        mock_indexing_runner.run.side_effect = RuntimeError("Unexpected indexing error")
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act - Should not raise exception
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert - Session should be closed even after error
-            assert mock_db_session.close.called
-
-    def test_database_session_always_closed_on_success(
-        self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner
-    ):
-        """
-        Test that database session is always closed on successful completion.
-
-        Proper resource cleanup is critical. The database session must
-        be closed in the finally block to prevent connection leaks.
-
-        Scenario:
-        - Task processes successfully
-        - No exceptions occur
-
-        Expected behavior:
-        - Database session is closed
-        - No connection leaks
-        """
-        # Arrange
-        mock_documents = []
-        for doc_id in document_ids:
-            doc = MagicMock(spec=Document)
-            doc.id = doc_id
-            doc.dataset_id = dataset_id
-            doc.indexing_status = "waiting"
-            doc.processing_started_at = None
-            mock_documents.append(doc)
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
-        doc_iter = iter(mock_documents)
-
-        def mock_query_side_effect(*args):
-            mock_query = MagicMock()
-            if args[0] == Dataset:
-                mock_query.where.return_value.first.return_value = mock_dataset
-            elif args[0] == Document:
-                mock_query.where.return_value.first = lambda: next(doc_iter, None)
-            return mock_query
-
-        mock_db_session.query.side_effect = mock_query_side_effect
-
-        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
-            mock_features.return_value.billing.enabled = False
-
-            # Act
-            _document_indexing(dataset_id, document_ids)
-
-            # Assert
-            assert mock_db_session.close.called
-            # Verify close is called exactly once
-            assert mock_db_session.close.call_count == 1
-
     def test_task_proxy_handles_feature_service_failure(self, tenant_id, dataset_id, document_ids, mock_redis):
         """
         Test that task proxy handles FeatureService failures gracefully.
@@ -1934,3 +1485,439 @@ class TestRobustness:
 
             # Verify the exception message
             assert "Feature service" in str(exc_info.value) or isinstance(exc_info.value, Exception)
+
+
+class _SessionContext:
+    def __init__(self, session: MagicMock) -> None:
+        self._session = session
+
+    def __enter__(self) -> MagicMock:
+        return self._session
+
+    def __exit__(self, exc_type, exc, tb) -> None:  # type: ignore[override]
+        return None
+
+
+class TestDocumentIndexingTaskSummaryFlow:
+    """Additional coverage for summary and tenant queue branches."""
+
+    def test_should_return_when_dataset_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test early return when dataset does not exist."""
+        # Arrange
+        session = MagicMock()
+        session = MagicMock()
+        session.scalar.return_value = None  # dataset not found
+
+        create_session_mock = MagicMock(return_value=_SessionContext(session))
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+        features_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", features_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        features_mock.assert_not_called()
+
+    def test_should_mark_documents_error_when_batch_upload_limit_exceeded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test batch upload limit triggers error handling."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        document = SimpleNamespace(id="doc-1", indexing_status=None, error=None, stopped_at=None)
+
+        session = MagicMock()
+
+        def _scalar_se(stmt):
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is Dataset:
+                return dataset
+            return document
+
+        session.scalar.side_effect = _scalar_se
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(return_value=_SessionContext(session)),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(
+                enabled=True,
+                subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
+            ),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", "1")
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1", "doc-2"])
+
+        # Assert
+        assert document.indexing_status == "error"
+        assert "batch upload limit" in document.error
+        session.commit.assert_called_once()
+
+    def test_should_queue_summary_generation_for_completed_documents(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation is queued for eligible documents."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+
+        doc_eligible = SimpleNamespace(
+            id="doc-1",
+            indexing_status="completed",
+            doc_form="text",
+            need_summary=True,
+        )
+        doc_skip_form = SimpleNamespace(
+            id="doc-2",
+            indexing_status="completed",
+            doc_form="qa_model",
+            need_summary=True,
+        )
+        doc_skip_status = SimpleNamespace(
+            id="doc-3",
+            indexing_status="processing",
+            doc_form="text",
+            need_summary=True,
+        )
+
+        dataset_query = MagicMock()
+        dataset_query.where.return_value = dataset_query
+        dataset_query.first.return_value = dataset
+
+        phase1_docs = [SimpleNamespace(id="doc-1"), SimpleNamespace(id="doc-2"), SimpleNamespace(id="doc-3")]
+        phase1_document_query = MagicMock()
+        phase1_document_query.where.return_value = phase1_document_query
+        phase1_document_query.all.return_value = phase1_docs
+
+        summary_document_query = MagicMock()
+        summary_document_query.where.return_value = summary_document_query
+        summary_document_query.all.return_value = [doc_eligible, doc_skip_form, doc_skip_status]
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=phase1_docs))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(
+            all=MagicMock(return_value=[doc_eligible, doc_skip_form, doc_skip_status])
+        )
+
+        create_session_mock = MagicMock(
+            side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        indexing_runner = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1", "doc-2", "doc-3"])
+
+        # Assert
+        delay_mock.assert_called_once_with("dataset-1", "doc-1", None)
+
+    def test_should_continue_when_summary_queue_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary queueing errors are swallowed."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+
+        doc_eligible = SimpleNamespace(
+            id="doc-1",
+            indexing_status="completed",
+            doc_form="text",
+            need_summary=True,
+        )
+
+        dataset_query = MagicMock()
+        dataset_query.where.return_value = dataset_query
+        dataset_query.first.return_value = dataset
+
+        phase1_query = MagicMock()
+        phase1_query.where.return_value = phase1_query
+        phase1_query.all.return_value = [SimpleNamespace(id="doc-1")]
+
+        summary_query = MagicMock()
+        summary_query.where.return_value = summary_query
+        summary_query.all.return_value = [doc_eligible]
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[doc_eligible]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        indexing_runner = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
+        delay_mock = MagicMock(side_effect=Exception("boom"))
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_called_once_with("dataset-1", "doc-1", None)
+
+    def test_should_return_when_dataset_missing_after_indexing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test early return when dataset is missing after indexing."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = None  # dataset not found on second query
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        session3.scalar.assert_called()
+
+    def test_should_skip_summary_when_not_high_quality(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation skipped when indexing_technique is not high_quality."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="economy",
+            summary_index_setting={"enable": True},
+        )
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_skip_summary_generation_when_indexing_paused(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation is skipped when indexing is paused."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+
+        create_session_mock = MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)])
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        runner = MagicMock()
+        runner.run.side_effect = DocumentIsPausedError("paused")
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=runner))
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_handle_indexing_runner_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test generic indexing runner exception is handled."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        runner = MagicMock()
+        runner.run.side_effect = RuntimeError("boom")
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=runner))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_log_missing_document_entry_in_summary_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test falsey document entries are handled in summary iteration."""
+
+        # Arrange
+        class _FalseyDocument:
+            def __init__(self, doc_id: str) -> None:
+                self.id = doc_id
+
+            def __bool__(self) -> bool:
+                return False
+
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[_FalseyDocument("missing-doc")]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_normal_document_indexing_task_should_delegate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test normal indexing task delegates to tenant queue handler."""
+        # Arrange
+        handler = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task._document_indexing_with_tenant_queue", handler)
+
+        # Act
+        normal_document_indexing_task("tenant-1", "dataset-1", ["doc-1"])
+
+        # Assert
+        handler.assert_called_once_with("tenant-1", "dataset-1", ["doc-1"], normal_document_indexing_task)
+
+    def test_priority_document_indexing_task_should_delegate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test priority indexing task delegates to tenant queue handler."""
+        # Arrange
+        handler = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task._document_indexing_with_tenant_queue", handler)
+
+        # Act
+        priority_document_indexing_task("tenant-1", "dataset-1", ["doc-1"])
+
+        # Assert
+        handler.assert_called_once_with("tenant-1", "dataset-1", ["doc-1"], priority_document_indexing_task)

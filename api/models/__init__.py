@@ -9,6 +9,11 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .comment import (
+    WorkflowComment,
+    WorkflowCommentMention,
+    WorkflowCommentReply,
+)
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -30,10 +35,11 @@ from .enums import (
     AppTriggerStatus,
     AppTriggerType,
     CreatorUserRole,
-    UserFrom,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .execution_extra_content import ExecutionExtraContent, HumanInputContent
+from .human_input import HumanInputForm
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -155,9 +161,12 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "HumanInputContent",
+    "HumanInputForm",
     "IconType",
     "InstalledApp",
     "InvitationCode",
@@ -199,12 +208,14 @@ __all__ = [
     "TriggerOAuthTenantClient",
     "TriggerSubscription",
     "UploadFile",
-    "UserFrom",
     "Whitelist",
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",
+    "WorkflowComment",
+    "WorkflowCommentMention",
+    "WorkflowCommentReply",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
@@ -43,22 +42,23 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="text-base font-semibold text-text-primary">PROMPT LOG</div>
         <div className="flex items-center">
           {
             currentLogItem.log?.length === 1 && (
               <>
-                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0].text} />
-                <div className="mx-2.5 h-[14px] w-[1px] bg-divider-regular" />
+                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0]!.text} />
+                <div className="mx-2.5 h-[14px] w-px bg-divider-regular" />
               </>
             )
           }
           <div
             onClick={onCancel}
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            data-testid="close-btn-container"
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" data-testid="close-btn" />
           </div>
         </div>
       </div>

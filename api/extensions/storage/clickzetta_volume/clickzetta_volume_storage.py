@@ -10,6 +10,7 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import clickzetta
 from pydantic import BaseModel, model_validator
@@ -39,7 +40,7 @@ class ClickZettaVolumeConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         """Validate the configuration values.
 
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,
@@ -390,8 +391,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """
         content = self.load_once(filename)
 
-        with Path(target_filepath).open("wb") as f:
-            f.write(content)
+        Path(target_filepath).write_bytes(content)
 
         logger.debug("File %s downloaded from ClickZetta Volume to %s", filename, target_filepath)
 

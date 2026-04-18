@@ -1,18 +1,13 @@
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from core.workflow.enums import NodeType
-from core.workflow.nodes.parameter_extractor.entities import (
-    ModelConfig as ParameterExtractorModelConfig,
-)
-from core.workflow.nodes.parameter_extractor.entities import (
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
+from graphon.nodes.parameter_extractor.entities import (
     ParameterConfig,
     ParameterExtractorNodeData,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from graphon.nodes.question_classifier.entities import (
     ClassConfig,
     QuestionClassifierNodeData,
-)
-from core.workflow.nodes.question_classifier.entities import (
-    ModelConfig as QuestionClassifierModelConfig,
 )
 from services.workflow_service import WorkflowService
 
@@ -24,7 +19,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         tenant_id: str,
         user_id: str,
         parameters: list[ParameterConfig],
-        model_config: ParameterExtractorModelConfig,
+        model_config: LLMModelConfig,
         instruction: str,
         query: str,
     ):
@@ -52,7 +47,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
-        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR
+        node_data_dict["type"] = BuiltinNodeTypes.PARAMETER_EXTRACTOR
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,
@@ -74,7 +69,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         cls,
         tenant_id: str,
         user_id: str,
-        model_config: QuestionClassifierModelConfig,
+        model_config: LLMModelConfig,
         classes: list[ClassConfig],
         instruction: str,
         query: str,

@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import { RiAddLine } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import useGetRequirements from './use-get-requirements'
 
 type Props = {
@@ -19,6 +18,36 @@ type Props = {
 }
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
+const requirementIconSize = 20
+
+type RequirementIconProps = {
+  iconUrl: string
+}
+
+const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
+  const [failedSource, setFailedSource] = React.useState<string | null>(null)
+  const hasLoadError = !iconUrl || failedSource === iconUrl
+
+  if (hasLoadError) {
+    return (
+      <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+        <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
+      </div>
+    )
+  }
+
+  return (
+    <img
+      className="size-5 rounded-md object-cover shadow-xs"
+      src={iconUrl}
+      alt=""
+      aria-hidden="true"
+      width={requirementIconSize}
+      height={requirementIconSize}
+      onError={() => setFailedSource(iconUrl)}
+    />
+  )
+}
 
 const AppInfo: FC<Props> = ({
   appId,
@@ -48,11 +77,11 @@ const AppInfo: FC<Props> = ({
             type={mode}
           />
         </div>
-        <div className="w-0 grow py-[1px]">
-          <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
+        <div className="w-0 grow py-px">
+          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
-          <div className="flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary">
+          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
             {mode === 'advanced-chat' && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
             {mode === 'chat' && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
             {mode === 'agent-chat' && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
@@ -62,10 +91,10 @@ const AppInfo: FC<Props> = ({
         </div>
       </div>
       {appDetail.description && (
-        <div className="system-sm-regular mt-[14px] shrink-0 text-text-secondary">{appDetail.description}</div>
+        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">{appDetail.description}</div>
       )}
       <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <RiAddLine className="mr-1 size-4 shrink-0" />
+        <span className="mr-1 i-ri-add-line size-4 shrink-0" />
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 
@@ -81,8 +110,8 @@ const AppInfo: FC<Props> = ({
           <div className="space-y-0.5">
             {requirements.map(item => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
-                <div className="size-5 rounded-md bg-cover shadow-xs" style={{ backgroundImage: `url(${item.iconUrl})` }} />
-                <div className="system-md-regular w-0 grow truncate text-text-secondary">{item.name}</div>
+                <RequirementIcon iconUrl={item.iconUrl} />
+                <div className="w-0 grow truncate system-md-regular text-text-secondary">{item.name}</div>
               </div>
             ))}
           </div>

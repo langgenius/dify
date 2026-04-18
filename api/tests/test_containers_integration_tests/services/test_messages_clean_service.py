@@ -1,16 +1,27 @@
+from __future__ import annotations
+
 import datetime
 import json
 import uuid
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import (
+    ConversationFromSource,
+    DataSourceType,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    MessageFileBelongsTo,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -40,25 +51,25 @@ class TestMessagesCleanServiceIntegration:
     PLAN_CACHE_KEY_PREFIX = BillingService._PLAN_CACHE_KEY_PREFIX  # "tenant_plan:"
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database before and after each test to ensure isolation."""
         yield
         # Clear all test data in correct order (respecting foreign key constraints)
-        db.session.query(DatasetRetrieverResource).delete()
-        db.session.query(AppAnnotationHitHistory).delete()
-        db.session.query(SavedMessage).delete()
-        db.session.query(MessageFile).delete()
-        db.session.query(MessageAgentThought).delete()
-        db.session.query(MessageChain).delete()
-        db.session.query(MessageAnnotation).delete()
-        db.session.query(MessageFeedback).delete()
-        db.session.query(Message).delete()
-        db.session.query(Conversation).delete()
-        db.session.query(App).delete()
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Tenant).delete()
-        db.session.query(Account).delete()
-        db.session.commit()
+        db_session_with_containers.query(DatasetRetrieverResource).delete()
+        db_session_with_containers.query(AppAnnotationHitHistory).delete()
+        db_session_with_containers.query(SavedMessage).delete()
+        db_session_with_containers.query(MessageFile).delete()
+        db_session_with_containers.query(MessageAgentThought).delete()
+        db_session_with_containers.query(MessageChain).delete()
+        db_session_with_containers.query(MessageAnnotation).delete()
+        db_session_with_containers.query(MessageFeedback).delete()
+        db_session_with_containers.query(Message).delete()
+        db_session_with_containers.query(Conversation).delete()
+        db_session_with_containers.query(App).delete()
+        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.query(Tenant).delete()
+        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.commit()
 
     @pytest.fixture(autouse=True)
     def cleanup_redis(self):
@@ -100,7 +111,7 @@ class TestMessagesCleanServiceIntegration:
         with patch("services.retention.conversation.messages_clean_policy.dify_config.BILLING_ENABLED", False):
             yield
 
-    def _create_account_and_tenant(self, plan: str = CloudPlan.SANDBOX):
+    def _create_account_and_tenant(self, db_session_with_containers: Session, plan: str = CloudPlan.SANDBOX):
         """Helper to create account and tenant."""
         fake = Faker()
 
@@ -110,28 +121,28 @@ class TestMessagesCleanServiceIntegration:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.flush()
+        db_session_with_containers.add(account)
+        db_session_with_containers.flush()
 
         tenant = Tenant(
             name=fake.company(),
             plan=str(plan),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.flush()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.flush()
 
         tenant_account_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
             role=TenantAccountRole.OWNER,
         )
-        db.session.add(tenant_account_join)
-        db.session.commit()
+        db_session_with_containers.add(tenant_account_join)
+        db_session_with_containers.commit()
 
         return account, tenant
 
-    def _create_app(self, tenant, account):
+    def _create_app(self, db_session_with_containers: Session, tenant, account):
         """Helper to create an app."""
         fake = Faker()
 
@@ -149,12 +160,12 @@ class TestMessagesCleanServiceIntegration:
             created_by=account.id,
             updated_by=account.id,
         )
-        db.session.add(app)
-        db.session.commit()
+        db_session_with_containers.add(app)
+        db_session_with_containers.commit()
 
         return app
 
-    def _create_conversation(self, app):
+    def _create_conversation(self, db_session_with_containers: Session, app):
         """Helper to create a conversation."""
         conversation = Conversation(
             app_id=app.id,
@@ -165,15 +176,17 @@ class TestMessagesCleanServiceIntegration:
             name="Test conversation",
             inputs={},
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )
-        db.session.add(conversation)
-        db.session.commit()
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.commit()
 
         return conversation
 
-    def _create_message(self, app, conversation, created_at=None, with_relations=True):
+    def _create_message(
+        self, db_session_with_containers: Session, app, conversation, created_at=None, with_relations=True
+    ):
         """Helper to create a message with optional related records."""
         if created_at is None:
             created_at = datetime.datetime.now()
@@ -193,31 +206,31 @@ class TestMessagesCleanServiceIntegration:
             answer_unit_price=Decimal("0.002"),
             total_price=Decimal("0.003"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_account_id=conversation.from_end_user_id,
             created_at=created_at,
         )
-        db.session.add(message)
-        db.session.flush()
+        db_session_with_containers.add(message)
+        db_session_with_containers.flush()
 
         if with_relations:
-            self._create_message_relations(message)
+            self._create_message_relations(db_session_with_containers, message)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return message
 
-    def _create_message_relations(self, message):
+    def _create_message_relations(self, db_session_with_containers: Session, message):
         """Helper to create all message-related records."""
         # MessageFeedback
         feedback = MessageFeedback(
             app_id=message.app_id,
             conversation_id=message.conversation_id,
             message_id=message.id,
-            rating="like",
-            from_source="api",
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
             from_end_user_id=str(uuid.uuid4()),
         )
-        db.session.add(feedback)
+        db_session_with_containers.add(feedback)
 
         # MessageAnnotation
         annotation = MessageAnnotation(
@@ -228,29 +241,29 @@ class TestMessagesCleanServiceIntegration:
             content="Test annotation",
             account_id=message.from_account_id,
         )
-        db.session.add(annotation)
+        db_session_with_containers.add(annotation)
 
         # MessageChain
         chain = MessageChain(
             message_id=message.id,
-            type="system",
+            type=MessageChainType.SYSTEM,
             input=json.dumps({"test": "input"}),
             output=json.dumps({"test": "output"}),
         )
-        db.session.add(chain)
-        db.session.flush()
+        db_session_with_containers.add(chain)
+        db_session_with_containers.flush()
 
         # MessageFile
         file = MessageFile(
             message_id=message.id,
-            type="image",
+            type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
-        db.session.add(file)
+        db_session_with_containers.add(file)
 
         # SavedMessage
         saved = SavedMessage(
@@ -259,9 +272,9 @@ class TestMessagesCleanServiceIntegration:
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
-        db.session.add(saved)
+        db_session_with_containers.add(saved)
 
-        db.session.flush()
+        db_session_with_containers.flush()
 
         # AppAnnotationHitHistory
         hit = AppAnnotationHitHistory(
@@ -275,7 +288,7 @@ class TestMessagesCleanServiceIntegration:
             annotation_question="Test annotation question",
             annotation_content="Test annotation content",
         )
-        db.session.add(hit)
+        db_session_with_containers.add(hit)
 
         # DatasetRetrieverResource
         resource = DatasetRetrieverResource(
@@ -285,7 +298,7 @@ class TestMessagesCleanServiceIntegration:
             dataset_name="Test dataset",
             document_id=str(uuid.uuid4()),
             document_name="Test document",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             segment_id=str(uuid.uuid4()),
             score=0.9,
             content="Test content",
@@ -296,25 +309,29 @@ class TestMessagesCleanServiceIntegration:
             retriever_from="dataset",
             created_by=message.from_account_id,
         )
-        db.session.add(resource)
+        db_session_with_containers.add(resource)
 
     def test_billing_disabled_deletes_all_messages_in_time_range(
-        self, db_session_with_containers, mock_billing_disabled
+        self, db_session_with_containers: Session, mock_billing_disabled
     ):
         """Test that BillingDisabledPolicy deletes all messages within time range regardless of tenant plan."""
         # Arrange - Create tenant with messages (plan doesn't matter for billing disabled)
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         # Create messages: in-range (should be deleted) and out-of-range (should be kept)
         in_range_date = datetime.datetime(2024, 1, 15, 12, 0, 0)
         out_of_range_date = datetime.datetime(2024, 1, 25, 12, 0, 0)
 
-        in_range_msg = self._create_message(app, conv, created_at=in_range_date, with_relations=True)
+        in_range_msg = self._create_message(
+            db_session_with_containers, app, conv, created_at=in_range_date, with_relations=True
+        )
         in_range_msg_id = in_range_msg.id
 
-        out_of_range_msg = self._create_message(app, conv, created_at=out_of_range_date, with_relations=True)
+        out_of_range_msg = self._create_message(
+            db_session_with_containers, app, conv, created_at=out_of_range_date, with_relations=True
+        )
         out_of_range_msg_id = out_of_range_msg.id
 
         # Act - create_message_clean_policy should return BillingDisabledPolicy
@@ -336,17 +353,34 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 1
 
         # In-range message deleted
-        assert db.session.query(Message).where(Message.id == in_range_msg_id).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id == in_range_msg_id).count() == 0
         # Out-of-range message kept
-        assert db.session.query(Message).where(Message.id == out_of_range_msg_id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == out_of_range_msg_id).count() == 1
 
         # Related records of in-range message deleted
-        assert db.session.query(MessageFeedback).where(MessageFeedback.message_id == in_range_msg_id).count() == 0
-        assert db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == in_range_msg_id).count() == 0
+        assert (
+            db_session_with_containers.query(MessageFeedback)
+            .where(MessageFeedback.message_id == in_range_msg_id)
+            .count()
+            == 0
+        )
+        assert (
+            db_session_with_containers.query(MessageAnnotation)
+            .where(MessageAnnotation.message_id == in_range_msg_id)
+            .count()
+            == 0
+        )
         # Related records of out-of-range message kept
-        assert db.session.query(MessageFeedback).where(MessageFeedback.message_id == out_of_range_msg_id).count() == 1
+        assert (
+            db_session_with_containers.query(MessageFeedback)
+            .where(MessageFeedback.message_id == out_of_range_msg_id)
+            .count()
+            == 1
+        )
 
-    def test_no_messages_returns_empty_stats(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_no_messages_returns_empty_stats(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test cleaning when there are no messages to delete (B1)."""
         # Arrange
         end_before = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -371,36 +405,42 @@ class TestMessagesCleanServiceIntegration:
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
 
-    def test_mixed_sandbox_and_paid_tenants(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_mixed_sandbox_and_paid_tenants(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test cleaning with mixed sandbox and paid tenants (B2)."""
         # Arrange - Create sandbox tenants with expired messages
         sandbox_tenants = []
         sandbox_message_ids = []
         for i in range(2):
-            account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
+            account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
             sandbox_tenants.append(tenant)
-            app = self._create_app(tenant, account)
-            conv = self._create_conversation(app)
+            app = self._create_app(db_session_with_containers, tenant, account)
+            conv = self._create_conversation(db_session_with_containers, app)
 
             # Create 3 expired messages per sandbox tenant
             expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
             for j in range(3):
-                msg = self._create_message(app, conv, created_at=expired_date - datetime.timedelta(hours=j))
+                msg = self._create_message(
+                    db_session_with_containers, app, conv, created_at=expired_date - datetime.timedelta(hours=j)
+                )
                 sandbox_message_ids.append(msg.id)
 
         # Create paid tenants with expired messages (should NOT be deleted)
         paid_tenants = []
         paid_message_ids = []
         for i in range(2):
-            account, tenant = self._create_account_and_tenant(plan=CloudPlan.PROFESSIONAL)
+            account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.PROFESSIONAL)
             paid_tenants.append(tenant)
-            app = self._create_app(tenant, account)
-            conv = self._create_conversation(app)
+            app = self._create_app(db_session_with_containers, tenant, account)
+            conv = self._create_conversation(db_session_with_containers, app)
 
             # Create 2 expired messages per paid tenant
             expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
             for j in range(2):
-                msg = self._create_message(app, conv, created_at=expired_date - datetime.timedelta(hours=j))
+                msg = self._create_message(
+                    db_session_with_containers, app, conv, created_at=expired_date - datetime.timedelta(hours=j)
+                )
                 paid_message_ids.append(msg.id)
 
         # Mock billing service - return plan and expiration_date
@@ -442,29 +482,39 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 6
 
         # Only sandbox messages should be deleted
-        assert db.session.query(Message).where(Message.id.in_(sandbox_message_ids)).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id.in_(sandbox_message_ids)).count() == 0
         # Paid messages should remain
-        assert db.session.query(Message).where(Message.id.in_(paid_message_ids)).count() == 4
+        assert db_session_with_containers.query(Message).where(Message.id.in_(paid_message_ids)).count() == 4
 
         # Related records of sandbox messages should be deleted
-        assert db.session.query(MessageFeedback).where(MessageFeedback.message_id.in_(sandbox_message_ids)).count() == 0
         assert (
-            db.session.query(MessageAnnotation).where(MessageAnnotation.message_id.in_(sandbox_message_ids)).count()
+            db_session_with_containers.query(MessageFeedback)
+            .where(MessageFeedback.message_id.in_(sandbox_message_ids))
+            .count()
+            == 0
+        )
+        assert (
+            db_session_with_containers.query(MessageAnnotation)
+            .where(MessageAnnotation.message_id.in_(sandbox_message_ids))
+            .count()
             == 0
         )
 
-    def test_cursor_pagination_multiple_batches(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_cursor_pagination_multiple_batches(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test cursor pagination works correctly across multiple batches (B3)."""
         # Arrange - Create sandbox tenant with messages that will span multiple batches
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         # Create 10 expired messages with different timestamps
         base_date = datetime.datetime.now() - datetime.timedelta(days=35)
         message_ids = []
         for i in range(10):
             msg = self._create_message(
+                db_session_with_containers,
                 app,
                 conv,
                 created_at=base_date + datetime.timedelta(hours=i),
@@ -498,20 +548,22 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 10
 
         # All messages should be deleted
-        assert db.session.query(Message).where(Message.id.in_(message_ids)).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id.in_(message_ids)).count() == 0
 
-    def test_dry_run_does_not_delete(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_dry_run_does_not_delete(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
         """Test dry_run mode does not delete messages (B4)."""
         # Arrange
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         # Create expired messages
         expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
         message_ids = []
         for i in range(3):
-            msg = self._create_message(app, conv, created_at=expired_date - datetime.timedelta(hours=i))
+            msg = self._create_message(
+                db_session_with_containers, app, conv, created_at=expired_date - datetime.timedelta(hours=i)
+            )
             message_ids.append(msg.id)
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
@@ -540,21 +592,26 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 0  # But NOT deleted
 
         # All messages should still exist
-        assert db.session.query(Message).where(Message.id.in_(message_ids)).count() == 3
+        assert db_session_with_containers.query(Message).where(Message.id.in_(message_ids)).count() == 3
         # Related records should also still exist
-        assert db.session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_ids)).count() == 3
+        assert (
+            db_session_with_containers.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_ids)).count()
+            == 3
+        )
 
-    def test_partial_plan_data_safe_default(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_partial_plan_data_safe_default(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test when billing returns partial data, unknown tenants are preserved (B5)."""
         # Arrange - Create 3 tenants
         tenants_data = []
         for i in range(3):
-            account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-            app = self._create_app(tenant, account)
-            conv = self._create_conversation(app)
+            account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+            app = self._create_app(db_session_with_containers, tenant, account)
+            conv = self._create_conversation(db_session_with_containers, app)
 
             expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
-            msg = self._create_message(app, conv, created_at=expired_date)
+            msg = self._create_message(db_session_with_containers, app, conv, created_at=expired_date)
 
             tenants_data.append(
                 {
@@ -600,28 +657,30 @@ class TestMessagesCleanServiceIntegration:
 
         # Check which messages were deleted
         assert (
-            db.session.query(Message).where(Message.id == tenants_data[0]["message_id"]).count() == 0
+            db_session_with_containers.query(Message).where(Message.id == tenants_data[0]["message_id"]).count() == 0
         )  # Sandbox tenant's message deleted
 
         assert (
-            db.session.query(Message).where(Message.id == tenants_data[1]["message_id"]).count() == 1
+            db_session_with_containers.query(Message).where(Message.id == tenants_data[1]["message_id"]).count() == 1
         )  # Professional tenant's message preserved
 
         assert (
-            db.session.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 1
+            db_session_with_containers.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 1
         )  # Unknown tenant's message preserved (safe default)
 
-    def test_empty_plan_data_skips_deletion(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_empty_plan_data_skips_deletion(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test when billing returns empty data, skip deletion entirely (B6)."""
         # Arrange
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
-        msg = self._create_message(app, conv, created_at=expired_date)
+        msg = self._create_message(db_session_with_containers, app, conv, created_at=expired_date)
         msg_id = msg.id
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Mock billing service to return empty data (simulating failure/no data scenario)
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
@@ -644,17 +703,20 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 0
 
         # Message should still exist (safe default - don't delete if plan is unknown)
-        assert db.session.query(Message).where(Message.id == msg_id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == msg_id).count() == 1
 
-    def test_time_range_boundary_behavior(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_time_range_boundary_behavior(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test that messages are correctly filtered by [start_from, end_before) time range (B7)."""
         # Arrange
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         # Create messages: before range, in range, after range
         msg_before = self._create_message(
+            db_session_with_containers,
             app,
             conv,
             created_at=datetime.datetime(2024, 1, 1, 12, 0, 0),  # Before start_from
@@ -663,6 +725,7 @@ class TestMessagesCleanServiceIntegration:
         msg_before_id = msg_before.id
 
         msg_at_start = self._create_message(
+            db_session_with_containers,
             app,
             conv,
             created_at=datetime.datetime(2024, 1, 10, 12, 0, 0),  # At start_from (inclusive)
@@ -671,6 +734,7 @@ class TestMessagesCleanServiceIntegration:
         msg_at_start_id = msg_at_start.id
 
         msg_in_range = self._create_message(
+            db_session_with_containers,
             app,
             conv,
             created_at=datetime.datetime(2024, 1, 15, 12, 0, 0),  # In range
@@ -679,6 +743,7 @@ class TestMessagesCleanServiceIntegration:
         msg_in_range_id = msg_in_range.id
 
         msg_at_end = self._create_message(
+            db_session_with_containers,
             app,
             conv,
             created_at=datetime.datetime(2024, 1, 20, 12, 0, 0),  # At end_before (exclusive)
@@ -687,6 +752,7 @@ class TestMessagesCleanServiceIntegration:
         msg_at_end_id = msg_at_end.id
 
         msg_after = self._create_message(
+            db_session_with_containers,
             app,
             conv,
             created_at=datetime.datetime(2024, 1, 25, 12, 0, 0),  # After end_before
@@ -694,7 +760,7 @@ class TestMessagesCleanServiceIntegration:
         )
         msg_after_id = msg_after.id
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Mock billing service
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
@@ -722,17 +788,17 @@ class TestMessagesCleanServiceIntegration:
 
         # Verify specific messages using stored IDs
         # Before range, kept
-        assert db.session.query(Message).where(Message.id == msg_before_id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == msg_before_id).count() == 1
         # At start (inclusive), deleted
-        assert db.session.query(Message).where(Message.id == msg_at_start_id).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id == msg_at_start_id).count() == 0
         # In range, deleted
-        assert db.session.query(Message).where(Message.id == msg_in_range_id).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id == msg_in_range_id).count() == 0
         # At end (exclusive), kept
-        assert db.session.query(Message).where(Message.id == msg_at_end_id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == msg_at_end_id).count() == 1
         # After range, kept
-        assert db.session.query(Message).where(Message.id == msg_after_id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == msg_after_id).count() == 1
 
-    def test_grace_period_scenarios(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_grace_period_scenarios(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
         """Test cleaning with different graceful period scenarios (B8)."""
         # Arrange - Create 5 different tenants with different plan and expiration scenarios
         now_timestamp = int(datetime.datetime.now(datetime.UTC).timestamp())
@@ -740,50 +806,60 @@ class TestMessagesCleanServiceIntegration:
 
         # Scenario 1: Sandbox plan with expiration within graceful period (5 days ago)
         # Should NOT be deleted
-        account1, tenant1 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app1 = self._create_app(tenant1, account1)
-        conv1 = self._create_conversation(app1)
+        account1, tenant1 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app1 = self._create_app(db_session_with_containers, tenant1, account1)
+        conv1 = self._create_conversation(db_session_with_containers, app1)
         expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
-        msg1 = self._create_message(app1, conv1, created_at=expired_date, with_relations=False)
+        msg1 = self._create_message(
+            db_session_with_containers, app1, conv1, created_at=expired_date, with_relations=False
+        )
         msg1_id = msg1.id
         expired_5_days_ago = now_timestamp - (5 * 24 * 60 * 60)  # Within grace period
 
         # Scenario 2: Sandbox plan with expiration beyond graceful period (10 days ago)
         # Should be deleted
-        account2, tenant2 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app2 = self._create_app(tenant2, account2)
-        conv2 = self._create_conversation(app2)
-        msg2 = self._create_message(app2, conv2, created_at=expired_date, with_relations=False)
+        account2, tenant2 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app2 = self._create_app(db_session_with_containers, tenant2, account2)
+        conv2 = self._create_conversation(db_session_with_containers, app2)
+        msg2 = self._create_message(
+            db_session_with_containers, app2, conv2, created_at=expired_date, with_relations=False
+        )
         msg2_id = msg2.id
         expired_10_days_ago = now_timestamp - (10 * 24 * 60 * 60)  # Beyond grace period
 
         # Scenario 3: Sandbox plan with expiration_date = -1 (no previous subscription)
         # Should be deleted
-        account3, tenant3 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app3 = self._create_app(tenant3, account3)
-        conv3 = self._create_conversation(app3)
-        msg3 = self._create_message(app3, conv3, created_at=expired_date, with_relations=False)
+        account3, tenant3 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app3 = self._create_app(db_session_with_containers, tenant3, account3)
+        conv3 = self._create_conversation(db_session_with_containers, app3)
+        msg3 = self._create_message(
+            db_session_with_containers, app3, conv3, created_at=expired_date, with_relations=False
+        )
         msg3_id = msg3.id
 
         # Scenario 4: Non-sandbox plan (professional) with no expiration (future date)
         # Should NOT be deleted
-        account4, tenant4 = self._create_account_and_tenant(plan=CloudPlan.PROFESSIONAL)
-        app4 = self._create_app(tenant4, account4)
-        conv4 = self._create_conversation(app4)
-        msg4 = self._create_message(app4, conv4, created_at=expired_date, with_relations=False)
+        account4, tenant4 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.PROFESSIONAL)
+        app4 = self._create_app(db_session_with_containers, tenant4, account4)
+        conv4 = self._create_conversation(db_session_with_containers, app4)
+        msg4 = self._create_message(
+            db_session_with_containers, app4, conv4, created_at=expired_date, with_relations=False
+        )
         msg4_id = msg4.id
         future_expiration = now_timestamp + (365 * 24 * 60 * 60)  # Active for 1 year
 
         # Scenario 5: Sandbox plan with expiration exactly at grace period boundary (8 days ago)
         # Should NOT be deleted (boundary is exclusive: > graceful_period)
-        account5, tenant5 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app5 = self._create_app(tenant5, account5)
-        conv5 = self._create_conversation(app5)
-        msg5 = self._create_message(app5, conv5, created_at=expired_date, with_relations=False)
+        account5, tenant5 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app5 = self._create_app(db_session_with_containers, tenant5, account5)
+        conv5 = self._create_conversation(db_session_with_containers, app5)
+        msg5 = self._create_message(
+            db_session_with_containers, app5, conv5, created_at=expired_date, with_relations=False
+        )
         msg5_id = msg5.id
         expired_exactly_8_days_ago = now_timestamp - (8 * 24 * 60 * 60)  # Exactly at boundary
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Mock billing service with all scenarios
         plan_map = {
@@ -832,23 +908,31 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 2
 
         # Verify each scenario using saved IDs
-        assert db.session.query(Message).where(Message.id == msg1_id).count() == 1  # Within grace, kept
-        assert db.session.query(Message).where(Message.id == msg2_id).count() == 0  # Beyond grace, deleted
-        assert db.session.query(Message).where(Message.id == msg3_id).count() == 0  # No subscription, deleted
-        assert db.session.query(Message).where(Message.id == msg4_id).count() == 1  # Professional plan, kept
-        assert db.session.query(Message).where(Message.id == msg5_id).count() == 1  # At boundary, kept
+        assert db_session_with_containers.query(Message).where(Message.id == msg1_id).count() == 1  # Within grace, kept
+        assert (
+            db_session_with_containers.query(Message).where(Message.id == msg2_id).count() == 0
+        )  # Beyond grace, deleted
+        assert (
+            db_session_with_containers.query(Message).where(Message.id == msg3_id).count() == 0
+        )  # No subscription, deleted
+        assert (
+            db_session_with_containers.query(Message).where(Message.id == msg4_id).count() == 1
+        )  # Professional plan, kept
+        assert db_session_with_containers.query(Message).where(Message.id == msg5_id).count() == 1  # At boundary, kept
 
-    def test_tenant_whitelist(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_tenant_whitelist(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
         """Test that whitelisted tenants' messages are not deleted (B9)."""
         # Arrange - Create 3 sandbox tenants with expired messages
         tenants_data = []
         for i in range(3):
-            account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-            app = self._create_app(tenant, account)
-            conv = self._create_conversation(app)
+            account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+            app = self._create_app(db_session_with_containers, tenant, account)
+            conv = self._create_conversation(db_session_with_containers, app)
 
             expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
-            msg = self._create_message(app, conv, created_at=expired_date, with_relations=False)
+            msg = self._create_message(
+                db_session_with_containers, app, conv, created_at=expired_date, with_relations=False
+            )
 
             tenants_data.append(
                 {
@@ -897,27 +981,33 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 1
 
         # Verify tenant0's message still exists (whitelisted)
-        assert db.session.query(Message).where(Message.id == tenants_data[0]["message_id"]).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == tenants_data[0]["message_id"]).count() == 1
 
         # Verify tenant1's message still exists (whitelisted)
-        assert db.session.query(Message).where(Message.id == tenants_data[1]["message_id"]).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == tenants_data[1]["message_id"]).count() == 1
 
         # Verify tenant2's message was deleted (not whitelisted)
-        assert db.session.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 0
 
-    def test_from_days_cleans_old_messages(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
+    def test_from_days_cleans_old_messages(
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+    ):
         """Test from_days correctly cleans messages older than N days (B11)."""
         # Arrange
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         # Create old messages (should be deleted - older than 30 days)
         old_date = datetime.datetime.now() - datetime.timedelta(days=45)
         old_msg_ids = []
         for i in range(3):
             msg = self._create_message(
-                app, conv, created_at=old_date - datetime.timedelta(hours=i), with_relations=False
+                db_session_with_containers,
+                app,
+                conv,
+                created_at=old_date - datetime.timedelta(hours=i),
+                with_relations=False,
             )
             old_msg_ids.append(msg.id)
 
@@ -926,11 +1016,15 @@ class TestMessagesCleanServiceIntegration:
         recent_msg_ids = []
         for i in range(2):
             msg = self._create_message(
-                app, conv, created_at=recent_date - datetime.timedelta(hours=i), with_relations=False
+                db_session_with_containers,
+                app,
+                conv,
+                created_at=recent_date - datetime.timedelta(hours=i),
+                with_relations=False,
             )
             recent_msg_ids.append(msg.id)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with patch("services.billing_service.BillingService.get_plan_bulk") as mock_billing:
             mock_billing.return_value = {
@@ -955,30 +1049,34 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 3
 
         # Old messages deleted
-        assert db.session.query(Message).where(Message.id.in_(old_msg_ids)).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id.in_(old_msg_ids)).count() == 0
         # Recent messages kept
-        assert db.session.query(Message).where(Message.id.in_(recent_msg_ids)).count() == 2
+        assert db_session_with_containers.query(Message).where(Message.id.in_(recent_msg_ids)).count() == 2
 
     def test_whitelist_precedence_over_grace_period(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
     ):
         """Test that whitelist takes precedence over grace period logic."""
         # Arrange - Create 2 sandbox tenants
         now_timestamp = int(datetime.datetime.now(datetime.UTC).timestamp())
 
         # Tenant1: whitelisted, expired beyond grace period
-        account1, tenant1 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app1 = self._create_app(tenant1, account1)
-        conv1 = self._create_conversation(app1)
+        account1, tenant1 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app1 = self._create_app(db_session_with_containers, tenant1, account1)
+        conv1 = self._create_conversation(db_session_with_containers, app1)
         expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
-        msg1 = self._create_message(app1, conv1, created_at=expired_date, with_relations=False)
+        msg1 = self._create_message(
+            db_session_with_containers, app1, conv1, created_at=expired_date, with_relations=False
+        )
         expired_30_days_ago = now_timestamp - (30 * 24 * 60 * 60)  # Well beyond 21-day grace
 
         # Tenant2: not whitelisted, within grace period
-        account2, tenant2 = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app2 = self._create_app(tenant2, account2)
-        conv2 = self._create_conversation(app2)
-        msg2 = self._create_message(app2, conv2, created_at=expired_date, with_relations=False)
+        account2, tenant2 = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app2 = self._create_app(db_session_with_containers, tenant2, account2)
+        conv2 = self._create_conversation(db_session_with_containers, app2)
+        msg2 = self._create_message(
+            db_session_with_containers, app2, conv2, created_at=expired_date, with_relations=False
+        )
         expired_10_days_ago = now_timestamp - (10 * 24 * 60 * 60)  # Within 21-day grace
 
         # Mock billing service
@@ -1019,22 +1117,26 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 0
 
         # Verify both messages still exist
-        assert db.session.query(Message).where(Message.id == msg1.id).count() == 1  # Whitelisted
-        assert db.session.query(Message).where(Message.id == msg2.id).count() == 1  # Within grace period
+        assert db_session_with_containers.query(Message).where(Message.id == msg1.id).count() == 1  # Whitelisted
+        assert (
+            db_session_with_containers.query(Message).where(Message.id == msg2.id).count() == 1
+        )  # Within grace period
 
     def test_empty_whitelist_deletes_eligible_messages(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
+        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
     ):
         """Test that empty whitelist behaves as no whitelist (all eligible messages deleted)."""
         # Arrange - Create sandbox tenant with expired messages
-        account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
-        app = self._create_app(tenant, account)
-        conv = self._create_conversation(app)
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
 
         expired_date = datetime.datetime.now() - datetime.timedelta(days=35)
         msg_ids = []
         for i in range(3):
-            msg = self._create_message(app, conv, created_at=expired_date - datetime.timedelta(hours=i))
+            msg = self._create_message(
+                db_session_with_containers, app, conv, created_at=expired_date - datetime.timedelta(hours=i)
+            )
             msg_ids.append(msg.id)
 
         # Mock billing service
@@ -1068,4 +1170,67 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 3
 
         # Verify all messages were deleted
-        assert db.session.query(Message).where(Message.id.in_(msg_ids)).count() == 0
+        assert db_session_with_containers.query(Message).where(Message.id.in_(msg_ids)).count() == 0
+
+    def test_from_time_range_validation(self):
+        """Test that from_time_range raises ValueError for invalid inputs."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        now = datetime.datetime.now()
+
+        with pytest.raises(ValueError, match="start_from .* must be less than end_before"):
+            MessagesCleanService.from_time_range(policy, now, now)
+
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(policy, now - datetime.timedelta(days=1), now, batch_size=0)
+
+    def test_from_time_range_success(self):
+        """Test that from_time_range creates a service with correct parameters."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        start = datetime.datetime(2024, 1, 1)
+        end = datetime.datetime(2024, 2, 1)
+
+        service = MessagesCleanService.from_time_range(policy, start, end)
+        assert service._start_from == start
+        assert service._end_before == end
+
+    def test_from_days_validation(self):
+        """Test that from_days raises ValueError for invalid inputs."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+
+        with pytest.raises(ValueError, match="days .* must be greater than or equal to 0"):
+            MessagesCleanService.from_days(policy, days=-1)
+
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy, days=30, batch_size=0)
+
+    def test_from_days_success(self):
+        """Test that from_days creates a service with correct parameters."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
+            fixed_now = datetime.datetime(2024, 6, 1)
+            mock_now.return_value = fixed_now
+
+            service = MessagesCleanService.from_days(policy, days=10)
+            assert service._start_from is None
+            assert service._end_before == fixed_now - datetime.timedelta(days=10)
+
+    def test_batch_delete_message_relations_empty(self, db_session_with_containers: Session):
+        """Test that batch_delete_message_relations with empty list does nothing."""
+        # Get execute call count before
+        MessagesCleanService._batch_delete_message_relations(db_session_with_containers, [])
+        # No exception means success — empty list is a no-op
+
+    def test_run_calls_clean_messages(self):
+        """Test that run() delegates to _clean_messages_by_time_range."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        service = MessagesCleanService(
+            policy=policy,
+            end_before=datetime.datetime.now(),
+            batch_size=10,
+        )
+        with patch.object(service, "_clean_messages_by_time_range") as mock_clean:
+            mock_clean.return_value = {"total_deleted": 5}
+            result = service.run()
+            assert result == {"total_deleted": 5}
+            mock_clean.assert_called_once()

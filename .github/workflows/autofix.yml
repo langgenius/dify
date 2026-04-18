@@ -2,6 +2,9 @@ name: autofix.ci
 on:
   pull_request:
     branches: ["main"]
+  merge_group:
+    branches: ["main"]
+    types: [checks_requested]
   push:
     branches: ["main"]
 permissions:
@@ -12,30 +15,59 @@ jobs:
     if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Complete merge group check
+        if: github.event_name == 'merge_group'
+        run: echo "autofix.ci updates pull request branches, not merge group refs."
+
+      - if: github.event_name != 'merge_group'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Check Docker Compose inputs
+        if: github.event_name != 'merge_group'
         id: docker-compose-changes
-        uses: tj-actions/changed-files@v47
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
         with:
           files: |
             docker/generate_docker_compose
             docker/.env.example
             docker/docker-compose-template.yaml
             docker/docker-compose.yaml
-      - uses: actions/setup-python@v6
+      - name: Check web inputs
+        if: github.event_name != 'merge_group'
+        id: web-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            web/**
+            packages/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .npmrc
+            .nvmrc
+      - name: Check api inputs
+        if: github.event_name != 'merge_group'
+        id: api-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            api/**
+      - if: github.event_name != 'merge_group'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@v7
+      - if: github.event_name != 'merge_group'
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
 
       - name: Generate Docker Compose
-        if: steps.docker-compose-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
         run: |
           cd docker
           ./generate_docker_compose
 
-      - run: |
+      - if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: |
           cd api
           uv sync --dev
           # fmt first to avoid line too long
@@ -46,11 +78,13 @@ jobs:
           uv run ruff format ..
 
       - name: count migration progress
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
         run: |
           cd api
           ./cnt_base.sh
 
       - name: ast-grep
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
         run: |
           # ast-grep exits 1 if no matches are found; allow idempotent runs.
           uvx --from ast-grep-cli ast-grep --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all || true
@@ -79,32 +113,14 @@ jobs:
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Install web dependencies
-        run: |
-          cd web
-          pnpm install --frozen-lockfile
+      - name: Setup web environment
+        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup-web
 
       - name: ESLint autofix
+        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          cd web
-          pnpm lint:fix || true
+          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
-      # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
-      - name: mdformat
-        run: |
-          uvx --python 3.13 mdformat . --exclude ".agents/skills/**"
-
-      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
+      - if: github.event_name != 'merge_group'
+        uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3

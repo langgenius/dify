@@ -1,5 +1,8 @@
 'use client'
 
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -7,32 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import dayjs from 'dayjs'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useAppContext } from '@/context/app-context'
-import { useIsLogin } from '@/service/use-common'
+import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-import {
-  OAUTH_AUTHORIZE_PENDING_KEY,
-  OAUTH_AUTHORIZE_PENDING_TTL,
-  REDIRECT_URL_KEY,
-} from './constants'
-
-function setItemWithExpiry(key: string, value: string, ttl: number) {
-  const item = {
-    value,
-    expiry: dayjs().add(ttl, 'seconds').unix(),
-  }
-  localStorage.setItem(key, JSON.stringify(item))
-}
 
 function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -75,7 +61,8 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
@@ -86,8 +73,8 @@ export default function OAuthAuthorize() {
   const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
-      setItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY, returnUrl, OAUTH_AUTHORIZE_PENDING_TTL)
-      router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
+      setPostLoginRedirect(returnUrl)
+      router.push('/signin')
     }
     catch {
       router.push('/signin')
@@ -104,10 +91,7 @@ export default function OAuthAuthorize() {
       globalThis.location.href = url.toString()
     }
     catch (err: any) {
-      Toast.notify({
-        type: 'error',
-        message: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
-      })
+      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -115,11 +99,10 @@ export default function OAuthAuthorize() {
     const invalidParams = !client_id || !redirect_uri
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
-      Toast.notify({
-        type: 'error',
-        message: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
-        duration: 0,
-      })
+      toast.error(
+        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        { timeout: 0 },
+      )
     }
   }, [client_id, redirect_uri, isError])
 
@@ -135,14 +118,14 @@ export default function OAuthAuthorize() {
     <div className="bg-background-default-subtle">
       {authAppInfo?.app_icon && (
         <div className="w-max rounded-2xl border-[0.5px] border-components-panel-border bg-text-primary-on-surface p-3 shadow-lg">
-          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded" />
+          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded-sm" />
         </div>
       )}
 
-      <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
+      <div className={`mt-5 mb-4 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-[var(--color-saas-dify-blue-inverted)]">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
+          <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
         <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
@@ -151,7 +134,7 @@ export default function OAuthAuthorize() {
       {isLoggedIn && userProfile && (
         <div className="flex items-center justify-between rounded-xl bg-background-section-burn-inverted p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
@@ -166,9 +149,9 @@ export default function OAuthAuthorize() {
           {authAppInfo!.scope.split(/\s+/).filter(Boolean).map((scope: string) => {
             const Icon = SCOPE_INFO_MAP[scope]
             return (
-              <div key={scope} className="body-sm-medium flex items-center gap-2 text-text-secondary">
+              <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
-                {Icon.label}
+                {Icon!.label}
               </div>
             )
           })}
@@ -199,7 +182,7 @@ export default function OAuthAuthorize() {
           </defs>
         </svg>
       </div>
-      <div className="system-xs-regular mt-3 text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
+      <div className="mt-3 system-xs-regular text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
     </div>
   )
 }

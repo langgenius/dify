@@ -1,8 +1,8 @@
-import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } from 'ky'
+import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
-import ky from 'ky'
-import Toast from '@/app/components/base/toast'
+import ky, { HTTPError } from 'ky'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -23,7 +23,7 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
 }
 
-const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
+const afterResponse204: AfterResponseHook = async ({ response }) => {
   if (response.status === 204) {
     return new Response(JSON.stringify({ result: 'success' }), {
       status: 200,
@@ -38,39 +38,43 @@ export type ResponseError = {
   status: number
 }
 
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async (_request, _options, response) => {
-    const clonedResponse = response.clone()
-    if (!/^([23])\d{2}$/.test(String(clonedResponse.status))) {
-      const bodyJson = clonedResponse.json() as Promise<ResponseError>
-      switch (clonedResponse.status) {
-        case 403:
-          bodyJson.then((data: ResponseError) => {
-            if (!otherOptions.silent)
-              Toast.notify({ type: 'error', message: data.message })
-            if (data.code === 'already_setup')
-              globalThis.location.href = `${globalThis.location.origin}/signin`
-          })
-          break
-        case 401:
-          return Promise.reject(response)
-        // fall through
-        default:
-          bodyJson.then((data: ResponseError) => {
-            if (!otherOptions.silent)
-              Toast.notify({ type: 'error', message: data.message })
-          })
-          return Promise.reject(response)
-      }
-    }
-  }
+const createResponseFromHTTPError = (error: HTTPError): Response => {
+  const headers = new Headers(error.response.headers)
+  headers.delete('content-length')
+
+  let body: BodyInit | null = null
+  if (typeof error.data === 'string')
+    body = error.data
+  else if (error.data !== undefined)
+    body = JSON.stringify(error.data)
+
+  if (body !== null && !headers.has('content-type'))
+    headers.set('content-type', ContentType.json)
+
+  return new Response(body, {
+    status: error.response.status,
+    statusText: error.response.statusText,
+    headers,
+  })
 }
 
-const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
-  return (error) => {
-    if (!otherOptions.silent)
-      Toast.notify({ type: 'error', message: error.message })
-    return error
+const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
+  return async ({ response }) => {
+    if (!/^([23])\d{2}$/.test(String(response.status))) {
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
+      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
+
+      if (shouldNotifyError && errorData)
+        toast.error(errorData.message)
+
+      if (response.status === 403 && errorData?.code === 'already_setup')
+        globalThis.location.href = `${globalThis.location.origin}/signin`
+    }
   }
 }
 
@@ -96,7 +100,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode = (request: Request) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)
@@ -137,7 +141,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
         redirect: 'follow',
-      }
+      } as const
     : {
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -146,8 +150,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         }),
         method: 'GET',
         redirect: 'follow',
-      }
-  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+      } as const
+  const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
   const headers = new Headers(headersFromProps || {})
 
   const {
@@ -189,10 +193,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
-      beforeError: [
-        ...baseHooks.beforeError || [],
-        beforeErrorToast(otherOptions),
-      ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicWithCode,
@@ -204,28 +204,36 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(request || fetchPathname, {
-    ...init,
-    headers,
-    credentials: isMarketplaceAPI
-      ? 'omit'
-      : (options.credentials || 'include'),
-    retry: {
-      methods: [],
-    },
-    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-    searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
-      if (resource instanceof Request && options) {
-        const mergedHeaders = new Headers(options.headers || {})
-        resource.headers.forEach((value, key) => {
-          mergedHeaders.append(key, value)
-        })
-        options.headers = mergedHeaders
-      }
-      return globalThis.fetch(resource, options)
-    },
-  })
+  let res: Response
+  try {
+    res = await client(request || fetchPathname, {
+      ...init,
+      headers,
+      credentials: isMarketplaceAPI
+        ? 'omit'
+        : (options.credentials || 'include'),
+      retry: {
+        methods: [],
+      },
+      ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+      searchParams: !fetchCompat ? params : undefined,
+      fetch(resource: RequestInfo | URL, options?: RequestInit) {
+        if (resource instanceof Request && options) {
+          const mergedHeaders = new Headers(options.headers || {})
+          resource.headers.forEach((value, key) => {
+            mergedHeaders.append(key, value)
+          })
+          options.headers = mergedHeaders
+        }
+        return globalThis.fetch(resource, options)
+      },
+    })
+  }
+  catch (error) {
+    if (error instanceof HTTPError)
+      throw createResponseFromHTTPError(error)
+    throw error
+  }
 
   if (needAllResponseContent || fetchCompat)
     return res as T
@@ -238,6 +246,32 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
 
   return await res.json() as T
+}
+
+/**
+ * Fire-and-forget POST with `keepalive: true` for use during page unload.
+ * Includes credentials, Authorization (if available), and CSRF header
+ * so the request is authenticated, matching the headers sent by the
+ * standard `base()` fetch wrapper.
+ */
+export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
+  const headers: Record<string, string> = {
+    'Content-Type': ContentType.json,
+    [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+  }
+
+  // Add Authorization header if an access token is available
+  const accessToken = getWebAppAccessToken()
+  if (accessToken)
+    headers.Authorization = `Bearer ${accessToken}`
+
+  globalThis.fetch(url, {
+    method: 'POST',
+    keepalive: true,
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(body),
+  }).catch(() => {})
 }
 
 export { base }

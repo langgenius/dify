@@ -4,25 +4,25 @@ import time
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
-from core.workflow.entities import GraphInitParams
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState
+from graphon.variables import build_segment, segment_to_variable
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.variables import Variable
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 def make_start_node(user_inputs, variables):
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(),
-        user_inputs=user_inputs,
-        conversation_variables=[],
+    variable_pool = build_test_variable_pool(
+        variables=build_system_variables(),
+        node_id="start",
+        inputs=user_inputs,
     )
 
-    config = {
-        "id": "start",
-        "data": StartNodeData(title="Start", variables=variables).model_dump(),
-    }
+    node_data = StartNodeData(title="Start", variables=variables)
 
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
@@ -30,13 +30,13 @@ def make_start_node(user_inputs, variables):
     )
 
     return StartNode(
-        id="start",
-        config=config,
-        graph_init_params=GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
+        node_id="start",
+        config=node_data,
+        graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
+            tenant_id="tenant",
+            app_id="app",
             user_id="u",
             user_from="account",
             invoke_from="debugger",
@@ -106,7 +106,7 @@ def test_json_object_invalid_json_string():
 
     node = make_start_node(user_inputs, variables)
 
-    with pytest.raises(ValueError, match="JSON object for 'profile' must be an object"):
+    with pytest.raises(TypeError, match="JSON object for 'profile' must be an object"):
         node._run()
 
 
@@ -232,3 +232,61 @@ def test_json_object_optional_variable_not_provided():
     # Current implementation raises a validation error even when the variable is optional
     with pytest.raises(ValueError, match="profile is required in input form"):
         node._run()
+
+
+def test_start_node_outputs_full_variable_pool_snapshot():
+    variable_pool = build_test_variable_pool(
+        variables=[
+            *build_system_variables(query="hello", workflow_run_id="run-123"),
+            _build_prefixed_variable(ENVIRONMENT_VARIABLE_NODE_ID, "API_KEY", "secret"),
+            _build_prefixed_variable(CONVERSATION_VARIABLE_NODE_ID, "session_id", "conversation-1"),
+        ],
+        node_id="start",
+        inputs={"profile": {"age": 20, "name": "Tom"}},
+    )
+
+    node_data = StartNodeData(
+        title="Start",
+        variables=[
+            VariableEntity(
+                variable="profile",
+                label="profile",
+                type=VariableEntityType.JSON_OBJECT,
+                required=True,
+            )
+        ],
+    )
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    node = StartNode(
+        node_id="start",
+        config=node_data,
+        graph_init_params=build_test_graph_init_params(
+            workflow_id="wf",
+            graph_config={},
+            tenant_id="tenant",
+            app_id="app",
+            user_id="u",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        ),
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    result = node._run()
+
+    assert result.inputs == {"profile": {"age": 20, "name": "Tom"}}
+    assert result.outputs["profile"] == {"age": 20, "name": "Tom"}
+    assert result.outputs["sys.query"] == "hello"
+    assert result.outputs["sys.workflow_run_id"] == "run-123"
+    assert result.outputs["env.API_KEY"] == "secret"
+    assert result.outputs["conversation.session_id"] == "conversation-1"
+
+
+def _build_prefixed_variable(node_id: str, name: str, value: object) -> Variable:
+    return segment_to_variable(
+        segment=build_segment(value),
+        selector=(node_id, name),
+        name=name,
+    )

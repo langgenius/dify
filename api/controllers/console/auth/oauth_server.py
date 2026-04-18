@@ -1,24 +1,21 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate
 
 from flask import jsonify, request
+from flask.typing import ResponseReturnValue
 from flask_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
 from .. import console_ns
-
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
 
 
 class OAuthClientPayload(BaseModel):
@@ -39,9 +36,11 @@ class OAuthTokenRequest(BaseModel):
     refresh_token: str | None = None
 
 
-def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
+def oauth_server_client_id_required[T, **P, R](
+    view: Callable[Concatenate[T, OAuthProviderApp, P], R],
+) -> Callable[Concatenate[T, P], R]:
     @wraps(view)
-    def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         json_data = request.get_json()
         if json_data is None:
             raise BadRequest("client_id is required")
@@ -58,9 +57,13 @@ def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderA
     return decorated
 
 
-def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R]):
+def oauth_server_access_token_required[T, **P, R](
+    view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R],
+) -> Callable[Concatenate[T, OAuthProviderApp, P], R | ResponseReturnValue]:
     @wraps(view)
-    def decorated(self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs):
+    def decorated(
+        self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs
+    ) -> R | ResponseReturnValue:
         if not isinstance(oauth_provider_app, OAuthProviderApp):
             raise BadRequest("Invalid oauth_provider_app")
 
@@ -155,43 +158,43 @@ class OAuthServerUserTokenApi(Resource):
             grant_type = OAuthGrantType(payload.grant_type)
         except ValueError:
             raise BadRequest("invalid grant_type")
+        match grant_type:
+            case OAuthGrantType.AUTHORIZATION_CODE:
+                if not payload.code:
+                    raise BadRequest("code is required")
 
-        if grant_type == OAuthGrantType.AUTHORIZATION_CODE:
-            if not payload.code:
-                raise BadRequest("code is required")
+                if payload.client_secret != oauth_provider_app.client_secret:
+                    raise BadRequest("client_secret is invalid")
 
-            if payload.client_secret != oauth_provider_app.client_secret:
-                raise BadRequest("client_secret is invalid")
+                if payload.redirect_uri not in oauth_provider_app.redirect_uris:
+                    raise BadRequest("redirect_uri is invalid")
 
-            if payload.redirect_uri not in oauth_provider_app.redirect_uris:
-                raise BadRequest("redirect_uri is invalid")
+                access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
+                    grant_type, code=payload.code, client_id=oauth_provider_app.client_id
+                )
+                return jsonable_encoder(
+                    {
+                        "access_token": access_token,
+                        "token_type": "Bearer",
+                        "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+                        "refresh_token": refresh_token,
+                    }
+                )
+            case OAuthGrantType.REFRESH_TOKEN:
+                if not payload.refresh_token:
+                    raise BadRequest("refresh_token is required")
 
-            access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, code=payload.code, client_id=oauth_provider_app.client_id
-            )
-            return jsonable_encoder(
-                {
-                    "access_token": access_token,
-                    "token_type": "Bearer",
-                    "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-                    "refresh_token": refresh_token,
-                }
-            )
-        elif grant_type == OAuthGrantType.REFRESH_TOKEN:
-            if not payload.refresh_token:
-                raise BadRequest("refresh_token is required")
-
-            access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, refresh_token=payload.refresh_token, client_id=oauth_provider_app.client_id
-            )
-            return jsonable_encoder(
-                {
-                    "access_token": access_token,
-                    "token_type": "Bearer",
-                    "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-                    "refresh_token": refresh_token,
-                }
-            )
+                access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
+                    grant_type, refresh_token=payload.refresh_token, client_id=oauth_provider_app.client_id
+                )
+                return jsonable_encoder(
+                    {
+                        "access_token": access_token,
+                        "token_type": "Bearer",
+                        "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+                        "refresh_token": refresh_token,
+                    }
+                )
 
 
 @console_ns.route("/oauth/provider/account")

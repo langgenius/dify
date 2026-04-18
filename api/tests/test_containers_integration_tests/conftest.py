@@ -10,8 +10,11 @@ more reliable and realistic test scenarios.
 import logging
 import os
 from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Protocol
 
+import psycopg2
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
@@ -29,6 +32,26 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
+
+DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
+SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
+
+
+class _CloserProtocol(Protocol):
+    """_Closer is any type which implement the close() method."""
+
+    def close(self):
+        """close the current object, release any external resouece (file, transaction, connection etc.)
+        associated with it.
+        """
+        pass
+
+
+@contextmanager
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
+    yield closer
+    closer.close()
 
 
 class DifyTestContainers:
@@ -97,45 +120,28 @@ class DifyTestContainers:
         wait_for_logs(self.postgres, "is ready to accept connections", timeout=30)
         logger.info("PostgreSQL container is ready and accepting connections")
 
-        # Install uuid-ossp extension for UUID generation
-        logger.info("Installing uuid-ossp extension...")
-        try:
-            import psycopg2
-
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-            cursor.close()
-            conn.close()
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            user=self.postgres.username,
+            password=self.postgres.password,
+            database=self.postgres.dbname,
+        )
+        conn.autocommit = True
+        with _auto_close(conn):
+            with conn.cursor() as cursor:
+                # Install uuid-ossp extension for UUID generation
+                logger.info("Installing uuid-ossp extension...")
+                cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
             logger.info("uuid-ossp extension installed successfully")
-        except Exception as e:
-            logger.warning("Failed to install uuid-ossp extension: %s", e)
 
-        # Create plugin database for dify-plugin-daemon
-        logger.info("Creating plugin database...")
-        try:
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute("CREATE DATABASE dify_plugin;")
-            cursor.close()
-            conn.close()
+            # NOTE: We cannot use `with conn.cursor() as cursor:` as it will wrap the statement
+            # inside a transaction. However, the `CREATE DATABASE` statement cannot run inside a transaction block.
+            with _auto_close(conn.cursor()) as cursor:
+                # Create plugin database for dify-plugin-daemon
+                logger.info("Creating plugin database...")
+                cursor.execute("CREATE DATABASE dify_plugin;")
             logger.info("Plugin database created successfully")
-        except Exception as e:
-            logger.warning("Failed to create plugin database: %s", e)
 
         # Set up storage environment variables
         os.environ.setdefault("STORAGE_TYPE", "opendal")
@@ -158,10 +164,11 @@ class DifyTestContainers:
         wait_for_logs(self.redis, "Ready to accept connections", timeout=30)
         logger.info("Redis container is ready and accepting connections")
 
-        # Start Dify Sandbox container for code execution environment
-        # Dify Sandbox provides a secure environment for executing user code
+        # Start Dify Sandbox container for code execution environment.
+        # Default to the production-pinned image while allowing local overrides for debugging.
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
+        sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
+        self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
@@ -171,7 +178,12 @@ class DifyTestContainers:
         sandbox_port = self.dify_sandbox.get_exposed_port(8194)
         os.environ["CODE_EXECUTION_ENDPOINT"] = f"http://{sandbox_host}:{sandbox_port}"
         os.environ["CODE_EXECUTION_API_KEY"] = "test_api_key"
-        logger.info("Dify Sandbox container started successfully - Host: %s, Port: %s", sandbox_host, sandbox_port)
+        logger.info(
+            "Dify Sandbox container started successfully - Image: %s Host: %s, Port: %s",
+            sandbox_image,
+            sandbox_host,
+            sandbox_port,
+        )
 
         # Wait for Dify Sandbox to be ready
         logger.info("Waiting for Dify Sandbox to be ready to accept connections...")
@@ -181,7 +193,7 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
@@ -258,23 +270,16 @@ class DifyTestContainers:
         containers = [self.redis, self.postgres, self.dify_sandbox, self.dify_plugin_daemon]
         for container in containers:
             if container:
-                try:
-                    container_name = container.image
-                    logger.info("Stopping container: %s", container_name)
-                    container.stop()
-                    logger.info("Successfully stopped container: %s", container_name)
-                except Exception as e:
-                    # Log error but don't fail the test cleanup
-                    logger.warning("Failed to stop container %s: %s", container, e)
+                container_name = container.image
+                logger.info("Stopping container: %s", container_name)
+                container.stop()
+                logger.info("Successfully stopped container: %s", container_name)
 
         # Stop and remove the network
         if self.network:
-            try:
-                logger.info("Removing Docker network...")
-                self.network.remove()
-                logger.info("Successfully removed Docker network")
-            except Exception as e:
-                logger.warning("Failed to remove Docker network: %s", e)
+            logger.info("Removing Docker network...")
+            self.network.remove()
+            logger.info("Successfully removed Docker network")
 
         self._containers_started = False
         logger.info("All test containers stopped and cleaned up successfully")
@@ -364,7 +369,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema

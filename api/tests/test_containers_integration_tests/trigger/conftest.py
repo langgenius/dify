@@ -11,6 +11,7 @@ from collections.abc import Generator
 from typing import Any
 
 import pytest
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -40,9 +41,9 @@ def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[T
     yield tenant, account
 
     # Cleanup
-    db_session_with_containers.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
-    db_session_with_containers.query(Account).filter_by(id=account.id).delete()
-    db_session_with_containers.query(Tenant).filter_by(id=tenant.id).delete()
+    db_session_with_containers.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == tenant.id))
+    db_session_with_containers.execute(delete(Account).where(Account.id == account.id))
+    db_session_with_containers.execute(delete(Tenant).where(Tenant.id == tenant.id))
     db_session_with_containers.commit()
 
 
@@ -93,30 +94,38 @@ def app_model(
     )
     from models.workflow import Workflow
 
-    db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(WorkflowSchedulePlan).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(WorkflowWebhookTrigger).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(WorkflowPluginTrigger).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(AppTrigger).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(TriggerSubscription).filter_by(tenant_id=tenant.id).delete()
-    db_session_with_containers.query(Workflow).filter_by(app_id=app.id).delete()
-    db_session_with_containers.query(App).filter_by(id=app.id).delete()
+    db_session_with_containers.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app.id))
+    db_session_with_containers.execute(delete(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app.id))
+    db_session_with_containers.execute(delete(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.app_id == app.id))
+    db_session_with_containers.execute(delete(WorkflowPluginTrigger).where(WorkflowPluginTrigger.app_id == app.id))
+    db_session_with_containers.execute(delete(AppTrigger).where(AppTrigger.app_id == app.id))
+    db_session_with_containers.execute(delete(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant.id))
+    db_session_with_containers.execute(delete(Workflow).where(Workflow.app_id == app.id))
+    db_session_with_containers.execute(delete(App).where(App.id == app.id))
     db_session_with_containers.commit()
 
 
 class MockCeleryGroup:
-    """Mock for celery group() function that collects dispatched tasks."""
+    """Mock for celery group() function that collects dispatched tasks.
+
+    Matches the Celery group API loosely, accepting arbitrary kwargs on apply_async
+    (e.g. producer) so production code can pass broker-related options without
+    breaking tests.
+    """
 
     def __init__(self) -> None:
         self.collected: list[dict[str, Any]] = []
         self._applied = False
+        self.last_apply_async_kwargs: dict[str, Any] | None = None
 
     def __call__(self, items: Any) -> MockCeleryGroup:
         self.collected = list(items)
         return self
 
-    def apply_async(self) -> None:
+    def apply_async(self, **kwargs: Any) -> None:
+        # Accept arbitrary kwargs like producer to be compatible with Celery
         self._applied = True
+        self.last_apply_async_kwargs = kwargs
 
     @property
     def applied(self) -> bool:

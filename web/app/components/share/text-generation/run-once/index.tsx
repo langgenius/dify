@@ -1,8 +1,11 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -10,7 +13,6 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
@@ -21,9 +23,8 @@ import BoolInput from '@/app/components/workflow/nodes/_base/components/before-r
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
-export type IRunOnceProps = {
+type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, InputValueTypes>
@@ -119,7 +120,7 @@ const RunOnce: FC<IRunOnceProps> = ({
             : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
                 <div className="mt-4 w-full" key={item.key}>
                   {item.type !== 'checkbox' && (
-                    <div className="system-md-semibold flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
                       <div className="truncate">{item.name}</div>
                       {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
@@ -169,7 +170,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
-                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                        value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
+                          ? [inputs[item.key] as FileEntity]
+                          : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                         fileConfig={{
                           ...item.config,
@@ -179,7 +182,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,
@@ -206,7 +209,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="flex h-6 items-center system-md-semibold text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -221,7 +224,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <div className="mb-3 mt-6 w-full">
+          <div className="mt-6 mb-3 w-full">
             <div className="flex items-center justify-between gap-2">
               <Button
                 onClick={onClear}

@@ -4,24 +4,26 @@ import logging
 import re
 import threading
 import uuid
-from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 import pandas as pd
 from flask import Flask, current_app
+from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.entities import Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
@@ -29,10 +31,15 @@ from libs import helper
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
+
+
+class QAFormatPreviewDict(TypedDict):
+    chunk_structure: str
+    qa_preview: list[dict[str, Any]]
+    total_segments: int
 
 
 class QAIndexProcessor(BaseIndexProcessor):
@@ -139,14 +146,14 @@ class QAIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
-        if dataset.indexing_technique == "high_quality":
+    ) -> None:
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -157,14 +164,12 @@ class QAIndexProcessor(BaseIndexProcessor):
             if node_ids:
                 # Find segments by index_node_id
                 with session_factory.create_session() as session:
-                    segments = (
-                        session.query(DocumentSegment)
-                        .filter(
+                    segments = session.scalars(
+                        select(DocumentSegment).where(
                             DocumentSegment.dataset_id == dataset.id,
                             DocumentSegment.index_node_id.in_(node_ids),
                         )
-                        .all()
-                    )
+                    ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
                         SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
@@ -185,7 +190,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ):
         # Set search parameters.
         results = RetrievalService.retrieve(
@@ -206,7 +211,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:
@@ -223,25 +228,30 @@ class QAIndexProcessor(BaseIndexProcessor):
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset)
                 vector.create(documents)
             else:
                 raise ValueError("Indexing technique must be high quality.")
 
-    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> QAFormatPreviewDict:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         preview = []
         for qa_chunk in qa_chunks.qa_chunks:
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
-        return {
+        result: QAFormatPreviewDict = {
             "chunk_structure": IndexStructureType.QA_INDEX,
             "qa_preview": preview,
             "total_segments": len(qa_chunks.qa_chunks),
         }
+        return result
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: SummaryIndexSettingDict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         QA model doesn't generate summaries, so this method returns preview_texts unchanged.

@@ -3,12 +3,12 @@ import type { AppDetailResponse } from '@/models/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import Indicator from '../indicator'
 
 type IAppSelectorProps = {
@@ -34,7 +34,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
           <MenuButton
             className="
               inline-flex h-7 w-full items-center justify-center
-              rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold
+              rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold
               text-[#1C64F2] hover:bg-[#EBF5FF]
             "
           >
@@ -56,7 +56,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
         >
           <MenuItems
             className="
-              absolute -left-11 right-0 mt-1.5 w-60 max-w-80
+              absolute right-0 -left-11 mt-1.5 w-60 max-w-80
               origin-top-right divide-y divide-gray-100 rounded-lg bg-white
               shadow-lg
             "
@@ -71,9 +71,9 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                         onClick={() =>
                           router.push(`/app/${app.id}/${isCurrentWorkspaceEditor ? 'configuration' : 'overview'}`)}
                       >
-                        <div className="relative mr-2 h-6 w-6 rounded-[6px] bg-[#D5F5F6]">
+                        <div className="relative mr-2 h-6 w-6 rounded-md bg-[#D5F5F6]">
                           <AppIcon size="tiny" />
-                          <div className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded bg-white">
+                          <div className="absolute -right-0.5 -bottom-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-sm bg-white">
                             <Indicator />
                           </div>
                         </div>
@@ -92,8 +92,8 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                   >
                     <div
                       className="
-                      ml-4 mr-2 flex
-                      h-6 w-6 items-center justify-center rounded-[6px] border-[0.5px]
+                      mr-2 ml-4 flex
+                      h-6 w-6 items-center justify-center rounded-md border-[0.5px]
                       border-dashed border-gray-200 bg-gray-100
                     "
                     >

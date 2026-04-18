@@ -1,16 +1,16 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useClickAway } from 'ahooks'
 import {
   memo,
-  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import {
   useDSL,
   useNodesInteractions,
   usePanelInteractions,
+  useWorkflowMoveMode,
   useWorkflowStartRun,
 } from './hooks'
 import AddBlock from './operator/add-block'
@@ -24,16 +24,15 @@ const PanelContextmenu = () => {
   const panelMenu = useStore(s => s.panelMenu)
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
+  const pendingComment = useStore(s => s.pendingComment)
+  const setCommentPlacing = useStore(s => s.setCommentPlacing)
+  const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
+  const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
-
-  useEffect(() => {
-    if (panelMenu)
-      handleNodeContextmenuCancel()
-  }, [panelMenu, handleNodeContextmenuCancel])
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
@@ -54,7 +53,7 @@ const PanelContextmenu = () => {
 
   return (
     <div
-      className="absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
+      className="absolute z-9 w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
       style={{
         left: panelMenu.left,
         top: panelMenu.top,
@@ -79,6 +78,24 @@ const PanelContextmenu = () => {
         >
           {t('nodes.note.addNote', { ns: 'workflow' })}
         </div>
+        {isCommentModeAvailable && (
+          <div
+            className={cn(
+              'flex h-8 items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
+              pendingComment ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-state-base-hover',
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (pendingComment)
+                return
+              setCommentQuickAdd(true)
+              setCommentPlacing(true)
+              handlePaneContextmenuCancel()
+            }}
+          >
+            {t('comments.actions.addComment', { ns: 'workflow' })}
+          </div>
+        )}
         <div
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => {

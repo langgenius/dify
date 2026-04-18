@@ -1,4 +1,16 @@
 'use client'
+/**
+ * @deprecated Use semantic overlay primitives from `@/app/components/base/ui/` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ *
+ * Migration guide:
+ * - Tooltip → `@langgenius/dify-ui/tooltip`
+ * - Menu/Dropdown → `@langgenius/dify-ui/dropdown-menu`
+ * - Popover → `@langgenius/dify-ui/popover`
+ * - Dialog/Modal → `@langgenius/dify-ui/dialog`
+ * - Select → `@langgenius/dify-ui/select`
+ */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
   autoUpdate,
@@ -16,9 +28,9 @@ import {
   useRole,
 } from '@floating-ui/react'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 export type PortalToFollowElemOptions = {
   /*
@@ -33,7 +45,8 @@ export type PortalToFollowElemOptions = {
   triggerPopupSameWidth?: boolean
 }
 
-export function usePortalToFollowElem({
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
+function usePortalToFollowElem({
   placement = 'bottom',
   open: controlledOpen,
   offset: offsetValue = 0,
@@ -101,7 +114,7 @@ type ContextType = ReturnType<typeof usePortalToFollowElem> | null
 
 const PortalToFollowElemContext = React.createContext<ContextType>(null)
 
-export function usePortalToFollowElemContext() {
+function usePortalToFollowElemContext() {
   const context = React.useContext(PortalToFollowElemContext)
 
   if (context == null)
@@ -110,6 +123,7 @@ export function usePortalToFollowElemContext() {
   return context
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export function PortalToFollowElem({
   children,
   ...options
@@ -124,6 +138,7 @@ export function PortalToFollowElem({
   )
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemTrigger = (
   {
     ref: propRef,
@@ -164,6 +179,7 @@ export const PortalToFollowElemTrigger = (
 }
 PortalToFollowElemTrigger.displayName = 'PortalToFollowElemTrigger'
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemContent = (
   {
     ref: propRef,

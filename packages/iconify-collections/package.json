@@ -1,0 +1,31 @@
+{
+  "name": "@dify/iconify-collections",
+  "version": "0.0.0-private",
+  "private": true,
+  "exports": {
+    "./custom-public": {
+      "types": "./custom-public/index.d.ts",
+      "import": "./custom-public/index.mjs",
+      "require": "./custom-public/index.js"
+    },
+    "./custom-public/icons.json": "./custom-public/icons.json",
+    "./custom-public/info.json": "./custom-public/info.json",
+    "./custom-public/metadata.json": "./custom-public/metadata.json",
+    "./custom-public/chars.json": "./custom-public/chars.json",
+    "./custom-vender": {
+      "types": "./custom-vender/index.d.ts",
+      "import": "./custom-vender/index.mjs",
+      "require": "./custom-vender/index.js"
+    },
+    "./custom-vender/icons.json": "./custom-vender/icons.json",
+    "./custom-vender/info.json": "./custom-vender/info.json",
+    "./custom-vender/metadata.json": "./custom-vender/metadata.json",
+    "./custom-vender/chars.json": "./custom-vender/chars.json"
+  },
+  "scripts": {
+    "generate": "node ./scripts/generate-collections.mjs"
+  },
+  "devDependencies": {
+    "iconify-import-svg": "catalog:"
+  }
+}

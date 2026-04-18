@@ -1,5 +1,5 @@
 import uuid
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -8,13 +8,14 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
-from models.model import AppMode
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from models.model import AppMode, AppModelConfigDict
 from services.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> DatasetEntity | None:
+    def convert(cls, config: AppModelConfigDict) -> DatasetEntity | None:
         """
         Convert model config to model config
 
@@ -25,11 +26,15 @@ class DatasetConfigManager:
             datasets = config.get("dataset_configs", {}).get("datasets", {"strategy": "router", "datasets": []})
 
             for dataset in datasets.get("datasets", []):
+                if not isinstance(dataset, dict):
+                    continue
                 keys = list(dataset.keys())
                 if len(keys) == 0 or keys[0] != "dataset":
                     continue
 
                 dataset = dataset["dataset"]
+                if not isinstance(dataset, dict):
+                    continue
 
                 if "enabled" not in dataset or not dataset["enabled"]:
                     continue
@@ -47,15 +52,14 @@ class DatasetConfigManager:
             agent_dict = config.get("agent_mode", {})
 
             for tool in agent_dict.get("tools", []):
-                keys = tool.keys()
-                if len(keys) == 1:
+                if len(tool) == 1:
                     # old standard
                     key = list(tool.keys())[0]
 
                     if key != "dataset":
                         continue
 
-                    tool_item = tool[key]
+                    tool_item = cast(dict[str, Any], tool)[key]
 
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
@@ -114,8 +118,10 @@ class DatasetConfigManager:
                     score_threshold=float(score_threshold_val)
                     if dataset_configs.get("score_threshold_enabled", False) and score_threshold_val is not None
                     else None,
-                    reranking_model=reranking_model_val if isinstance(reranking_model_val, dict) else None,
-                    weights=weights_val if isinstance(weights_val, dict) else None,
+                    reranking_model=cast(RerankingModelDict, reranking_model_val)
+                    if isinstance(reranking_model_val, dict)
+                    else None,
+                    weights=cast(WeightsDict, weights_val) if isinstance(weights_val, dict) else None,
                     reranking_enabled=bool(dataset_configs.get("reranking_enabled", True)),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
                     metadata_filtering_mode=cast(
@@ -132,7 +138,9 @@ class DatasetConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for dataset feature
 
@@ -166,7 +174,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]):
         """
         Extract dataset config for legacy compatibility
 

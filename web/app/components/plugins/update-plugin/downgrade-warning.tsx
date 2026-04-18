@@ -1,5 +1,5 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 
 const i18nPrefix = 'autoUpdate.pluginDowngradeWarning'
 
@@ -25,7 +25,7 @@ const DowngradeWarningModal = ({
       </div>
       <div className="mt-9 flex items-start justify-end space-x-2 self-stretch">
         <Button variant="secondary" onClick={() => onCancel()}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-        <Button variant="secondary" destructive onClick={onJustDowngrade}>{t(`${i18nPrefix}.downgrade`, { ns: 'plugin' })}</Button>
+        <Button variant="secondary" tone="destructive" onClick={onJustDowngrade}>{t(`${i18nPrefix}.downgrade`, { ns: 'plugin' })}</Button>
         <Button variant="primary" onClick={onExcludeAndDowngrade}>{t(`${i18nPrefix}.exclude`, { ns: 'plugin' })}</Button>
       </div>
     </>

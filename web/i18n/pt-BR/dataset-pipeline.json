@@ -35,6 +35,7 @@
   "details.structureTooltip": "A Estrutura de Partes determina como os documentos são divididos e indexados, oferecendo os modos Geral, Pai-Filho e P e Resposta, e é exclusiva para cada base de conhecimento.",
   "documentSettings.title": "Configurações do documento",
   "editPipelineInfo": "Editar informações do pipeline",
+  "editPipelineInfoNameRequired": "Por favor, insira um nome para a Base de Conhecimento.",
   "exportDSL.errorTip": "Falha ao exportar DSL de pipeline",
   "exportDSL.successTip": "Exportar DSL de pipeline com êxito",
   "inputField": "Campo de entrada",

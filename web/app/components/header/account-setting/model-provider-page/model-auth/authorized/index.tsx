@@ -10,6 +10,16 @@ import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
   RiAddLine,
 } from '@remixicon/react'
 import {
@@ -19,14 +29,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
@@ -164,7 +171,7 @@ const Authorized = ({
         >
           {renderTrigger(mergedIsOpen)}
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[100]">
+        <PortalToFollowElemContent className="z-1002">
           <div className={cn(
             'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
             popupClassName,
@@ -172,7 +179,7 @@ const Authorized = ({
           >
             {
               popupTitle && (
-                <div className="system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary">
+                <div className="px-3 pt-[10px] pb-0.5 system-xs-medium text-text-tertiary">
                   {popupTitle}
                 </div>
               )
@@ -198,14 +205,14 @@ const Authorized = ({
                     />
                     {
                       index !== items.length - 1 && (
-                        <div className="h-[1px] bg-divider-subtle"></div>
+                        <div className="h-px bg-divider-subtle"></div>
                       )
                     }
                   </Fragment>
                 ))
               }
             </div>
-            <div className="h-[1px] bg-divider-subtle"></div>
+            <div className="h-px bg-divider-subtle"></div>
             {
               isModelCredential && !notAllowCustomCredential && !hideAddAction && (
                 <div
@@ -218,7 +225,7 @@ const Authorized = ({
                         }
                       : undefined,
                   )}
-                  className="system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only"
+                  className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
@@ -240,17 +247,21 @@ const Authorized = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      {
-        deleteCredentialId && (
-          <Confirm
-            isShow
-            title={t('modelProvider.confirmDelete', { ns: 'common' })}
-            isDisabled={doingAction}
-            onCancel={closeConfirmDelete}
-            onConfirm={handleConfirmDelete}
-          />
-        )
-      }
+      <AlertDialog open={!!deleteCredentialId} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('modelProvider.confirmDelete', { ns: 'common' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

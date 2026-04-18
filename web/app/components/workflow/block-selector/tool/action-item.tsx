@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
@@ -62,7 +62,7 @@ const ToolItem: FC<Props> = ({
       key={payload.name}
       position="right"
       needsDelay={false}
-      popupClassName="!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+      popupClassName="p-0! px-3! py-2.5! w-[200px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
       popupContent={(
         <div>
           <BlockIcon
@@ -78,7 +78,7 @@ const ToolItem: FC<Props> = ({
     >
       <div
         key={payload.name}
-        className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
+        className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
         onClick={() => {
           if (disabled)
             return
@@ -97,9 +97,9 @@ const ToolItem: FC<Props> = ({
             provider_icon: normalizedIcon,
             provider_icon_dark: normalizedIconDark,
             tool_name: payload.name,
-            tool_label: payload.label[language],
+            tool_label: payload.label[language]!,
             tool_description: payload.description[language],
-            title: payload.label[language],
+            title: payload.label[language]!,
             is_team_authorization: provider.is_team_authorization,
             paramSchemas: payload.parameters,
             params,
@@ -111,11 +111,11 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+        <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (
-          <div className="system-xs-regular mr-4 text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+          <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
         )}
       </div>
     </Tooltip>

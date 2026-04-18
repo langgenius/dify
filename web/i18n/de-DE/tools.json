@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "z.B., Träger Token123",
   "mcp.modal.headers": "Kopfzeilen",
   "mcp.modal.headersTip": "Zusätzliche HTTP-Header, die mit MCP-Serveranfragen gesendet werden sollen",
+  "mcp.modal.invalidServerIdentifier": "Bitte geben Sie eine gültige Server-ID ein",
+  "mcp.modal.invalidServerUrl": "Bitte geben Sie eine gültige Server-URL ein",
   "mcp.modal.maskedHeadersTip": "Headerwerte sind zum Schutz maskiert. Änderungen werden die tatsächlichen Werte aktualisieren.",
   "mcp.modal.name": "Name & Symbol",
   "mcp.modal.namePlaceholder": "Benennen Sie Ihren MCP-Server",

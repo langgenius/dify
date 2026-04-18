@@ -1,34 +1,40 @@
 // @ts-check
-import antfu from '@antfu/eslint-config'
+
+import path from 'node:path'
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
+import tailwindcss from 'eslint-plugin-better-tailwindcss'
+import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import tailwind from 'eslint-plugin-tailwindcss'
-import dify from './eslint-rules/index.js'
+import {
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 export default antfu(
   {
     react: {
-      // This react compiler rules are pretty slow
-      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
-      reactCompiler: false,
       overrides: {
-        'react/no-context-provider': 'off',
-        'react/no-forward-ref': 'off',
-        'react/no-use-context': 'off',
-
-        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
-        'react-hooks/set-state-in-effect': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
@@ -39,6 +45,44 @@ export default antfu(
       overrides: {
         'antfu/top-level-function': 'off',
       },
+    },
+    e18e: false,
+    pnpm: false,
+  },
+  {
+    files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
+    rules: {
+      'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
+    },
+  },
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
     },
   },
   {
@@ -66,46 +110,37 @@ export default antfu(
       sonarjs: sonar,
     },
   },
-  tailwind.configs['flat/recommended'],
   {
-    settings: {
-      tailwindcss: {
-        // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
-        config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
-        cssFiles: [
-          '**/*.css',
-          '!**/node_modules',
-          '!**/.*',
-          '!**/dist',
-          '!**/build',
-          '!**/.storybook',
-          '!**/.next',
-          '!**/.public',
-        ],
-        cssFilesRefreshRate: 5_000,
-        removeDuplicates: true,
-        skipClassAttribute: false,
-        whitelist: [],
-        tags: [], // can be set to e.g. ['tw'] for use in tw`bg-blue`
-        classRegex: '^class(Name)?$', // can be modified to support custom attributes. E.g. "^tw$" for `twin.macro`
-      },
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: GLOB_TESTS,
+    plugins: {
+      tailwindcss,
     },
     rules: {
-      // due to 1k lines of tailwind config, these rule have performance issue
-      'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/enforces-shorthand': 'off',
-      'tailwindcss/no-custom-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
-
-      'tailwindcss/no-arbitrary-value': 'off',
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/enforces-negative-arbitrary-values': 'warn',
-      'tailwindcss/migration-from-tailwind-2': 'warn',
+      'tailwindcss/enforce-consistent-class-order': 'error',
+      'tailwindcss/no-duplicate-classes': 'error',
+      'tailwindcss/no-unnecessary-whitespace': 'error',
+      'tailwindcss/no-unknown-classes': 'warn',
+    },
+    settings: {
+      'better-tailwindcss': {
+        cwd: import.meta.dirname,
+        entryPoint: path.resolve(import.meta.dirname, './app/styles/globals.css'),
+      },
     },
   },
   {
-    plugins: { dify },
+    name: 'dify/custom/setup',
+    plugins: {
+      dify,
+      hyoban,
+    },
+  },
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
+    },
   },
   {
     files: ['i18n/**/*.json'],
@@ -114,15 +149,51 @@ export default antfu(
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify/valid-i18n-keys': 'error',
+      'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
       'dify/consistent-placeholders': 'error',
     },
   },
   {
-    files: ['**/package.json'],
+    files: ['package.json'],
     rules: {
-      'dify/no-version-prefix': 'error',
+      'hyoban/no-dependency-version-prefix': 'error',
+    },
+  },
+  {
+    name: 'dify/base-ui-primitives',
+    files: ['app/components/base/ui/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    name: 'dify/no-direct-next-imports',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/overlay-migration',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      'next/**',
+      ...GLOB_TESTS,
+      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
     },
   },
 )

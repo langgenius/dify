@@ -1,10 +1,11 @@
+import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
@@ -22,27 +23,28 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
+from fields.base import ResponseModel
+from graphon.enums import WorkflowExecutionStatus
+from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
-from services.app_dsl_service import AppDslService, ImportMode
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     RerankingModel,
-    Rule,
-    Segmentation,
     WebsiteInfo,
     WeightKeywordSetting,
     WeightModel,
@@ -53,6 +55,8 @@ from services.feature_service import FeatureService
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
+
+_logger = logging.getLogger(__name__)
 
 
 class AppListQuery(BaseModel):
@@ -91,7 +95,7 @@ class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -99,7 +103,7 @@ class CreateAppPayload(BaseModel):
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
@@ -109,7 +113,7 @@ class UpdateAppPayload(BaseModel):
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
     description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -148,32 +152,13 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+type JSONValue = Any
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
     if isinstance(value, datetime):
         return int(value.timestamp())
     return value
-
-
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
 
 
 class Tag(ResponseModel):
@@ -298,7 +283,7 @@ class Site(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("icon_type", mode="before")
     @classmethod
@@ -348,7 +333,7 @@ class AppPartial(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -396,7 +381,7 @@ class AppDetailWithSite(AppDetail):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
@@ -499,23 +484,22 @@ class AppListApi(Resource):
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
+                        Workflow.tenant_id == current_tenant_id,
                     )
                 )
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
+                node_id = None
                 try:
-                    for _, node_data in workflow.walk_nodes():
+                    for node_id, node_data in workflow.walk_nodes():
                         if node_data.get("type") in trigger_node_types:
                             draft_trigger_app_ids.add(str(workflow.app_id))
                             break
                 except Exception:
+                    _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
                     continue
 
         for app in app_pagination.items:
@@ -591,7 +575,7 @@ class AppApi(Resource):
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
-            "icon_type": args.icon_type or "",
+            "icon_type": args.icon_type,
             "icon": args.icon or "",
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
@@ -639,7 +623,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -652,7 +636,26 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+                return result.model_dump(mode="json"), 400
+            if result.status == ImportStatus.PENDING:
+                session.rollback()
+                return result.model_dump(mode="json"), 202
             session.commit()
+
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)

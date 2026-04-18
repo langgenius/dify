@@ -1,12 +1,12 @@
 import json
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import get_or_create_model, register_schema_model
@@ -157,33 +157,36 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, binding_id, action):
+    def patch(self, binding_id, action: Literal["enable", "disable"]):
+        _, current_tenant_id = current_account_with_tenant()
         binding_id = str(binding_id)
-        action = str(action)
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter_by(id=binding_id)
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.id == binding_id, DataSourceOauthBinding.tenant_id == current_tenant_id
+                )
             ).scalar_one_or_none()
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
         # enable binding
-        if action == "enable":
-            if data_source_binding.disabled:
-                data_source_binding.disabled = False
-                data_source_binding.updated_at = naive_utc_now()
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is not disabled.")
-        # disable binding
-        if action == "disable":
-            if not data_source_binding.disabled:
-                data_source_binding.disabled = True
-                data_source_binding.updated_at = naive_utc_now()
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is disabled.")
+        match action:
+            case "enable":
+                if data_source_binding.disabled:
+                    data_source_binding.disabled = False
+                    data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
+                else:
+                    raise ValueError("Data source is not disabled.")
+            # disable binding
+            case "disable":
+                if not data_source_binding.disabled:
+                    data_source_binding.disabled = True
+                    data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
+                else:
+                    raise ValueError("Data source is disabled.")
         return {"result": "success"}, 200
 
 
@@ -211,7 +214,7 @@ class DataSourceNotionListApi(Resource):
         if not credential:
             raise NotFound("Credential not found.")
         exist_page_ids = []
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # import notion in the exist dataset
             if query.dataset_id:
                 dataset = DatasetService.get_dataset(query.dataset_id)
@@ -221,11 +224,11 @@ class DataSourceNotionListApi(Resource):
                     raise ValueError("Dataset is not notion type.")
 
                 documents = session.scalars(
-                    select(Document).filter_by(
-                        dataset_id=query.dataset_id,
-                        tenant_id=current_tenant_id,
-                        data_source_type="notion_import",
-                        enabled=True,
+                    select(Document).where(
+                        Document.dataset_id == query.dataset_id,
+                        Document.tenant_id == current_tenant_id,
+                        Document.data_source_type == "notion_import",
+                        Document.enabled.is_(True),
                     )
                 ).all()
                 if documents:

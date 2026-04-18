@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete, select
 
 from extensions.ext_redis import redis_client
 from libs.email_i18n import EmailType
@@ -44,9 +45,9 @@ class TestMailInviteMemberTask:
     def cleanup_database(self, db_session_with_containers):
         """Clean up database before each test to ensure isolation."""
         # Clear all test data
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -56,9 +57,9 @@ class TestMailInviteMemberTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_invite_member_task.mail") as mock_mail,
-            patch("tasks.mail_invite_member_task.get_email_i18n_service") as mock_email_service,
-            patch("tasks.mail_invite_member_task.dify_config") as mock_config,
+            patch("tasks.mail_invite_member_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_invite_member_task.get_email_i18n_service", autospec=True) as mock_email_service,
+            patch("tasks.mail_invite_member_task.dify_config", autospec=True) as mock_config,
         ):
             # Setup mail service mock
             mock_mail.is_inited.return_value = True
@@ -306,7 +307,7 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.side_effect = Exception("Email service failed")
 
         # Act & Assert: Execute task and verify exception is handled
-        with patch("tasks.mail_invite_member_task.logger") as mock_logger:
+        with patch("tasks.mail_invite_member_task.logger", autospec=True) as mock_logger:
             send_invite_member_mail_task(
                 language="en-US",
                 to="test@example.com",
@@ -491,10 +492,10 @@ class TestMailInviteMemberTask:
         assert tenant.name is not None
 
         # Verify tenant relationship exists
-        tenant_join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=pending_account.id)
-            .first()
+        tenant_join = db_session_with_containers.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == pending_account.id)
+            .limit(1)
         )
         assert tenant_join is not None
         assert tenant_join.role == TenantAccountRole.NORMAL

@@ -1,12 +1,15 @@
 import logging
+from datetime import datetime
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -22,20 +25,31 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
-from fields.raws import FilesContainedField
-from libs.helper import TimestampField, uuid_value
+from fields.base import ResponseModel
+from fields.conversation_fields import (
+    AgentThought,
+    ConversationAnnotation,
+    ConversationAnnotationHitHistory,
+    Feedback,
+    JSONValue,
+    MessageFile,
+    format_files_contained,
+    to_timestamp,
+)
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required
+from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import MessageService
+from services.message_service import MessageService, attach_message_extra_contents
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ChatMessagesQuery(BaseModel):
@@ -58,10 +72,8 @@ class ChatMessagesQuery(BaseModel):
         return uuid_value(value)
 
 
-class MessageFeedbackPayload(BaseModel):
+class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
     message_id: str = Field(..., description="Message ID")
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
 
     @field_validator("message_id")
     @classmethod
@@ -90,129 +102,68 @@ class FeedbackExportQuery(BaseModel):
         raise ValueError("has_comment must be a boolean value")
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class AnnotationCountResponse(BaseModel):
+    count: int = Field(description="Number of annotations")
 
 
-reg(ChatMessagesQuery)
-reg(MessageFeedbackPayload)
-reg(FeedbackExportQuery)
+class SuggestedQuestionsResponse(BaseModel):
+    data: list[str] = Field(description="Suggested question")
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register in dependency order: base models first, then dependent models
 
-# Base models
-simple_account_model = console_ns.model(
-    "SimpleAccount",
-    {
-        "id": fields.String,
-        "name": fields.String,
-        "email": fields.String,
-    },
-)
+class MessageDetailResponse(ResponseModel):
+    id: str
+    conversation_id: str
+    inputs: dict[str, JSONValue]
+    query: str
+    message: JSONValue | None = None
+    message_tokens: int | None = None
+    answer: str = Field(validation_alias="re_sign_file_url_answer")
+    answer_tokens: int | None = None
+    provider_response_latency: float | None = None
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    feedbacks: list[Feedback] = Field(default_factory=list)
+    workflow_run_id: str | None = None
+    annotation: ConversationAnnotation | None = None
+    annotation_hit_history: ConversationAnnotationHitHistory | None = None
+    created_at: int | None = None
+    agent_thoughts: list[AgentThought] = Field(default_factory=list)
+    message_files: list[MessageFile] = Field(default_factory=list)
+    extra_contents: list[ExecutionExtraContentDomainModel] = Field(default_factory=list)
+    metadata: JSONValue | None = Field(default=None, validation_alias="message_metadata_dict")
+    status: str
+    error: str | None = None
+    parent_message_id: str | None = None
 
-message_file_model = console_ns.model(
-    "MessageFile",
-    {
-        "id": fields.String,
-        "filename": fields.String,
-        "type": fields.String,
-        "url": fields.String,
-        "mime_type": fields.String,
-        "size": fields.Integer,
-        "transfer_method": fields.String,
-        "belongs_to": fields.String(default="user"),
-        "upload_file_id": fields.String(default=None),
-    },
-)
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
 
-agent_thought_model = console_ns.model(
-    "AgentThought",
-    {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "files": fields.List(fields.String),
-    },
-)
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
-# Models that depend on simple_account_model
-feedback_model = console_ns.model(
-    "Feedback",
-    {
-        "rating": fields.String,
-        "content": fields.String,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account": fields.Nested(simple_account_model, allow_null=True),
-    },
-)
 
-annotation_model = console_ns.model(
-    "Annotation",
-    {
-        "id": fields.String,
-        "question": fields.String,
-        "content": fields.String,
-        "account": fields.Nested(simple_account_model, allow_null=True),
-        "created_at": TimestampField,
-    },
-)
+class MessageInfiniteScrollPaginationResponse(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[MessageDetailResponse]
 
-annotation_hit_history_model = console_ns.model(
-    "AnnotationHitHistory",
-    {
-        "annotation_id": fields.String(attribute="id"),
-        "annotation_create_account": fields.Nested(simple_account_model, allow_null=True),
-        "created_at": TimestampField,
-    },
-)
 
-# Message detail model that depends on multiple models
-message_detail_model = console_ns.model(
-    "MessageDetail",
-    {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "message": fields.Raw,
-        "message_tokens": fields.Integer,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "answer_tokens": fields.Integer,
-        "provider_response_latency": fields.Float,
-        "from_source": fields.String,
-        "from_end_user_id": fields.String,
-        "from_account_id": fields.String,
-        "feedbacks": fields.List(fields.Nested(feedback_model)),
-        "workflow_run_id": fields.String,
-        "annotation": fields.Nested(annotation_model, allow_null=True),
-        "annotation_hit_history": fields.Nested(annotation_hit_history_model, allow_null=True),
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
-        "message_files": fields.List(fields.Nested(message_file_model)),
-        "metadata": fields.Raw(attribute="message_metadata_dict"),
-        "status": fields.String,
-        "error": fields.String,
-        "parent_message_id": fields.String,
-    },
-)
-
-# Message infinite scroll pagination model
-message_infinite_scroll_pagination_model = console_ns.model(
-    "MessageInfiniteScrollPagination",
-    {
-        "limit": fields.Integer,
-        "has_more": fields.Boolean,
-        "data": fields.List(fields.Nested(message_detail_model)),
-    },
+register_schema_models(
+    console_ns,
+    ChatMessagesQuery,
+    MessageFeedbackPayload,
+    FeedbackExportQuery,
+    AnnotationCountResponse,
+    SuggestedQuestionsResponse,
+    MessageDetailResponse,
+    MessageInfiniteScrollPaginationResponse,
 )
 
 
@@ -222,38 +173,35 @@ class ChatMessageListApi(Resource):
     @console_ns.doc(description="Get chat messages for a conversation with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagesQuery.__name__])
-    @console_ns.response(200, "Success", message_infinite_scroll_pagination_model)
+    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Conversation not found")
     @login_required
     @account_initialization_required
     @setup_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    @marshal_with(message_infinite_scroll_pagination_model)
     @edit_permission_required
     def get(self, app_model):
-        args = ChatMessagesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
-        conversation = (
-            db.session.query(Conversation)
+        conversation = db.session.scalar(
+            select(Conversation)
             .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-            .first()
+            .limit(1)
         )
 
         if not conversation:
             raise NotFound("Conversation Not Exists.")
 
         if args.first_id:
-            first_message = (
-                db.session.query(Message)
-                .where(Message.conversation_id == conversation.id, Message.id == args.first_id)
-                .first()
+            first_message = db.session.scalar(
+                select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
             )
 
             if not first_message:
                 raise NotFound("First message not found")
 
-            history_messages = (
-                db.session.query(Message)
+            history_messages = db.session.scalars(
+                select(Message)
                 .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
@@ -261,16 +209,14 @@ class ChatMessageListApi(Resource):
                 )
                 .order_by(Message.created_at.desc())
                 .limit(args.limit)
-                .all()
-            )
+            ).all()
         else:
-            history_messages = (
-                db.session.query(Message)
+            history_messages = db.session.scalars(
+                select(Message)
                 .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(args.limit)
-                .all()
-            )
+            ).all()
 
         # Initialize has_more based on whether we have a full page
         if len(history_messages) == args.limit:
@@ -290,8 +236,12 @@ class ChatMessageListApi(Resource):
             has_more = False
 
         history_messages = list(reversed(history_messages))
+        attach_message_extra_contents(history_messages)
 
-        return InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more)
+        return MessageInfiniteScrollPaginationResponse.model_validate(
+            InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more),
+            from_attributes=True,
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -314,7 +264,9 @@ class MessageFeedbackApi(Resource):
 
         message_id = str(args.message_id)
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalar(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        )
 
         if not message:
             raise NotFound("Message Not Exists.")
@@ -324,7 +276,7 @@ class MessageFeedbackApi(Resource):
         if not args.rating and feedback:
             db.session.delete(feedback)
         elif args.rating and feedback:
-            feedback.rating = args.rating
+            feedback.rating = FeedbackRating(args.rating)
             feedback.content = args.content
         elif not args.rating and not feedback:
             raise ValueError("rating cannot be None when feedback not exists")
@@ -336,9 +288,9 @@ class MessageFeedbackApi(Resource):
                 app_id=app_model.id,
                 conversation_id=message.conversation_id,
                 message_id=message.id,
-                rating=rating_value,
+                rating=FeedbackRating(rating_value),
                 content=args.content,
-                from_source="admin",
+                from_source=FeedbackFromSource.ADMIN,
                 from_account_id=current_user.id,
             )
             db.session.add(feedback)
@@ -356,14 +308,16 @@ class MessageAnnotationCountApi(Resource):
     @console_ns.response(
         200,
         "Annotation count retrieved successfully",
-        console_ns.model("AnnotationCountResponse", {"count": fields.Integer(description="Number of annotations")}),
+        console_ns.models[AnnotationCountResponse.__name__],
     )
     @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.scalar(
+            select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
+        )
 
         return {"count": count}
 
@@ -376,9 +330,7 @@ class MessageSuggestedQuestionApi(Resource):
     @console_ns.response(
         200,
         "Suggested questions retrieved successfully",
-        console_ns.model(
-            "SuggestedQuestionsResponse", {"data": fields.List(fields.String(description="Suggested question"))}
-        ),
+        console_ns.models[SuggestedQuestionsResponse.__name__],
     )
     @console_ns.response(404, "Message or conversation not found")
     @setup_required
@@ -428,7 +380,7 @@ class MessageFeedbackExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        args = FeedbackExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
         # Import the service function
         from services.feedback_service import FeedbackService
@@ -459,19 +411,21 @@ class MessageApi(Resource):
     @console_ns.doc("get_message")
     @console_ns.doc(description="Get message details by ID")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", message_detail_model)
+    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
     @console_ns.response(404, "Message not found")
     @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(message_detail_model)
     def get(self, app_model, message_id: str):
         message_id = str(message_id)
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalar(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        )
 
         if not message:
             raise NotFound("Message Not Exists.")
 
-        return message
+        attach_message_extra_contents([message])
+        return MessageDetailResponse.model_validate(message, from_attributes=True).model_dump(mode="json")

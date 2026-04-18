@@ -6,8 +6,10 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import Engine
 
-from core.variables.segments import ObjectSegment, StringSegment
-from core.variables.types import SegmentType
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import ObjectSegment, StringSegment
+from graphon.variables.types import SegmentType
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader
@@ -24,7 +26,11 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, mock_engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=mock_engine, app_id="test-app-id", tenant_id="test-tenant-id", fallback_variables=[]
+            engine=mock_engine,
+            app_id="test-app-id",
+            tenant_id="test-tenant-id",
+            user_id="test-user-id",
+            fallback_variables=[],
         )
 
     def test_load_offloaded_variable_string_type_unit(self, draft_var_loader):
@@ -50,25 +56,18 @@ class TestDraftVarLoaderSimple:
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_content.encode()
 
-            with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
-                mock_variable = Mock()
-                mock_variable.id = "draft-var-id"
-                mock_variable.name = "test_variable"
-                mock_variable.value = StringSegment(value=test_content)
-                mock_segment_to_variable.return_value = mock_variable
+            # Execute the method
+            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
-                # Execute the method
-                selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
+            # Verify results
+            assert selector_tuple == ("test-node-id", "test_variable")
+            assert variable.id == "draft-var-id"
+            assert variable.name == "test_variable"
+            assert variable.description == "test description"
+            assert variable.value == test_content
 
-                # Verify results
-                assert selector_tuple == ("test-node-id", "test_variable")
-                assert variable.id == "draft-var-id"
-                assert variable.name == "test_variable"
-                assert variable.description == "test description"
-                assert variable.value == test_content
-
-                # Verify storage was called correctly
-                mock_storage.load.assert_called_once_with("storage/key/test.txt")
+            # Verify storage was called correctly
+            mock_storage.load.assert_called_once_with("storage/key/test.txt")
 
     def test_load_offloaded_variable_object_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with object type - isolated unit test."""
@@ -93,31 +92,22 @@ class TestDraftVarLoaderSimple:
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
+            mock_segment = ObjectSegment(value=test_object)
+            draft_var.build_segment_from_serialized_value.return_value = mock_segment
 
-            with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                mock_segment = ObjectSegment(value=test_object)
-                mock_build_segment.return_value = mock_segment
+            # Execute the method
+            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
-                with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
-                    mock_variable = Mock()
-                    mock_variable.id = "draft-var-id"
-                    mock_variable.name = "test_object"
-                    mock_variable.value = mock_segment
-                    mock_segment_to_variable.return_value = mock_variable
+            # Verify results
+            assert selector_tuple == ("test-node-id", "test_object")
+            assert variable.id == "draft-var-id"
+            assert variable.name == "test_object"
+            assert variable.description == "test description"
+            assert variable.value == test_object
 
-                    # Execute the method
-                    selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
-
-                    # Verify results
-                    assert selector_tuple == ("test-node-id", "test_object")
-                    assert variable.id == "draft-var-id"
-                    assert variable.name == "test_object"
-                    assert variable.description == "test description"
-                    assert variable.value == test_object
-
-                    # Verify method calls
-                    mock_storage.load.assert_called_once_with("storage/key/test.json")
-                    mock_build_segment.assert_called_once_with(SegmentType.OBJECT, test_object)
+            # Verify method calls
+            mock_storage.load.assert_called_once_with("storage/key/test.json")
+            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.OBJECT, test_object)
 
     def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
         """Test that assertion error is raised when variable_file is None."""
@@ -172,32 +162,23 @@ class TestDraftVarLoaderSimple:
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
+            from graphon.variables.segments import FloatSegment
 
-            with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import FloatSegment
+            mock_segment = FloatSegment(value=test_number)
+            draft_var.build_segment_from_serialized_value.return_value = mock_segment
 
-                mock_segment = FloatSegment(value=test_number)
-                mock_build_segment.return_value = mock_segment
+            # Execute the method
+            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
-                with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
-                    mock_variable = Mock()
-                    mock_variable.id = "draft-var-id"
-                    mock_variable.name = "test_number"
-                    mock_variable.value = mock_segment
-                    mock_segment_to_variable.return_value = mock_variable
+            # Verify results
+            assert selector_tuple == ("test-node-id", "test_number")
+            assert variable.id == "draft-var-id"
+            assert variable.name == "test_number"
+            assert variable.description == "test number description"
 
-                    # Execute the method
-                    selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
-
-                    # Verify results
-                    assert selector_tuple == ("test-node-id", "test_number")
-                    assert variable.id == "draft-var-id"
-                    assert variable.name == "test_number"
-                    assert variable.description == "test number description"
-
-                    # Verify method calls
-                    mock_storage.load.assert_called_once_with("storage/key/test_number.json")
-                    mock_build_segment.assert_called_once_with(SegmentType.NUMBER, test_number)
+            # Verify method calls
+            mock_storage.load.assert_called_once_with("storage/key/test_number.json")
+            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.NUMBER, test_number)
 
     def test_load_offloaded_variable_array_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with array type - isolated unit test."""
@@ -222,32 +203,83 @@ class TestDraftVarLoaderSimple:
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
+            from graphon.variables.segments import ArrayAnySegment
 
-            with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import ArrayAnySegment
+            mock_segment = ArrayAnySegment(value=test_array)
+            draft_var.build_segment_from_serialized_value.return_value = mock_segment
 
-                mock_segment = ArrayAnySegment(value=test_array)
-                mock_build_segment.return_value = mock_segment
+            # Execute the method
+            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
-                with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
-                    mock_variable = Mock()
-                    mock_variable.id = "draft-var-id"
-                    mock_variable.name = "test_array"
-                    mock_variable.value = mock_segment
-                    mock_segment_to_variable.return_value = mock_variable
+            # Verify results
+            assert selector_tuple == ("test-node-id", "test_array")
+            assert variable.id == "draft-var-id"
+            assert variable.name == "test_array"
+            assert variable.description == "test array description"
 
-                    # Execute the method
-                    selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
+            # Verify method calls
+            mock_storage.load.assert_called_once_with("storage/key/test_array.json")
+            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.ARRAY_ANY, test_array)
 
-                    # Verify results
-                    assert selector_tuple == ("test-node-id", "test_array")
-                    assert variable.id == "draft-var-id"
-                    assert variable.name == "test_array"
-                    assert variable.description == "test array description"
+    def test_load_offloaded_variable_file_type_rebuilds_storage_backed_payload(self, draft_var_loader):
+        upload_file = Mock(spec=UploadFile)
+        upload_file.key = "storage/key/test_file.json"
 
-                    # Verify method calls
-                    mock_storage.load.assert_called_once_with("storage/key/test_array.json")
-                    mock_build_segment.assert_called_once_with(SegmentType.ARRAY_ANY, test_array)
+        variable_file = Mock(spec=WorkflowDraftVariableFile)
+        variable_file.value_type = SegmentType.FILE
+        variable_file.upload_file = upload_file
+
+        draft_var = WorkflowDraftVariable()
+        draft_var.id = "draft-var-id"
+        draft_var.app_id = "app-1"
+        draft_var.node_id = "test-node-id"
+        draft_var.name = "test_file"
+        draft_var.description = "test file description"
+        draft_var._set_selector(["test-node-id", "test_file"])
+        draft_var.variable_file = variable_file
+
+        persisted_file = File(
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1", storage_key="legacy-storage-key"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+        )
+        rebuilt_file = File(
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+            storage_key="canonical-storage-key",
+        )
+
+        raw_file = {
+            **persisted_file.model_dump(mode="json"),
+            "tenant_id": "legacy-tenant",
+        }
+
+        with (
+            patch("services.workflow_draft_variable_service.storage") as mock_storage,
+            patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
+            patch("models.workflow.build_file_from_stored_mapping", return_value=rebuilt_file) as rebuild_file,
+        ):
+            mock_storage.load.return_value = json.dumps(raw_file).encode()
+
+            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
+
+        assert selector_tuple == ("test-node-id", "test_file")
+        assert variable.id == "draft-var-id"
+        assert variable.name == "test_file"
+        assert variable.description == "test file description"
+        assert variable.value == rebuilt_file
+        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
     def test_load_variables_with_offloaded_variables_unit(self, draft_var_loader):
         """Test load_variables method with mix of regular and offloaded variables."""
@@ -323,7 +355,9 @@ class TestDraftVarLoaderSimple:
 
                                     # Verify service method was called
                                     mock_service.get_draft_variables_by_selectors.assert_called_once_with(
-                                        draft_var_loader._app_id, selectors
+                                        draft_var_loader._app_id,
+                                        selectors,
+                                        user_id=draft_var_loader._user_id,
                                     )
 
                                     # Verify offloaded variable loading was called

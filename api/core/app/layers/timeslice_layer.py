@@ -4,9 +4,9 @@ from typing import ClassVar
 
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 
-from core.workflow.graph_engine.entities.commands import CommandType, GraphEngineCommand
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
+from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 

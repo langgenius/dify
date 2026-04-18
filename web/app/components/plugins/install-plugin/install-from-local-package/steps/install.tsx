@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { gte } from 'semver'
-import Button from '@/app/components/base/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
+import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Card from '../../../card'
 import { TaskStatus } from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
@@ -111,7 +111,7 @@ const Installed: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
       return true
-    return gte(langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
+    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
   }, [langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
 
   return (
@@ -127,7 +127,7 @@ const Installed: FC<Props> = ({
             />
           </p>
           {!isDifyVersionCompatible && (
-            <p className="system-md-regular flex items-center gap-1 text-text-warning">
+            <p className="flex items-center gap-1 system-md-regular text-text-warning">
               {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}

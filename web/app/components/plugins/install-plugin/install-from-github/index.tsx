@@ -3,16 +3,16 @@
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import { cn } from '@/utils/classnames'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
-import { useGitHubReleases } from '../hooks'
+import { fetchReleases } from '../hooks'
 import useHideLogic from '../hooks/use-hide-logic'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
@@ -31,7 +31,6 @@ type InstallFromGitHubProps = {
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
-  const { fetchReleases } = useGitHubReleases()
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -81,10 +80,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const handleUrlSubmit = async () => {
     const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
     if (!isValid || !owner || !repo) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.inValidGitHubUrl', { ns: 'plugin' }),
-      })
+      toast.error(t('error.inValidGitHubUrl', { ns: 'plugin' }))
       return
     }
     try {
@@ -97,17 +93,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         }))
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: t('error.noReleasesFound', { ns: 'plugin' }),
-        })
+        toast.error(t('error.noReleasesFound', { ns: 'plugin' }))
       }
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('error.fetchReleasesError', { ns: 'plugin' }),
-      })
+      toast.error(t('error.fetchReleasesError', { ns: 'plugin' }))
     }
   }
 
@@ -173,12 +163,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         border-components-panel-border bg-components-panel-bg p-0`)}
       closable
     >
-      <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
+      <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
         <div className="flex grow flex-col items-start gap-1">
-          <div className="title-2xl-semi-bold self-stretch text-text-primary">
+          <div className="self-stretch title-2xl-semi-bold text-text-primary">
             {getTitle()}
           </div>
-          <div className="system-xs-regular self-stretch text-text-tertiary">
+          <div className="self-stretch system-xs-regular text-text-tertiary">
             {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
           </div>
         </div>

@@ -1,13 +1,14 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -16,7 +17,6 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ConfigContent from './config-content'
 
 type ParamsConfigProps = {
@@ -61,16 +61,12 @@ const ParamsConfig = ({
     if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
       if (tempDataSetConfigs.reranking_enable
         && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
-        && !isCurrentRerankModelValid
-      ) {
+        && !isCurrentRerankModelValid) {
         errMsg = t('datasetConfig.rerankModelRequired', { ns: 'appDebug' })
       }
     }
     if (errMsg) {
-      Toast.notify({
-        type: 'error',
-        message: errMsg,
-      })
+      toast.error(errMsg)
     }
     return !errMsg
   }

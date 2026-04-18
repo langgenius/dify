@@ -4,18 +4,19 @@ import uuid
 import pytest
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import NodeRunResult
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.entities import CodeNodeData
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
+
+pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
 
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
@@ -32,11 +33,11 @@ def init_code_node(code_config: dict):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, code_config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -45,7 +46,7 @@ def init_code_node(code_config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -61,13 +62,14 @@ def init_code_node(code_config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = CodeNode(
-        id=str(uuid.uuid4()),
-        config=code_config,
+        node_id=str(uuid.uuid4()),
+        config=CodeNodeData.model_validate(code_config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        code_executor=node_factory._code_executor,
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -172,7 +174,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     result = node._run()
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error == "Output result must be a string, got int instead"
+    assert result.error == "Output result must be a string, got int instead."
 
 
 def test_execute_code_output_validator_depth():

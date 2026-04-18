@@ -2,13 +2,12 @@
 
 import type { FC } from 'react'
 import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -97,7 +96,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
     <OptionCard
       className="mb-2 bg-background-section"
       title={t('stepTwo.general', { ns: 'datasetCreation' })}
-      icon={<Image width={20} height={20} src={SettingCog} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
+      icon={<img width={20} height={20} src={SettingCog.src} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
       isActive={isActive}
@@ -148,13 +147,13 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </label>
               </div>
             ))}
             {
-              showSummaryIndexSetting && (
+              showSummaryIndexSetting && IS_CE_EDITION && (
                 <div className="mt-3">
                   <SummaryIndexSetting
                     entry="create-document"
@@ -183,7 +182,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
                     />
-                    <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                    <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
                       {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
                     </label>
                   </div>

@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 
-export type IRenameModalProps = {
+type IRenameModalProps = {
   isShow: boolean
   saveLoading: boolean
   name: string
@@ -24,6 +24,7 @@ const RenameModal: FC<IRenameModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [tempName, setTempName] = useState(name)
+  const conversationNamePlaceholder = t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''
 
   return (
     <Modal
@@ -31,12 +32,12 @@ const RenameModal: FC<IRenameModalProps> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('chat.conversationName', { ns: 'common' })}</div>
+      <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('chat.conversationName', { ns: 'common' })}</div>
       <Input
         className="mt-2 h-10 w-full"
         value={tempName}
         onChange={e => setTempName(e.target.value)}
-        placeholder={t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''}
+        placeholder={conversationNamePlaceholder}
       />
 
       <div className="mt-10 flex justify-end">

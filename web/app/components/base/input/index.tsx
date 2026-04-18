@@ -1,11 +1,10 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
-import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(
@@ -13,8 +12,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 radius-md system-sm-regular',
-        large: 'px-4 radius-lg system-md-regular',
+        regular: 'rounded-lg px-3 system-sm-regular',
+        large: 'rounded-[10px] px-4 system-md-regular',
       },
     },
     defaultVariants: {
@@ -83,12 +82,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <span className={cn('absolute top-1/2 left-2 i-ri-search-line h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
         style={styleCss}
         className={cn(
-          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           inputVariants({ size }),
           showLeftIcon && 'pl-[26px]',
           showLeftIcon && size === 'large' && 'pl-7',
@@ -111,27 +110,27 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
-          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer p-px')}
           onClick={onClear}
           data-testid="input-clear"
         >
-          <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
+          <span className="i-ri-close-circle-fill h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="absolute top-1/2 right-2 i-ri-error-warning-line h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
-        <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
+        <div className={cn('group absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
-            className="!h-7 !w-7 hover:bg-transparent"
+            className="h-7! w-7! hover:bg-transparent"
           />
         </div>
       )}
       {
         unit && (
-          <div className="system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary">
+          <div className="absolute top-1/2 right-2 -translate-y-1/2 system-sm-regular text-text-tertiary">
             {unit}
           </div>
         )

@@ -14,10 +14,8 @@ import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
-import {
-  DebugWithMultipleModelContextProvider,
-  useDebugWithMultipleModelContext,
-} from './context'
+import { useDebugWithMultipleModelContext } from './context'
+import { DebugWithMultipleModelContextProvider } from './context-provider'
 import DebugItem from './debug-item'
 
 const DebugWithMultipleModel = () => {
@@ -124,7 +122,7 @@ const DebugWithMultipleModel = () => {
               key={modelConfig.id}
               modelAndParameter={modelConfig}
               className={`
-                absolute left-6 top-0 min-h-[200px]
+                absolute top-0 left-6 min-h-[200px]
                 ${twoLine && index === 0 && 'mr-2'}
                 ${threeLine && (index === 0 || index === 1) && 'mr-2'}
                 ${fourLine && (index === 0 || index === 2) && 'mr-2'}

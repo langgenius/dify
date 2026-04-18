@@ -41,6 +41,8 @@ export type ResultPanelProps = {
   exceptionCounts?: number
   execution_metadata?: any
   isListening?: boolean
+  workflowRunId?: string
+  onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -67,6 +69,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
   exceptionCounts,
   execution_metadata,
   isListening = false,
+  workflowRunId,
+  onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -89,6 +93,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
           error={error}
           exceptionCounts={exceptionCounts}
           isListening={isListening}
+          workflowRunId={workflowRunId}
+          onOpenTracingTab={onOpenTracingTab}
         />
       </div>
       <div className="px-4">
@@ -132,7 +138,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
         />
         {process_data && (
           <CodeEditor
@@ -141,7 +147,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
-            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
+            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
           />
         )}
         {(outputs || status === 'running') && (
@@ -152,7 +158,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
+            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mt-2 mb-1 h-7" />}
           />
         )}
       </div>

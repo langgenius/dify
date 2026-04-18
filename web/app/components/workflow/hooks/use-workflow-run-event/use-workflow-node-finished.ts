@@ -49,6 +49,8 @@ export const useWorkflowNodeFinished = () => {
 
         if (data.node_type === BlockEnum.QuestionClassifier)
           currentNode.data._runningBranchId = data?.outputs?.class_id
+        if (data.node_type === BlockEnum.HumanInput)
+          currentNode.data._runningBranchId = data?.outputs?.__action_id
       }
     })
     setNodes(newNodes)

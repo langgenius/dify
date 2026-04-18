@@ -21,7 +21,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.12.0
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -56,6 +56,12 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - ssrf_proxy_network
       - default
@@ -63,7 +69,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.12.0
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -95,6 +101,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
+      retries: 3
+      start_period: 60s
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default
@@ -102,7 +115,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.12.0
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -126,30 +139,39 @@ services:
         required: false
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
+      retries: 3
+      start_period: 60s
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.12.0
+    image: langgenius/dify-web:1.13.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-ws://localhost}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      EXPERIMENTAL_ENABLE_VINEXT: ${EXPERIMENTAL_ENABLE_VINEXT:-false}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
+      ALLOW_INLINE_STYLES: ${ALLOW_INLINE_STYLES:-false}
       ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
-      PM2_INSTANCES: ${PM2_INSTANCES:-2}
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
       MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
@@ -246,7 +268,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.12
+    image: langgenius/dify-sandbox:0.2.14
     restart: always
     environment:
       # The DifySandbox configurations
@@ -276,6 +298,7 @@ services:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
       SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
@@ -662,13 +685,14 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris:/opt/iris
+      - ./volumes/iris:/durable
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
     tty: true
     environment:
       TZ: ${IRIS_TIMEZONE:-UTC}
+      ISC_DATA_DIRECTORY: /durable/iris
 
   # Oracle vector database
   oracle:

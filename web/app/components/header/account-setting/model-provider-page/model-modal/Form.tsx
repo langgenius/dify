@@ -12,6 +12,7 @@ import type {
 import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
@@ -22,7 +23,6 @@ import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/mo
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { cn } from '@/utils/classnames'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
@@ -161,7 +161,7 @@ function Form<
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -204,13 +204,14 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
+          {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
           <div className={cn('grid gap-3', `grid-cols-${options?.length}`)}>
             {options.filter((option) => {
               if (option.show_on.length)
@@ -222,7 +223,7 @@ function Form<
                 className={`
                     flex cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2
                     ${value[variable] === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'}
-                    ${disabled && '!cursor-not-allowed opacity-60'}
+                    ${disabled && 'cursor-not-allowed! opacity-60'}
                   `}
                 onClick={() => handleFormChange(variable, option.value)}
                 key={`${variable}-${option.value}`}
@@ -254,7 +255,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
 
             {required && (
@@ -295,9 +296,9 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+          <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
             <div className="flex items-center space-x-2">
-              <span className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className="ml-1 text-red-500">*</span>
               )}
@@ -308,7 +309,7 @@ function Form<
               value={value[variable]}
               onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={true} className="!mr-1">True</Radio>
+              <Radio value={true} className="mr-1!">True</Radio>
               <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
@@ -326,7 +327,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -334,7 +335,7 @@ function Form<
             {tooltipContent}
           </div>
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
             isAgentStrategy={isAgentStrategy}
@@ -358,7 +359,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -422,7 +423,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -451,7 +452,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>

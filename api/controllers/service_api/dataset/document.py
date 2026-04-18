@@ -1,14 +1,16 @@
 import json
+from contextlib import ExitStack
 from typing import Self
 from uuid import UUID
 
-from flask import request
+from flask import request, send_file
 from flask_restx import marshal
-from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import desc, select
+from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -30,19 +32,18 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     KnowledgeConfig,
-    PreProcessingRule,
     ProcessRule,
     RetrievalModel,
-    Rule,
-    Segmentation,
 )
 from services.file_service import FileService
 from services.summary_index_service import SummaryIndexService
@@ -60,6 +61,13 @@ class DocumentTextCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
+
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -71,6 +79,13 @@ class DocumentTextUpdate(BaseModel):
     doc_form: str = "text_model"
     doc_language: str = "English"
     retrieval_model: RetrievalModel | None = None
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
 
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
@@ -95,6 +110,7 @@ register_schema_models(
     DocumentTextCreatePayload,
     DocumentTextUpdate,
     DocumentListQuery,
+    DocumentBatchDownloadZipPayload,
     Rule,
     PreProcessingRule,
     Segmentation,
@@ -129,7 +145,9 @@ class DocumentAddByTextApi(DatasetApiResource):
 
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -212,7 +230,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
         payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
         args = payload.model_dump(exclude_none=True)
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -289,7 +309,9 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -399,7 +421,9 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -489,11 +513,13 @@ class DocumentListApi(DatasetApiResource):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         query_params = DocumentListQuery.model_validate(request.args.to_dict())
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id)
 
         if query_params.status:
             query = DocumentService.apply_display_status_filter(query, query_params.status)
@@ -526,6 +552,46 @@ class DocumentListApi(DatasetApiResource):
         return response
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DatasetApiResource):
+    """Download multiple uploaded-file documents as a single ZIP archive."""
+
+    @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @service_api_ns.doc("download_documents_as_zip")
+    @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "ZIP archive generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or dataset not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id, dataset_id):
+        payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
+
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=str(dataset_id),
+            document_ids=[str(document_id) for document_id in payload.document_ids],
+            tenant_id=str(tenant_id),
+            current_user=current_user,
+        )
+
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
+        return response
+
+
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
 class DocumentIndexingStatusApi(DatasetApiResource):
     @service_api_ns.doc("get_document_indexing_status")
@@ -543,7 +609,9 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         batch = str(batch)
         tenant_id = str(tenant_id)
         # get dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
@@ -553,18 +621,23 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
-                .count()
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
+                )
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -584,6 +657,35 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DatasetApiResource):
+    """Return a signed download URL for a document's original uploaded file."""
+
+    @service_api_ns.doc("get_document_download_url")
+    @service_api_ns.doc(description="Get a signed download URL for a document's original uploaded file")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Download URL generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or upload file not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def get(self, tenant_id, dataset_id, document_id):
+        dataset = self.get_dataset(str(dataset_id), str(tenant_id))
+        document = DocumentService.get_document(dataset.id, str(document_id))
+
+        if not document:
+            raise NotFound("Document not found.")
+
+        if document.tenant_id != str(tenant_id):
+            raise Forbidden("No permission.")
+
+        return {"url": DocumentService.get_document_download_url(document)}
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
@@ -725,7 +827,9 @@ class DocumentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
 
         # get dataset info
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -746,4 +850,4 @@ class DocumentApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return 204
+        return "", 204

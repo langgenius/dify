@@ -89,7 +89,7 @@ const SearchInput = ({
           onChange={handleValueChange}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[32]">
+      <PortalToFollowElemContent className="z-32">
         {
           !!schools.length && value && (
             <div
@@ -100,7 +100,7 @@ const SearchInput = ({
                 schools.map((school, index) => (
                   <div
                     key={index}
-                    className="system-md-regular flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
+                    className="flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
                     title={school}
                     onClick={() => {
                       onChange(school)

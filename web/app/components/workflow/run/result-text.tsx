@@ -9,6 +9,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 
 type ResultTextProps = {
   isRunning?: boolean
+  isPaused?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
@@ -17,6 +18,7 @@ type ResultTextProps = {
 
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
+  isPaused,
   outputs,
   error,
   onClick,
@@ -26,7 +28,7 @@ const ResultText: FC<ResultTextProps> = ({
   return (
     <div className="bg-background-section-burn">
       {isRunning && !outputs && (
-        <div className="pl-[26px] pt-4">
+        <div className="pt-4 pl-[26px]">
           <LoadingAnim type="text" />
         </div>
       )}
@@ -37,7 +39,7 @@ const ResultText: FC<ResultTextProps> = ({
           </StatusContainer>
         </div>
       )}
-      {!isRunning && !outputs && !error && !allFiles?.length && (
+      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
           <ImageIndentLeft className="h-6 w-6 text-gray-400" />
           <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
@@ -56,8 +58,8 @@ const ResultText: FC<ResultTextProps> = ({
             </div>
           )}
           {!!allFiles?.length && allFiles.map(item => (
-            <div key={item.varName} className="system-xs-regular flex flex-col gap-1 px-4 py-2">
-              <div className="py-1 text-text-tertiary ">{item.varName}</div>
+            <div key={item.varName} className="flex flex-col gap-1 px-4 py-2 system-xs-regular">
+              <div className="py-1 text-text-tertiary">{item.varName}</div>
               <FileList
                 files={item.list}
                 showDeleteAction={false}

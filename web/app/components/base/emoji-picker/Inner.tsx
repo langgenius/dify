@@ -3,16 +3,14 @@ import type { EmojiMartData } from '@emoji-mart/data'
 import type { ChangeEvent, FC } from 'react'
 import data from '@emoji-mart/data'
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { init } from 'emoji-mart'
 import * as React from 'react'
 import { useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 import { searchEmoji } from '@/utils/emoji'
 
 init({ data })
@@ -61,6 +59,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
   React.useEffect(() => {
     if (selectedEmoji) {
       setShowStyleColors(true)
+      /* v8 ignore next 2 - @preserve */
       if (selectedBackground)
         onSelect?.(selectedEmoji, selectedBackground)
     }
@@ -93,11 +92,11 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
       </div>
       <Divider className="my-3" />
 
-      <div className="max-h-[200px] w-full overflow-y-auto overflow-x-hidden px-3">
+      <div className="max-h-[200px] w-full overflow-x-hidden overflow-y-auto px-3">
         {isSearching && (
           <>
             <div key="category-search" className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">Search</p>
+              <p className="mb-1 system-xs-medium-uppercase text-text-primary">Search</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {searchedEmojis.map((emoji: string, index: number) => {
                   return (
@@ -108,7 +107,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-search-result-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>
@@ -122,7 +121,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {categories.map((category, index: number) => {
           return (
             <div key={`category-${index}`} className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">{category.id}</p>
+              <p className="mb-1 system-xs-medium-uppercase text-text-primary">{category.id}</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {category.emojis.map((emoji, index: number) => {
                   return (
@@ -133,7 +132,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-container-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>
@@ -148,10 +147,10 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p className="system-xs-medium-uppercase mb-2 text-text-primary">Choose Style</p>
+        <p className="mb-2 system-xs-medium-uppercase text-text-primary">Choose Style</p>
         {showStyleColors
-          ? <ChevronDownIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
-          : <ChevronUpIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}
+          ? <span className="i-heroicons-chevron-down h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />
+          : <span className="i-heroicons-chevron-up h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">

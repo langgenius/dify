@@ -19,14 +19,6 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin_daemon import (
     CredentialType,
     PluginDaemonInnerError,
@@ -34,6 +26,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
@@ -44,6 +37,28 @@ from core.plugin.impl.exc import (
 )
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+
+
+@pytest.fixture(autouse=True)
+def _patch_shared_httpx_client():
+    """Make BasePluginClient's module-level httpx client delegate to patched httpx.request/stream.
+
+    After refactor, code uses core.plugin.impl.base._httpx_client directly.
+    Patch its request/stream to route through module-level httpx so existing mocks still apply.
+    """
+    with (
+        patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+        patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+    ):
+        yield
 
 
 class TestPluginRuntimeExecution:
@@ -114,7 +129,7 @@ class TestPluginRuntimeExecution:
         mock_response.status_code = 200
         mock_response.json.return_value = {"result": "success"}
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             response = plugin_client._request("GET", "plugin/test-tenant/management/list")
 
@@ -132,7 +147,7 @@ class TestPluginRuntimeExecution:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("GET", "plugin/test-tenant/test")
 
@@ -143,7 +158,7 @@ class TestPluginRuntimeExecution:
     def test_request_connection_error(self, plugin_client, mock_config):
         """Test handling of connection errors during request."""
         # Arrange
-        with patch("httpx.request", side_effect=httpx.RequestError("Connection failed")):
+        with patch("httpx.request", side_effect=httpx.RequestError("Connection failed"), autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInnerError) as exc_info:
                 plugin_client._request("GET", "plugin/test-tenant/test")
@@ -182,7 +197,7 @@ class TestPluginRuntimeSandboxIsolation:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": True}
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("GET", "plugin/test-tenant/test")
 
@@ -201,7 +216,7 @@ class TestPluginRuntimeSandboxIsolation:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": {"result": "isolated_execution"}}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = plugin_client._request_with_plugin_daemon_response(
                 "POST", "plugin/test-tenant/dispatch/tool/invoke", TestResponse, data={"tool": "test"}
@@ -218,7 +233,7 @@ class TestPluginRuntimeSandboxIsolation:
         error_message = json.dumps({"error_type": "PluginDaemonUnauthorizedError", "message": "Unauthorized access"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonUnauthorizedError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -234,7 +249,7 @@ class TestPluginRuntimeSandboxIsolation:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginPermissionDeniedError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/test", bool)
@@ -272,7 +287,7 @@ class TestPluginRuntimeResourceLimits:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("GET", "plugin/test-tenant/test")
 
@@ -283,7 +298,7 @@ class TestPluginRuntimeResourceLimits:
     def test_timeout_error_handling(self, plugin_client, mock_config):
         """Test handling of timeout errors."""
         # Arrange
-        with patch("httpx.request", side_effect=httpx.TimeoutException("Request timeout")):
+        with patch("httpx.request", side_effect=httpx.TimeoutException("Request timeout"), autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInnerError) as exc_info:
                 plugin_client._request("GET", "plugin/test-tenant/test")
@@ -292,7 +307,7 @@ class TestPluginRuntimeResourceLimits:
     def test_streaming_request_timeout(self, plugin_client, mock_config):
         """Test timeout handling for streaming requests."""
         # Arrange
-        with patch("httpx.stream", side_effect=httpx.TimeoutException("Stream timeout")):
+        with patch("httpx.stream", side_effect=httpx.TimeoutException("Stream timeout"), autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInnerError) as exc_info:
                 list(plugin_client._stream_request("POST", "plugin/test-tenant/stream"))
@@ -308,7 +323,7 @@ class TestPluginRuntimeResourceLimits:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInternalServerError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/test", bool)
@@ -352,7 +367,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(InvokeRateLimitError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -371,7 +386,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(InvokeAuthorizationError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -390,7 +405,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(InvokeBadRequestError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -409,7 +424,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(InvokeConnectionError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -428,7 +443,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(InvokeServerUnavailableError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -446,7 +461,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(CredentialsValidateFailedError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/validate", bool)
@@ -462,7 +477,7 @@ class TestPluginRuntimeErrorHandling:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginNotFoundError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/get", bool)
@@ -478,7 +493,7 @@ class TestPluginRuntimeErrorHandling:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginUniqueIdentifierError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/install", bool)
@@ -494,7 +509,7 @@ class TestPluginRuntimeErrorHandling:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonBadRequestError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/test", bool)
@@ -508,7 +523,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginDaemonNotFoundError", "message": "Resource not found"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonNotFoundError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/resource", bool)
@@ -526,7 +541,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": invoke_error_message})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginInvokeError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
@@ -540,7 +555,7 @@ class TestPluginRuntimeErrorHandling:
         error_message = json.dumps({"error_type": "UnknownErrorType", "message": "Unknown error occurred"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(Exception) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/test", bool)
@@ -555,9 +570,9 @@ class TestPluginRuntimeErrorHandling:
             "Server Error", request=MagicMock(), response=mock_response
         )
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(PluginDaemonInternalServerError):
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
 
     def test_empty_data_response_error(self, plugin_client, mock_config):
@@ -567,7 +582,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -610,7 +625,7 @@ class TestPluginRuntimeCommunication:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": {"value": "test", "count": 42}}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = plugin_client._request_with_plugin_daemon_response(
                 "POST", "plugin/test-tenant/test", TestModel, data={"input": "data"}
@@ -637,7 +652,7 @@ class TestPluginRuntimeCommunication:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -667,7 +682,7 @@ class TestPluginRuntimeCommunication:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -689,7 +704,7 @@ class TestPluginRuntimeCommunication:
     def test_streaming_connection_error(self, plugin_client, mock_config):
         """Test connection error during streaming."""
         # Arrange
-        with patch("httpx.stream", side_effect=httpx.RequestError("Stream connection failed")):
+        with patch("httpx.stream", side_effect=httpx.RequestError("Stream connection failed"), autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInnerError) as exc_info:
                 list(plugin_client._stream_request("POST", "plugin/test-tenant/stream"))
@@ -707,7 +722,7 @@ class TestPluginRuntimeCommunication:
         mock_response.status_code = 200
         mock_response.json.return_value = {"status": "success", "data": {"key": "value"}}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = plugin_client._request_with_model("GET", "plugin/test-tenant/direct", DirectModel)
 
@@ -732,7 +747,7 @@ class TestPluginRuntimeCommunication:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -764,7 +779,7 @@ class TestPluginRuntimeCommunication:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -814,7 +829,7 @@ class TestPluginToolManagerIntegration:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -844,7 +859,7 @@ class TestPluginToolManagerIntegration:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -868,7 +883,7 @@ class TestPluginToolManagerIntegration:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -892,7 +907,7 @@ class TestPluginToolManagerIntegration:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -945,7 +960,7 @@ class TestPluginInstallerIntegration:
             },
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.list_plugins("test-tenant")
 
@@ -959,7 +974,7 @@ class TestPluginInstallerIntegration:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": True}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.uninstall("test-tenant", "plugin-installation-id")
 
@@ -973,7 +988,7 @@ class TestPluginInstallerIntegration:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": True}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.fetch_plugin_by_identifier("test-tenant", "plugin-identifier")
 
@@ -1012,7 +1027,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response.status_code = 200
         mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(ValueError):
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -1025,7 +1040,7 @@ class TestPluginRuntimeEdgeCases:
         # Missing required fields in response
         mock_response.json.return_value = {"invalid": "structure"}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(ValueError):
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -1041,7 +1056,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1065,7 +1080,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("POST", "plugin/test-tenant/upload", data=b"binary data")
 
@@ -1081,7 +1096,7 @@ class TestPluginRuntimeEdgeCases:
 
         files = {"file": ("test.txt", b"file content", "text/plain")}
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("POST", "plugin/test-tenant/upload", files=files)
 
@@ -1095,7 +1110,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = []
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1115,7 +1130,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act & Assert
@@ -1136,7 +1151,7 @@ class TestPluginRuntimeEdgeCases:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": -1, "message": "Plain text error message", "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -1174,7 +1189,7 @@ class TestPluginRuntimeAdvancedScenarios:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": True}
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             for i in range(5):
                 result = plugin_client._request_with_plugin_daemon_response("GET", f"plugin/test-tenant/test/{i}", bool)
@@ -1203,7 +1218,7 @@ class TestPluginRuntimeAdvancedScenarios:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": complex_data}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = plugin_client._request_with_plugin_daemon_response(
                 "POST", "plugin/test-tenant/complex", ComplexModel
@@ -1231,7 +1246,7 @@ class TestPluginRuntimeAdvancedScenarios:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1262,7 +1277,7 @@ class TestPluginRuntimeAdvancedScenarios:
             mock_response.status_code = 200
             return mock_response
 
-        with patch("httpx.request", side_effect=side_effect):
+        with patch("httpx.request", side_effect=side_effect, autospec=True):
             # Act & Assert - First two calls should fail
             with pytest.raises(PluginDaemonInnerError):
                 plugin_client._request("GET", "plugin/test-tenant/test")
@@ -1286,7 +1301,7 @@ class TestPluginRuntimeAdvancedScenarios:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("GET", "plugin/test-tenant/test", headers=custom_headers)
 
@@ -1312,7 +1327,7 @@ class TestPluginRuntimeAdvancedScenarios:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1359,7 +1374,7 @@ class TestPluginRuntimeSecurityAndValidation:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request("GET", "plugin/test-tenant/test")
 
@@ -1381,7 +1396,7 @@ class TestPluginRuntimeSecurityAndValidation:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": True}
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request_with_plugin_daemon_response(
                 "POST",
@@ -1403,7 +1418,7 @@ class TestPluginRuntimeSecurityAndValidation:
         error_message = json.dumps({"error_type": "PluginDaemonUnauthorizedError", "message": "Invalid API key"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonUnauthorizedError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
@@ -1424,7 +1439,7 @@ class TestPluginRuntimeSecurityAndValidation:
         )
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonBadRequestError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response(
@@ -1438,7 +1453,7 @@ class TestPluginRuntimeSecurityAndValidation:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.request", return_value=mock_response) as mock_request:
+        with patch("httpx.request", return_value=mock_response, autospec=True) as mock_request:
             # Act
             plugin_client._request(
                 "POST", "plugin/test-tenant/test", headers={"Content-Type": "application/json"}, data={"key": "value"}
@@ -1489,7 +1504,7 @@ class TestPluginRuntimePerformanceScenarios:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1524,7 +1539,7 @@ class TestPluginRuntimePerformanceScenarios:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act - Process chunks one by one
@@ -1539,7 +1554,7 @@ class TestPluginRuntimePerformanceScenarios:
     def test_timeout_with_slow_response(self, plugin_client, mock_config):
         """Test timeout handling with slow response simulation."""
         # Arrange
-        with patch("httpx.request", side_effect=httpx.TimeoutException("Request timed out after 30s")):
+        with patch("httpx.request", side_effect=httpx.TimeoutException("Request timed out after 30s"), autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInnerError) as exc_info:
                 plugin_client._request("GET", "plugin/test-tenant/slow-endpoint")
@@ -1554,7 +1569,7 @@ class TestPluginRuntimePerformanceScenarios:
 
         request_results = []
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act - Simulate 10 concurrent requests
             for i in range(10):
                 result = plugin_client._request_with_plugin_daemon_response(
@@ -1612,7 +1627,7 @@ class TestPluginToolManagerAdvanced:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1641,7 +1656,7 @@ class TestPluginToolManagerAdvanced:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1673,7 +1688,7 @@ class TestPluginToolManagerAdvanced:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1704,7 +1719,7 @@ class TestPluginToolManagerAdvanced:
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
 
-        with patch("httpx.stream") as mock_stream:
+        with patch("httpx.stream", autospec=True) as mock_stream:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
@@ -1770,7 +1785,7 @@ class TestPluginInstallerAdvanced:
             },
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.upload_pkg("test-tenant", plugin_package, verify_signature=False)
 
@@ -1788,7 +1803,7 @@ class TestPluginInstallerAdvanced:
             "data": {"content": "# Plugin README\n\nThis is a test plugin.", "language": "en"},
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
@@ -1807,9 +1822,9 @@ class TestPluginInstallerAdvanced:
 
         mock_response.raise_for_status = raise_for_status
 
-        with patch("httpx.request", return_value=mock_response):
-            # Act & Assert - Should raise HTTPStatusError for 404
-            with pytest.raises(httpx.HTTPStatusError):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
+            # Act & Assert - Should raise PluginDaemonClientSideError for 404
+            with pytest.raises(PluginDaemonClientSideError):
                 installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
     def test_list_plugins_with_pagination(self, installer, mock_config):
@@ -1826,7 +1841,7 @@ class TestPluginInstallerAdvanced:
             },
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.list_plugins_with_total("test-tenant", page=2, page_size=20)
 
@@ -1848,7 +1863,7 @@ class TestPluginInstallerAdvanced:
         mock_response.status_code = 200
         mock_response.json.return_value = {"code": 0, "message": "", "data": [True, False]}
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = installer.check_tools_existence("test-tenant", provider_ids)
 

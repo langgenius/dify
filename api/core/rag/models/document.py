@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.file import File
+from graphon.file import File
 
 
 class ChildDocument(BaseModel):

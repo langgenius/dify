@@ -2,6 +2,20 @@
 
 - Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
 
+## Overlay Components (Mandatory)
+
+- `./docs/overlay-migration.md` is the source of truth for overlay-related work.
+- In new or modified code, use only overlay primitives from `@/app/components/base/ui/*`.
+- Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
+
+## Query & Mutation (Mandatory)
+
+- `frontend-query-mutation` is the source of truth for Dify frontend contracts, query and mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
+
+## Design Token Mapping
+
+- When translating Figma designs to code, read `../packages/dify-ui/AGENTS.md` for the Figma `--radius/*` token to Tailwind `rounded-*` class mapping. The two scales are offset by one step.
+
 ## Automated Test Generation
 
 - Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.

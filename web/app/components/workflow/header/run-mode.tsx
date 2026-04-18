@@ -1,18 +1,18 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { useToastContext } from '@/app/components/base/toast'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 
@@ -32,7 +32,7 @@ const RunMode = ({
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { validateBeforeRun, warningNodes } = useWorkflowRunValidation()
+  const { warningNodes } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
 
@@ -41,7 +41,6 @@ const RunMode = ({
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
-  const { notify } = useToastContext()
 
   useEffect(() => {
     // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
@@ -66,7 +65,7 @@ const RunMode = ({
         isValid = false
     })
     if (!isValid) {
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
       return
     }
 
@@ -98,14 +97,7 @@ const RunMode = ({
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
     }
-  }, [
-    validateBeforeRun,
-    handleWorkflowStartRunInWorkflow,
-    handleWorkflowTriggerScheduleRunInWorkflow,
-    handleWorkflowTriggerWebhookRunInWorkflow,
-    handleWorkflowTriggerPluginRunInWorkflow,
-    handleWorkflowRunAllTriggersInWorkflow,
-  ])
+  }, [warningNodes, t, handleWorkflowStartRunInWorkflow, handleWorkflowTriggerScheduleRunInWorkflow, handleWorkflowTriggerWebhookRunInWorkflow, handleWorkflowTriggerPluginRunInWorkflow, handleWorkflowRunAllTriggersInWorkflow])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -121,7 +113,7 @@ const RunMode = ({
               <button
                 type="button"
                 className={cn(
-                  'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
+                  'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 system-xs-medium text-text-accent',
                 )}
                 disabled={true}
               >
@@ -137,7 +129,7 @@ const RunMode = ({
               >
                 <div
                   className={cn(
-                    'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                    'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
                   )}
                   style={{ userSelect: 'none' }}
                 >

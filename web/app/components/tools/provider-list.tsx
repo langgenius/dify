@@ -1,6 +1,7 @@
 'use client'
 import type { Collection } from './types'
-import { useQueryState } from 'nuqs'
+import { cn } from '@langgenius/dify-ui/cn'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -17,26 +18,22 @@ import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
-import { ToolTypeEnum } from '../workflow/block-selector/types'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
+import { getToolType } from './utils'
 
-const getToolType = (type: string) => {
-  switch (type) {
-    case 'builtin':
-      return ToolTypeEnum.BuiltIn
-    case 'api':
-      return ToolTypeEnum.Custom
-    case 'workflow':
-      return ToolTypeEnum.Workflow
-    case 'mcp':
-      return ToolTypeEnum.MCP
-    default:
-      return ToolTypeEnum.BuiltIn
-  }
+const TOOL_PROVIDER_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as const
+type ToolProviderCategory = typeof TOOL_PROVIDER_CATEGORY_VALUES[number]
+const toolProviderCategorySet = new Set<string>(TOOL_PROVIDER_CATEGORY_VALUES)
+
+const isToolProviderCategory = (value: string): value is ToolProviderCategory => {
+  return toolProviderCategorySet.has(value)
 }
+
+const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_PROVIDER_CATEGORY_VALUES)
+  .withDefault('builtin')
+
 const ProviderList = () => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
@@ -45,9 +42,7 @@ const ProviderList = () => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: 'builtin',
-  })
+  const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -131,13 +126,15 @@ const ProviderList = () => {
           className="relative flex grow flex-col overflow-y-auto bg-background-body"
         >
           <div className={cn(
-            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]',
+            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-[56px]',
             currentProviderId && 'pr-6',
           )}
           >
             <TabSliderNew
               value={activeTab}
               onChange={(state) => {
+                if (!isToolProviderCategory(state))
+                  return
                 setActiveTab(state)
                 if (state !== activeTab)
                   setCurrentProviderId(undefined)
@@ -160,7 +157,7 @@ const ProviderList = () => {
           </div>
           {activeTab !== 'mcp' && (
             <div className={cn(
-              'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+              'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
               !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
             )}
             >
@@ -190,7 +187,7 @@ const ProviderList = () => {
                   />
                 </div>
               ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
+              {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 import pytz
 from flask import request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -37,11 +37,14 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_fields
+from fields.base import ResponseModel
+from fields.member_fields import Account as AccountResponse
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
+from models.account import AccountStatus, InvitationCodeStatus
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -71,6 +74,10 @@ class AccountNamePayload(BaseModel):
 
 class AccountAvatarPayload(BaseModel):
     avatar: str
+
+
+class AccountAvatarQuery(BaseModel):
+    avatar: str = Field(..., description="Avatar file ID")
 
 
 class AccountInterfaceLanguagePayload(BaseModel):
@@ -158,6 +165,7 @@ def reg(cls: type[BaseModel]):
 reg(AccountInitPayload)
 reg(AccountNamePayload)
 reg(AccountAvatarPayload)
+reg(AccountAvatarQuery)
 reg(AccountInterfaceLanguagePayload)
 reg(AccountInterfaceThemePayload)
 reg(AccountTimezonePayload)
@@ -170,18 +178,64 @@ reg(ChangeEmailSendPayload)
 reg(ChangeEmailValidityPayload)
 reg(ChangeEmailResetPayload)
 reg(CheckEmailUniquePayload)
+register_schema_models(console_ns, AccountResponse)
 
-integrate_fields = {
-    "provider": fields.String,
-    "created_at": TimestampField,
-    "is_bound": fields.Boolean,
-    "link": fields.String,
-}
 
-integrate_model = console_ns.model("AccountIntegrate", integrate_fields)
-integrate_list_model = console_ns.model(
-    "AccountIntegrateList",
-    {"data": fields.List(fields.Nested(integrate_model))},
+def _serialize_account(account) -> dict[str, Any]:
+    return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
+
+
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+class AccountIntegrateResponse(ResponseModel):
+    provider: str
+    created_at: int | None = None
+    is_bound: bool
+    link: str | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class AccountIntegrateListResponse(ResponseModel):
+    data: list[AccountIntegrateResponse]
+
+
+class EducationVerifyResponse(ResponseModel):
+    token: str | None = None
+
+
+class EducationStatusResponse(ResponseModel):
+    result: bool | None = None
+    is_student: bool | None = None
+    expire_at: int | None = None
+    allow_refresh: bool | None = None
+
+    @field_validator("expire_at", mode="before")
+    @classmethod
+    def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class EducationAutocompleteResponse(ResponseModel):
+    data: list[str] = Field(default_factory=list)
+    curr_page: int | None = None
+    has_next: bool | None = None
+
+
+register_schema_models(
+    console_ns,
+    AccountIntegrateResponse,
+    AccountIntegrateListResponse,
+    EducationVerifyResponse,
+    EducationStatusResponse,
+    EducationAutocompleteResponse,
 )
 
 
@@ -204,19 +258,19 @@ class AccountInitApi(Resource):
                 raise ValueError("invitation_code is required")
 
             # check invitation code
-            invitation_code = (
-                db.session.query(InvitationCode)
+            invitation_code = db.session.scalar(
+                select(InvitationCode)
                 .where(
                     InvitationCode.code == args.invitation_code,
-                    InvitationCode.status == "unused",
+                    InvitationCode.status == InvitationCodeStatus.UNUSED,
                 )
-                .first()
+                .limit(1)
             )
 
             if not invitation_code:
                 raise InvalidInvitationCodeError()
 
-            invitation_code.status = "used"
+            invitation_code.status = InvitationCodeStatus.USED
             invitation_code.used_at = naive_utc_now()
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
@@ -224,7 +278,7 @@ class AccountInitApi(Resource):
         account.interface_language = args.interface_language
         account.timezone = args.timezone
         account.interface_theme = "light"
-        account.status = "active"
+        account.status = AccountStatus.ACTIVE
         account.initialized_at = naive_utc_now()
         db.session.commit()
 
@@ -236,11 +290,11 @@ class AccountProfileApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     @enterprise_license_required
     def get(self):
         current_user, _ = current_account_with_tenant()
-        return current_user
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/name")
@@ -249,23 +303,35 @@ class AccountNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
         updated_account = AccountService.update_account(current_user, name=args.name)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
+    @console_ns.expect(console_ns.models[AccountAvatarQuery.__name__])
+    @console_ns.doc("get_account_avatar")
+    @console_ns.doc(description="Get account avatar url")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        avatar_url = file_helpers.get_signed_file_url(args.avatar)
+        return {"avatar_url": avatar_url}
+
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -273,7 +339,7 @@ class AccountAvatarApi(Resource):
 
         updated_account = AccountService.update_account(current_user, avatar=args.avatar)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-language")
@@ -282,7 +348,7 @@ class AccountInterfaceLanguageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -290,7 +356,7 @@ class AccountInterfaceLanguageApi(Resource):
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-theme")
@@ -299,7 +365,7 @@ class AccountInterfaceThemeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -307,7 +373,7 @@ class AccountInterfaceThemeApi(Resource):
 
         updated_account = AccountService.update_account(current_user, interface_theme=args.interface_theme)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/timezone")
@@ -316,7 +382,7 @@ class AccountTimezoneApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -324,7 +390,7 @@ class AccountTimezoneApi(Resource):
 
         updated_account = AccountService.update_account(current_user, timezone=args.timezone)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/password")
@@ -333,7 +399,7 @@ class AccountPasswordApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -344,7 +410,7 @@ class AccountPasswordApi(Resource):
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
-        return {"result": "success"}
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/integrates")
@@ -352,7 +418,7 @@ class AccountIntegrateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_model)
+    @console_ns.response(200, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -388,7 +454,9 @@ class AccountIntegrateApi(Resource):
                     }
                 )
 
-        return {"data": integrate_data}
+        return AccountIntegrateListResponse(
+            data=[AccountIntegrateResponse.model_validate(item) for item in integrate_data]
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/delete/verify")
@@ -440,31 +508,22 @@ class AccountDeleteUpdateFeedbackApi(Resource):
 
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    verify_fields = {
-        "token": fields.String,
-    }
-
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(verify_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationVerifyResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
-        return BillingService.EducationIdentity.verify(account.id, account.email)
+        return EducationVerifyResponse.model_validate(
+            BillingService.EducationIdentity.verify(account.id, account.email) or {}
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
-    status_fields = {
-        "result": fields.Boolean,
-        "is_student": fields.Boolean,
-        "expire_at": TimestampField,
-        "allow_refresh": fields.Boolean,
-    }
-
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @setup_required
     @login_required
@@ -484,37 +543,33 @@ class EducationApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(status_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationStatusResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
-        res = BillingService.EducationIdentity.status(account.id)
+        res = BillingService.EducationIdentity.status(account.id) or {}
         # convert expire_at to UTC timestamp from isoformat
         if res and "expire_at" in res:
             res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return res
+        return EducationStatusResponse.model_validate(res).model_dump(mode="json")
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    data_fields = {
-        "data": fields.List(fields.String),
-        "curr_page": fields.Integer,
-        "has_next": fields.Boolean,
-    }
-
     @console_ns.expect(console_ns.models[EducationAutocompleteQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(data_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     def get(self):
-        payload = request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
 
-        return BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit)
+        return EducationAutocompleteResponse.model_validate(
+            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {}
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/change-email")
@@ -554,8 +609,7 @@ class ChangeEmailSendEmailApi(Resource):
 
             user_email = current_user.email
         else:
-            with Session(db.engine) as session:
-                account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
+            account = AccountService.get_account_by_email_with_case_fallback(args.email)
             if account is None:
                 raise AccountNotFound()
             email_for_sending = account.email
@@ -620,7 +674,7 @@ class ChangeEmailResetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)
@@ -649,7 +703,7 @@ class ChangeEmailResetApi(Resource):
             email=normalized_new_email,
         )
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/change-email/check-email-unique")

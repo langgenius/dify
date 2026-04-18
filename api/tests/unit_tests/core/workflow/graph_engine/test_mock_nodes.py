@@ -8,26 +8,46 @@ allowing tests to run without external dependencies.
 import time
 from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
+from unittest.mock import MagicMock
 
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from core.model_manager import ModelInstance
+from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.nodes.agent import AgentNode
-from core.workflow.nodes.code import CodeNode
-from core.workflow.nodes.document_extractor import DocumentExtractorNode
-from core.workflow.nodes.http_request import HttpRequestNode
-from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
-from core.workflow.nodes.llm import LLMNode
-from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
-from core.workflow.nodes.question_classifier import QuestionClassifierNode
-from core.workflow.nodes.template_transform import TemplateTransformNode
-from core.workflow.nodes.tool import ToolNode
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.code import CodeNode
+from graphon.nodes.document_extractor import DocumentExtractorNode
+from graphon.nodes.http_request import HttpRequestNode
+from graphon.nodes.llm import LLMNode
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.parameter_extractor import ParameterExtractorNode
+from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
+from graphon.nodes.question_classifier import QuestionClassifierNode
+from graphon.nodes.template_transform import TemplateTransformNode
+from graphon.nodes.tool import ToolNode
+from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
+
+
+class _TestJinja2Renderer(Jinja2TemplateRenderer):
+    """Simple Jinja2 renderer for tests (avoids code executor)."""
+
+    def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
+        from jinja2 import Template as _Jinja2Template
+
+        try:
+            return _Jinja2Template(template).render(**variables)
+        except Exception as exc:  # pragma: no cover - pass through as contract error
+            raise TemplateRenderError(str(exc)) from exc
 
 
 class MockNodeMixin:
@@ -35,15 +55,49 @@ class MockNodeMixin:
 
     def __init__(
         self,
-        id: str,
-        config: Mapping[str, Any],
+        node_id: str,
+        config: Any,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
+        if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
+            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
+            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
+            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+            kwargs.setdefault("prompt_message_serializer", MagicMock(spec=PromptMessageSerializerProtocol))
+            # LLM-like nodes now require an http_client; provide a mock by default for tests.
+            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+
+        if isinstance(self, (LLMNode, QuestionClassifierNode)):
+            kwargs.setdefault("llm_file_saver", MagicMock(spec=LLMFileSaver))
+
+        if isinstance(self, HttpRequestNode):
+            kwargs.setdefault("file_reference_factory", MagicMock(spec=FileReferenceFactoryProtocol))
+
+        # Ensure TemplateTransformNode receives a renderer now required by constructor
+        if isinstance(self, TemplateTransformNode):
+            kwargs.setdefault("jinja2_template_renderer", _TestJinja2Renderer())
+
+        # Provide default tool_file_manager_factory for ToolNode subclasses
+        from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+
+        if isinstance(self, _ToolNode):
+            kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
+            kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
+
+        if isinstance(self, AgentNode):
+            presentation_provider = MagicMock()
+            presentation_provider.get_icon.return_value = None
+            kwargs.setdefault("strategy_resolver", MagicMock())
+            kwargs.setdefault("presentation_provider", presentation_provider)
+            kwargs.setdefault("runtime_support", MagicMock())
+            kwargs.setdefault("message_transformer", MagicMock())
+
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -549,8 +603,8 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
 
-from core.workflow.nodes.iteration import IterationNode
-from core.workflow.nodes.loop import LoopNode
+from graphon.nodes.iteration import IterationNode
+from graphon.nodes.loop import LoopNode
 
 
 class MockIterationNode(MockNodeMixin, IterationNode):
@@ -564,24 +618,20 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from graphon.entities import GraphInitParams
+        from graphon.graph import Graph
+        from graphon.graph_engine import GraphEngine, GraphEngineConfig
+        from graphon.graph_engine.command_channels import InMemoryChannel
+        from graphon.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -613,7 +663,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         )
 
         if not iteration_graph:
-            from core.workflow.nodes.iteration.exc import IterationGraphNotFoundError
+            from graphon.nodes.iteration.exc import IterationGraphNotFoundError
 
             raise IterationGraphNotFoundError("iteration graph not found")
 
@@ -640,24 +690,20 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from graphon.entities import GraphInitParams
+        from graphon.graph import Graph
+        from graphon.graph_engine import GraphEngine, GraphEngineConfig
+        from graphon.graph_engine.command_channels import InMemoryChannel
+        from graphon.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 

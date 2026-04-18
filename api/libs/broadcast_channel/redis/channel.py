@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
-from redis import Redis
+from redis import Redis, RedisCluster
 
 from ._subscription import RedisSubscriptionBase
 
@@ -18,7 +21,7 @@ class BroadcastChannel:
 
     def __init__(
         self,
-        redis_client: Redis,
+        redis_client: Redis | RedisCluster,
     ):
         self._client = redis_client
 
@@ -27,23 +30,25 @@ class BroadcastChannel:
 
 
 class Topic:
-    def __init__(self, redis_client: Redis, topic: str):
+    def __init__(self, redis_client: Redis | RedisCluster, topic: str):
         self._client = redis_client
         self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
 
     def as_producer(self) -> Producer:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.publish(self._topic, payload)
+        self._client.publish(self._redis_topic, payload)
 
     def as_subscriber(self) -> Subscriber:
         return self
 
     def subscribe(self) -> Subscription:
         return _RedisSubscription(
+            client=self._client,
             pubsub=self._client.pubsub(),
-            topic=self._topic,
+            topic=self._redis_topic,
         )
 
 
@@ -61,9 +66,9 @@ class _RedisSubscription(RedisSubscriptionBase):
         assert self._pubsub is not None
         self._pubsub.unsubscribe(self._topic)
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
-        return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
+        return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
 
     def _get_message_type(self) -> str:
         return "message"

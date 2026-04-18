@@ -5,6 +5,7 @@ import type { IterationNodeType } from '@/app/components/workflow/nodes/iteratio
 import type {
   NodeProps,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   cloneElement,
   memo,
@@ -16,7 +17,6 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import ErrorHandleOnNode from '../error-handle-on-node'
 import {
   NodeSourceHandle,
@@ -39,7 +39,7 @@ const BaseCard = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px] border-transparent',
+        'flex rounded-2xl border-2 border-transparent',
       )}
       style={{
         width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
@@ -58,21 +58,21 @@ const BaseCard = ({
         }}
       >
         <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
         )}
         >
           <NodeTargetHandle
             id={id}
             data={data}
-            handleClassName="!top-4 !-left-[9px] !translate-y-0"
+            handleClassName="top-4! -left-[9px]! translate-y-0!"
             handleId="target"
           />
           {
-            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && (
+            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && (
               <NodeSourceHandle
                 id={id}
                 data={data}
-                handleClassName="!top-4 !-right-[9px] !translate-y-0"
+                handleClassName="top-4! -right-[9px]! translate-y-0!"
                 handleId="source"
               />
             )
@@ -84,7 +84,7 @@ const BaseCard = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>
               {data.title}
@@ -100,7 +100,7 @@ const BaseCard = ({
                   </div>
                 )}
                 >
-                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
+                  <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
                     {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
@@ -115,7 +115,7 @@ const BaseCard = ({
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && children && (
-            <div className="h-[calc(100%-42px)] w-full grow pb-1 pl-1 pr-1">
+            <div className="h-[calc(100%-42px)] w-full grow pr-1 pb-1 pl-1">
               {cloneElement(children, { id, data })}
             </div>
           )
@@ -130,7 +130,7 @@ const BaseCard = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
+            <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
               {data.desc}
             </div>
           )

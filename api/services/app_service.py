@@ -1,25 +1,26 @@
 import json
 import logging
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
+from sqlalchemy import select
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
-from models.model import App, AppMode, AppModelConfig, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict[str, Any]) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
@@ -77,7 +78,7 @@ class AppService:
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def create_app(self, tenant_id: str, args: dict[str, Any], account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -92,7 +93,7 @@ class AppService:
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
             # get model provider
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id or "")
 
             # get default model instance
             try:
@@ -107,28 +108,36 @@ class AppService:
 
             if model_instance:
                 if (
-                    model_instance.model == default_model_config["model"]["name"]
+                    model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
                 ):
                     default_model_dict = default_model_config["model"]
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
                     if model_schema is None:
-                        raise ValueError(f"model schema not found for model {model_instance.model}")
+                        raise ValueError(f"model schema not found for model {model_instance.model_name}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
-                        "name": model_instance.model,
+                        "name": model_instance.model_name,
                         "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
                         "completion_params": {},
                     }
             else:
-                provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
-                )
-                default_model_config["model"]["provider"] = provider
-                default_model_config["model"]["name"] = model
+                try:
+                    provider, model = model_manager.get_default_provider_model_name(
+                        tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
+                    )
+                except Exception:
+                    logger.exception("Get default provider model failed, tenant_id: %s", tenant_id)
+                    provider = default_model_config["model"].get("provider")
+                    model = default_model_config["model"].get("name")
+
+                if provider:
+                    default_model_config["model"]["provider"] = provider
+                if model:
+                    default_model_config["model"]["name"] = model
                 default_model_dict = default_model_config["model"]
 
             default_model_config["model"] = json.dumps(default_model_dict)
@@ -187,13 +196,17 @@ class AppService:
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**tool)
+                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
+                if len(typed_tool) != len(tool):
+                    continue
+                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
                         tenant_id=current_user.current_tenant_id,
                         app_id=app.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_user.current_tenant_id,
@@ -238,7 +251,7 @@ class AppService:
     class ArgsDict(TypedDict):
         name: str
         description: str
-        icon_type: str
+        icon_type: IconType | str | None
         icon: str
         icon_background: str
         use_icon_as_answer_icon: bool
@@ -254,7 +267,13 @@ class AppService:
         assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
-        app.icon_type = args["icon_type"]
+        icon_type = args.get("icon_type")
+        if icon_type is None:
+            resolved_icon_type = app.icon_type
+        else:
+            resolved_icon_type = IconType(icon_type)
+
+        app.icon_type = resolved_icon_type
         app.icon = args["icon"]
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
@@ -262,6 +281,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -277,6 +298,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -295,6 +318,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def update_app_site_status(self, app: App, enable_site: bool) -> App:
@@ -311,6 +336,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -330,6 +357,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def delete_app(self, app: App):
@@ -337,6 +366,8 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        app_was_deleted.send(app)
+
         db.session.delete(app)
         db.session.commit()
 
@@ -358,7 +389,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta: dict = {"tool_icons": {}}
+        meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
@@ -388,7 +419,7 @@ class AppService:
             agent_config = app_model_config.agent_mode_dict
 
             # get all tools
-            tools = agent_config.get("tools", [])
+            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -403,9 +434,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider | None = (
-                            db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
-                        )
+                        provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
@@ -421,7 +450,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.query(Site).where(Site.app_id == app_id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -433,7 +462,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.query(Site).where(Site.code == app_code).first()
+        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

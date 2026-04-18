@@ -11,21 +11,21 @@ import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.model_runtime.utils.encoders import jsonable_encoder
+from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeType
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -49,10 +49,10 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     """
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = json.loads(data.get("inputs", "{}"))
-    process_data = json.loads(data.get("process_data", "{}"))
-    outputs = json.loads(data.get("outputs", "{}"))
-    metadata = json.loads(data.get("execution_metadata", "{}"))
+    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
+    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
+    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
+    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}
@@ -78,7 +78,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
         node_id=data.get("node_id", ""),
-        node_type=NodeType(data.get("node_type", "start")),
+        node_type=data.get("node_type", "start"),
         title=data.get("title", ""),
         inputs=inputs,
         process_data=process_data,
@@ -109,7 +109,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
@@ -185,7 +185,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ("predecessor_node_id", domain_model.predecessor_node_id or ""),
             ("node_execution_id", domain_model.node_execution_id or ""),
             ("node_id", domain_model.node_id),
-            ("node_type", domain_model.node_type.value),
+            ("node_type", domain_model.node_type),
             ("title", domain_model.title),
             (
                 "inputs",
@@ -305,35 +305,39 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
-    def get_by_workflow_run(
+    def get_by_workflow_execution(
         self,
-        workflow_run_id: str,
+        workflow_execution_id: str,
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all NodeExecution instances for a specific workflow run.
+        Retrieve all node executions for a workflow execution.
         Uses LogStore SQL query with window function to get the latest version of each node execution.
         This ensures we only get the most recent version of each node execution record.
         Args:
-            workflow_run_id: The workflow run ID
+            workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
-            A list of NodeExecution instances
+            A list of workflow node execution instances
 
         Note:
             This method uses ROW_NUMBER() window function partitioned by node_execution_id
             to get the latest version (highest log_version) of each node execution.
         """
-        logger.debug("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
+        logger.debug(
+            "get_by_workflow_execution: workflow_execution_id=%s, order_config=%s",
+            workflow_execution_id,
+            order_config,
+        )
         # Build SQL query with deduplication using window function
         # ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC)
         # ensures we get the latest version of each node execution
 
         # Escape parameters to prevent SQL injection
-        escaped_workflow_run_id = escape_identifier(workflow_run_id)
+        escaped_workflow_execution_id = escape_identifier(workflow_execution_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
 
         # Build ORDER BY clause for outer query
@@ -361,7 +365,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC) AS rn
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
-                WHERE workflow_run_id='{escaped_workflow_run_id}'
+                WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
                   {app_id_filter}
             ) t
@@ -392,5 +396,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             return executions
 
         except Exception:
-            logger.exception("Failed to retrieve node executions from LogStore: workflow_run_id=%s", workflow_run_id)
+            logger.exception(
+                "Failed to retrieve node executions from LogStore: workflow_execution_id=%s",
+                workflow_execution_id,
+            )
             raise

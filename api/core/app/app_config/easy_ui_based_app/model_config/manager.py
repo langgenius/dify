@@ -2,15 +2,15 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
 
 class ModelConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> ModelConfigEntity:
+    def convert(cls, config: AppModelConfigDict) -> ModelConfigEntity:
         """
         Convert model config to model config
 
@@ -22,7 +22,7 @@ class ModelConfigManager:
         if not model_config:
             raise ValueError("model is required")
 
-        completion_params = model_config.get("completion_params")
+        completion_params = model_config.get("completion_params") or {}
         stop = []
         if "stop" in completion_params:
             stop = completion_params["stop"]
@@ -40,7 +40,7 @@ class ModelConfigManager:
         )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for model config
 
@@ -53,9 +53,12 @@ class ModelConfigManager:
         if not isinstance(config["model"], dict):
             raise ValueError("model must be of object type")
 
+        # Keep provider discovery and provider-backed model listing on the same
+        # request-scoped runtime so caller scope and provider caches stay aligned.
+        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+
         # model.provider
-        model_provider_factory = ModelProviderFactory(tenant_id)
-        provider_entities = model_provider_factory.get_providers()
+        provider_entities = assembly.model_provider_factory.get_providers()
         model_provider_names = [provider.provider for provider in provider_entities]
         if "provider" not in config["model"]:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
@@ -70,8 +73,7 @@ class ModelConfigManager:
         if "name" not in config["model"]:
             raise ValueError("model.name is required")
 
-        provider_manager = ProviderManager()
-        models = provider_manager.get_configurations(tenant_id).get_models(
+        models = assembly.provider_manager.get_configurations(tenant_id).get_models(
             provider=config["model"]["provider"], model_type=ModelType.LLM
         )
 
@@ -105,7 +107,7 @@ class ModelConfigManager:
         return dict(config), ["model"]
 
     @classmethod
-    def validate_model_completion_params(cls, cp: dict):
+    def validate_model_completion_params(cls, cp: dict[str, Any]):
         # model.completion_params
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")

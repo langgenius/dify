@@ -7,6 +7,47 @@ from unittest.mock import MagicMock, patch
 class TestCelerySSLConfiguration:
     """Test suite for Celery SSL configuration."""
 
+    def test_get_celery_broker_transport_options_includes_global_keyprefix_for_redis(self):
+        mock_config = MagicMock()
+        mock_config.CELERY_USE_SENTINEL = False
+        mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+        with patch("extensions.ext_celery.dify_config", mock_config):
+            from extensions.ext_celery import get_celery_broker_transport_options
+
+            result = get_celery_broker_transport_options()
+
+        assert result["global_keyprefix"] == "enterprise-a:"
+
+    def test_get_celery_broker_transport_options_omits_global_keyprefix_when_prefix_empty(self):
+        mock_config = MagicMock()
+        mock_config.CELERY_USE_SENTINEL = False
+        mock_config.REDIS_KEY_PREFIX = "   "
+
+        with patch("extensions.ext_celery.dify_config", mock_config):
+            from extensions.ext_celery import get_celery_broker_transport_options
+
+            result = get_celery_broker_transport_options()
+
+        assert "global_keyprefix" not in result
+
+    def test_get_celery_broker_transport_options_keeps_sentinel_and_adds_global_keyprefix(self):
+        mock_config = MagicMock()
+        mock_config.CELERY_USE_SENTINEL = True
+        mock_config.CELERY_SENTINEL_MASTER_NAME = "mymaster"
+        mock_config.CELERY_SENTINEL_SOCKET_TIMEOUT = 0.1
+        mock_config.CELERY_SENTINEL_PASSWORD = "secret"
+        mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+        with patch("extensions.ext_celery.dify_config", mock_config):
+            from extensions.ext_celery import get_celery_broker_transport_options
+
+            result = get_celery_broker_transport_options()
+
+        assert result["master_name"] == "mymaster"
+        assert result["sentinel_kwargs"]["password"] == "secret"
+        assert result["global_keyprefix"] == "enterprise-a:"
+
     def test_get_celery_ssl_options_when_ssl_disabled(self):
         """Test SSL options when BROKER_USE_SSL is False."""
         from configs import DifyConfig
@@ -14,9 +55,9 @@ class TestCelerySSLConfiguration:
         dify_config = DifyConfig(CELERY_BROKER_URL="redis://localhost:6379/0")
 
         with patch("extensions.ext_celery.dify_config", dify_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is None
 
     def test_get_celery_ssl_options_when_broker_not_redis(self):
@@ -25,9 +66,9 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_BROKER_URL = "amqp://localhost:5672"
 
         with patch("extensions.ext_celery.dify_config", mock_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is None
 
     def test_get_celery_ssl_options_with_cert_none(self):
@@ -40,9 +81,9 @@ class TestCelerySSLConfiguration:
         mock_config.REDIS_SSL_KEYFILE = None
 
         with patch("extensions.ext_celery.dify_config", mock_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is not None
             assert result["ssl_cert_reqs"] == ssl.CERT_NONE
             assert result["ssl_ca_certs"] is None
@@ -59,9 +100,9 @@ class TestCelerySSLConfiguration:
         mock_config.REDIS_SSL_KEYFILE = "/path/to/client.key"
 
         with patch("extensions.ext_celery.dify_config", mock_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is not None
             assert result["ssl_cert_reqs"] == ssl.CERT_REQUIRED
             assert result["ssl_ca_certs"] == "/path/to/ca.crt"
@@ -78,9 +119,9 @@ class TestCelerySSLConfiguration:
         mock_config.REDIS_SSL_KEYFILE = None
 
         with patch("extensions.ext_celery.dify_config", mock_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is not None
             assert result["ssl_cert_reqs"] == ssl.CERT_OPTIONAL
             assert result["ssl_ca_certs"] == "/path/to/ca.crt"
@@ -95,15 +136,16 @@ class TestCelerySSLConfiguration:
         mock_config.REDIS_SSL_KEYFILE = None
 
         with patch("extensions.ext_celery.dify_config", mock_config):
-            from extensions.ext_celery import _get_celery_ssl_options
+            from extensions.ext_celery import get_celery_ssl_options
 
-            result = _get_celery_ssl_options()
+            result = get_celery_ssl_options()
             assert result is not None
             assert result["ssl_cert_reqs"] == ssl.CERT_NONE  # Should default to CERT_NONE
 
     def test_celery_init_applies_ssl_to_broker_and_backend(self):
         """Test that SSL options are applied to both broker and backend when using Redis."""
         mock_config = MagicMock()
+        mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.CELERY_BACKEND = "redis"
         mock_config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
@@ -132,6 +174,8 @@ class TestCelerySSLConfiguration:
         mock_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK = 0
         mock_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK = False
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
+        mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
+        mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
 
         with patch("extensions.ext_celery.dify_config", mock_config):
             from dify_app import DifyApp
@@ -148,3 +192,49 @@ class TestCelerySSLConfiguration:
             # Check that SSL is also applied to Redis backend
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
+
+    def test_celery_init_applies_global_keyprefix_to_broker_and_backend_transport(self):
+        mock_config = MagicMock()
+        mock_config.BROKER_USE_SSL = False
+        mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+        mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
+        mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
+        mock_config.CELERY_BACKEND = "redis"
+        mock_config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+        mock_config.CELERY_USE_SENTINEL = False
+        mock_config.LOG_FORMAT = "%(message)s"
+        mock_config.LOG_TZ = "UTC"
+        mock_config.LOG_FILE = None
+        mock_config.CELERY_TASK_ANNOTATIONS = {}
+
+        mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
+        mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
+        mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
+        mock_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK = False
+        mock_config.ENABLE_CLEAN_MESSAGES = False
+        mock_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK = False
+        mock_config.ENABLE_DATASETS_QUEUE_MONITOR = False
+        mock_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK = False
+        mock_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK = False
+        mock_config.MARKETPLACE_ENABLED = False
+        mock_config.WORKFLOW_LOG_CLEANUP_ENABLED = False
+        mock_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK = False
+        mock_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK = False
+        mock_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL = 1
+        mock_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK = False
+        mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
+        mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
+        mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
+        mock_config.ENTERPRISE_ENABLED = False
+        mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
+
+        with patch("extensions.ext_celery.dify_config", mock_config):
+            from dify_app import DifyApp
+            from extensions.ext_celery import init_app
+
+            app = DifyApp(__name__)
+            celery_app = init_app(app)
+
+        assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
+        assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"

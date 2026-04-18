@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 import services
-from core.file.helpers import verify_plugin_file_signature
+from core.tools.signature import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import FileResponse
 

@@ -1,9 +1,9 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
@@ -72,17 +72,17 @@ const Empty = () => {
         ))}
       </div>
       {/* mask */}
-      <div className="absolute z-20 h-full w-full bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+      <div className="absolute z-20 h-full w-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
       <div className="relative z-30 flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-y-3">
           <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl
-          border-[1px] border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5"
+          border border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5"
           >
             <Group className="h-5 w-5 text-text-tertiary" />
-            <Line className="absolute right-[-1px] top-1/2 -translate-y-1/2" />
-            <Line className="absolute left-[-1px] top-1/2 -translate-y-1/2" />
-            <Line className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-            <Line className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90" />
+            <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
+            <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
+            <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+            <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
           </div>
           <div className="system-md-regular text-text-tertiary">
             {text}

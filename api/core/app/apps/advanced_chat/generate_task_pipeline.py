@@ -4,16 +4,19 @@ import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime
 from threading import Thread
 from typing import Any, Union
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -24,6 +27,8 @@ from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
+    QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -42,6 +47,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
@@ -60,21 +66,72 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes import NodeType
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
+from models.execution_extra_content import HumanInputContent
+from models.model import AppMode
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowSnapshot:
+    id: str
+    tenant_id: str
+    features_dict: Mapping[str, Any]
+
+    @classmethod
+    def from_workflow(cls, workflow: Workflow) -> "WorkflowSnapshot":
+        return cls(
+            id=workflow.id,
+            tenant_id=workflow.tenant_id,
+            features_dict=dict(workflow.features_dict),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationSnapshot:
+    id: str
+    mode: AppMode
+
+    @classmethod
+    def from_conversation(cls, conversation: Conversation) -> "ConversationSnapshot":
+        return cls(
+            id=conversation.id,
+            mode=conversation.mode,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class MessageSnapshot:
+    id: str
+    query: str
+    created_at: datetime
+    status: MessageStatus
+    answer: str
+
+    @classmethod
+    def from_message(cls, message: Message) -> "MessageSnapshot":
+        return cls(
+            id=message.id,
+            query=message.query,
+            created_at=message.created_at,
+            status=message.status,
+            answer=message.answer,
+        )
 
 
 class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
@@ -85,10 +142,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def __init__(
         self,
         application_generate_entity: AdvancedChatAppGenerateEntity,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
-        conversation: Conversation,
-        message: Message,
+        conversation: ConversationSnapshot,
+        message: MessageSnapshot,
         user: Union[Account, EndUser],
         stream: bool,
         dialogue_count: int,
@@ -111,7 +168,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
-        self._workflow_system_variables = SystemVariable(
+        self._workflow_system_variables = build_system_variables(
             query=message.query,
             files=application_generate_entity.files,
             conversation_id=conversation.id,
@@ -128,6 +185,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         self._task_state = WorkflowTaskState()
+        self._seed_task_state_from_message(message)
         self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
         )
@@ -135,6 +193,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._application_generate_entity = application_generate_entity
         self._workflow_id = workflow.id
         self._workflow_features_dict = workflow.features_dict
+        self._workflow_tenant_id = workflow.tenant_id
         self._conversation_id = conversation.id
         self._conversation_mode = conversation.mode
         self._message_id = message.id
@@ -144,7 +203,12 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
+        self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
+
+    def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
+        if message.status == MessageStatus.PAUSED and message.answer:
+            self._task_state.answer = message.answer
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -264,13 +328,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            yield session
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
@@ -308,6 +367,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
             workflow_id=self._workflow_id,
+            reason=event.reason,
         )
 
         yield workflow_start_resp
@@ -343,7 +403,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse, None, None]:
         """Handle node succeeded events."""
         # Record files if it's an answer node or end node
-        if event.node_type in [NodeType.ANSWER, NodeType.END, NodeType.LLM]:
+        if event.node_type in [BuiltinNodeTypes.ANSWER, BuiltinNodeTypes.END, BuiltinNodeTypes.LLM]:
             self._recorded_files.extend(
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
@@ -502,8 +562,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
-        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -524,7 +586,39 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             exceptions_count=event.exceptions_count,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
+
+    def _handle_workflow_paused_event(
+        self,
+        event: QueueWorkflowPausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle workflow paused events."""
+        validated_state = self._ensure_graph_runtime_initialized()
+        responses = self._workflow_response_converter.workflow_pause_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+            graph_runtime_state=validated_state,
+        )
+        for reason in event.reasons:
+            if isinstance(reason, HumanInputRequired):
+                self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
+        yield from responses
+        resolved_state: GraphRuntimeState | None = None
+        try:
+            resolved_state = self._ensure_graph_runtime_initialized()
+        except ValueError:
+            resolved_state = None
+
+        with self._database_session() as session:
+            self._save_message(session=session, graph_runtime_state=resolved_state)
+            message = self._get_message(session=session)
+            if message is not None:
+                message.status = MessageStatus.PAUSED
+            self._message_saved_on_pause = True
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
@@ -614,9 +708,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
             )
 
-        # Save message
-        with self._database_session() as session:
-            self._save_message(session=session, graph_runtime_state=resolved_state)
+        # Save message unless it has already been persisted on pause.
+        if not self._message_saved_on_pause:
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=resolved_state)
 
         yield self._message_end_to_stream_response()
 
@@ -625,22 +720,79 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse, None, None]:
         """Handle retriever resources events."""
         self._message_cycle_manager.handle_retriever_resources(event)
-        return
-        yield  # Make this a generator
+        yield from ()
 
     def _handle_annotation_reply_event(
         self, event: QueueAnnotationReplyEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle annotation reply events."""
         self._message_cycle_manager.handle_annotation_reply(event)
-        return
-        yield  # Make this a generator
+        yield from ()
 
     def _handle_message_replace_event(
         self, event: QueueMessageReplaceEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle message replace events."""
         yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text, reason=event.reason)
+
+    def _handle_human_input_form_filled_event(
+        self, event: QueueHumanInputFormFilledEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form filled events."""
+        self._persist_human_input_extra_content(node_id=event.node_id)
+        yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
+    def _handle_human_input_form_timeout_event(
+        self, event: QueueHumanInputFormTimeoutEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form timeout events."""
+        yield self._workflow_response_converter.human_input_form_timeout_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
+    def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
+        if not self._workflow_run_id or not self._message_id:
+            return
+
+        if form_id is None:
+            if node_id is None:
+                return
+            form_id = self._load_human_input_form_id(node_id=node_id)
+            if form_id is None:
+                logger.warning(
+                    "HumanInput form not found for workflow run %s node %s",
+                    self._workflow_run_id,
+                    node_id,
+                )
+                return
+
+        with self._database_session() as session:
+            exists_stmt = select(HumanInputContent).where(
+                HumanInputContent.workflow_run_id == self._workflow_run_id,
+                HumanInputContent.message_id == self._message_id,
+                HumanInputContent.form_id == form_id,
+            )
+            if session.scalar(exists_stmt) is not None:
+                return
+
+            content = HumanInputContent(
+                workflow_run_id=self._workflow_run_id,
+                message_id=self._message_id,
+                form_id=form_id,
+            )
+            session.add(content)
+
+    def _load_human_input_form_id(self, *, node_id: str) -> str | None:
+        form_repository = HumanInputFormRepositoryImpl(
+            tenant_id=self._workflow_tenant_id,
+            workflow_execution_id=self._workflow_run_id,
+        )
+        form = form_repository.get_form(node_id)
+        if form is None:
+            return None
+        return form.id
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
@@ -659,6 +811,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
+            QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             QueueWorkflowFailedEvent: self._handle_workflow_failed_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
@@ -680,6 +833,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueMessageReplaceEvent: self._handle_message_replace_event,
             QueueAdvancedChatMessageEndEvent: self._handle_advanced_chat_message_end_event,
             QueueAgentLogEvent: self._handle_agent_log_event,
+            QueueHumanInputFormFilledEvent: self._handle_human_input_form_filled_event,
+            QueueHumanInputFormTimeoutEvent: self._handle_human_input_form_timeout_event,
         }
 
     def _dispatch_event(
@@ -747,6 +902,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 case QueueWorkflowFailedEvent():
                     yield from self._handle_workflow_failed_event(event, trace_manager=trace_manager)
                     break
+                case QueueWorkflowPausedEvent():
+                    yield from self._handle_workflow_paused_event(event)
+                    break
+
+                case QueueWorkflowSucceededEvent():
+                    yield from self._handle_workflow_succeeded_event(event, trace_manager=trace_manager)
+                    break
+
+                case QueueWorkflowPartialSuccessEvent():
+                    yield from self._handle_workflow_partial_success_event(event, trace_manager=trace_manager)
+                    break
 
                 case QueueStopEvent():
                     yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
@@ -772,6 +938,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
+        if message is None:
+            return
+
+        if message.status == MessageStatus.PAUSED:
+            message.status = MessageStatus.NORMAL
 
         # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer
@@ -809,21 +980,23 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         metadata = self._task_state.metadata.model_dump()
         message.message_metadata = json.dumps(jsonable_encoder(metadata))
-        message_files = [
-            MessageFile(
-                message_id=message.id,
-                type=file["type"],
-                transfer_method=file["transfer_method"],
-                url=file["remote_url"],
-                belongs_to="assistant",
-                upload_file_id=file["related_id"],
-                created_by_role=CreatorUserRole.ACCOUNT
-                if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else CreatorUserRole.END_USER,
-                created_by=message.from_account_id or message.from_end_user_id or "",
+        message_files: list[MessageFile] = []
+        for file in self._recorded_files:
+            reference = file.get("reference") or file.get("related_id")
+            message_files.append(
+                MessageFile(
+                    message_id=message.id,
+                    type=file["type"],
+                    transfer_method=file["transfer_method"],
+                    url=file["remote_url"],
+                    belongs_to=MessageFileBelongsTo.ASSISTANT,
+                    upload_file_id=resolve_file_record_id(reference if isinstance(reference, str) else None),
+                    created_by_role=CreatorUserRole.ACCOUNT
+                    if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatorUserRole.END_USER,
+                    created_by=message.from_account_id or message.from_end_user_id or "",
+                )
             )
-            for file in self._recorded_files
-        ]
         session.add_all(message_files)
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
@@ -879,13 +1052,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return message
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
-        with Session(db.engine) as session, session.begin():
-            saver = self._draft_var_saver_factory(
-                session=session,
-                app_id=self._application_generate_entity.app_config.app_id,
-                node_id=event.node_id,
-                node_type=event.node_type,
-                node_execution_id=node_execution_id,
-                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
-            )
-            saver.save(event.process_data, event.outputs)
+        saver = self._draft_var_saver_factory(
+            app_id=self._application_generate_entity.app_config.app_id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            node_execution_id=node_execution_id,
+            enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+        )
+        saver.save(event.process_data, event.outputs)

@@ -1,13 +1,14 @@
-from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
-from jsonschema import Draft7Validator, SchemaError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
-from core.file import FileTransferMethod, FileType, FileUploadConfig
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.entities import MetadataFilteringCondition
+from graphon.file import FileUploadConfig
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
 
@@ -90,61 +91,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity | None = None
 
 
-class VariableEntityType(StrEnum):
-    TEXT_INPUT = "text-input"
-    SELECT = "select"
-    PARAGRAPH = "paragraph"
-    NUMBER = "number"
-    EXTERNAL_DATA_TOOL = "external_data_tool"
-    FILE = "file"
-    FILE_LIST = "file-list"
-    CHECKBOX = "checkbox"
-    JSON_OBJECT = "json_object"
-
-
-class VariableEntity(BaseModel):
-    """
-    Variable Entity.
-    """
-
-    # `variable` records the name of the variable in user inputs.
-    variable: str
-    label: str
-    description: str = ""
-    type: VariableEntityType
-    required: bool = False
-    hide: bool = False
-    default: Any = None
-    max_length: int | None = None
-    options: Sequence[str] = Field(default_factory=list)
-    allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
-    allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
-    allowed_file_upload_methods: Sequence[FileTransferMethod] | None = Field(default_factory=list)
-    json_schema: dict | None = Field(default=None)
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def convert_none_description(cls, v: Any) -> str:
-        return v or ""
-
-    @field_validator("options", mode="before")
-    @classmethod
-    def convert_none_options(cls, v: Any) -> Sequence[str]:
-        return v or []
-
-    @field_validator("json_schema")
-    @classmethod
-    def validate_json_schema(cls, schema: dict | None) -> dict | None:
-        if schema is None:
-            return None
-        try:
-            Draft7Validator.check_schema(schema)
-        except SchemaError as e:
-            raise ValueError(f"Invalid JSON schema: {e.message}")
-        return schema
-
-
-class RagPipelineVariableEntity(VariableEntity):
+class RagPipelineVariableEntity(WorkflowVariableEntity):
     """
     Rag Pipeline Variable Entity.
     """
@@ -164,55 +111,11 @@ class ExternalDataVariableEntity(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-SupportedComparisonOperator = Literal[
-    # for string or array
-    "contains",
-    "not contains",
-    "start with",
-    "end with",
-    "is",
-    "is not",
-    "empty",
-    "not empty",
-    "in",
-    "not in",
-    # for number
-    "=",
-    "≠",
-    ">",
-    "<",
-    "≥",
-    "≤",
-    # for time
-    "before",
-    "after",
-]
-
-
 class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
-
-
-class Condition(BaseModel):
-    """
-    Condition detail
-    """
-
-    name: str
-    comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None | int | float = None
-
-
-class MetadataFilteringCondition(BaseModel):
-    """
-    Metadata Filtering Condition.
-    """
-
-    logical_operator: Literal["and", "or"] | None = "and"
-    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
@@ -248,8 +151,8 @@ class DatasetRetrieveConfigEntity(BaseModel):
     top_k: int | None = None
     score_threshold: float | None = 0.0
     rerank_mode: str | None = "reranking_model"
-    reranking_model: dict | None = None
-    weights: dict | None = None
+    reranking_model: RerankingModelDict | None = None
+    weights: WeightsDict | None = None
     reranking_enabled: bool | None = True
     metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
     metadata_model_config: ModelConfig | None = None
@@ -314,7 +217,7 @@ class AppConfig(BaseModel):
     app_id: str
     app_mode: AppMode
     additional_features: AppAdditionalFeatures | None = None
-    variables: list[VariableEntity] = []
+    variables: list[WorkflowVariableEntity] = []
     sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
 
 
@@ -335,7 +238,7 @@ class EasyUIBasedAppConfig(AppConfig):
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
     app_model_config_id: str
-    app_model_config_dict: dict
+    app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
     dataset: DatasetEntity | None = None

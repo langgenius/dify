@@ -7,6 +7,8 @@ import type { FC } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -16,7 +18,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
@@ -35,7 +36,6 @@ import {
   useInvalidateAllMCPTools,
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   panelClassName?: string
@@ -137,10 +137,7 @@ const ToolPicker: FC<Props> = ({
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
@@ -169,8 +166,8 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+      <PortalToFollowElemContent className="z-1002">
+        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
@@ -186,7 +183,7 @@ const ToolPicker: FC<Props> = ({
           </div>
           <AllTools
             className="mt-1"
-            toolContentClassName="max-w-[100%]"
+            toolContentClassName="max-w-full"
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect as OnSelectBlock}

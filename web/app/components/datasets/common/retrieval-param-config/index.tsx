@@ -1,8 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
+import { cn } from '@langgenius/dify-ui/cn'
 
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +13,6 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
-import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -23,7 +23,6 @@ import {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
 import Reranking from '../../create/assets/rerank.svg'
 
@@ -60,7 +59,7 @@ const RetrievalParamConfig: FC<Props> = ({
 
   const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange({
       ...value,
       reranking_enable: enable,
@@ -97,7 +96,7 @@ const RetrievalParamConfig: FC<Props> = ({
       }
     }
     if (v === RerankingModeEnum.RerankingModel && !currentModel)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange(result)
   }
 
@@ -122,12 +121,12 @@ const RetrievalParamConfig: FC<Props> = ({
             {canToggleRerankModalEnable && (
               <Switch
                 size="md"
-                defaultValue={value.reranking_enable}
-                onChange={handleToggleRerankEnable}
+                checked={value.reranking_enable}
+                onCheckedChange={handleToggleRerankEnable}
               />
             )}
             <div className="flex items-center">
-              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
@@ -153,7 +152,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
                 {showMultiModalTip && (
                   <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
@@ -215,11 +214,11 @@ const RetrievalParamConfig: FC<Props> = ({
                     isChosen={value.reranking_mode === option.value}
                     onChosen={() => handleChangeRerankMode(option.value)}
                     icon={(
-                      <Image
+                      <img
                         src={
                           option.value === RerankingModeEnum.WeightedScore
-                            ? ProgressIndicator
-                            : Reranking
+                            ? ProgressIndicator.src
+                            : Reranking.src
                         }
                         alt=""
                       />
@@ -247,11 +246,11 @@ const RetrievalParamConfig: FC<Props> = ({
                         ...value.weights!,
                         vector_setting: {
                           ...value.weights!.vector_setting,
-                          vector_weight: v.value[0],
+                          vector_weight: v.value[0]!,
                         },
                         keyword_setting: {
                           ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1],
+                          keyword_weight: v.value[1]!,
                         },
                       },
                     })
@@ -277,7 +276,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                   {showMultiModalTip && (
                     <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>

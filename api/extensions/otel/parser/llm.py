@@ -8,10 +8,10 @@ from typing import Any
 
 from opentelemetry.trace import Span
 
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 

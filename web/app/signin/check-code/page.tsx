@@ -1,16 +1,16 @@
 'use client'
 import type { FormEvent } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import Countdown from '@/app/components/signin/countdown'
-
 import { useLocale } from '@/context/i18n'
+
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -31,17 +31,11 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -57,7 +51,7 @@ export default function CheckCode() {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          const redirectUrl = resolvePostLoginRedirect()
           router.replace(redirectUrl || '/apps')
         }
       }
@@ -94,9 +88,9 @@ export default function CheckCode() {
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
-      <div className="pb-4 pt-2">
+      <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-2 text-text-secondary">
+        <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t('checkCode.tipsPrefix', { ns: 'login' })}
             <strong>{email}</strong>
@@ -107,7 +101,7 @@ export default function CheckCode() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
         <Input
           ref={codeInputRef}
           id="code"
@@ -121,13 +115,13 @@ export default function CheckCode() {
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
-        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+        <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
       <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('back', { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t('back', { ns: 'login' })}</span>
       </div>
     </div>
   )

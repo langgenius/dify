@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
@@ -99,7 +99,7 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        payload = request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)
         args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
@@ -118,7 +118,7 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        payload = request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)
         args = ParserCredentialId.model_validate(payload)
 
         model_provider_service = ModelProviderService()
