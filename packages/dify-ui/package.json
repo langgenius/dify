@@ -37,6 +37,10 @@
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
     },
+    "./meter": {
+      "types": "./src/meter/index.tsx",
+      "import": "./src/meter/index.tsx"
+    },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
