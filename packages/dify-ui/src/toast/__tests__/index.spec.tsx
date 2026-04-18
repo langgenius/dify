@@ -3,10 +3,22 @@ import { toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
+declare global {
+  // eslint-disable-next-line vars-on-top
+  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined
+}
+
 describe('base/ui/toast', () => {
+  beforeAll(() => {
+    // Base UI waits for `requestAnimationFrame` + `getAnimations().finished`
+    // before unmounting a toast. Fake timers can't reliably drive that path,
+    // so short-circuit it to keep auto-dismiss assertions deterministic in CI.
+    globalThis.BASE_UI_ANIMATIONS_DISABLED = true
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     toast.dismiss()
   })
 
@@ -14,6 +26,10 @@ describe('base/ui/toast', () => {
     toast.dismiss()
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+  })
+
+  afterAll(() => {
+    globalThis.BASE_UI_ANIMATIONS_DISABLED = undefined
   })
 
   it('should render a success toast when called through the typed shortcut', async () => {
