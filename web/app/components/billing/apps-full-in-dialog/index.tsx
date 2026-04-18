@@ -1,8 +1,9 @@
 'use client'
+import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getThresholdTone, MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
@@ -11,9 +12,6 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
-
-const WARN_AT = 50
-const ERROR_AT = 80
 
 const AppsFull: FC<{ loc: string, className?: string }> = ({
   loc,
@@ -26,7 +24,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
   const percent = total > 0 ? (usage / total) * 100 : 0
-  const tone = getThresholdTone(percent, { warningAt: WARN_AT, errorAt: ERROR_AT })
+  const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
   return (
     <div className={cn(
       'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',

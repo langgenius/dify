@@ -1,6 +1,5 @@
 import { render } from 'vitest-browser-react'
 import {
-  getThresholdTone,
   MeterIndicator,
   MeterLabel,
   MeterRoot,
@@ -125,35 +124,5 @@ describe('Meter compound primitives', () => {
 
     await expect.element(screen.getByText('Score')).toBeInTheDocument()
     await expect.element(screen.getByText('42%')).toBeInTheDocument()
-  })
-})
-
-describe('getThresholdTone', () => {
-  it('returns "neutral" below the warning threshold', () => {
-    expect(getThresholdTone(0)).toBe('neutral')
-    expect(getThresholdTone(50)).toBe('neutral')
-    expect(getThresholdTone(79.99)).toBe('neutral')
-  })
-
-  it('returns "warning" at/above the warning threshold and below error', () => {
-    expect(getThresholdTone(80)).toBe('warning')
-    expect(getThresholdTone(99.99)).toBe('warning')
-  })
-
-  it('returns "error" at/above the error threshold', () => {
-    expect(getThresholdTone(100)).toBe('error')
-    expect(getThresholdTone(250)).toBe('error')
-  })
-
-  it('honors custom thresholds', () => {
-    expect(getThresholdTone(55, { warningAt: 50, errorAt: 70 })).toBe('warning')
-    expect(getThresholdTone(70, { warningAt: 50, errorAt: 70 })).toBe('error')
-    expect(getThresholdTone(49, { warningAt: 50, errorAt: 70 })).toBe('neutral')
-  })
-
-  it('returns "neutral" for non-finite input', () => {
-    expect(getThresholdTone(Number.NaN)).toBe('neutral')
-    expect(getThresholdTone(Number.POSITIVE_INFINITY)).toBe('neutral')
-    expect(getThresholdTone(Number.NEGATIVE_INFINITY)).toBe('neutral')
   })
 })

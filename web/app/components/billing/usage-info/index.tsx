@@ -1,7 +1,8 @@
 'use client'
+import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getThresholdTone, MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -53,7 +54,12 @@ const UsageInfo: FC<Props> = ({
   // this, so we never need a separate tone override.
   const rawPercent = total > 0 ? (usage / total) * 100 : 0
   const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
-  const tone = getThresholdTone(effectivePercent)
+  const tone: MeterTone
+    = effectivePercent >= 100
+      ? 'error'
+      : effectivePercent >= 80
+        ? 'warning'
+        : 'neutral'
 
   const isUnlimited = total === NUM_INFINITE
   let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total

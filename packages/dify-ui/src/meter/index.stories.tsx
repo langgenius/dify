@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { getThresholdTone, MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
+import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
 
 const meta = {
   title: 'Base/UI/Meter',
@@ -69,29 +69,6 @@ export const Error: Story = {
       </MeterRoot>
     </div>
   ),
-}
-
-export const AutoToneFromThreshold: Story = {
-  args: {
-    'value': 87,
-    'aria-label': 'Vector space usage',
-  },
-  render: (args) => {
-    const percent = (Number(args.value) / 100) * 100
-    return (
-      <div className="w-[320px]">
-        <MeterRoot {...args}>
-          <MeterTrack>
-            <MeterIndicator tone={getThresholdTone(percent)} />
-          </MeterTrack>
-        </MeterRoot>
-        <div className="mt-2 text-center system-xs-regular text-text-tertiary">
-          {percent.toFixed(0)}
-          %
-        </div>
-      </div>
-    )
-  },
 }
 
 export const ComposedWithLabelAndValue: Story = {

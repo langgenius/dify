@@ -86,37 +86,3 @@ export function MeterLabel({ className, ...props }: MeterLabelProps) {
     />
   )
 }
-
-const DEFAULT_WARNING_AT = 80
-const DEFAULT_ERROR_AT = 100
-
-type ThresholdToneOptions = {
-  warningAt?: number
-  errorAt?: number
-}
-
-/**
- * Pure mapping from a percent (0..100) to a `MeterTone`. The single place
- * threshold policy lives; keeps UI primitives free of business rules.
- *
- * @example
- *   const tone = getThresholdTone((usage / total) * 100)
- *   <MeterRoot value={usage} max={total} aria-label="Vector space">
- *     <MeterTrack><MeterIndicator tone={tone} /></MeterTrack>
- *   </MeterRoot>
- */
-export function getThresholdTone(
-  percent: number,
-  {
-    warningAt = DEFAULT_WARNING_AT,
-    errorAt = DEFAULT_ERROR_AT,
-  }: ThresholdToneOptions = {},
-): MeterTone {
-  if (!Number.isFinite(percent))
-    return 'neutral'
-  if (percent >= errorAt)
-    return 'error'
-  if (percent >= warningAt)
-    return 'warning'
-  return 'neutral'
-}
