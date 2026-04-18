@@ -1,9 +1,9 @@
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import _AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 // CJS/ESM interop: Turbopack may resolve the module namespace object instead of the default export
 // eslint-disable-next-line ts/no-explicit-any
 const AutosizeInput = ('default' in (_AutosizeInput as any) ? (_AutosizeInput as any).default : _AutosizeInput) as typeof _AutosizeInput

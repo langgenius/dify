@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import Input from '@/app/components/base/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +8,9 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import * as React from 'react'
+import Input from '@/app/components/base/input'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 

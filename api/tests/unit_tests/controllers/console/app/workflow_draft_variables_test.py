@@ -314,8 +314,8 @@ def test_workflow_file_variable_with_signed_url():
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
-        id="test_file_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_upload_file_id",
         filename="test.jpg",
@@ -370,8 +370,8 @@ def test_workflow_file_variable_remote_url():
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(
-        id="test_file_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/test.jpg",
         filename="test.jpg",

@@ -66,15 +66,15 @@ class PluginModelRuntime(ModelRuntime):
             if not provider_schema.icon_small:
                 raise ValueError(f"Provider {provider} does not have small icon.")
             file_name = (
-                provider_schema.icon_small.zh_Hans if lang.lower() == "zh_hans" else provider_schema.icon_small.en_US
+                provider_schema.icon_small.zh_hans if lang.lower() == "zh_hans" else provider_schema.icon_small.en_us
             )
         elif icon_type.lower() == "icon_small_dark":
             if not provider_schema.icon_small_dark:
                 raise ValueError(f"Provider {provider} does not have small dark icon.")
             file_name = (
-                provider_schema.icon_small_dark.zh_Hans
+                provider_schema.icon_small_dark.zh_hans
                 if lang.lower() == "zh_hans"
-                else provider_schema.icon_small_dark.en_US
+                else provider_schema.icon_small_dark.en_us
             )
         else:
             raise ValueError(f"Unsupported icon type: {icon_type}.")

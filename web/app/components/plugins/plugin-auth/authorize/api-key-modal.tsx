@@ -3,6 +3,7 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
   useCallback,
@@ -16,7 +17,6 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {

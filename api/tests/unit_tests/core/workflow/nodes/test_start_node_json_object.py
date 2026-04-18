@@ -22,10 +22,7 @@ def make_start_node(user_inputs, variables):
         inputs=user_inputs,
     )
 
-    config = {
-        "id": "start",
-        "data": StartNodeData(title="Start", variables=variables).model_dump(),
-    }
+    node_data = StartNodeData(title="Start", variables=variables)
 
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
@@ -33,8 +30,8 @@ def make_start_node(user_inputs, variables):
     )
 
     return StartNode(
-        id="start",
-        config=config,
+        node_id="start",
+        config=node_data,
         graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
@@ -109,7 +106,7 @@ def test_json_object_invalid_json_string():
 
     node = make_start_node(user_inputs, variables)
 
-    with pytest.raises(ValueError, match="JSON object for 'profile' must be an object"):
+    with pytest.raises(TypeError, match="JSON object for 'profile' must be an object"):
         node._run()
 
 
@@ -248,25 +245,22 @@ def test_start_node_outputs_full_variable_pool_snapshot():
         inputs={"profile": {"age": 20, "name": "Tom"}},
     )
 
-    config = {
-        "id": "start",
-        "data": StartNodeData(
-            title="Start",
-            variables=[
-                VariableEntity(
-                    variable="profile",
-                    label="profile",
-                    type=VariableEntityType.JSON_OBJECT,
-                    required=True,
-                )
-            ],
-        ).model_dump(),
-    }
+    node_data = StartNodeData(
+        title="Start",
+        variables=[
+            VariableEntity(
+                variable="profile",
+                label="profile",
+                type=VariableEntityType.JSON_OBJECT,
+                required=True,
+            )
+        ],
+    )
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node = StartNode(
-        id="start",
-        config=config,
+        node_id="start",
+        config=node_data,
         graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},

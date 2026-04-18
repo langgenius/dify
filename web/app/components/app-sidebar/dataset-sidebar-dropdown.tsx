@@ -2,16 +2,16 @@ import type { NavIcon } from './nav-link'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   RiMenuLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
@@ -41,15 +41,7 @@ const DatasetSidebarDropdown = ({
 
   const { data: relatedApps } = useDatasetRelatedApps(dataset.id)
 
-  const [open, doSetOpen] = useState(false)
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
-    openRef.current = v
-  }, [doSetOpen])
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
+  const [open, setOpen] = useState(false)
 
   const iconInfo = dataset.icon_info || {
     icon: '📙',
@@ -66,32 +58,28 @@ const DatasetSidebarDropdown = ({
   return (
     <>
       <div className="fixed top-2 left-2 z-20">
-        <PortalToFollowElem
-          open={open}
-          onOpenChange={setOpen}
-          placement="bottom-start"
-          offset={{
-            mainAxis: -41,
-          }}
-        >
-          <PortalToFollowElemTrigger onClick={handleTrigger}>
-            <div
-              className={cn(
-                'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
-                open && 'bg-background-default-hover',
-              )}
-            >
-              <AppIcon
-                size="small"
-                iconType={iconInfo.icon_type}
-                icon={iconInfo.icon}
-                background={iconInfo.icon_background}
-                imageUrl={iconInfo.icon_url}
-              />
-              <RiMenuLine className="size-4 text-text-tertiary" />
-            </div>
-          </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-50">
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          <DropdownMenuTrigger
+            aria-label={t('operation.more', { ns: 'common' })}
+            className={cn(
+              'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
+              open && 'bg-background-default-hover',
+            )}
+          >
+            <AppIcon
+              size="small"
+              iconType={iconInfo.icon_type}
+              icon={iconInfo.icon}
+              background={iconInfo.icon_background}
+              imageUrl={iconInfo.icon_url}
+            />
+            <RiMenuLine className="size-4 text-text-tertiary" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            placement="bottom-start"
+            sideOffset={4}
+            popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+          >
             <div className="relative w-[216px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg">
               <Effect className="top-[-22px] -left-5 opacity-15" />
               <div className="flex flex-col gap-y-2 p-4">
@@ -155,8 +143,8 @@ const DatasetSidebarDropdown = ({
                 documentCount={dataset.document_count}
               />
             </div>
-          </PortalToFollowElemContent>
-        </PortalToFollowElem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   )
