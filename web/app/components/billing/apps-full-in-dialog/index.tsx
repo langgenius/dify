@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { getThresholdTone } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ProgressBar from '@/app/components/billing/progress-bar'
@@ -12,8 +13,8 @@ import { useProviderContext } from '@/context/provider-context'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
-const LOW = 50
-const MIDDLE = 80
+const WARN_AT = 50
+const ERROR_AT = 80
 
 const AppsFull: FC<{ loc: string, className?: string }> = ({
   loc,
@@ -26,15 +27,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
   const percent = usage / total * 100
-  const color = (() => {
-    if (percent < LOW)
-      return 'bg-components-progress-bar-progress-solid'
-
-    if (percent < MIDDLE)
-      return 'bg-components-progress-warning-progress'
-
-    return 'bg-components-progress-error-progress'
-  })()
+  const tone = getThresholdTone(percent, { warningAt: WARN_AT, errorAt: ERROR_AT })
   return (
     <div className={cn(
       'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
@@ -78,10 +71,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             {total}
           </div>
         </div>
-        <ProgressBar
-          percent={percent}
-          color={color}
-        />
+        <ProgressBar percent={percent} tone={tone} />
       </div>
     </div>
   )

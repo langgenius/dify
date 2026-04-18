@@ -106,7 +106,9 @@ type ThresholdToneOptions = {
  *
  * @example
  *   const tone = getThresholdTone((usage / total) * 100)
- *   <Meter value={usage} max={total} tone={tone} aria-label="Vector space" />
+ *   <MeterRoot value={usage} max={total} aria-label="Vector space">
+ *     <MeterTrack><MeterIndicator tone={tone} /></MeterTrack>
+ *   </MeterRoot>
  */
 export function getThresholdTone(
   percent: number,
@@ -122,70 +124,4 @@ export function getThresholdTone(
   if (percent >= warningAt)
     return 'warning'
   return 'neutral'
-}
-
-type MeterSlotClassNames = {
-  track?: string
-  indicator?: string
-}
-
-export type MeterProps = Pick<
-  MeterRootProps,
-  | 'value'
-  | 'min'
-  | 'max'
-  | 'format'
-  | 'locale'
-  | 'aria-valuetext'
-  | 'getAriaValueText'
-> & {
-  'tone'?: MeterTone
-  'className'?: string
-  'slotClassNames'?: MeterSlotClassNames
-  'aria-label'?: string
-  'aria-labelledby'?: string
-}
-
-const meterRootClassName = 'block w-full'
-
-const getSafeValue = (value: number, min: number) =>
-  Number.isFinite(value) ? value : min
-
-/**
- * Opinionated Dify meter: a track + colored indicator, nothing else.
- * For layouts with `MeterLabel` / `MeterValue`, use the compound primitives
- * (`MeterRoot` + slots) directly.
- */
-export function Meter({
-  value,
-  min = 0,
-  max = 100,
-  format,
-  locale,
-  tone = 'neutral',
-  className,
-  slotClassNames,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledby,
-  'aria-valuetext': ariaValuetext,
-  getAriaValueText,
-}: MeterProps) {
-  return (
-    <MeterRoot
-      value={getSafeValue(value, min)}
-      min={min}
-      max={max}
-      format={format}
-      locale={locale}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledby}
-      aria-valuetext={ariaValuetext}
-      getAriaValueText={getAriaValueText}
-      className={cn(meterRootClassName, className)}
-    >
-      <MeterTrack className={slotClassNames?.track}>
-        <MeterIndicator tone={tone} className={slotClassNames?.indicator} />
-      </MeterTrack>
-    </MeterRoot>
-  )
 }

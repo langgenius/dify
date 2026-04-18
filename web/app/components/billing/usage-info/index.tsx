@@ -1,6 +1,7 @@
 'use client'
 import type { ComponentType, FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { getThresholdTone } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -25,8 +26,6 @@ type Props = {
   storageTooltip?: string
   isSandboxPlan?: boolean
 }
-
-const WARNING_THRESHOLD = 80
 
 const UsageInfo: FC<Props> = ({
   className,
@@ -53,14 +52,7 @@ const UsageInfo: FC<Props> = ({
   const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
 
   const percent = usage / total * 100
-  const getProgressColor = () => {
-    if (percent >= 100)
-      return 'bg-components-progress-error-progress'
-    if (percent >= WARNING_THRESHOLD)
-      return 'bg-components-progress-warning-progress'
-    return 'bg-components-progress-bar-progress-solid'
-  }
-  const color = getProgressColor()
+  const tone = getThresholdTone(percent)
   const isUnlimited = total === NUM_INFINITE
   let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
   if (!isUnlimited && unit && unitPosition === 'inline')
@@ -164,7 +156,7 @@ const UsageInfo: FC<Props> = ({
     const progressBar = (
       <ProgressBar
         percent={isBelowThreshold ? 0 : percent}
-        color={isSandboxFull ? 'bg-components-progress-error-progress' : color}
+        tone={isSandboxFull ? 'error' : tone}
         indeterminate={isBelowThreshold}
         indeterminateFull={isBelowThreshold && isSandboxPlan}
       />

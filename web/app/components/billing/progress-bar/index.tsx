@@ -1,39 +1,45 @@
+'use client'
+import type { MeterTone } from '@langgenius/dify-ui/meter'
 import { cn } from '@langgenius/dify-ui/cn'
+import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 
 type ProgressBarProps = {
-  percent: number
-  color: string
+  percent?: number
+  tone?: MeterTone
   indeterminate?: boolean
-  indeterminateFull?: boolean // For Sandbox users: full width stripe
+  /** For Sandbox users: render a full-width striped placeholder instead of a 30px pill. */
+  indeterminateFull?: boolean
 }
 
-const ProgressBar = ({
+function ProgressBar({
   percent = 0,
-  color = 'bg-components-progress-bar-progress-solid',
+  tone = 'neutral',
   indeterminate = false,
   indeterminateFull = false,
-}: ProgressBarProps) => {
+}: ProgressBarProps) {
   if (indeterminate) {
     return (
-      <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
+      <div
+        aria-hidden="true"
+        className="overflow-hidden rounded-md bg-components-progress-bar-bg"
+      >
         <div
           data-testid="billing-progress-bar-indeterminate"
-          className={cn('h-1 rounded-md bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
+          className={cn(
+            'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
+            indeterminateFull ? 'w-full' : 'w-[30px]',
+          )}
         />
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
-      <div
-        data-testid="billing-progress-bar"
-        className={cn('h-1 rounded-md', color)}
-        style={{
-          width: `${Math.min(percent, 100)}%`,
-        }}
-      />
-    </div>
+    <MeterRoot value={Math.min(percent, 100)} max={100}>
+      <MeterTrack>
+        <MeterIndicator data-testid="billing-progress-bar" tone={tone} />
+      </MeterTrack>
+    </MeterRoot>
   )
 }
 

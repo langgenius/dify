@@ -1,7 +1,6 @@
 import { render } from 'vitest-browser-react'
 import {
   getThresholdTone,
-  Meter,
   MeterIndicator,
   MeterLabel,
   MeterRoot,
@@ -9,95 +8,105 @@ import {
   MeterValue,
 } from '../index'
 
-describe('Meter', () => {
+describe('Meter compound primitives', () => {
   it('exposes role="meter" with ARIA value metadata', async () => {
-    const screen = await render(<Meter value={40} aria-label="Quota" />)
-
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('role', 'meter')
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuemin', '0')
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuemax', '100')
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuenow', '40')
-  })
-
-  it('respects custom min and max', async () => {
-    const screen = await render(<Meter value={3} min={1} max={5} aria-label="Quota" />)
-
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuemin', '1')
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuemax', '5')
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuenow', '3')
-  })
-
-  it('clamps non-finite value to min for ARIA', async () => {
-    const screen = await render(<Meter value={Number.NaN} min={10} aria-label="Quota" />)
-
-    await expect.element(screen.getByLabelText('Quota')).toHaveAttribute('aria-valuenow', '10')
-  })
-
-  it('applies tone class on the default indicator', async () => {
     const screen = await render(
-      <Meter value={95} tone="error" aria-label="Quota" />,
-    )
-
-    const indicator = screen.container.querySelector('[data-tone], [class*="progress-error"]')
-      ?? screen.container.querySelector('.bg-components-progress-error-progress')
-    expect(indicator).not.toBeNull()
-  })
-
-  it('uses warning tone classes when tone="warning"', async () => {
-    const screen = await render(<Meter value={85} tone="warning" aria-label="Quota" />)
-
-    const warningFill = screen.container.querySelector(
-      '.bg-components-progress-warning-progress',
-    )
-    expect(warningFill).not.toBeNull()
-  })
-
-  it('uses neutral tone classes by default', async () => {
-    const screen = await render(<Meter value={25} aria-label="Quota" />)
-
-    const neutralFill = screen.container.querySelector(
-      '.bg-components-progress-bar-progress-solid',
-    )
-    expect(neutralFill).not.toBeNull()
-  })
-
-  it('supports a compound layout via MeterRoot + slots', async () => {
-    const screen = await render(
-      <MeterRoot value={50} aria-label="Quota">
-        <MeterLabel>Storage</MeterLabel>
-        <MeterTrack data-testid="custom-track">
-          <MeterIndicator tone="warning" />
+      <MeterRoot value={40} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator />
         </MeterTrack>
-        <MeterValue />
       </MeterRoot>,
     )
 
-    await expect.element(screen.getByTestId('custom-track')).toBeInTheDocument()
-    await expect.element(screen.getByText('Storage')).toBeInTheDocument()
+    const meter = screen.getByLabelText('Quota')
+    await expect.element(meter).toHaveAttribute('role', 'meter')
+    await expect.element(meter).toHaveAttribute('aria-valuemin', '0')
+    await expect.element(meter).toHaveAttribute('aria-valuemax', '100')
+    await expect.element(meter).toHaveAttribute('aria-valuenow', '40')
   })
 
-  it('forwards className to the root element', async () => {
+  it('respects custom min and max', async () => {
     const screen = await render(
-      <Meter value={10} className="custom-meter" aria-label="Quota" />,
+      <MeterRoot value={3} min={1} max={5} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator />
+        </MeterTrack>
+      </MeterRoot>,
     )
 
-    expect(screen.container.querySelector('.custom-meter')).toBeInTheDocument()
+    const meter = screen.getByLabelText('Quota')
+    await expect.element(meter).toHaveAttribute('aria-valuemin', '1')
+    await expect.element(meter).toHaveAttribute('aria-valuemax', '5')
+    await expect.element(meter).toHaveAttribute('aria-valuenow', '3')
   })
 
-  it('applies slotClassNames to track and indicator', async () => {
+  it('sets indicator width from value/min/max', async () => {
     const screen = await render(
-      <Meter
-        value={10}
-        aria-label="Quota"
-        slotClassNames={{ track: 'custom-track', indicator: 'custom-indicator' }}
-      />,
+      <MeterRoot value={42} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator data-testid="indicator" />
+        </MeterTrack>
+      </MeterRoot>,
     )
 
-    expect(screen.container.querySelector('.custom-track')).toBeInTheDocument()
-    expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
+    const indicator = screen.getByTestId('indicator').element() as HTMLElement
+    expect(indicator.getAttribute('style')).toContain('width: 42%')
   })
 
-  it('formats MeterValue via Intl options', async () => {
+  it('applies tone="error" to the indicator', async () => {
+    const screen = await render(
+      <MeterRoot value={95} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator tone="error" data-testid="indicator" />
+        </MeterTrack>
+      </MeterRoot>,
+    )
+
+    const indicator = screen.getByTestId('indicator').element() as HTMLElement
+    expect(indicator.className).toContain('bg-components-progress-error-progress')
+  })
+
+  it('applies tone="warning" to the indicator', async () => {
+    const screen = await render(
+      <MeterRoot value={85} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator tone="warning" data-testid="indicator" />
+        </MeterTrack>
+      </MeterRoot>,
+    )
+
+    const indicator = screen.getByTestId('indicator').element() as HTMLElement
+    expect(indicator.className).toContain('bg-components-progress-warning-progress')
+  })
+
+  it('defaults to the neutral tone when none is supplied', async () => {
+    const screen = await render(
+      <MeterRoot value={25} aria-label="Quota">
+        <MeterTrack>
+          <MeterIndicator data-testid="indicator" />
+        </MeterTrack>
+      </MeterRoot>,
+    )
+
+    const indicator = screen.getByTestId('indicator').element() as HTMLElement
+    expect(indicator.className).toContain('bg-components-progress-bar-progress-solid')
+  })
+
+  it('forwards className to MeterTrack alongside the themed base classes', async () => {
+    const screen = await render(
+      <MeterRoot value={10} aria-label="Quota">
+        <MeterTrack className="custom-track" data-testid="track">
+          <MeterIndicator />
+        </MeterTrack>
+      </MeterRoot>,
+    )
+
+    const track = screen.getByTestId('track').element() as HTMLElement
+    expect(track.className).toContain('custom-track')
+    expect(track.className).toContain('bg-components-progress-bar-bg')
+  })
+
+  it('renders MeterLabel and MeterValue inside a compound layout', async () => {
     const screen = await render(
       <MeterRoot
         value={0.42}
@@ -106,6 +115,7 @@ describe('Meter', () => {
         format={{ style: 'percent', maximumFractionDigits: 0 }}
         aria-label="Score"
       >
+        <MeterLabel>Score</MeterLabel>
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
@@ -113,6 +123,7 @@ describe('Meter', () => {
       </MeterRoot>,
     )
 
+    await expect.element(screen.getByText('Score')).toBeInTheDocument()
     await expect.element(screen.getByText('42%')).toBeInTheDocument()
   })
 })

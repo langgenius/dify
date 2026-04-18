@@ -1,31 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { getThresholdTone, Meter, MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
+import { getThresholdTone, MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
 
 const meta = {
   title: 'Base/UI/Meter',
-  component: Meter,
+  component: MeterRoot,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
           'A graphical display of a numeric value within a known range. '
-          + 'Use for quota, capacity, or score indicators; do not use for '
-          + 'task-completion progress (that belongs on a Progress primitive).',
+          + 'Use the compound primitives (`MeterRoot / MeterTrack / MeterIndicator / '
+          + 'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do '
+          + 'not use for task-completion progress.',
       },
     },
   },
   tags: ['autodocs'],
-  argTypes: {
-    value: { control: 'number' },
-    min: { control: 'number' },
-    max: { control: 'number' },
-    tone: {
-      control: 'inline-radio',
-      options: ['neutral', 'warning', 'error'],
-    },
-  },
-} satisfies Meta<typeof Meter>
+} satisfies Meta<typeof MeterRoot>
 
 export default meta
 
@@ -34,13 +26,15 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   args: {
     'value': 42,
-    'max': 100,
-    'tone': 'neutral',
     'aria-label': 'Quota used',
   },
   render: args => (
     <div className="w-[320px]">
-      <Meter {...args} />
+      <MeterRoot {...args}>
+        <MeterTrack>
+          <MeterIndicator />
+        </MeterTrack>
+      </MeterRoot>
     </div>
   ),
 }
@@ -48,13 +42,15 @@ export const Default: Story = {
 export const Warning: Story = {
   args: {
     'value': 85,
-    'max': 100,
-    'tone': 'warning',
     'aria-label': 'Quota used',
   },
   render: args => (
     <div className="w-[320px]">
-      <Meter {...args} />
+      <MeterRoot {...args}>
+        <MeterTrack>
+          <MeterIndicator tone="warning" />
+        </MeterTrack>
+      </MeterRoot>
     </div>
   ),
 }
@@ -62,13 +58,15 @@ export const Warning: Story = {
 export const Error: Story = {
   args: {
     'value': 100,
-    'max': 100,
-    'tone': 'error',
     'aria-label': 'Quota used',
   },
   render: args => (
     <div className="w-[320px]">
-      <Meter {...args} />
+      <MeterRoot {...args}>
+        <MeterTrack>
+          <MeterIndicator tone="error" />
+        </MeterTrack>
+      </MeterRoot>
     </div>
   ),
 }
@@ -76,14 +74,17 @@ export const Error: Story = {
 export const AutoToneFromThreshold: Story = {
   args: {
     'value': 87,
-    'max': 100,
     'aria-label': 'Vector space usage',
   },
   render: (args) => {
-    const percent = (args.value / (args.max ?? 100)) * 100
+    const percent = (Number(args.value) / 100) * 100
     return (
       <div className="w-[320px]">
-        <Meter {...args} tone={getThresholdTone(percent)} />
+        <MeterRoot {...args}>
+          <MeterTrack>
+            <MeterIndicator tone={getThresholdTone(percent)} />
+          </MeterTrack>
+        </MeterRoot>
         <div className="mt-2 text-center system-xs-regular text-text-tertiary">
           {percent.toFixed(0)}
           %
@@ -96,17 +97,11 @@ export const AutoToneFromThreshold: Story = {
 export const ComposedWithLabelAndValue: Story = {
   args: {
     'value': 62,
-    'max': 100,
     'aria-label': 'Storage used',
   },
   render: args => (
     <div className="w-[320px] space-y-2 rounded-xl bg-components-panel-bg p-4">
-      <MeterRoot
-        value={args.value}
-        min={args.min}
-        max={args.max}
-        aria-label={args['aria-label']}
-      >
+      <MeterRoot {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Storage</MeterLabel>
           <MeterValue />
@@ -129,19 +124,13 @@ export const PercentFormatted: Story = {
   },
   render: args => (
     <div className="w-[320px] space-y-2">
-      <MeterRoot
-        value={args.value}
-        min={args.min}
-        max={args.max}
-        format={args.format}
-        aria-label={args['aria-label']}
-      >
+      <MeterRoot {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Score</MeterLabel>
           <MeterValue />
         </div>
         <MeterTrack className="mt-2">
-          <MeterIndicator tone="neutral" />
+          <MeterIndicator />
         </MeterTrack>
       </MeterRoot>
     </div>
