@@ -6,7 +6,7 @@ const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElem
 describe('base/ui/toast', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     toast.dismiss()
   })
 
