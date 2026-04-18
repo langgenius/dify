@@ -1,12 +1,11 @@
 'use client'
-import type { ComponentType, FC } from 'react'
+import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getThresholdTone } from '@langgenius/dify-ui/meter'
+import { getThresholdTone, MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { NUM_INFINITE } from '../config'
-import UsageMeter from '../usage-meter'
 
 type Props = {
   className?: string
@@ -46,13 +45,16 @@ const UsageInfo: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  // Special display logic for usage below threshold (only in storage mode)
   const isBelowThreshold = storageMode && usage < storageThreshold
-  // Sandbox at full capacity (usage >= threshold and it's sandbox plan)
   const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
 
-  const percent = usage / total * 100
-  const tone = getThresholdTone(percent)
+  // Single source of truth: sandbox full is visually clamped to 100%; all other
+  // determinate cases show the real percent capped at 100. Tone derives from
+  // this, so we never need a separate tone override.
+  const rawPercent = total > 0 ? (usage / total) * 100 : 0
+  const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
+  const tone = getThresholdTone(effectivePercent)
+
   const isUnlimited = total === NUM_INFINITE
   let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
   if (!isUnlimited && unit && unitPosition === 'inline')
@@ -60,35 +62,26 @@ const UsageInfo: FC<Props> = ({
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
   const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('usagePage.resetsIn', { ns: 'billing', count: resetInDays }) : undefined)
 
-  const renderRightInfo = () => {
-    if (resetText) {
-      return (
+  const rightInfo: ReactNode = resetText
+    ? (
         <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
           {resetText}
         </div>
       )
-    }
-    if (showUnit) {
-      return (
-        <div className="ml-auto system-xs-medium text-text-tertiary">
-          {unit}
-        </div>
-      )
-    }
-    return null
-  }
+    : showUnit
+      ? (
+          <div className="ml-auto system-xs-medium text-text-tertiary">
+            {unit}
+          </div>
+        )
+      : null
 
-  // Render usage display
-  const renderUsageDisplay = () => {
-    // Storage mode: special display logic
+  const usageDisplay: ReactNode = (() => {
     if (storageMode) {
-      // Sandbox user at full capacity
       if (isSandboxFull) {
         return (
           <div className="flex items-center gap-1">
-            <span>
-              {storageThreshold}
-            </span>
+            <span>{storageThreshold}</span>
             <span className="system-md-regular text-text-quaternary">/</span>
             <span>
               {storageThreshold}
@@ -98,7 +91,6 @@ const UsageInfo: FC<Props> = ({
           </div>
         )
       }
-      // Usage below threshold - show "< 50 MB" or "< 50 / 5GB"
       if (isBelowThreshold) {
         return (
           <div className="flex items-center gap-1">
@@ -117,7 +109,6 @@ const UsageInfo: FC<Props> = ({
           </div>
         )
       }
-      // Pro/Team users with usage >= threshold - show actual usage
       return (
         <div className="flex items-center gap-1">
           <span>{usage}</span>
@@ -127,7 +118,6 @@ const UsageInfo: FC<Props> = ({
       )
     }
 
-    // Default display (storageMode = false)
     return (
       <div className="flex items-center gap-1">
         <span>{usage}</span>
@@ -135,9 +125,32 @@ const UsageInfo: FC<Props> = ({
         <span>{totalDisplay}</span>
       </div>
     )
-  }
+  })()
 
-  const renderWithTooltip = (children: React.ReactNode) => {
+  const bar: ReactNode = isBelowThreshold
+    ? (
+        // Decorative "< N MB" placeholder — not a meter, not a progressbar.
+        <div
+          aria-hidden="true"
+          className="overflow-hidden rounded-md bg-components-progress-bar-bg"
+        >
+          <div
+            className={cn(
+              'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
+              isSandboxPlan ? 'w-full' : 'w-[30px]',
+            )}
+          />
+        </div>
+      )
+    : (
+        <MeterRoot value={effectivePercent} max={100}>
+          <MeterTrack>
+            <MeterIndicator tone={tone} />
+          </MeterTrack>
+        </MeterRoot>
+      )
+
+  const wrapWithStorageTooltip = (children: ReactNode) => {
     if (storageMode && storageTooltip) {
       return (
         <Tooltip
@@ -149,22 +162,6 @@ const UsageInfo: FC<Props> = ({
       )
     }
     return children
-  }
-
-  const renderUsageMeter = () => {
-    const meter = (
-      <UsageMeter
-        percent={isBelowThreshold ? 0 : percent}
-        tone={isSandboxFull ? 'error' : tone}
-        indeterminate={isBelowThreshold}
-        indeterminateFull={isBelowThreshold && isSandboxPlan}
-      />
-    )
-    return renderWithTooltip(meter)
-  }
-
-  const renderUsageWithTooltip = () => {
-    return renderWithTooltip(renderUsageDisplay())
   }
 
   return (
@@ -185,10 +182,10 @@ const UsageInfo: FC<Props> = ({
         )}
       </div>
       <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {renderUsageWithTooltip()}
-        {renderRightInfo()}
+        {wrapWithStorageTooltip(usageDisplay)}
+        {rightInfo}
       </div>
-      {renderUsageMeter()}
+      {wrapWithStorageTooltip(bar)}
     </div>
   )
 }

@@ -2,11 +2,10 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getThresholdTone } from '@langgenius/dify-ui/meter'
+import { getThresholdTone, MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
-import UsageMeter from '@/app/components/billing/usage-meter'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -26,7 +25,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const isTeam = plan.type === Plan.team
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
-  const percent = usage / total * 100
+  const percent = total > 0 ? (usage / total) * 100 : 0
   const tone = getThresholdTone(percent, { warningAt: WARN_AT, errorAt: ERROR_AT })
   return (
     <div className={cn(
@@ -71,7 +70,11 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             {total}
           </div>
         </div>
-        <UsageMeter percent={percent} tone={tone} />
+        <MeterRoot value={Math.min(percent, 100)} max={100}>
+          <MeterTrack>
+            <MeterIndicator tone={tone} />
+          </MeterTrack>
+        </MeterRoot>
       </div>
     </div>
   )
