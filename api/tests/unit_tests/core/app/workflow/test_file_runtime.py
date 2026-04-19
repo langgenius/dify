@@ -122,6 +122,18 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
+def test_resolve_upload_file_url_raises_when_files_url_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "")
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.INTERNAL_FILES_URL", "")
+
+    runtime = _build_runtime()
+
+    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+        runtime.resolve_upload_file_url(upload_file_id="upload-file-id", for_external=True)
+    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+        runtime.resolve_upload_file_url(upload_file_id="upload-file-id", for_external=False)
+
+
 def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")

@@ -7,13 +7,37 @@ import urllib.parse
 
 from configs import dify_config
 
+_FILES_URL_MISSING_MESSAGE = (
+    "FILES_URL is not configured. Set FILES_URL (and optionally INTERNAL_FILES_URL) "
+    "in your environment to a fully-qualified URL such as 'http://<host>:5001' so "
+    "signed file URLs can be generated for plugin and frontend access."
+)
+
+
+def require_files_base_url(*, for_external: bool) -> str:
+    """
+    Return the configured base URL for signed file links, raising a clear error
+    when it is empty.
+
+    ``for_external=True`` returns ``FILES_URL`` (used for browser/frontend access).
+    ``for_external=False`` prefers ``INTERNAL_FILES_URL`` and falls back to
+    ``FILES_URL`` (used for plugin/container-to-container access).
+    """
+    if for_external:
+        base_url = dify_config.FILES_URL
+    else:
+        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    if not base_url:
+        raise ValueError(_FILES_URL_MISSING_MESSAGE)
+    return base_url
+
 
 def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
     """
     sign file to get a temporary url for plugin access
     """
     # Use internal URL for plugin/tool file access in Docker environments, unless for_external is True
-    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+    base_url = require_files_base_url(for_external=for_external)
     file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
     timestamp = str(int(time.time()))
@@ -31,7 +55,7 @@ def sign_upload_file(upload_file_id: str, extension: str) -> str:
     sign file to get a temporary url for plugin access
     """
     # Use internal URL for plugin/tool file access in Docker environments
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    base_url = require_files_base_url(for_external=False)
     file_preview_url = f"{base_url}/files/{upload_file_id}/image-preview"
 
     timestamp = str(int(time.time()))
@@ -64,7 +88,7 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
 def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str, user_id: str) -> str:
     """Build the signed upload URL used by the plugin-facing file upload endpoint."""
 
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    base_url = require_files_base_url(for_external=False)
     upload_url = f"{base_url}/files/upload/for-plugin"
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
