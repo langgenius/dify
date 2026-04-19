@@ -3,7 +3,6 @@ import type { App } from '@/types/app'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { get, post } from './base'
-import { consoleQuery } from './client'
 import { getUserCanAccess } from './share'
 
 const NAME_SPACE = 'access-control'
