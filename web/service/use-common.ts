@@ -82,24 +82,15 @@ export type UserProfileWithMeta = {
 }
 
 /**
- * Single source of truth for `/account/profile`.
+ * Session probe for `/account/profile`. Helper (not hook) because oRPC can't
+ * express the `x-version` / `x-env` response headers we post-process.
  *
- * Why a queryOptions helper (not a `use-*` hook):
- * - The endpoint is NOT in the oRPC contract (`x-version` / `x-env` live in HTTP
- *   headers, which oRPC's schema-driven contracts cannot express); we must fetch
- *   via legacy `service/base.ts` and post-process headers.
- * - 5 callsites share the same queryFn (header reading + meta wrapping) plus the
- *   `staleTime: 0 / gcTime: 0` session-probe semantics. Per `frontend-query-mutation`
- *   skill, this is exactly when to extract a queryOptions helper rather than a
- *   thin `use-*` wrapper hook.
+ * Bindings:
+ *   commonLayout -> `useSuspenseQuery(userProfileQueryOptions())`
+ *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !is401(err) })`
  *
- * Consumers pick the binding that fits:
- *   commonLayout tree -> `useSuspenseQuery(userProfileQueryOptions())`
- *   signin/oauth     -> `useQuery({ ...userProfileQueryOptions(), throwOnError: (err) => !is401(err) })`
- *
- * `silent: true` is passed so that 401s do not toast on /signin (where
- * `service/base.ts#jumpTo` short-circuits via same-pathname no-op and the
- * Promise rejects up to react-query as state, not as a toast).
+ * `silent: true` + `retry: !is401` makes 401 a synchronous *state* (no toast,
+ * no ~7s retry storm). Transient errors still get the default 3 retries.
  */
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
@@ -122,6 +113,7 @@ export const userProfileQueryOptions = () =>
     },
     staleTime: 0,
     gcTime: 0,
+    retry: (failureCount, error) => !is401(error) && failureCount < 3,
   })
 
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
