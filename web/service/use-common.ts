@@ -21,7 +21,7 @@ import type {
   UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
 
@@ -229,9 +229,20 @@ export const useSchemaTypeDefinitions = () => {
 }
 
 export const useLogout = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+    onSuccess: () => {
+      // Drop all cached queries so the post-logout /signin probe doesn't read
+      // the previous user's profile (the userProfile queryKey is shared with
+      // the (commonLayout) tree, which keeps observing it during React's
+      // concurrent transition — gcTime: 0 is not enough on its own).
+      // Nuclear over targeted: every new user-scoped query would otherwise
+      // need to be remembered here. systemFeatures (user-agnostic) just
+      // refetches once on the way to /signin, which is cheap.
+      queryClient.clear()
+    },
   })
 }
 
