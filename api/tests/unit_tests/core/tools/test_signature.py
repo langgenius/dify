@@ -232,19 +232,53 @@ def test_require_files_base_url_raises_when_both_empty(monkeypatch: pytest.Monke
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "")
     monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
 
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         require_files_base_url(for_external=True)
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         require_files_base_url(for_external=False)
+
+
+@pytest.mark.parametrize(
+    "invalid_url",
+    [
+        "localhost:5001",
+        "example.com",
+        "//example.com:5001",
+        "ftp://example.com:5001",
+        "http://",
+    ],
+)
+def test_require_files_base_url_rejects_scheme_less_or_invalid_urls(
+    monkeypatch: pytest.MonkeyPatch, invalid_url: str
+) -> None:
+    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", invalid_url)
+    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
+
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
+        require_files_base_url(for_external=True)
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
+        require_files_base_url(for_external=False)
+
+
+def test_require_files_base_url_rejects_internal_url_without_scheme(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
+    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "api:5001")
+
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
+        require_files_base_url(for_external=False)
+    # external path still resolves against the valid FILES_URL
+    assert require_files_base_url(for_external=True) == "https://files.example.com"
 
 
 def test_sign_tool_file_raises_when_files_url_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "")
     monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
 
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         sign_tool_file("tool-file-id", ".png", for_external=True)
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         sign_tool_file("tool-file-id", ".png", for_external=False)
 
 
@@ -252,7 +286,7 @@ def test_sign_upload_file_raises_when_files_url_missing(monkeypatch: pytest.Monk
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "")
     monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
 
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         sign_upload_file("upload-id", ".png")
 
 
@@ -262,7 +296,7 @@ def test_get_signed_file_url_for_plugin_raises_when_files_url_missing(
     monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "")
     monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "")
 
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         get_signed_file_url_for_plugin(
             filename="report.pdf",
             mimetype="application/pdf",

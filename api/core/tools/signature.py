@@ -7,17 +7,18 @@ import urllib.parse
 
 from configs import dify_config
 
-_FILES_URL_MISSING_MESSAGE = (
-    "FILES_URL is not configured. Set FILES_URL (and optionally INTERNAL_FILES_URL) "
-    "in your environment to a fully-qualified URL such as 'http://<host>:5001' so "
-    "signed file URLs can be generated for plugin and frontend access."
+_FILES_URL_INVALID_MESSAGE = (
+    "FILES_URL is not configured with a fully-qualified http(s) URL. "
+    "Set FILES_URL (or its CONSOLE_API_URL fallback, and optionally INTERNAL_FILES_URL) "
+    "in your environment to a value such as 'http://<host>:5001' or 'https://<host>' "
+    "so signed file URLs can be generated for plugin and frontend access."
 )
 
 
 def require_files_base_url(*, for_external: bool) -> str:
     """
     Return the configured base URL for signed file links, raising a clear error
-    when it is empty.
+    when it is missing or not a fully-qualified http(s) URL.
 
     ``for_external=True`` returns ``FILES_URL`` (used for browser/frontend access).
     ``for_external=False`` prefers ``INTERNAL_FILES_URL`` and falls back to
@@ -28,7 +29,10 @@ def require_files_base_url(*, for_external: bool) -> str:
     else:
         base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
     if not base_url:
-        raise ValueError(_FILES_URL_MISSING_MESSAGE)
+        raise ValueError(_FILES_URL_INVALID_MESSAGE)
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(_FILES_URL_INVALID_MESSAGE)
     return base_url
 
 

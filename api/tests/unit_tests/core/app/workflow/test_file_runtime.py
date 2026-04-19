@@ -128,9 +128,9 @@ def test_resolve_upload_file_url_raises_when_files_url_missing(monkeypatch: pyte
 
     runtime = _build_runtime()
 
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id", for_external=True)
-    with pytest.raises(ValueError, match="FILES_URL is not configured"):
+    with pytest.raises(ValueError, match="FILES_URL is not configured with a fully-qualified"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id", for_external=False)
 
 
