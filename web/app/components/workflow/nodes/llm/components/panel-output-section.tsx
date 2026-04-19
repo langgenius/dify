@@ -51,7 +51,7 @@ const PanelOutputSection: FC<Props> = ({
                     </div>
                   )}
                 />
-                <PopoverContent popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg">
+                <PopoverContent popupClassName="border-0 bg-transparent p-0 shadow-none">
                   <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
                     <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
                     <div className="mt-1 body-xs-regular text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
