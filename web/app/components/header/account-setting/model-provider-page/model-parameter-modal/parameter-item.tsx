@@ -4,10 +4,10 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -349,18 +349,24 @@ function ParameterItem({
           </div>
           {
             parameterRule.help && (
-              <Tooltip>
-                <TooltipTrigger
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  nativeButton={false}
+                  aria-label={parameterRule.help[language] || parameterRule.help.en_US}
                   render={(
                     <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
                       <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
                     </span>
                   )}
                 />
-                <TooltipContent className="mr-1">
+                <PopoverContent
+                  placement="top"
+                  popupClassName="mr-1 max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+                >
                   <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )
           }
         </div>

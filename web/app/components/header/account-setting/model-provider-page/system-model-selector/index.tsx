@@ -10,12 +10,12 @@ import {
   DialogContent,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
@@ -138,8 +138,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
         {t(labelKey, { ns: 'common' })}
-        <Tooltip>
-          <TooltipTrigger
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            nativeButton={false}
             aria-label={tipText}
             render={(
               <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
@@ -147,12 +149,15 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               </span>
             )}
           />
-          <TooltipContent>
+          <PopoverContent
+            placement="top"
+            popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+          >
             <div className="w-[261px] text-text-tertiary">
               {tipText}
             </div>
-          </TooltipContent>
-        </Tooltip>
+          </PopoverContent>
+        </Popover>
       </div>
     )
   }

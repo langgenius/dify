@@ -4,10 +4,10 @@ import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
@@ -240,12 +240,19 @@ const ActionTooltip = ({
     return <>{children}</>
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={<div className="flex">{children}</div>} />
-      <TooltipContent>
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        nativeButton={false}
+        render={<div className="flex">{children}</div>}
+      />
+      <PopoverContent
+        placement="top"
+        popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+      >
         {tooltip}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   )
 }
 

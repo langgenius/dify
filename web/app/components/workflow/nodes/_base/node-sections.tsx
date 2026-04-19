@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -23,19 +23,27 @@ export const NodeHeaderMeta = ({
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-        <Tooltip>
-          <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
-              {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="w-[180px]">
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            nativeButton={false}
+            aria-label={t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+            render={(
+              <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
+                {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+              </div>
+            )}
+          />
+          <PopoverContent
+            placement="top"
+            popupClassName="w-[180px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+          >
             <div className="font-extrabold">
               {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
             </div>
             {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
-          </TooltipContent>
-        </Tooltip>
+          </PopoverContent>
+        </Popover>
       )}
       {!!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
         <div className="mr-1.5 text-xs font-medium text-text-accent">

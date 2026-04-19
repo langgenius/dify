@@ -1,7 +1,7 @@
 import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
@@ -73,8 +73,11 @@ const InvitedModal = ({
                       {
                         failedInvitationResults.map(item => (
                           <div key={item.email} className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1">
-                            <Tooltip>
-                              <TooltipTrigger
+                            <Popover>
+                              <PopoverTrigger
+                                openOnHover
+                                nativeButton={false}
+                                aria-label={item.message}
                                 render={(
                                   <div className="flex items-center justify-center gap-1 text-sm">
                                     {item.email}
@@ -82,10 +85,13 @@ const InvitedModal = ({
                                   </div>
                                 )}
                               />
-                              <TooltipContent>
+                              <PopoverContent
+                                placement="top"
+                                popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+                              >
                                 {item.message}
-                              </TooltipContent>
-                            </Tooltip>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         ),
                         )

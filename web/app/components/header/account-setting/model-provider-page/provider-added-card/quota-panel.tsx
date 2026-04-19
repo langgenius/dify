@@ -3,6 +3,7 @@ import type { ModelProvider } from '../declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -99,8 +100,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       <div className="relative">
         <div className="mb-2 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
           {t('modelProvider.quota', { ns: 'common' })}
-          <Tooltip>
-            <TooltipTrigger
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              nativeButton={false}
               aria-label={tipText}
               render={(
                 <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
@@ -108,10 +111,13 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                 </span>
               )}
             />
-            <TooltipContent>
+            <PopoverContent
+              placement="top"
+              popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+            >
               {tipText}
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs text-text-tertiary">

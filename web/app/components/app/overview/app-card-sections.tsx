@@ -16,10 +16,10 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
@@ -87,12 +87,19 @@ const MaybeTooltip = ({
     return <>{children}</>
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={<div>{children}</div>} />
-      <TooltipContent className={tooltipClassName}>
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        nativeButton={false}
+        render={<div>{children}</div>}
+      />
+      <PopoverContent
+        placement="top"
+        popupClassName={`max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg ${tooltipClassName ?? ''}`}
+      >
         {content}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   )
 }
 

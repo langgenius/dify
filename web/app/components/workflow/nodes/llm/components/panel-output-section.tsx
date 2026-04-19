@@ -1,8 +1,7 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -41,35 +40,41 @@ const PanelOutputSection: FC<Props> = ({
         operations={(
           <div className="mr-4 flex shrink-0 items-center">
             {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
-              <Tooltip>
-                <TooltipTrigger
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  nativeButton={false}
+                  aria-label={t('structOutput.modelNotSupported', { ns: 'app' })}
                   render={(
-                    <div>
-                      <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
+                    <div className="mr-1">
+                      <span aria-hidden className="i-ri-alert-fill block size-4 text-text-warning-secondary" />
                     </div>
                   )}
                 />
-                <TooltipContent>
+                <PopoverContent popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg">
                   <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
                     <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
                     <div className="mt-1 body-xs-regular text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
                   </div>
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
             <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
-            <Tooltip>
-              <TooltipTrigger
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                nativeButton={false}
+                aria-label={t('structOutput.structuredTip', { ns: 'app' })}
                 render={(
                   <div>
-                    <RiQuestionLine className="size-3.5 text-text-quaternary" />
+                    <span aria-hidden className="i-ri-question-line block size-3.5 text-text-quaternary" />
                   </div>
                 )}
               />
-              <TooltipContent>
+              <PopoverContent popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg">
                 <div className="max-w-[150px]">{t('structOutput.structuredTip', { ns: 'app' })}</div>
-              </TooltipContent>
-            </Tooltip>
+              </PopoverContent>
+            </Popover>
             <Switch
               className="ml-2"
               checked={!!inputs.structured_output_enabled}

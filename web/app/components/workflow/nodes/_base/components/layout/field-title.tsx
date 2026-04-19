@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   memo,
   useState,
@@ -62,18 +62,25 @@ export const FieldTitle = memo(({
           }
           {
             tooltip && (
-              <Tooltip>
-                <TooltipTrigger
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  nativeButton={false}
+                  aria-label={tooltip}
+                  onClick={e => e.stopPropagation()}
                   render={(
                     <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
                       <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
                     </span>
                   )}
                 />
-                <TooltipContent>
+                <PopoverContent
+                  placement="top"
+                  popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+                >
                   {tooltip}
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )
           }
         </div>

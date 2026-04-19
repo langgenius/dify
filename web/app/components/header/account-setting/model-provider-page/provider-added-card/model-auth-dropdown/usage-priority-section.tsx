@@ -1,6 +1,6 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
@@ -31,8 +31,10 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
           <span className="truncate system-sm-medium text-text-secondary">
             {t('modelProvider.card.usagePriority', { ns: 'common' })}
           </span>
-          <Tooltip>
-            <TooltipTrigger
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              nativeButton={false}
               aria-label={t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
               render={(
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center">
@@ -40,10 +42,13 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
                 </span>
               )}
             />
-            <TooltipContent>
+            <PopoverContent
+              placement="top"
+              popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+            >
               {t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map(option => (

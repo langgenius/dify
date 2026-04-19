@@ -4,12 +4,12 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -183,18 +183,24 @@ const Prompt: FC<ISimplePromptInput> = ({
             <div className="flex items-center space-x-1">
               <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
-                <Tooltip>
-                  <TooltipTrigger
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    nativeButton={false}
+                    aria-label={t('promptTip', { ns: 'appDebug' })}
                     render={(
                       <span className="ml-1 i-ri-question-line h-4 w-4 shrink-0 text-text-quaternary" />
                     )}
                   />
-                  <TooltipContent>
+                  <PopoverContent
+                    placement="top"
+                    popupClassName="max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg"
+                  >
                     <div className="w-[180px]">
                       {t('promptTip', { ns: 'appDebug' })}
                     </div>
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
             <div className="flex items-center">

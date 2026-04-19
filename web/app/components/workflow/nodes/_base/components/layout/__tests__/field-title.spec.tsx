@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FieldTitle } from '../field-title'
 
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 describe('FieldTitle', () => {
