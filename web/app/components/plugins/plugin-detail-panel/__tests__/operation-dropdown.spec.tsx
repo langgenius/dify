@@ -1,14 +1,13 @@
 import type { ReactElement, ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { cloneElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '../../types'
 import OperationDropdown from '../operation-dropdown'
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: <T,>(selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => T): T =>
-    selector({ systemFeatures: { enable_marketplace: true } }),
-}))
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),

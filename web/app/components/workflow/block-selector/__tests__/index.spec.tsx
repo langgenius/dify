@@ -23,12 +23,6 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllBuiltInTools: () => vi.fn(),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector({
-    systemFeatures: { enable_marketplace: false },
-  }),
-}))
-
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   metaData: {
     type,

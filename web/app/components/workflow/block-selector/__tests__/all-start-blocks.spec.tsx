@@ -1,23 +1,19 @@
+import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { Theme } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
 import useNodes from '../../store/workflow/use-nodes'
 import { BlockEnum } from '../../types'
 import AllStartBlocks from '../all-start-blocks'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -57,7 +53,6 @@ vi.mock('@/utils/var', async (importOriginal) => {
   }
 })
 
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseLocale = vi.mocked(useLocale)
 const mockUseTheme = vi.mocked(useTheme)
@@ -106,15 +101,9 @@ const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): Tr
   ...overrides,
 })
 
-const createSystemFeatures = (enableMarketplace: boolean) => ({
-  ...defaultSystemFeatures,
-  enable_marketplace: enableMarketplace,
-})
-
-const createGlobalPublicStoreState = (enableMarketplace: boolean) => ({
-  systemFeatures: createSystemFeatures(enableMarketplace),
-  setSystemFeatures: vi.fn(),
-})
+let enableMarketplaceForRender = false
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplaceForRender } })
 
 const createMarketplacePluginsMock = (
   overrides: Partial<UseMarketplacePluginsReturn> = {},
@@ -179,7 +168,7 @@ const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMeta
 describe('AllStartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(false)))
+    enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseLocale.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
@@ -226,7 +215,7 @@ describe('AllStartBlocks', () => {
     })
 
     it('should show marketplace footer when marketplace is enabled without filters', async () => {
-      mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(true)))
+      enableMarketplaceForRender = true
 
       render(
         <AllStartBlocks
@@ -244,7 +233,7 @@ describe('AllStartBlocks', () => {
   describe('Filtered Empty State', () => {
     it('should query marketplace and show the no-results state when filters have no matches', async () => {
       const queryPluginsWithDebounced = vi.fn()
-      mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(true)))
+      enableMarketplaceForRender = true
       mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
         queryPluginsWithDebounced,
       }))
