@@ -78,6 +78,7 @@ class OutputModeration(BaseModel):
                 "flask_app": current_app._get_current_object(),  # type: ignore
                 "buffer_size": buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE,
             },
+            daemon=True,
         )
 
         thread.start()

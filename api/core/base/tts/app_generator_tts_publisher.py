@@ -72,7 +72,7 @@ class AppGeneratorTTSPublisher:
         self.max_sentence = 2
         self._last_audio_event: AudioTrunk | None = None
         # FIXME better way to handle this threading.start
-        threading.Thread(target=self._runtime).start()
+        threading.Thread(target=self._runtime, daemon=True).start()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
     def publish(self, message: WorkflowQueueMessage | MessageQueueMessage | None, /):
@@ -80,7 +80,7 @@ class AppGeneratorTTSPublisher:
 
     def _runtime(self):
         future_queue: queue.Queue[concurrent.futures.Future[Iterable[bytes] | None] | None] = queue.Queue()
-        threading.Thread(target=_process_future, args=(future_queue, self._audio_queue)).start()
+        threading.Thread(target=_process_future, args=(future_queue, self._audio_queue), daemon=True).start()
         while True:
             try:
                 message = self._msg_queue.get()
