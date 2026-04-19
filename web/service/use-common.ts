@@ -21,9 +21,17 @@ import type {
   UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
+
+/**
+ * Returns true when an error originates from a 401 response thrown by service/base.ts.
+ * Used by signin/oauth probes to opt out of throwing 401 to the nearest error boundary
+ * via TanStack Query's `throwOnError: (err) => !is401(err)` per-call escape hatch.
+ */
+export const is401 = (err: unknown): boolean =>
+  err instanceof Response && err.status === 401
 
 const NAME_SPACE = 'common'
 
@@ -35,7 +43,6 @@ export const commonQueryKeys = {
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
-  isLogin: [NAME_SPACE, 'is-login'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
@@ -66,7 +73,7 @@ export const useFileUploadConfig = () => {
   })
 }
 
-type UserProfileWithMeta = {
+export type UserProfileWithMeta = {
   profile: UserProfileResponse
   meta: {
     currentVersion: string | null
@@ -74,11 +81,34 @@ type UserProfileWithMeta = {
   }
 }
 
-export const useUserProfile = () => {
-  return useQuery<UserProfileWithMeta>({
+/**
+ * Single source of truth for `/account/profile`.
+ *
+ * Why a queryOptions helper (not a `use-*` hook):
+ * - The endpoint is NOT in the oRPC contract (`x-version` / `x-env` live in HTTP
+ *   headers, which oRPC's schema-driven contracts cannot express); we must fetch
+ *   via legacy `service/base.ts` and post-process headers.
+ * - 5 callsites share the same queryFn (header reading + meta wrapping) plus the
+ *   `staleTime: 0 / gcTime: 0` session-probe semantics. Per `frontend-query-mutation`
+ *   skill, this is exactly when to extract a queryOptions helper rather than a
+ *   thin `use-*` wrapper hook.
+ *
+ * Consumers pick the binding that fits:
+ *   commonLayout tree -> `useSuspenseQuery(userProfileQueryOptions())`
+ *   signin/oauth     -> `useQuery({ ...userProfileQueryOptions(), throwOnError: (err) => !is401(err) })`
+ *
+ * `silent: true` is passed so that 401s do not toast on /signin (where
+ * `service/base.ts#jumpTo` short-circuits via same-pathname no-op and the
+ * Promise rejects up to react-query as state, not as a toast).
+ */
+export const userProfileQueryOptions = () =>
+  queryOptions<UserProfileWithMeta>({
     queryKey: commonQueryKeys.userProfile,
     queryFn: async () => {
-      const response = await get<Response>('/account/profile', {}, { needAllResponseContent: true }) as Response
+      const response = await get<Response>('/account/profile', {}, {
+        needAllResponseContent: true,
+        silent: true,
+      }) as Response
       const profile = await response.clone().json() as UserProfileResponse
       return {
         profile,
@@ -93,7 +123,6 @@ export const useUserProfile = () => {
     staleTime: 0,
     gcTime: 0,
   })
-}
 
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
   return useQuery<LangGeniusVersionResponse>({
@@ -202,30 +231,6 @@ export const useSchemaTypeDefinitions = () => {
   return useQuery<SchemaTypeDefinition[]>({
     queryKey: commonQueryKeys.schemaDefinitions,
     queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
-  })
-}
-
-type isLogin = {
-  logged_in: boolean
-}
-
-export const useIsLogin = () => {
-  return useQuery<isLogin>({
-    queryKey: commonQueryKeys.isLogin,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async (): Promise<isLogin> => {
-      try {
-        await get('/account/profile', {}, {
-          silent: true,
-        })
-        return { logged_in: true }
-      }
-      catch {
-        // Any error (401, 500, network error, etc.) means not logged in
-        return { logged_in: false }
-      }
-    },
   })
 }
 
