@@ -11,6 +11,12 @@ import { consoleClient, consoleQuery } from './client'
  * This trades main's transient-blip resilience for guaranteed dashboard
  * availability via defaults; the trade-off is acceptable because /system-features
  * is a small, dependency-free endpoint in the community edition.
+ *
+ * No `staleTime` override either: inherit the 5-minute default from
+ * query-client-server.ts. Combined with `refetchOnWindowFocus`, this lets us
+ * recover from a transient startup failure (which got cached as "successful
+ * defaults") within ~5 minutes or on tab focus. `staleTime: Infinity` would
+ * pin the whole tab to defaults until reload — strictly worse than main.
  */
 export const systemFeaturesQueryOptions = () =>
   queryOptions<SystemFeatures>({
@@ -24,5 +30,4 @@ export const systemFeaturesQueryOptions = () =>
         return defaultSystemFeatures
       }
     },
-    staleTime: Infinity,
   })
