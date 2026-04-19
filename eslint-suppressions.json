@@ -6416,11 +6416,6 @@
       "count": 1
     }
   },
-  "web/context/global-public-context.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 3
-    }
-  },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "react/set-state-in-effect": {
       "count": 3
