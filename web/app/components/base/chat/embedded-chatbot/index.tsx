@@ -1,6 +1,7 @@
 'use client'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useEffect,
 } from 'react'
@@ -10,9 +11,9 @@ import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { consoleQuery } from '@/service/client'
 import { AppSourceType } from '@/service/share'
 import {
   EmbeddedChatbotContext,
@@ -34,7 +35,9 @@ const Chatbot = () => {
     themeBuilder,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
 
   const customConfig = appData?.custom_config
   const site = appData?.site

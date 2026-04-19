@@ -5,6 +5,7 @@ import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
@@ -18,11 +19,11 @@ import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
 } from '@/models/app'
+import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
@@ -39,7 +40,9 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
   const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
   const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)

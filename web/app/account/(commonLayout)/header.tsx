@@ -1,17 +1,20 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightUpLine, RiRobot2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import Avatar from './avatar'
 
 const Header = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
 
   const goToStudio = useCallback(() => {
     router.push('/apps')

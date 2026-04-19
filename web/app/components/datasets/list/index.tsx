@@ -1,10 +1,11 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
+
 // Libraries
 import { useState } from 'react'
-
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TagManagementModal from '@/app/components/base/tag-management'
@@ -14,8 +15,8 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -25,7 +26,9 @@ import Datasets from './datasets'
 
 const List = () => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
   const { isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()

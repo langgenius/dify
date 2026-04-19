@@ -1,6 +1,7 @@
 import type { ModelProvider } from '../declarations'
+import { useQuery } from '@tanstack/react-query'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
+import { consoleQuery } from '@/service/client'
 import {
   PreferredProviderTypeEnum,
 } from '../declarations'
@@ -79,7 +80,9 @@ export function useCredentialPanelState(provider: ModelProvider | undefined): Cr
     current_credential_name,
   } = useCredentialStatus(provider)
 
-  const { data: systemFeatures } = useSystemFeaturesQuery()
+  const { data: systemFeatures } = useQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
   const trialModels = systemFeatures?.trial_models
 
   const preferredType = provider?.preferred_provider_type

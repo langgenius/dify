@@ -1,5 +1,6 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -9,7 +10,7 @@ import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-seri
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { consoleQuery } from '@/service/client'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
@@ -20,7 +21,10 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const { data: isCollaborationEnabled } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+    select: s => s.enable_collaboration_mode,
+  }))
 
   const getPostParams = useCallback(() => {
     const {

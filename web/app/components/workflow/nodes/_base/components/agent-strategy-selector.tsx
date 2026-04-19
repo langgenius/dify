@@ -5,6 +5,7 @@ import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -16,8 +17,8 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hook
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { useStrategyProviders } from '@/service/use-strategy'
 import Tools from '../../../block-selector/tools'
 import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
@@ -95,7 +96,10 @@ type AgentStrategySelectorProps = {
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+    select: s => s.enable_marketplace,
+  }))
 
   const { value, onChange } = props
   const [open, setOpen] = useState(false)

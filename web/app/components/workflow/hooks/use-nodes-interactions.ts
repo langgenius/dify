@@ -14,6 +14,7 @@ import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +23,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { consoleQuery } from '@/service/client'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -138,7 +139,10 @@ const getUniquePastedNodeTitle = (
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
+  const { data: appDslVersion } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+    select: s => s.app_dsl_version,
+  }))
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()

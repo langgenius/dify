@@ -9,7 +9,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import {
@@ -42,7 +41,9 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { data: systemFeatures } = useSystemFeaturesQuery()
+  const { data: systemFeatures } = useQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
 
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]

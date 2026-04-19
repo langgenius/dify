@@ -1,6 +1,5 @@
 import type { App, AppCategory } from '@/models/explore'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from './client'
@@ -66,7 +65,9 @@ export const useUpdateAppPinStatus = () => {
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
+    staleTime: Infinity,
+  }))
   const appAccessModeInput = { query: { appId: appId ?? '' } }
   const installedAppId = appAccessModeInput.query.appId
 
