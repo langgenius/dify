@@ -3,7 +3,7 @@ import type {
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +42,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
@@ -59,7 +59,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       map.set(plugin.plugin_id, plugin)
     return map
   }, [enrichedPlugins])
-  const enableMarketplace = systemFeatures?.enable_marketplace ?? false
+  const enableMarketplace = systemFeatures.enable_marketplace
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
     || isRerankDefaultModelLoading

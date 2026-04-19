@@ -1,5 +1,5 @@
 import type { ModelProvider } from '../declarations'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
@@ -80,8 +80,8 @@ export function useCredentialPanelState(provider: ModelProvider | undefined): Cr
     current_credential_name,
   } = useCredentialStatus(provider)
 
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
-  const trialModels = systemFeatures?.trial_models
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const trialModels = systemFeatures.trial_models
 
   const preferredType = provider?.preferred_provider_type
 
