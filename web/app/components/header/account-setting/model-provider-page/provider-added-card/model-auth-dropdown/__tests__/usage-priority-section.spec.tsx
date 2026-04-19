@@ -2,6 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PreferredProviderTypeEnum } from '../../../declarations'
 import UsagePrioritySection from '../usage-priority-section'
 
+const AI_CREDITS_BUTTON_NAME = 'common.modelProvider.card.aiCreditsOption'
+const API_KEY_BUTTON_NAME = 'common.modelProvider.card.apiKeyOption'
+
 describe('UsagePrioritySection', () => {
   const onSelect = vi.fn()
 
@@ -15,7 +18,8 @@ describe('UsagePrioritySection', () => {
       render(<UsagePrioritySection value="credits" onSelect={onSelect} />)
 
       expect(screen.getByText(/usagePriority/))!.toBeInTheDocument()
-      expect(screen.getAllByRole('button')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: AI_CREDITS_BUTTON_NAME })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: API_KEY_BUTTON_NAME })).toBeInTheDocument()
     })
   })
 
@@ -24,24 +28,26 @@ describe('UsagePrioritySection', () => {
     it('should highlight AI credits option when value is credits', () => {
       render(<UsagePrioritySection value="credits" onSelect={onSelect} />)
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0]!.className).toContain('border-components-option-card-option-selected-border')
-      expect(buttons[1]!.className).not.toContain('border-components-option-card-option-selected-border')
+      const aiCredits = screen.getByRole('button', { name: AI_CREDITS_BUTTON_NAME })
+      const apiKey = screen.getByRole('button', { name: API_KEY_BUTTON_NAME })
+      expect(aiCredits.className).toContain('border-components-option-card-option-selected-border')
+      expect(apiKey.className).not.toContain('border-components-option-card-option-selected-border')
     })
 
     it('should highlight API key option when value is apiKey', () => {
       render(<UsagePrioritySection value="apiKey" onSelect={onSelect} />)
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0]!.className).not.toContain('border-components-option-card-option-selected-border')
-      expect(buttons[1]!.className).toContain('border-components-option-card-option-selected-border')
+      const aiCredits = screen.getByRole('button', { name: AI_CREDITS_BUTTON_NAME })
+      const apiKey = screen.getByRole('button', { name: API_KEY_BUTTON_NAME })
+      expect(aiCredits.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(apiKey.className).toContain('border-components-option-card-option-selected-border')
     })
 
     it('should highlight API key option when value is apiKeyOnly', () => {
       render(<UsagePrioritySection value="apiKeyOnly" onSelect={onSelect} />)
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[1]!.className).toContain('border-components-option-card-option-selected-border')
+      const apiKey = screen.getByRole('button', { name: API_KEY_BUTTON_NAME })
+      expect(apiKey.className).toContain('border-components-option-card-option-selected-border')
     })
   })
 
@@ -50,7 +56,7 @@ describe('UsagePrioritySection', () => {
     it('should call onSelect with system when clicking AI credits option', () => {
       render(<UsagePrioritySection value="apiKey" onSelect={onSelect} />)
 
-      fireEvent.click(screen.getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: AI_CREDITS_BUTTON_NAME }))
 
       expect(onSelect).toHaveBeenCalledWith(PreferredProviderTypeEnum.system)
     })
@@ -58,7 +64,7 @@ describe('UsagePrioritySection', () => {
     it('should call onSelect with custom when clicking API key option', () => {
       render(<UsagePrioritySection value="credits" onSelect={onSelect} />)
 
-      fireEvent.click(screen.getAllByRole('button')[1]!)
+      fireEvent.click(screen.getByRole('button', { name: API_KEY_BUTTON_NAME }))
 
       expect(onSelect).toHaveBeenCalledWith(PreferredProviderTypeEnum.custom)
     })
