@@ -59,7 +59,7 @@
   },
   "web/__tests__/embedded-user-id-store.test.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/__tests__/goto-anything/command-selector.test.tsx": {
