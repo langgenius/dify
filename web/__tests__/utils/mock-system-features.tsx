@@ -12,7 +12,7 @@ type DeepPartial<T> = T extends Array<infer U>
     ? { [K in keyof T]?: DeepPartial<T[K]> }
     : T
 
-export const buildSystemFeatures = (
+const buildSystemFeatures = (
   overrides: DeepPartial<SystemFeatures> = {},
 ): SystemFeatures => {
   const o = overrides as Partial<SystemFeatures>

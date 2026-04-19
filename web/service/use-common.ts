@@ -73,7 +73,7 @@ export const useFileUploadConfig = () => {
   })
 }
 
-export type UserProfileWithMeta = {
+type UserProfileWithMeta = {
   profile: UserProfileResponse
   meta: {
     currentVersion: string | null
