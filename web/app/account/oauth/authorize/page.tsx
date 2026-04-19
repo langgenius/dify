@@ -18,7 +18,7 @@ import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { is401, userProfileQueryOptions } from '@/service/use-common'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {
@@ -67,7 +67,7 @@ export default function OAuthAuthorize() {
   // service/base.ts prevents a redirect loop here.
   const { data: userProfileResp, isPending: isProfileLoading, error: profileError } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: err => !is401(err),
+    throwOnError: err => !isLegacyBase401(err),
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile

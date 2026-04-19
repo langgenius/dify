@@ -26,11 +26,13 @@ import { IS_DEV } from '@/config'
 import { get, post } from './base'
 
 /**
- * Returns true when an error originates from a 401 response thrown by service/base.ts.
- * Used by signin/oauth probes to opt out of throwing 401 to the nearest error boundary
- * via TanStack Query's `throwOnError: (err) => !is401(err)` per-call escape hatch.
+ * True iff `err` is a 401 Response thrown by `service/base.ts`.
+ *
+ * Narrow on purpose: oRPC throws `ORPCError`, not `Response`, so this predicate
+ * returns `false` for oRPC 401s. Naming makes that scope visible. If you need
+ * 401 detection for an oRPC path, add a separate `isOrpc401` helper.
  */
-export const is401 = (err: unknown): boolean =>
+export const isLegacyBase401 = (err: unknown): boolean =>
   err instanceof Response && err.status === 401
 
 const NAME_SPACE = 'common'
@@ -87,9 +89,9 @@ type UserProfileWithMeta = {
  *
  * Bindings:
  *   commonLayout -> `useSuspenseQuery(userProfileQueryOptions())`
- *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !is401(err) })`
+ *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !isLegacyBase401(err) })`
  *
- * `silent: true` + `retry: !is401` makes 401 a synchronous *state* (no toast,
+ * `silent: true` + `retry: !isLegacyBase401` makes 401 a synchronous *state* (no toast,
  * no ~7s retry storm). Transient errors still get the default 3 retries.
  */
 export const userProfileQueryOptions = () =>
@@ -113,7 +115,7 @@ export const userProfileQueryOptions = () =>
     },
     staleTime: 0,
     gcTime: 0,
-    retry: (failureCount, error) => !is401(error) && failureCount < 3,
+    retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
   })
 
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {

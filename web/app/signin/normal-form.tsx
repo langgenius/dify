@@ -10,7 +10,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { is401, userProfileQueryOptions } from '@/service/use-common'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -29,7 +29,7 @@ const NormalForm = () => {
   // prevents the redirect loop on 401.
   const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: err => !is401(err),
+    throwOnError: err => !isLegacyBase401(err),
   })
   const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')

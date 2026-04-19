@@ -7,7 +7,7 @@ import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { is401, userProfileQueryOptions } from '@/service/use-common'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 
 export default function SignInLayout({ children }: any) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -17,7 +17,7 @@ export default function SignInLayout({ children }: any) {
   // (When unauthenticated, service/base.ts's auto-redirect to /signin still fires.)
   const { isPending, data: userResp, error } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: err => !is401(err),
+    throwOnError: err => !isLegacyBase401(err),
   })
   const isLoggedIn = !!userResp && !error
 
