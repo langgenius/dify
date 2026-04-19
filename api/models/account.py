@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from flask_login import UserMixin
+from pydantic import TypeAdapter
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
@@ -237,6 +238,9 @@ class TenantCustomConfigDict(TypedDict, total=False):
     replace_webapp_logo: str | None
 
 
+_custom_config_adapter: TypeAdapter[TenantCustomConfigDict] = TypeAdapter(TenantCustomConfigDict)
+
+
 class Tenant(TypeBase):
     __tablename__ = "tenants"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="tenant_pkey"),)
@@ -269,7 +273,7 @@ class Tenant(TypeBase):
 
     @property
     def custom_config_dict(self) -> TenantCustomConfigDict:
-        return json.loads(self.custom_config) if self.custom_config else {}
+        return _custom_config_adapter.validate_json(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter
     def custom_config_dict(self, value: TenantCustomConfigDict) -> None:

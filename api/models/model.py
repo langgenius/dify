@@ -14,6 +14,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
+from pydantic import TypeAdapter
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -56,6 +57,8 @@ from .types import EnumText, LongText, StringUUID
 if TYPE_CHECKING:
     from .workflow import Workflow
 
+_dict_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_list_adapter: TypeAdapter[list[Any]] = TypeAdapter(list[Any])
 
 # --- TypedDict definitions for structured dict return types ---
 
@@ -668,14 +671,14 @@ class AppModelConfig(TypeBase):
 
     @property
     def model_dict(self) -> ModelConfig:
-        return cast(ModelConfig, json.loads(self.model) if self.model else {})
+        return cast(ModelConfig, _dict_adapter.validate_json(self.model) if self.model else {})
 
     @property
     def suggested_questions_list(self) -> list[str]:
-        return json.loads(self.suggested_questions) if self.suggested_questions else []
+        return _list_adapter.validate_json(self.suggested_questions) if self.suggested_questions else []
 
     def _get_enabled_config(self, value: str | None, *, default_enabled: bool = False) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
+        return _enabled_config_adapter.validate_json(value) if value else {"enabled": default_enabled}
 
     @property
     def suggested_questions_after_answer_dict(self) -> EnabledConfig:
@@ -724,37 +727,40 @@ class AppModelConfig(TypeBase):
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
         return cast(
             SensitiveWordAvoidanceConfig,
-            json.loads(self.sensitive_word_avoidance)
+            _dict_adapter.validate_json(self.sensitive_word_avoidance)
             if self.sensitive_word_avoidance
             else {"enabled": False, "type": "", "config": {}},
         )
 
     @property
     def external_data_tools_list(self) -> list[ExternalDataToolConfig]:
-        return json.loads(self.external_data_tools) if self.external_data_tools else []
+        return _list_adapter.validate_json(self.external_data_tools) if self.external_data_tools else []
 
     @property
     def user_input_form_list(self) -> list[UserInputFormItem]:
-        return json.loads(self.user_input_form) if self.user_input_form else []
+        return _list_adapter.validate_json(self.user_input_form) if self.user_input_form else []
 
     @property
     def agent_mode_dict(self) -> AgentModeConfig:
         return cast(
             AgentModeConfig,
-            json.loads(self.agent_mode)
+            _dict_adapter.validate_json(self.agent_mode)
             if self.agent_mode
             else {"enabled": False, "strategy": None, "tools": [], "prompt": None},
         )
 
     @property
     def chat_prompt_config_dict(self) -> ChatPromptConfig:
-        return cast(ChatPromptConfig, json.loads(self.chat_prompt_config) if self.chat_prompt_config else {})
+        return cast(
+            ChatPromptConfig,
+            _dict_adapter.validate_json(self.chat_prompt_config) if self.chat_prompt_config else {},
+        )
 
     @property
     def completion_prompt_config_dict(self) -> CompletionPromptConfig:
         return cast(
             CompletionPromptConfig,
-            json.loads(self.completion_prompt_config) if self.completion_prompt_config else {},
+            _dict_adapter.validate_json(self.completion_prompt_config) if self.completion_prompt_config else {},
         )
 
     @property
@@ -773,7 +779,7 @@ class AppModelConfig(TypeBase):
     def file_upload_dict(self) -> FileUploadConfig:
         return cast(
             FileUploadConfig,
-            json.loads(self.file_upload)
+            _dict_adapter.validate_json(self.file_upload)
             if self.file_upload
             else {
                 "image": {
@@ -1604,7 +1610,7 @@ class Message(Base):
 
     @property
     def message_metadata_dict(self) -> dict[str, Any]:
-        return json.loads(self.message_metadata) if self.message_metadata else {}
+        return _dict_adapter.validate_json(self.message_metadata) if self.message_metadata else {}
 
     @property
     def agent_thoughts(self) -> Sequence[MessageAgentThought]:
@@ -2067,7 +2073,7 @@ class AppMCPServer(TypeBase):
 
     @property
     def parameters_dict(self) -> dict[str, str]:
-        return cast(dict[str, str], json.loads(self.parameters))
+        return _dict_adapter.validate_json(self.parameters)
 
 
 class Site(Base):
@@ -2336,7 +2342,7 @@ class MessageAgentThought(TypeBase):
     @property
     def files(self) -> list[Any]:
         if self.message_files:
-            return cast(list[Any], json.loads(self.message_files))
+            return _list_adapter.validate_json(self.message_files)
         else:
             return []
 
