@@ -43,8 +43,8 @@ import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
 import { fetchInstalledAppList } from '@/service/explore'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -183,9 +183,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
 type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
 
 const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
     appId: props.app.id,
     enabled: systemFeatures.webapp_auth.enabled,
@@ -208,9 +206,7 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
 const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()

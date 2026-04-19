@@ -10,7 +10,7 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Tooltip from '@/app/components/base/tooltip'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isClient } from '@/utils/client'
 import {
   useEmbeddedChatbotContext,
@@ -45,9 +45,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin

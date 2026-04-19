@@ -7,7 +7,7 @@ import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 // Avoid rendering the logo and theme selector on the server
 const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
@@ -21,9 +21,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = () => {
   const locale = useLocale()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
     <div className="flex w-full items-center justify-between p-6">

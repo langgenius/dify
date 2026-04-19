@@ -10,7 +10,7 @@ import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -25,9 +25,7 @@ type AccessControlProps = {
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore(s => s.setAppId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)

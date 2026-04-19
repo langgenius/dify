@@ -19,7 +19,7 @@ import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
@@ -86,10 +86,10 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)

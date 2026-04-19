@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
@@ -33,9 +33,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
-  const { data: systemFeatures } = useQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const trialModels = systemFeatures?.trial_models ?? []
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),

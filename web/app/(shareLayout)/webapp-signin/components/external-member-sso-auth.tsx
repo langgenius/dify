@@ -6,14 +6,12 @@ import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { SSOProtocol } from '@/types/feature'
 
 const ExternalMemberSSOAuth = () => {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
   const router = useRouter()
 

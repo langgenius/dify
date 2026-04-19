@@ -23,8 +23,8 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
 } from '@/models/app'
-import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -40,9 +40,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
   const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)

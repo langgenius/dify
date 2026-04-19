@@ -10,7 +10,7 @@ import Modal from '@/app/components/base/modal'
 import { IS_CE_EDITION } from '@/config'
 import Link from '@/next/link'
 
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type IAccountSettingProps = {
   langGeniusVersionInfo: LangGeniusVersionResponse
@@ -23,9 +23,7 @@ export default function AccountAbout({
 }: IAccountSettingProps) {
   const { t } = useTranslation()
   const isLatest = langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
     <Modal

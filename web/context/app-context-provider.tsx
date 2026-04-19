@@ -16,7 +16,7 @@ import {
   useSelector,
 } from '@/context/app-context'
 import { env } from '@/env'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
@@ -34,9 +34,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   // - useSuspenseQuery for userProfile triggers (commonLayout)/loading.tsx until cache is warm.
   // After this provider mounts, downstream components reading the same queryKeys hit cache
   // and never suspend again, so their useSuspenseQuery calls return data synchronously.
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
   const langGeniusVersionQuery = useLangGeniusVersion(

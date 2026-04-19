@@ -16,7 +16,7 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -61,9 +61,7 @@ const Popup: FC<PopupProps> = ({
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
-  const { data: systemFeatures } = useQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const trialModels = systemFeatures?.trial_models
   const installedProviderMap = useMemo(() => new Map(
     modelProviders.map(provider => [provider.provider, provider]),

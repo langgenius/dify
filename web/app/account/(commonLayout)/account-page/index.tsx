@@ -16,8 +16,8 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppList } from '@/service/use-apps'
 import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
@@ -34,9 +34,7 @@ const descriptionClassName = `
 
 export default function AccountPage() {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
   const apps = appList?.data || []
   const queryClient = useQueryClient()

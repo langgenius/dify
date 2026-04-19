@@ -4,7 +4,7 @@ import type { PluginDetail } from '../../../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useReferenceSetting from '../../../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginSource } from '../../../types'
@@ -49,10 +49,10 @@ type UseDetailHeaderStateReturn = {
 }
 
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const { referenceSetting } = useReferenceSetting()
 
   const {

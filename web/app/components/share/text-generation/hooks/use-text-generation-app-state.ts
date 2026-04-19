@@ -10,8 +10,8 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { changeLanguage } from '@/i18n-config/client'
-import { consoleQuery } from '@/service/client'
 import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 
@@ -34,9 +34,7 @@ type ShareAppParams = {
 export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTextGenerationAppStateOptions) => {
   const { t } = useTranslation()
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appData = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const accessMode = useWebAppStore(s => s.webAppAccessMode)

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -116,10 +116,10 @@ export const useLeaderRestore = () => {
     versionId: string
     callbacks: RestoreCallbacks | null
   } | null>(null)
-  const { data: isCollaborationEnabled } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_collaboration_mode,
-  }))
+  })
 
   const requestRestore = useCallback((data: RestoreRequestData, callbacks?: RestoreCallbacks) => {
     if (!isCollaborationEnabled || !collaborationManager.isConnected() || collaborationManager.getIsLeader()) {

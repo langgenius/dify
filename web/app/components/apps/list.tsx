@@ -18,7 +18,7 @@ import { useAppContext } from '@/context/app-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { fetchWorkflowOnlineUsers } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
@@ -55,9 +55,7 @@ const List: FC<Props> = ({
   controlRefreshList = 0,
 }) => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(

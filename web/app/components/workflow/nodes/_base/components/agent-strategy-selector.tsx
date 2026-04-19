@@ -18,7 +18,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useStrategyProviders } from '@/service/use-strategy'
 import Tools from '../../../block-selector/tools'
 import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
@@ -96,10 +96,10 @@ type AgentStrategySelectorProps = {
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
 
   const { value, onChange } = props
   const [open, setOpen] = useState(false)

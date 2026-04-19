@@ -12,7 +12,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { PluginSource } from '../types'
 
 type Props = {
@@ -40,10 +40,10 @@ const OperationDropdown: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>

@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import { PermissionType } from '../types'
 
@@ -46,10 +46,10 @@ const useReferenceSetting = () => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const { canManagement } = useReferenceSetting()
 
   const canInstallPluginFromMarketplace = useMemo(() => {

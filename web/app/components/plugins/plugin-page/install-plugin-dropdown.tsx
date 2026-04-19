@@ -19,7 +19,7 @@ import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndD
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -39,14 +39,14 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
-  const { data: plugin_installation_permission } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  })
+  const { data: plugin_installation_permission } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.plugin_installation_permission,
-  }))
+  })
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

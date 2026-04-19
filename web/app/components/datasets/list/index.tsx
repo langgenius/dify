@@ -16,8 +16,8 @@ import CheckboxWithLabel from '@/app/components/datasets/create/website/base/che
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import ServiceApi from '../extra-info/service-api'
@@ -26,9 +26,7 @@ import Datasets from './datasets'
 
 const List = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()

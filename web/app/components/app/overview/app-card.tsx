@@ -18,7 +18,7 @@ import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -74,9 +74,7 @@ function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
     appDetail?.id,
     systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,

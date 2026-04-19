@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -55,10 +55,10 @@ const AllStartBlocks = ({
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 

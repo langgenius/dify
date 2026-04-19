@@ -3,13 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Header from './_header'
 
 export default function SignInLayout({ children }: any) {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (
     <>

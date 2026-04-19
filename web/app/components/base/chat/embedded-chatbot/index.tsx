@@ -13,8 +13,8 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
 import { AppSourceType } from '@/service/share'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
@@ -35,9 +35,7 @@ const Chatbot = () => {
     themeBuilder,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const customConfig = appData?.custom_config
   const site = appData?.site

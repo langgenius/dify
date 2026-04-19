@@ -10,8 +10,8 @@ import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-seri
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
-import { consoleQuery } from '@/service/client'
 import { postWithKeepalive } from '@/service/fetch'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
@@ -21,10 +21,10 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { data: isCollaborationEnabled } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_collaboration_mode,
-  }))
+  })
 
   const getPostParams = useCallback(() => {
     const {

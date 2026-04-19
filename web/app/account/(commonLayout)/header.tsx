@@ -6,15 +6,13 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Avatar from './avatar'
 
 const Header = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const goToStudio = useCallback(() => {
     router.push('/apps')

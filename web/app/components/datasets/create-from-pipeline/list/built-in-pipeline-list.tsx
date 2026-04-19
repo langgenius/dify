@@ -2,7 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import CreateCard from './create-card'
 import TemplateCard from './template-card'
@@ -14,10 +14,10 @@ const BuiltInPipelineList = () => {
       return locale
     return LanguagesSupported[0]
   }, [locale])
-  const { data: enableMarketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enableMarketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'built-in', language }, enableMarketplace)
   const list = pipelineList?.pipeline_templates || []
 

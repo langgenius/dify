@@ -2,6 +2,7 @@ import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { consoleQuery } from './client'
 import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 
@@ -65,9 +66,7 @@ export const useUpdateAppPinStatus = () => {
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appAccessModeInput = { query: { appId: appId ?? '' } }
   const installedAppId = appAccessModeInput.query.appId
 

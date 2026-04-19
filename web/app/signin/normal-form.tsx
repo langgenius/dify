@@ -8,8 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { invitationCheck } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { is401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
 import Loading from '../components/base/loading'
@@ -37,9 +37,7 @@ const NormalForm = () => {
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)

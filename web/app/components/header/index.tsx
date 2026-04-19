@@ -10,7 +10,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -34,9 +34,7 @@ const Header = () => {
   const isMobile = media === MediaType.mobile
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isFreePlan = plan.type === Plan.sandbox
   const isBrandingEnabled = systemFeatures.branding.enabled
   const handlePlanClick = useCallback(() => {

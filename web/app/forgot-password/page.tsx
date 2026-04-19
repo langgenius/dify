@@ -5,7 +5,7 @@ import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
@@ -13,9 +13,7 @@ const ForgotPassword = () => {
   useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

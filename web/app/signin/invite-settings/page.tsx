@@ -15,17 +15,15 @@ import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { activateMember } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)

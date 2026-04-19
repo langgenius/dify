@@ -10,7 +10,7 @@ import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/
 import Loading from '@/app/components/base/loading'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 
 type WebAppStore = {
@@ -66,9 +66,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const { isPending: isGlobalPending } = useQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)

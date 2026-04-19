@@ -8,16 +8,14 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { webAppLogout } from '@/service/webapp-auth'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()

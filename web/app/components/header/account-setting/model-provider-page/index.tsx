@@ -11,6 +11,7 @@ import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -41,9 +42,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { data: systemFeatures } = useQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
 
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]

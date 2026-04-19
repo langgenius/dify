@@ -9,7 +9,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
 import { AppTypeIcon } from '../../app/type-selector'
 
@@ -30,9 +30,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const handleTryApp = () => {
     trackEvent('preview_template', {

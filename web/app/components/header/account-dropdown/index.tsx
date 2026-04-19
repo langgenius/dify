@@ -19,7 +19,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { env } from '@/env'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
@@ -111,9 +111,7 @@ export default function AppSelector() {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { t } = useTranslation()
   const docLink = useDocLink()

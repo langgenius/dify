@@ -1,15 +1,15 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
 const DataSourcePage = () => {
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const { data } = useGetDataSourceListAuth()
 
   return (

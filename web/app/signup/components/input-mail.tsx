@@ -10,7 +10,7 @@ import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {
@@ -22,9 +22,7 @@ export default function Form({
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 

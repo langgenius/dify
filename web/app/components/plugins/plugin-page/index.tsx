@@ -22,8 +22,8 @@ import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
@@ -122,10 +122,10 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
   const isExploringMarketplace = useMemo(() => {

@@ -16,7 +16,7 @@ import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
 import Marketplace from './marketplace'
@@ -40,10 +40,10 @@ const ProviderList = () => {
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)

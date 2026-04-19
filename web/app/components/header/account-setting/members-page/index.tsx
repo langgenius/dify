@@ -13,7 +13,7 @@ import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
@@ -36,9 +36,7 @@ const MembersPage = () => {
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, refetch } = useMembers()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])

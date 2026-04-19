@@ -18,7 +18,7 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useNodesSyncDraft,
   useWorkflowReadOnly,
@@ -71,10 +71,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     workflowReadOnly,
     getWorkflowReadOnly,
   } = useWorkflowReadOnly()
-  const { data: isCollaborationEnabled } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_collaboration_mode,
-  }))
+  })
 
   const zoomOptions = [
     [

@@ -14,7 +14,7 @@ import {
 } from 'react'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
@@ -77,10 +77,10 @@ const DataSources = ({
     onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
 
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
 
   const {
     queryPluginsWithDebounced: fetchPlugins,

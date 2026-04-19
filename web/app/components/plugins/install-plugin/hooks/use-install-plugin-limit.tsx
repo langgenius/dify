@@ -1,7 +1,7 @@
 import type { Plugin, PluginManifestInMarket } from '../../types'
 import type { SystemFeatures } from '@/types/feature'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { InstallationScope } from '@/types/feature'
 
 type PluginProps = (Plugin | PluginManifestInMarket) & { from: 'github' | 'marketplace' | 'package' }
@@ -42,8 +42,6 @@ export function pluginInstallLimit(plugin: PluginProps, systemFeatures: SystemFe
 }
 
 export default function usePluginInstallLimit(plugin: PluginProps) {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return pluginInstallLimit(plugin, systemFeatures)
 }

@@ -1,6 +1,7 @@
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { get, post } from './base'
 import { consoleQuery } from './client'
 import { getUserCanAccess } from './share'
@@ -71,9 +72,7 @@ export const useUpdateAccessMode = () => {
 }
 
 export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, systemFeatures.webapp_auth.enabled, isInstalledApp],
     queryFn: () => {

@@ -23,7 +23,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -139,10 +139,10 @@ const getUniquePastedNodeTitle = (
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const { data: appDslVersion } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: appDslVersion } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.app_dsl_version,
-  }))
+  })
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()

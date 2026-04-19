@@ -22,7 +22,7 @@ import {
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   createCustomCollection,
 } from '@/service/tools'
@@ -71,10 +71,10 @@ const ToolPicker: FC<Props> = ({
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
 
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()

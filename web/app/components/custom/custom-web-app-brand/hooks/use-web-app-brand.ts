@@ -7,8 +7,8 @@ import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/i
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
 import { updateCurrentWorkspace } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const CUSTOM_CONFIG_URL = '/workspaces/custom-config'
@@ -20,9 +20,7 @@ const useWebAppBrand = () => {
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''

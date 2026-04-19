@@ -6,13 +6,11 @@ import Loading from '@/app/components/base/loading'
 import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { is401, userProfileQueryOptions } from '@/service/use-common'
 
 export default function SignInLayout({ children }: any) {
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   // Probe login state. 401 stays as `error` (not thrown) so this layout can render
   // the signin/oauth UI for unauthenticated users; other errors bubble to error.tsx.

@@ -2,14 +2,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { defaultSystemFeatures } from '@/types/feature'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const { data, isPending } = useQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = data ?? defaultSystemFeatures
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''

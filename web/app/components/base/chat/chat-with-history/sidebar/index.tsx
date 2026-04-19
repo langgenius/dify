@@ -27,7 +27,7 @@ import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = {
@@ -56,9 +56,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 

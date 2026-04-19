@@ -10,7 +10,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
@@ -181,10 +181,10 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
-  const { data: enable_marketplace } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
-  }))
+  })
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {

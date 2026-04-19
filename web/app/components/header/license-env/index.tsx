@@ -4,15 +4,13 @@ import { RiHourglass2Fill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { LicenseStatus } from '@/types/feature'
 import PremiumBadge from '../../base/premium-badge'
 
 const LicenseNav = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(consoleQuery.systemFeatures.queryOptions({
-    staleTime: Infinity,
-  }))
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
     const expiredAt = systemFeatures.license?.expired_at
