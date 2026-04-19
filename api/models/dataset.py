@@ -179,7 +179,7 @@ class Dataset(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(LongText, nullable=True)
+    description: Mapped[str] = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
     permission: Mapped[DatasetPermissionEnum] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
@@ -191,8 +191,8 @@ class Dataset(Base):
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
+    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     embedding_model = mapped_column(sa.String(255), nullable=True)
