@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Model, ModelItem, ModelProvider } from '../../declarations'
+import type { SystemFeatures } from '@/types/feature'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
@@ -62,7 +63,10 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const renderPopup = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { trial_models: mockTrialModels.current },
+  // The Popup component never inspects trial_models beyond passing them
+  // through, so an opaque string[] is enough; cast to satisfy the
+  // ModelProviderQuotaGetPaid[] declared on SystemFeatures.
+  systemFeatures: { trial_models: mockTrialModels.current as unknown as SystemFeatures['trial_models'] },
 })
 
 const mockTrialCredits = vi.hoisted(() => ({

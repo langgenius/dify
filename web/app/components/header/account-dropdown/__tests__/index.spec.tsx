@@ -12,7 +12,11 @@ import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
 
-type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T
+type DeepPartial<T> = T extends Array<infer U>
+  ? Array<U>
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,

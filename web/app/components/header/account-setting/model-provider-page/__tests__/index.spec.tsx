@@ -85,7 +85,7 @@ vi.mock('../system-model-selector', () => ({
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const originalPlugins = actual.consoleQuery.plugins as Record<string, unknown>
+  const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {

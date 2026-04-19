@@ -118,7 +118,7 @@ vi.mock('@/service/share', async () => {
 const mockSystemFeatures = {
   branding: {
     enabled: false,
-    workspace_logo: null,
+    workspace_logo: '',
   },
 }
 
