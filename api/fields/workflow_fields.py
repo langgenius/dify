@@ -68,6 +68,7 @@ pipeline_variable_fields = {
 
 workflow_fields = {
     "id": fields.String,
+    "kind": fields.String(attribute="kind_or_standard"),
     "graph": fields.Raw(attribute="graph_dict"),
     "features": fields.Raw(attribute="features_dict"),
     "hash": fields.String(attribute="unique_hash"),

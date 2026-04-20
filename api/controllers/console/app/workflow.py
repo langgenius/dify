@@ -48,7 +48,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowKind
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
@@ -1140,7 +1140,7 @@ class WorkflowTypeConvertApi(Resource):
     def post(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = WorkflowTypeConvertQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        target_type = WorkflowType.value_of(args.target_type)
+        target_type = WorkflowKind.EVALUATION if args.target_type == "evaluation" else WorkflowKind.STANDARD
 
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
@@ -1164,6 +1164,7 @@ class WorkflowTypeConvertApi(Resource):
             "result": "success",
             "workflow_id": workflow.id,
             "type": workflow.type.value,
+            "kind": workflow.kind_or_standard,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 

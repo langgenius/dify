@@ -27,7 +27,7 @@ from graphon.variables.input_entities import VariableEntity
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowType
 
 
 class _NodeType(TypedDict):
@@ -208,6 +208,7 @@ class WorkflowConverter:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=WorkflowType.from_app_mode(new_app_mode).value,
+            kind=WorkflowKind.STANDARD.value,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
             features=json.dumps(features),

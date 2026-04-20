@@ -135,6 +135,34 @@ class WorkflowType(StrEnum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
+class WorkflowKind(StrEnum):
+    """
+    Workflow business kind.
+
+    Runtime execution type and product business kind are intentionally separated:
+    - ``Workflow.type`` is consumed by the graph runtime layer.
+    - ``Workflow.kind`` is consumed by product logic (snippet/evaluation/standard).
+    """
+
+    STANDARD = "standard"
+    SNIPPET = "snippet"
+    EVALUATION = "evaluation"
+
+    @classmethod
+    def value_of(cls, value: str) -> "WorkflowKind":
+        for kind in cls:
+            if kind.value == value:
+                return kind
+        raise ValueError(f"invalid workflow kind value {value}")
+
+
+def resolve_workflow_kind(kind: "WorkflowKind | str | None") -> WorkflowKind:
+    """Resolve workflow business kind, defaulting empty values to ``standard``."""
+    if kind:
+        return kind if isinstance(kind, WorkflowKind) else WorkflowKind.value_of(kind)
+    return WorkflowKind.STANDARD
+
+
 class _InvalidGraphDefinitionError(Exception):
     pass
 
@@ -148,11 +176,13 @@ class Workflow(Base):  # bug
     - id (uuid) Workflow ID, pk
     - tenant_id (uuid) Workspace ID
     - app_id (uuid) App ID
-    - type (string) Workflow type
+    - type (string) Runtime workflow type
 
         `workflow` for `Workflow App`
 
         `chat` for `Chat App workflow mode`
+
+    - kind (string) Business workflow kind (`standard`/`snippet`/`evaluation`)
 
     - version (string) Version
 
@@ -182,6 +212,12 @@ class Workflow(Base):  # bug
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False)
+    kind: Mapped[WorkflowKind | None] = mapped_column(
+        EnumText(WorkflowKind, length=255),
+        nullable=True,
+        default=WorkflowKind.STANDARD,
+        server_default=sa.text("'standard'"),
+    )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
@@ -221,6 +257,7 @@ class Workflow(Base):  # bug
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list[dict],
+        kind: str | None = WorkflowKind.STANDARD.value,
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
@@ -229,6 +266,7 @@ class Workflow(Base):  # bug
         workflow.tenant_id = tenant_id
         workflow.app_id = app_id
         workflow.type = WorkflowType(type)
+        workflow.kind = WorkflowKind(kind) if kind else WorkflowKind.STANDARD
         workflow.version = version
         workflow.graph = graph
         workflow.features = features
@@ -249,6 +287,14 @@ class Workflow(Base):  # bug
     @property
     def updated_by_account(self):
         return db.session.get(Account, self.updated_by) if self.updated_by else None
+
+    @property
+    def kind_or_standard(self) -> str:
+        return self.resolved_kind.value
+
+    @property
+    def resolved_kind(self) -> WorkflowKind:
+        return resolve_workflow_kind(self.kind)
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:

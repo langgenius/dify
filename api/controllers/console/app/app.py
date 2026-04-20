@@ -34,6 +34,7 @@ from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
+from models.workflow import resolve_workflow_kind
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -330,6 +331,7 @@ class AppPartial(ResponseModel):
     author_name: str | None = None
     has_draft_trigger: bool | None = None
     workflow_type: str | None = None
+    workflow_kind: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -365,6 +367,7 @@ class AppDetail(ResponseModel):
     updated_at: int | None = None
     access_mode: str | None = None
     workflow_type: str | None = None
+    workflow_kind: str | None = None
     tags: list[Tag] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
@@ -508,15 +511,23 @@ class AppListApi(Resource):
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
         workflow_ids = [str(app.workflow_id) for app in app_pagination.items if app.workflow_id]
-        workflow_type_map: dict[str, str] = {}
+        workflow_info_map: dict[str, tuple[str, str]] = {}
         if workflow_ids:
             rows = db.session.execute(
-                select(Workflow.id, Workflow.type).where(Workflow.id.in_(workflow_ids))
+                select(Workflow.id, Workflow.type, Workflow.kind).where(Workflow.id.in_(workflow_ids))
             ).all()
-            workflow_type_map = {str(row.id): row.type for row in rows}
+            workflow_info_map = {
+                str(row.id): (
+                    row.type.value if hasattr(row.type, "value") else str(row.type),
+                    resolve_workflow_kind(row.kind).value,
+                )
+                for row in rows
+            }
 
         for app in app_pagination.items:
-            app.workflow_type = workflow_type_map.get(str(app.workflow_id)) if app.workflow_id else None
+            workflow_info = workflow_info_map.get(str(app.workflow_id)) if app.workflow_id else None
+            app.workflow_type = workflow_info[0] if workflow_info else None
+            app.workflow_kind = workflow_info[1] if workflow_info else None
 
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
         return pagination_model.model_dump(mode="json"), 200
@@ -566,11 +577,15 @@ class AppApi(Resource):
 
         if app_model.workflow_id:
             row = db.session.execute(
-                select(Workflow.type).where(Workflow.id == app_model.workflow_id)
-            ).scalar()
-            app_model.workflow_type = row if row else None
+                select(Workflow.type, Workflow.kind).where(Workflow.id == app_model.workflow_id)
+            ).first()
+            app_model.workflow_type = (
+                (row.type.value if hasattr(row.type, "value") else str(row.type)) if row else None
+            )
+            app_model.workflow_kind = resolve_workflow_kind(row.kind).value if row else None
         else:
             app_model.workflow_type = None
+            app_model.workflow_kind = None
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")

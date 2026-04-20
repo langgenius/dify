@@ -57,7 +57,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @staticmethod
     def _ensure_snippet_start_node_in_worker(*, session: Session, workflow: Workflow) -> Workflow:
         """Re-apply snippet virtual Start injection after worker reloads workflow from DB."""
-        if workflow.type != "snippet":
+        if workflow.kind_or_standard != "snippet":
             return workflow
 
         from models.snippet import CustomizedSnippet
