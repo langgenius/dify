@@ -2,8 +2,6 @@
 
 import type { AppListCategory } from './app-type-filter-shared'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +9,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 
