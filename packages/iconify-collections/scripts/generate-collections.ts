@@ -3,12 +3,65 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { importSvgCollections } from 'iconify-import-svg'
 
+type IconData = {
+  body: string
+  left?: number
+  top?: number
+  width?: number
+  height?: number
+  rotate?: 0 | 1 | 2 | 3
+  hFlip?: boolean
+  vFlip?: boolean
+}
+
+type AliasData = Omit<IconData, 'body'> & {
+  parent: string
+}
+
+type ImportedCollection = {
+  icons?: Record<string, IconData>
+  aliases?: Record<string, AliasData>
+  lastModified?: number
+}
+
+type ImportedCollections = Record<string, ImportedCollection>
+
+type FlattenedCollection = {
+  prefix: string
+  icons: Record<string, IconData>
+  aliases?: Record<string, AliasData>
+  lastModified?: number
+}
+
+type CollectionInfo = {
+  prefix: string
+  name: string
+  total: number
+  version: string
+  author: {
+    name: string
+    url: string
+  }
+  license: {
+    title: string
+    spdx: string
+    url: string
+  }
+  samples: string[]
+  palette: false
+}
+
+type PackageJson = {
+  version: string
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const packageDir = path.resolve(__dirname, '..')
 
 const parseColorOptions = {
-  fallback: () => 'currentColor',
+  callback: () => 'currentColor',
 }
+
 const svgOptimizeConfig = {
   cleanupSVG: true,
   deOptimisePaths: true,
@@ -21,27 +74,23 @@ const customPublicCollections = importSvgCollections({
   prefix: 'custom-public',
   ignoreImportErrors: true,
   ...svgOptimizeConfig,
-})
+}) as ImportedCollections
 
 const customVenderCollections = importSvgCollections({
   source: path.resolve(packageDir, 'assets/vender'),
   prefix: 'custom-vender',
   ignoreImportErrors: true,
   ...svgOptimizeConfig,
-})
+}) as ImportedCollections
 
-const packageJson = JSON.parse(await readFile(path.resolve(packageDir, 'package.json'), 'utf8'))
-
-const flattenCollections = (collections, prefix) => {
-  const icons = {}
-  const aliases = {}
+const flattenCollections = (collections: ImportedCollections, prefix: string): FlattenedCollection => {
+  const icons: Record<string, IconData> = {}
+  const aliases: Record<string, AliasData> = {}
   let lastModified = 0
 
   for (const [collectionKey, collection] of Object.entries(collections)) {
     const segment = collectionKey.slice(prefix.length + 1)
-    const namePrefix = segment
-      ? `${segment}-`
-      : ''
+    const namePrefix = segment ? `${segment}-` : ''
 
     for (const [iconName, iconData] of Object.entries(collection.icons ?? {}))
       icons[`${namePrefix}${iconName}`] = iconData
@@ -61,11 +110,16 @@ const flattenCollections = (collections, prefix) => {
   }
 }
 
-const createCollectionInfo = (prefix, name, icons) => ({
+const createCollectionInfo = (
+  prefix: string,
+  name: string,
+  icons: Record<string, IconData>,
+  version: string,
+): CollectionInfo => ({
   prefix,
   name,
   total: Object.keys(icons).length,
-  version: packageJson.version,
+  version,
   author: {
     name: 'LangGenius, Inc.',
     url: 'https://github.com/langgenius/dify',
@@ -79,7 +133,7 @@ const createCollectionInfo = (prefix, name, icons) => ({
   palette: false,
 })
 
-const createIndexMjs = () => `import icons from './icons.json' with { type: 'json' }
+const createIndexMjs = (): string => `import icons from './icons.json' with { type: 'json' }
 import info from './info.json' with { type: 'json' }
 import metadata from './metadata.json' with { type: 'json' }
 import chars from './chars.json' with { type: 'json' }
@@ -87,7 +141,7 @@ import chars from './chars.json' with { type: 'json' }
 export { icons, info, metadata, chars }
 `
 
-const createIndexJs = () => `'use strict'
+const createIndexJs = (): string => `'use strict'
 
 const icons = require('./icons.json')
 const info = require('./info.json')
@@ -97,7 +151,7 @@ const chars = require('./chars.json')
 module.exports = { icons, info, metadata, chars }
 `
 
-const createIndexTypes = () => `export interface IconifyJSON {
+const createIndexTypes = (): string => `export interface IconifyJSON {
   prefix: string
   icons: Record<string, IconifyIcon>
   aliases?: Record<string, IconifyAlias>
@@ -153,9 +207,14 @@ export declare const metadata: IconifyMetaData
 export declare const chars: IconifyChars
 `
 
-const writeCollectionPackage = async (directoryName, collection, name) => {
+const writeCollectionPackage = async (
+  directoryName: string,
+  collection: FlattenedCollection,
+  name: string,
+  version: string,
+): Promise<void> => {
   const targetDir = path.resolve(packageDir, directoryName)
-  const info = createCollectionInfo(collection.prefix, name, collection.icons)
+  const info = createCollectionInfo(collection.prefix, name, collection.icons, version)
 
   await mkdir(targetDir, { recursive: true })
   await writeFile(path.resolve(targetDir, 'icons.json'), `${JSON.stringify(collection, null, 2)}\n`)
@@ -170,9 +229,30 @@ const writeCollectionPackage = async (directoryName, collection, name) => {
 const mergedCustomPublicCollection = flattenCollections(customPublicCollections, 'custom-public')
 const mergedCustomVenderCollection = flattenCollections(customVenderCollections, 'custom-vender')
 
-await rm(path.resolve(packageDir, 'src'), { recursive: true, force: true })
-await rm(path.resolve(packageDir, 'custom-public'), { recursive: true, force: true })
-await rm(path.resolve(packageDir, 'custom-vender'), { recursive: true, force: true })
+async function main(): Promise<void> {
+  const packageJson = JSON.parse(
+    await readFile(path.resolve(packageDir, 'package.json'), 'utf8'),
+  ) as PackageJson
 
-await writeCollectionPackage('custom-public', mergedCustomPublicCollection, 'Dify Custom Public')
-await writeCollectionPackage('custom-vender', mergedCustomVenderCollection, 'Dify Custom Vender')
+  await rm(path.resolve(packageDir, 'src'), { recursive: true, force: true })
+  await rm(path.resolve(packageDir, 'custom-public'), { recursive: true, force: true })
+  await rm(path.resolve(packageDir, 'custom-vender'), { recursive: true, force: true })
+
+  await writeCollectionPackage(
+    'custom-public',
+    mergedCustomPublicCollection,
+    'Dify Custom Public',
+    packageJson.version,
+  )
+  await writeCollectionPackage(
+    'custom-vender',
+    mergedCustomVenderCollection,
+    'Dify Custom Vender',
+    packageJson.version,
+  )
+}
+
+main().catch((error: unknown) => {
+  console.error(error)
+  process.exitCode = 1
+})

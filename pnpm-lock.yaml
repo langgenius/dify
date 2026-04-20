@@ -352,8 +352,8 @@ catalogs:
       specifier: 1.2.1
       version: 1.2.1
     iconify-import-svg:
-      specifier: 0.1.2
-      version: 0.1.2
+      specifier: 0.2.0
+      version: 0.2.0
     immer:
       specifier: 11.1.4
       version: 11.1.4
@@ -718,7 +718,7 @@ importers:
     devDependencies:
       iconify-import-svg:
         specifier: 'catalog:'
-        version: 0.1.2
+        version: 0.2.0
 
   packages/migrate-no-unchecked-indexed-access:
     dependencies:
@@ -5932,8 +5932,8 @@ packages:
       typescript:
         optional: true
 
-  iconify-import-svg@0.1.2:
-    resolution: {integrity: sha512-8dwxdGK1a7oPDQhLQOPTbx51tpkxYB6HZvf4fxWz2QVYqEtgop0FWE7OXQ+4zqnrTVUpMIGnOsvqIHtPBK9Isw==}
+  iconify-import-svg@0.2.0:
+    resolution: {integrity: sha512-NFuDyiYRKLSNvbiUnR4627DF4QjQR+bC+n+Nh0lcMnKXv9MCwzikOcdzqITU1yFfRacc6S6PeElc2H5l+35T1Q==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -13329,7 +13329,7 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
-  iconify-import-svg@0.1.2:
+  iconify-import-svg@0.2.0:
     dependencies:
       '@iconify/tools': 4.2.0
       '@iconify/types': 2.0.0
