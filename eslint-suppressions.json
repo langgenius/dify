@@ -6068,9 +6068,6 @@
     }
   },
   "web/app/components/workflow/run/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
