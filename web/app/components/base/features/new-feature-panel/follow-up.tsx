@@ -2,12 +2,12 @@ import type {
   OnFeaturesChange,
   SuggestedQuestionsAfterAnswer,
 } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import FollowUpSettingModal from '@/app/components/base/features/new-feature-panel/follow-up-setting-modal'
