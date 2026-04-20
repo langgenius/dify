@@ -47,7 +47,7 @@ vi.mock('@/app/components/base/input', () => ({
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
+  const _React = await import('react')
   return {
     PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     PortalToFollowElemTrigger: ({
