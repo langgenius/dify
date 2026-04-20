@@ -1,7 +1,8 @@
-import type { Credential, PluginPayload } from '../types'
 import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
+  OffsetOptions,
+} from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
+import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,6 +13,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiArrowDownSLine,
@@ -23,11 +29,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Indicator from '@/app/components/header/indicator'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
@@ -48,8 +49,8 @@ type AuthorizedProps = {
   renderTrigger?: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: PortalToFollowElemOptions['offset']
-  placement?: PortalToFollowElemOptions['placement']
+  offset?: number | OffsetOptions
+  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -96,11 +97,12 @@ const Authorized = ({
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
   const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)
   const openConfirm = useCallback((credentialId?: string) => {
+    setMergedIsOpen(false)
     if (credentialId)
       pendingOperationCredentialId.current = credentialId
 
     setDeleteCredentialId(pendingOperationCredentialId.current)
-  }, [])
+  }, [setMergedIsOpen])
   const closeConfirm = useCallback(() => {
     setDeleteCredentialId(null)
     pendingOperationCredentialId.current = null
@@ -130,11 +132,12 @@ const Authorized = ({
       handleSetDoingAction(false)
     }
   }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
-  const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
-  const handleEdit = useCallback((id: string, values: Record<string, any>) => {
+  const [editValues, setEditValues] = useState<Record<string, unknown> | null>(null)
+  const handleEdit = useCallback((id: string, values: Record<string, unknown>) => {
+    setMergedIsOpen(false)
     pendingOperationCredentialId.current = id
     setEditValues(values)
-  }, [])
+  }, [setMergedIsOpen])
   const handleRemove = useCallback(() => {
     setDeleteCredentialId(pendingOperationCredentialId.current)
   }, [])
@@ -171,49 +174,59 @@ const Authorized = ({
   }, [updatePluginCredential, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
   const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
+  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
+  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
+  const popupProps = triggerPopupSameWidth
+    ? { style: { width: 'var(--anchor-width, auto)' } }
+    : undefined
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={mergedIsOpen}
         onOpenChange={setMergedIsOpen}
-        placement={placement}
-        offset={offset}
-        triggerPopupSameWidth={triggerPopupSameWidth}
       >
-        <PortalToFollowElemTrigger
-          onClick={() => setMergedIsOpen(!mergedIsOpen)}
-          asChild
-        >
-          {
-            renderTrigger
-              ? renderTrigger(mergedIsOpen)
-              : (
-                  <Button
-                    className={cn(
-                      'w-full',
-                      isOpen && 'bg-components-button-secondary-bg-hover',
-                    )}
-                  >
-                    <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
-                    {credentials.length}
+        <PopoverTrigger
+          render={(
+            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
+              {
+                renderTrigger
+                  ? renderTrigger(mergedIsOpen)
+                  : (
+                      <Button
+                        className={cn(
+                          'w-full',
+                          mergedIsOpen && 'bg-components-button-secondary-bg-hover',
+                        )}
+                      >
+                        <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
+                        {credentials.length}
 &nbsp;
-                    {
-                      credentials.length > 1
-                        ? t('auth.authorizations', { ns: 'plugin' })
-                        : t('auth.authorization', { ns: 'plugin' })
-                    }
-                    {
-                      !!unavailableCredentials.length && (
-                        ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
-                      )
-                    }
-                    <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
-                  </Button>
-                )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-100">
+                        {
+                          credentials.length > 1
+                            ? t('auth.authorizations', { ns: 'plugin' })
+                            : t('auth.authorization', { ns: 'plugin' })
+                        }
+                        {
+                          !!unavailableCredentials.length && (
+                            ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
+                          )
+                        }
+                        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+                      </Button>
+                    )
+              }
+            </div>
+          )}
+        />
+        <PopoverContent
+          placement={placement}
+          sideOffset={sideOffset}
+          alignOffset={alignOffset}
+          popupProps={popupProps}
+          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        >
           <div className={cn(
             'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
@@ -323,8 +336,8 @@ const Authorized = ({
               )
             }
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={open => !open && closeConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

@@ -45,6 +45,8 @@ vi.mock('../authorized-item', () => ({
   ),
 }))
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 describe('Authorized', () => {
   const mockProvider: ModelProvider = {
     provider: 'openai',

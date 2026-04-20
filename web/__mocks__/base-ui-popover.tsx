@@ -82,8 +82,8 @@ export const PopoverTrigger = ({
   const node = render ?? children
 
   if (React.isValidElement(node)) {
-    const triggerElement = node as React.ReactElement<React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }>
-    const childProps = triggerElement.props ?? {}
+    const triggerElement = node as React.ReactElement<Record<string, unknown>>
+    const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
 
     return React.cloneElement(triggerElement, {
       ...props,
