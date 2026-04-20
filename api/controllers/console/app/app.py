@@ -5,7 +5,6 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from graphon.enums import WorkflowExecutionStatus
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,6 +29,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
@@ -129,6 +129,7 @@ class AppNamePayload(BaseModel):
 
 class AppIconPayload(BaseModel):
     icon: str | None = Field(default=None, description="Icon data")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
@@ -729,7 +730,12 @@ class AppIconApi(Resource):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
+        app_model = app_service.update_app_icon(
+            app_model,
+            args.icon or "",
+            args.icon_background or "",
+            args.icon_type,
+        )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 

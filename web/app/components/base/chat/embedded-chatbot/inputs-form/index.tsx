@@ -1,10 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import { AppSourceType } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import { useEmbeddedChatbotContext } from '../context'
 
 type Props = {

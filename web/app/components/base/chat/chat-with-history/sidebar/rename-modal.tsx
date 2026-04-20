@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 
 type IRenameModalProps = {
   isShow: boolean

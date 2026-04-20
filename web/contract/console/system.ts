@@ -7,5 +7,4 @@ export const systemFeaturesContract = base
     path: '/system-features',
     method: 'GET',
   })
-  .input(type<unknown>())
   .output(type<SystemFeatures>())

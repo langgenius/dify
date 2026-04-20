@@ -1,4 +1,7 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -10,16 +13,13 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   icon?: string | { content?: string, background?: string }
@@ -120,8 +120,8 @@ const ToolItem = ({
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            value={switchValue ?? false}
-            onChange={onSwitchChange}
+            checked={switchValue ?? false}
+            onCheckedChange={onSwitchChange}
           />
         </div>
       )}

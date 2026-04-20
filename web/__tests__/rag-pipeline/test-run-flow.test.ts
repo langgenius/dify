@@ -139,8 +139,8 @@ describe('Test Run Flow Integration', () => {
       const { result } = renderHook(() => useTestRunSteps())
 
       expect(result.current.steps).toHaveLength(2)
-      expect(result.current.steps[0].value).toBe('dataSource')
-      expect(result.current.steps[1].value).toBe('documentProcessing')
+      expect(result.current.steps[0]!.value).toBe('dataSource')
+      expect(result.current.steps[1]!.value).toBe('documentProcessing')
     })
   })
 
@@ -153,8 +153,8 @@ describe('Test Run Flow Integration', () => {
 
       // Should only include DataSource nodes, not KnowledgeBase
       expect(result.current).toHaveLength(2)
-      expect(result.current[0].value).toBe('ds-1')
-      expect(result.current[1].value).toBe('ds-2')
+      expect(result.current[0]!.value).toBe('ds-1')
+      expect(result.current[1]!.value).toBe('ds-2')
     })
 
     it('should include node data in options', async () => {
@@ -163,8 +163,8 @@ describe('Test Run Flow Integration', () => {
       )
       const { result } = renderHook(() => useDatasourceOptions())
 
-      expect(result.current[0].label).toBe('Local Files')
-      expect(result.current[0].data.type).toBe(BlockEnum.DataSource)
+      expect(result.current[0]!.label).toBe('Local Files')
+      expect(result.current[0]!.data.type).toBe(BlockEnum.DataSource)
     })
   })
 

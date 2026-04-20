@@ -1,6 +1,8 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -16,10 +18,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { Button } from '@/app/components/base/ui/button'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { cn } from '@/utils/classnames'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,

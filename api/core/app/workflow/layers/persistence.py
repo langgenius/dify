@@ -14,6 +14,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union
 
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
     WorkflowExecutionStatus,
@@ -38,14 +45,6 @@ from graphon.graph_events import (
     NodeRunSucceededEvent,
 )
 from graphon.node_events import NodeRunResult
-
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.system_variables import SystemVariableKey
-from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from libs.datetime_utils import naive_utc_now
 
 
@@ -350,7 +349,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
         execution.outputs = execution.outputs or runtime_state.outputs
-        execution.exceptions_count = runtime_state.exceptions_count
+        execution.exceptions_count = max(execution.exceptions_count, runtime_state.exceptions_count)
 
     def _update_node_execution(
         self,

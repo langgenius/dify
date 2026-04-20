@@ -1,13 +1,5 @@
 import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
-import { useBoolean, useKeyPress } from 'ahooks'
-import { memo, useCallback, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
-import Divider from '@/app/components/base/divider'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -16,9 +8,18 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
+import { useBoolean, useKeyPress } from 'ahooks'
+import { memo, useCallback, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Divider from '@/app/components/base/divider'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -35,7 +36,6 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix, useInvalidCustomizedTemplateList, usePublishAsCustomizedPipeline } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']

@@ -5,8 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
@@ -47,6 +45,8 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser

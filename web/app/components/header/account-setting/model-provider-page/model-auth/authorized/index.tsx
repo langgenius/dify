@@ -10,6 +10,16 @@ import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
   RiAddLine,
 } from '@remixicon/react'
 import {
@@ -24,16 +34,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 

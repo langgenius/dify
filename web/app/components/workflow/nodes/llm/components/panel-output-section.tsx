@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import StructureOutput from './structure-output'
@@ -43,7 +43,6 @@ const PanelOutputSection: FC<Props> = ({
             {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <div>
                       <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
@@ -61,7 +60,6 @@ const PanelOutputSection: FC<Props> = ({
             <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
             <Tooltip>
               <TooltipTrigger
-                delay={0}
                 render={(
                   <div>
                     <RiQuestionLine className="size-3.5 text-text-quaternary" />
@@ -74,8 +72,8 @@ const PanelOutputSection: FC<Props> = ({
             </Tooltip>
             <Switch
               className="ml-2"
-              value={!!inputs.structured_output_enabled}
-              onChange={handleStructureOutputEnableChange}
+              checked={!!inputs.structured_output_enabled}
+              onCheckedChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}
             />

@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'

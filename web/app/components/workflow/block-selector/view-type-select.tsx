@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiNodeTree, RiSortAlphabetAsc } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 
 export enum ViewType {
   flat = 'flat',
@@ -47,7 +47,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.tree)}
       >
-        <RiNodeTree className="h-4 w-4 " />
+        <RiNodeTree className="h-4 w-4" />
       </div>
     </div>
   )

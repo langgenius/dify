@@ -3,7 +3,6 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { defaultSystemFeatures } from '@/types/feature'
 
 export const createTool = (
   name: string,
@@ -90,12 +89,4 @@ export const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   },
   from: 'github',
   ...overrides,
-})
-
-export const createGlobalPublicStoreState = (enableMarketplace: boolean) => ({
-  systemFeatures: {
-    ...defaultSystemFeatures,
-    enable_marketplace: enableMarketplace,
-  },
-  setSystemFeatures: vi.fn(),
 })

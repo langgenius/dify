@@ -1,15 +1,15 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
-import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()

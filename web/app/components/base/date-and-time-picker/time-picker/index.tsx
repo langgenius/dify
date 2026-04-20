@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import type { TimePickerProps } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import TimezoneLabel from '@/app/components/base/timezone-label'
-import { cn } from '@/utils/classnames'
 import { Period } from '../types'
 import dayjs, {
   getDateWithTimezone,
@@ -199,8 +199,8 @@ const TimePicker = ({
 
   const inputElem = (
     <input
-      className="flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1 text-components-input-text-filled
-            outline-hidden system-xs-regular placeholder:text-components-input-text-placeholder"
+      className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled
+            outline-hidden select-none placeholder:text-components-input-text-placeholder"
       readOnly
       value={isOpen ? '' : displayValue}
       placeholder={placeholderDate}
@@ -230,10 +230,10 @@ const TimePicker = ({
               >
                 {inputElem}
                 {showTimezone && timezone && (
-                  <TimezoneLabel timezone={timezone} inline className="shrink-0 select-none text-xs" />
+                  <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs select-none" />
                 )}
                 <span className={cn('i-ri-time-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden')} />
-                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block')} role="button" aria-label={t('operation.clear', { ns: 'common' })} onClick={handleClear} />
+                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block hover:text-text-secondary')} role="button" aria-label={t('operation.clear', { ns: 'common' })} onClick={handleClear} />
               </div>
             )}
       </PortalToFollowElemTrigger>

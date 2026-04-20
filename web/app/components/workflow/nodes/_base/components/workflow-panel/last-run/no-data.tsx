@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
-import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   canSingleRun: boolean

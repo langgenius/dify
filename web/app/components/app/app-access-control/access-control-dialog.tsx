@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { Fragment, useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 
 type DialogProps = {
   className?: string
@@ -46,7 +46,7 @@ const AccessControlDialog = ({
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className={cn('relative h-auto min-h-[323px] w-[600px] overflow-y-auto rounded-2xl bg-components-panel-bg p-0 shadow-xl transition-all', className)}>
-              <div onClick={() => close()} className="absolute right-5 top-5 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
+              <div onClick={() => close()} className="absolute top-5 right-5 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
                 <RiCloseLine className="h-5 w-5 text-text-tertiary" />
               </div>
               {children}

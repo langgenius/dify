@@ -1,7 +1,7 @@
 import type { Credential, CustomModel, ModelProvider } from '../../declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 
 type ApiKeySectionProps = {
@@ -31,7 +31,7 @@ function ApiKeySection({
   if (!credentials.length) {
     return (
       <div className="flex flex-col gap-2 p-2">
-        <div className="radius-lg bg-linear-to-r from-state-base-hover to-transparent p-4">
+        <div className="rounded-[10px] bg-linear-to-r from-state-base-hover to-transparent p-4">
           <div className="flex flex-col gap-1">
             <div className="system-sm-medium text-text-secondary">
               {t('modelProvider.card.noApiKeysTitle', { ns: 'common' })}

@@ -1,4 +1,6 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightSLine,
   RiListView,
@@ -7,14 +9,12 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { Button } from '@/app/components/base/ui/button'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import NodeStatusIcon from '@/app/components/workflow/nodes/_base/components/node-status-icon'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type AgentLogItemProps = {
   item: AgentLogItemWithChildren
@@ -54,7 +54,7 @@ const AgentLogItem = ({
   }, [status])
 
   return (
-    <div className="radius-lg border-[0.5px] border-components-panel-border bg-background-default">
+    <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default">
       <div
         className={cn(
           'flex cursor-pointer items-center pt-2 pr-3 pb-2 pl-1.5',

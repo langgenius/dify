@@ -1,12 +1,12 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { CreateButtonType, CreateSubscriptionButton } from './create'
 import { DeleteConfirm } from './delete-confirm'
 import { useSubscriptionList } from './use-subscription-list'
@@ -28,7 +28,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
   return (
     <div className="w-[320px] p-1">
       {subscriptionCount > 0 && (
-        <div className="ml-7 mr-1.5 flex h-8 items-center justify-between">
+        <div className="mr-1.5 ml-7 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
@@ -71,7 +71,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
                 e.stopPropagation()
                 setDeletedSubscription(subscription)
               }}
-              className="subscription-delete-btn hidden shrink-0 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:flex"
+              className="subscription-delete-btn hidden shrink-0 text-text-tertiary group-hover:flex hover:bg-state-destructive-hover hover:text-text-destructive"
             >
               <RiDeleteBinLine className="size-4" />
             </ActionButton>

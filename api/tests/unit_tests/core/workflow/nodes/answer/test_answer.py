@@ -2,15 +2,15 @@ import time
 import uuid
 from unittest.mock import MagicMock
 
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.graph import Graph
-from graphon.nodes.answer.answer_node import AnswerNode
-from graphon.runtime import GraphRuntimeState, VariablePool
-
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -67,20 +67,15 @@ def test_execute_answer():
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
-    node_config = {
-        "id": "answer",
-        "data": {
-            "title": "123",
-            "type": "answer",
-            "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
-        },
-    }
-
     node = AnswerNode(
-        id=str(uuid.uuid4()),
+        node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        config=node_config,
+        config=AnswerNodeData(
+            title="123",
+            type="answer",
+            answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        ),
     )
 
     # Mock db.session.close()

@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Checkbox from '@/app/components/base/checkbox'
 import SearchInput from '@/app/components/base/search-input'
-import { Button } from '@/app/components/base/ui/button'
 import SearchMenu from '@/assets/search-menu.svg'
-import { cn } from '@/utils/classnames'
 
 type CheckboxListOption = {
   label: string

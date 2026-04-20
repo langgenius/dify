@@ -2,13 +2,15 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { Button } from '@/app/components/base/ui/button'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { AppTypeIcon } from '../../app/type-selector'
 
 export type AppCardProps = {
@@ -28,9 +30,16 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const handleTryApp = () => {
+    trackEvent('preview_template', {
+      template_id: app.app_id,
+      template_name: appBasicInfo.name,
+      template_mode: appBasicInfo.mode,
+      template_category: app.category,
+      page: 'explore',
+    })
     onTry({ appId: app.app_id, app })
   }
 

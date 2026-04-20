@@ -37,14 +37,12 @@ describe('Actions', () => {
 
     it('should render add icon', () => {
       const { container } = render(<Actions {...defaultProps} />)
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-add-line')).toBeInTheDocument()
     })
 
     it('should render arrow icon for details', () => {
       const { container } = render(<Actions {...defaultProps} />)
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThan(1)
+      expect(container.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
     })
   })
 
@@ -83,20 +81,15 @@ describe('Actions', () => {
 
       expect(defaultProps.handleShowTemplateDetails).toHaveBeenCalledTimes(1)
     })
-  })
 
-  // Button Variants Tests
-  describe('Button Variants', () => {
-    it('should have primary variant for choose button', () => {
+    it('should open more operations menu and close it after selecting edit', async () => {
       render(<Actions {...defaultProps} />)
-      const chooseButton = screen.getByText(/operations\.choose/i).closest('button')
-      expect(chooseButton).toHaveClass('btn-primary')
-    })
 
-    it('should have secondary variant for details button', () => {
-      render(<Actions {...defaultProps} />)
-      const detailsButton = screen.getByText(/operations\.details/i).closest('button')
-      expect(detailsButton).toHaveClass('btn-secondary')
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const editButton = await screen.findByText(/operations\.editInfo/i)
+      fireEvent.click(editButton)
+
+      expect(defaultProps.openEditModal).toHaveBeenCalledTimes(1)
     })
   })
 

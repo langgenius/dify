@@ -1,11 +1,4 @@
 import type { FC } from 'react'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
-import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,9 +7,16 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { IS_CE_EDITION } from '@/config'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
@@ -62,7 +62,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className="pointer-events-auto flex items-center gap-x-1 radius-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
         <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}

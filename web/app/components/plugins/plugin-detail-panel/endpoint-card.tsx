@@ -1,4 +1,14 @@
 import type { EndpointListItem, PluginDetail } from '../types'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -7,17 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
@@ -152,7 +152,7 @@ const EndpointCard = ({
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
-      <div className="group radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
+      <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 system-md-semibold text-text-secondary">
             <RiLoginCircleLine className="h-4 w-4" />
@@ -196,8 +196,8 @@ const EndpointCard = ({
         )}
         <Switch
           className="ml-3"
-          value={active}
-          onChange={handleSwitch}
+          checked={active}
+          onCheckedChange={handleSwitch}
           size="sm"
         />
       </div>

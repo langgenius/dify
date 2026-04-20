@@ -1,5 +1,6 @@
 'use client'
 import type { VersionHistory } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -7,7 +8,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
@@ -31,6 +31,7 @@ export type VersionHistoryPanelProps = {
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
+
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
@@ -142,11 +143,56 @@ export const VersionHistoryPanel = ({
     }
   }, [])
 
+  const emitRestoreIntent = useCallback(async (item: VersionHistory) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreIntent({
+        versionId: item.id,
+        versionName: item.marked_name,
+        initiatorUserId: userProfile.id,
+        initiatorName: userProfile.name,
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore intent:', error)
+    }
+  }, [userProfile.id, userProfile.name])
+
+  const emitRestoreComplete = useCallback(async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreComplete({
+        versionId: item.id,
+        success,
+        ...(errorMessage ? { error: errorMessage } : {}),
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore complete:', error)
+    }
+  }, [])
+
+  const emitWorkflowUpdate = useCallback(async () => {
+    try {
+      const appId = configsMap?.flowId
+      if (!appId)
+        return
+
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitWorkflowUpdate(appId)
+    }
+    catch (error) {
+      console.error('Failed to emit workflow update:', error)
+    }
+  }, [configsMap?.flowId])
+
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
   const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
+    await emitRestoreIntent(item)
+
     try {
       await restoreWorkflow(restoreVersionUrl(item.id))
       setCurrentVersion(item)
@@ -156,14 +202,17 @@ export const VersionHistoryPanel = ({
       toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
       deleteAllInspectVars()
       invalidAllLastRun()
+      await emitRestoreComplete(item, true)
+      await emitWorkflowUpdate()
     }
     catch {
       toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      await emitRestoreComplete(item, false, 'restore failed')
     }
     finally {
       resetWorkflowVersionHistory()
     }
-  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, workflowStore, restoreWorkflow, restoreVersionUrl, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+  }, [setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, setCurrentVersion, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 
@@ -210,7 +259,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -249,7 +298,7 @@ export const VersionHistoryPanel = ({
                       )
                     })
                   ))}
-                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0]!.items.length) && (
                     <Empty onResetFilter={handleResetFilter} />
                   )}
                 </>
@@ -266,7 +315,7 @@ export const VersionHistoryPanel = ({
                   ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
                   : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
-              <div className="system-xs-medium-uppercase py-px text-text-accent">
+              <div className="py-px system-xs-medium-uppercase text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>

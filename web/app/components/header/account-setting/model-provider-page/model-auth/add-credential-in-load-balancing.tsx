@@ -5,6 +5,7 @@ import type {
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import {
   memo,
@@ -13,7 +14,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { cn } from '@/utils/classnames'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -47,7 +47,7 @@ const AddCredentialInLoadBalancing = ({
   const renderTrigger = useCallback((open?: boolean) => {
     const Item = (
       <div className={cn(
-        'system-sm-medium flex h-8 items-center rounded-lg px-3 text-text-accent hover:bg-state-base-hover',
+        'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover',
         open && 'bg-state-base-hover',
       )}
       >

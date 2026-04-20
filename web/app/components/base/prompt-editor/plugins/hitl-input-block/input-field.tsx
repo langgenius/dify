@@ -1,11 +1,11 @@
 import type { FormInputItem, FormInputItemDefault } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import PrePopulate from './pre-populate'
@@ -142,8 +142,8 @@ const InputField: React.FC<InputFieldProps> = ({
                 onClick={handleSave}
               >
                 <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                <span className="mr-0.5 flex h-4 items-center radius-xs bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
-                <span className="flex h-4 items-center radius-xs bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
+                <span className="mr-0.5 flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
+                <span className="flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
               </Button>
             )}
 
