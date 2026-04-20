@@ -25,7 +25,7 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
@@ -39,13 +39,19 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    snippets: {
-      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: {
+      ...actual.consoleClient,
+      snippets: {
+        ...actual.consoleClient.snippets,
+        syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+      },
     },
-  },
-}))
+  }
+})
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
@@ -301,6 +307,8 @@ describe('SelectionContextmenu', () => {
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-createSnippet'))
+    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(screen.queryByTestId('selection-contextmenu-item-createSnippet')).not.toBeInTheDocument()
     fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
       target: { value: 'My snippet' },
     })

@@ -335,6 +335,7 @@ const SelectionContextmenu = () => {
       }),
     }
   }, [selectionMenu])
+  const isMenuOpen = Boolean(selectionMenu && anchor)
 
   useEffect(() => {
     if (selectionMenu && selectedNodes.length <= 1)
@@ -561,57 +562,59 @@ const SelectionContextmenu = () => {
   return (
     <div data-testid="selection-contextmenu">
       <ContextMenu
-        open
+        open={isMenuOpen}
         onOpenChange={(open) => {
           if (!open)
             handleSelectionContextmenuCancel()
         }}
       >
-        <ContextMenuContent
-          positionerProps={anchor ? { anchor } : undefined}
-          popupClassName="w-[240px] py-0"
-        >
-          <div className="p-1">
-            {menuActions.map(item => (
-              <ContextMenuItem
-                key={item.action}
-                data-testid={`selection-contextmenu-item-${item.action}`}
-                disabled={item.disabled}
-                className={cn(
-                  'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
-                  item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-                )}
-                onClick={() => handleMenuAction(item.action)}
-              >
-                <span>{getActionLabel(item.translationKey)}</span>
-                {item.shortcutKeys && (
-                  <ShortcutsName
-                    keys={item.shortcutKeys}
-                    textColor="secondary"
-                  />
-                )}
-              </ContextMenuItem>
-            ))}
-          </div>
-          <ContextMenuSeparator className="my-0" />
-          <div className="p-1.5">
-            <div className="flex items-center">
-              {alignMenuItems.map((item) => {
-                return (
-                  <ContextMenuItem
-                    key={item.alignType}
-                    aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                    className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
-                    data-testid={`selection-contextmenu-item-${item.alignType}`}
-                    onClick={() => handleAlignNodes(item.alignType)}
-                  >
-                    <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                  </ContextMenuItem>
-                )
-              })}
+        {isMenuOpen && (
+          <ContextMenuContent
+            positionerProps={{ anchor }}
+            popupClassName="w-[240px] py-0"
+          >
+            <div className="p-1">
+              {menuActions.map(item => (
+                <ContextMenuItem
+                  key={item.action}
+                  data-testid={`selection-contextmenu-item-${item.action}`}
+                  disabled={item.disabled}
+                  className={cn(
+                    'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
+                    item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+                  )}
+                  onClick={() => handleMenuAction(item.action)}
+                >
+                  <span>{getActionLabel(item.translationKey)}</span>
+                  {item.shortcutKeys && (
+                    <ShortcutsName
+                      keys={item.shortcutKeys}
+                      textColor="secondary"
+                    />
+                  )}
+                </ContextMenuItem>
+              ))}
             </div>
-          </div>
-        </ContextMenuContent>
+            <ContextMenuSeparator className="my-0" />
+            <div className="p-1.5">
+              <div className="flex items-center">
+                {alignMenuItems.map((item) => {
+                  return (
+                    <ContextMenuItem
+                      key={item.alignType}
+                      aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                      className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+                      data-testid={`selection-contextmenu-item-${item.alignType}`}
+                      onClick={() => handleAlignNodes(item.alignType)}
+                    >
+                      <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                    </ContextMenuItem>
+                  )
+                })}
+              </div>
+            </div>
+          </ContextMenuContent>
+        )}
       </ContextMenu>
       {isCreateSnippetDialogOpen && (
         <CreateSnippetDialog
