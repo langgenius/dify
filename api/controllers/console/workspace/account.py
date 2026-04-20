@@ -676,6 +676,8 @@ class ChangeEmailCheckApi(Resource):
             AccountService.CHANGE_EMAIL_PHASE_NEW: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
         }
         token_phase = token_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if not isinstance(token_phase, str):
+            raise InvalidTokenError()
         refreshed_phase = phase_transitions.get(token_phase)
         if refreshed_phase is None:
             raise InvalidTokenError()
