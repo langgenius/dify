@@ -101,4 +101,27 @@ describe('base-ui-popover mock', () => {
     expect(screen.getByTestId('open-state')).toHaveTextContent('closed')
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
+
+  it('should keep the popover closed when the fallback trigger click is prevented', () => {
+    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+      event.preventDefault()
+    }
+
+    render(
+      <div>
+        <Popover open={false} onOpenChange={vi.fn()}>
+          <PopoverTrigger onClick={handleClick}>
+            fallback trigger
+          </PopoverTrigger>
+          <PopoverContent>
+            <div>popover body</div>
+          </PopoverContent>
+        </Popover>
+      </div>,
+    )
+
+    fireEvent.click(screen.getByTestId('popover-trigger'))
+
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+  })
 })

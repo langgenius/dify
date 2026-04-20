@@ -111,6 +111,24 @@ describe('HistoryBlockComponent', () => {
     expect(screen.getByText('common.promptEditor.history.modal.assistant')).toBeInTheDocument()
   })
 
+  it('should keep the popover closed when the trigger prevents the default click', async () => {
+    const user = userEvent.setup()
+    const setOpen = vi.fn() as unknown as Dispatch<SetStateAction<boolean>>
+    mockUseTrigger.mockReturnValue(createTriggerHookReturn(false, setOpen))
+
+    render(
+      <HistoryBlockComponent
+        nodeKey="history-node-trigger"
+        onEditRole={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByTestId('popover-trigger'))
+
+    expect(setOpen).not.toHaveBeenCalled()
+    expect(screen.queryByText('common.promptEditor.history.modal.edit')).not.toBeInTheDocument()
+  })
+
   it('should call onEditRole when edit action is clicked', async () => {
     const user = userEvent.setup()
     const onEditRole = vi.fn()

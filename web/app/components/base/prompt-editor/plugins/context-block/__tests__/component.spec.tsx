@@ -226,6 +226,21 @@ describe('ContextBlockComponent', () => {
   })
 
   describe('User Interactions', () => {
+    it('should keep the popover closed when the trigger prevents the default click', async () => {
+      const user = userEvent.setup()
+      const { triggerSetOpen } = defaultSetup()
+      render(
+        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
+      )
+
+      await user.click(screen.getByTestId('popover-trigger'))
+
+      expect(triggerSetOpen).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('common.promptEditor.context.modal.add'),
+      ).not.toBeInTheDocument()
+    })
+
     it('should call onAddContext when add button is clicked', async () => {
       defaultSetup({ open: true })
       const handleAddContext = vi.fn()
