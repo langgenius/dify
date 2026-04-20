@@ -4,6 +4,7 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import AmplitudeProvider from '@/app/components/base/amplitude'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
@@ -56,6 +57,7 @@ const LocaleLayout = async ({
         {...datasetMap}
       >
         <div className="isolate h-full">
+          <AmplitudeProvider />
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
