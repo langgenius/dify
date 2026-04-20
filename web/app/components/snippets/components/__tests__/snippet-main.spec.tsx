@@ -1,6 +1,7 @@
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetMain from '../snippet-main'
 
@@ -191,7 +192,7 @@ const payload: SnippetDetailPayload = {
 }
 
 const renderSnippetMain = () => {
-  return render(
+  return renderWorkflowComponent(
     <SnippetMain
       payload={payload}
       snippetId="snippet-1"
@@ -206,7 +207,7 @@ describe('SnippetMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
-    mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
+    mockPublishSnippetMutateAsync.mockResolvedValue({ created_at: 1_744_000_000 })
     capturedHooksStore = undefined
     snippetDetailStoreState = {
       editingField: null,

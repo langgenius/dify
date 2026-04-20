@@ -300,7 +300,14 @@ describe('SelectionContextmenu', () => {
       createEdge({ id: 'e2', source: 'n2', target: 'n3' }),
     ]
 
-    const { store } = renderSelectionMenu({ nodes, edges })
+    const { store } = renderSelectionMenu({
+      nodes,
+      edges,
+      initialStoreState: {
+        workflowCanvasWidth: 800,
+        workflowCanvasHeight: 600,
+      },
+    })
 
     act(() => {
       store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
@@ -348,7 +355,7 @@ describe('SelectionContextmenu', () => {
               selected: false,
             }),
           ],
-          viewport: { x: 0, y: 0, zoom: 1 },
+          viewport: { x: 300, y: 255, zoom: 1 },
         },
       },
     })
