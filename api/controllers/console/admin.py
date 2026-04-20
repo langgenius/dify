@@ -1,4 +1,5 @@
 import csv
+import hmac
 import io
 from collections.abc import Callable
 from functools import wraps
@@ -78,7 +79,7 @@ def admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         auth_token = extract_access_token(request)
         if not auth_token:
             raise Unauthorized("Authorization header is missing.")
-        if auth_token != dify_config.ADMIN_API_KEY:
+        if not hmac.compare_digest(auth_token, dify_config.ADMIN_API_KEY):
             raise Unauthorized("API key is invalid.")
 
         return view(*args, **kwargs)
