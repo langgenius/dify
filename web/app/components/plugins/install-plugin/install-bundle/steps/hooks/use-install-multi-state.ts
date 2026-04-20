@@ -1,10 +1,11 @@
 'use client'
 
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '@/app/components/plugins/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 
 type UseInstallMultiStateParams = {
@@ -86,7 +87,7 @@ export function useInstallMultiState({
   onSelect,
   onLoadedAllPlugin,
 }: UseInstallMultiStateParams) {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   // Marketplace plugins filtering and index mapping
   const marketplacePlugins = useMemo(

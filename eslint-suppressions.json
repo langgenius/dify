@@ -59,7 +59,7 @@
   },
   "web/__tests__/embedded-user-id-store.test.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/__tests__/goto-anything/command-selector.test.tsx": {
@@ -6397,11 +6397,6 @@
   "web/context/external-knowledge-api-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    }
-  },
-  "web/context/global-public-context.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 3
     }
   },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {

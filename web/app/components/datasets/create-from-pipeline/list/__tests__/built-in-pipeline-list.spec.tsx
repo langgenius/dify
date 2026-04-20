@@ -1,7 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 
 import BuiltInPipelineList from '../built-in-pipeline-list'
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { enable_marketplace: true },
+})
 
 vi.mock('../create-card', () => ({
   default: () => <div data-testid="create-card">CreateCard</div>,
@@ -20,13 +26,6 @@ let mockLocale = 'en-US'
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale,
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn((selector) => {
-    const state = { systemFeatures: { enable_marketplace: true } }
-    return selector(state)
-  }),
 }))
 
 const mockUsePipelineTemplateList = vi.fn()
