@@ -22,21 +22,20 @@ vi.mock('../use-config', () => ({
   default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  __esModule: true,
-  default: (props: {
-    value?: boolean
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: {
+    checked?: boolean
     disabled?: boolean
-    onChange: (value: boolean) => void
+    onCheckedChange: (value: boolean) => void
   }) => {
     mockSwitch(props)
     return (
       <button
         type="button"
         role="switch"
-        aria-checked={props.value}
+        aria-checked={props.checked}
         disabled={props.disabled}
-        onClick={() => props.onChange(!props.value)}
+        onClick={() => props.onCheckedChange(!props.checked)}
       >
         {props.disabled ? 'switch:disabled' : 'switch:enabled'}
       </button>

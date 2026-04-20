@@ -1,7 +1,7 @@
 import type { LabelProps } from '../label'
 import type { InputNumberWithSliderProps } from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
+import { cn } from '@langgenius/dify-ui/cn'
 import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Label from '../label'
 
@@ -30,7 +30,7 @@ const NumberSliderField = ({
           {...(labelOptions ?? {})}
         />
         {description && (
-          <div className="body-xs-regular pb-0.5 text-text-tertiary">
+          <div className="pb-0.5 body-xs-regular text-text-tertiary">
             {description}
           </div>
         )}

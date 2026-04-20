@@ -3,21 +3,21 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/tooltip'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
@@ -141,7 +141,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         <Tooltip>
           <TooltipTrigger
             aria-label={tipText}
-            delay={0}
             render={(
               <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
                 <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
@@ -168,8 +167,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />
-          : <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />}
+          ? <span className="mr-1 i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
+          : <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -177,9 +176,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           backdropProps={{ forceRender: true }}
           className="w-[480px] max-w-[480px] overflow-hidden p-0"
         >
-          <DialogCloseButton className="right-5 top-5" />
-          <div className="px-6 pb-3 pr-14 pt-6">
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+          <DialogCloseButton className="top-5 right-5" />
+          <div className="px-6 pt-6 pr-14 pb-3">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('modelProvider.systemModelSettings', { ns: 'common' })}
             </DialogTitle>
           </div>
@@ -235,7 +234,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-5">
+          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
               className="min-w-[72px]"
               onClick={() => setOpen(false)}

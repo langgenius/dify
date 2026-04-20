@@ -123,7 +123,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     const textNode = { id: 'text-node' } as unknown as LexicalNode
     transformCallback(textNode)
 
@@ -141,10 +141,10 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const getMatch = vi.mocked(decoratorTransform).mock.calls[0][1] as (text: string) => EntityMatch | null
+    const getMatch = vi.mocked(decoratorTransform).mock.calls[0]![1] as (text: string) => EntityMatch | null
     const match = getMatch('prefix {{#node-1.output#}} suffix')
 
     expect(match).toEqual({
@@ -167,10 +167,10 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as (
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as (
       textNode: { getTextContent: () => string },
     ) => WorkflowVariableBlockNode
 
@@ -196,10 +196,10 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as (
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as (
       textNode: { getTextContent: () => string },
     ) => WorkflowVariableBlockNode
 

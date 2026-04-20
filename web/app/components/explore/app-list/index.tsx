@@ -3,13 +3,14 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import AppCard from '@/app/components/explore/app-card'
@@ -25,7 +26,7 @@ import {
 import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
-import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import TryApp from '../try-app'
 import s from './style.module.css'
 
@@ -101,6 +102,7 @@ const Apps = ({
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
   const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
   const isShowTryAppPanel = !!currentTryApp
   const hideTryAppPanel = useCallback(() => {
     setCurrentTryApp(undefined)
@@ -112,8 +114,14 @@ const Apps = ({
     setCurrApp(currentTryApp?.app || null)
     setIsShowCreateModal(true)
   }, [currentTryApp?.app])
+  const trackCurrentCreateApp = useCallback(() => {
+    if (!currentCreateAppModeRef.current)
+      return
 
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+  }, [])
+
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
     icon,
@@ -122,9 +130,10 @@ const Apps = ({
   }) => {
     hideTryAppPanel()
 
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
+    currentCreateAppModeRef.current = mode
     const payload = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: export_data,
@@ -136,19 +145,23 @@ const Apps = ({
     }
     await handleImportDSL(payload, {
       onSuccess: () => {
+        trackCurrentCreateApp()
         setIsShowCreateModal(false)
       },
       onPending: () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }
+  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess,
+      onSuccess: () => {
+        trackCurrentCreateApp()
+        onSuccess?.()
+      },
     })
-  }, [handleImportDSLConfirm, onSuccess])
+  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
   if (isLoading) {
     return (
@@ -181,7 +194,7 @@ const Apps = ({
           )}
           >
             <div className="flex items-center">
-              <div className="grow truncate text-text-primary system-xl-semibold">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              <div className="grow truncate system-xl-semibold text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
               {hasFilterCondition && (
                 <>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
@@ -199,7 +212,7 @@ const Apps = ({
             />
           </div>
 
-          <div className="px-12 pb-4 pt-2">
+          <div className="px-12 pt-2 pb-4">
             <Category
               list={categories}
               value={currCategory}

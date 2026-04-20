@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
@@ -77,7 +78,7 @@ class TestQAIndexProcessor:
             processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "custom"})
 
     def test_transform_preview_calls_formatter_once(
-        self, processor: QAIndexProcessor, process_rule: dict, fake_flask_app
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app
     ) -> None:
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         split_node = Document(page_content=".question", metadata={})
@@ -119,7 +120,7 @@ class TestQAIndexProcessor:
         mock_format.assert_called_once()
 
     def test_transform_non_preview_uses_thread_batches(
-        self, processor: QAIndexProcessor, process_rule: dict, fake_flask_app
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app
     ) -> None:
         documents = [
             Document(page_content="doc-1", metadata={"document_id": "doc-1", "dataset_id": "dataset-1"}),

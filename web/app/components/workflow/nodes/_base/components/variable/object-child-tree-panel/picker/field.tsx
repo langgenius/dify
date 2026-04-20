@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { Field as FieldType } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { Type } from '../../../../../llm/types'
 import { getFieldType } from '../../../../../llm/utils'
 import TreeIndentLine from '../tree-indent-line'
@@ -49,11 +49,11 @@ const Field: FC<Props> = ({
               ? (
                   <RiMoreFill className="h-3 w-3 text-text-tertiary" />
                 )
-              : (<div className={cn('system-sm-medium h-6 w-0 grow truncate leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
+              : (<div className={cn('h-6 w-0 grow truncate system-sm-medium leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 
           </div>
           {depth < MAX_DEPTH + 1 && (
-            <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary">{getFieldType(payload)}</div>
+            <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">{getFieldType(payload)}</div>
           )}
         </div>
       </Tooltip>

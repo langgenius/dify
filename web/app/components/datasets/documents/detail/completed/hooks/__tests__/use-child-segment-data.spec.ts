@@ -59,7 +59,7 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -452,7 +452,7 @@ describe('useChildSegmentData', () => {
       expect(updateSegmentInCache).toHaveBeenCalledWith('seg-1', expect.any(Function))
 
       // Verify the updater function filters correctly
-      const updaterFn = updateSegmentInCache.mock.calls[0][1]
+      const updaterFn = updateSegmentInCache.mock.calls[0]![1]
       const testSegment = createMockSegment({
         child_chunks: [
           createMockChildChunk({ id: 'child-1' }),
@@ -499,7 +499,7 @@ describe('useChildSegmentData', () => {
       expect(updateSegmentInCache).toHaveBeenCalledWith('seg-1', expect.any(Function))
 
       // Verify the updater function maps correctly
-      const updaterFn = updateSegmentInCache.mock.calls[0][1]
+      const updaterFn = updateSegmentInCache.mock.calls[0]![1]
       const testSegment = createMockSegment({
         child_chunks: [
           createMockChildChunk({ id: 'child-1', content: 'old content' }),
@@ -564,8 +564,8 @@ describe('useChildSegmentData', () => {
             total: 2,
             total_pages: 1,
           }) as ChildSegmentsResponse
-          expect(resultWithData.data[0].content).toBe('new content')
-          expect(resultWithData.data[1].content).toBe('other')
+          expect(resultWithData.data[0]!.content).toBe('new content')
+          expect(resultWithData.data[1]!.content).toBe('other')
         }
       })
 

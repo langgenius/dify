@@ -49,6 +49,10 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
+from sqlalchemy.exc import IntegrityError
+
+from core.entities.embedding_type import EmbeddingInputType
+from core.rag.embedding.cached_embedding import CacheEmbedding
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from graphon.model_runtime.errors.invoke import (
@@ -56,10 +60,6 @@ from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
 )
-from sqlalchemy.exc import IntegrityError
-
-from core.entities.embedding_type import EmbeddingInputType
-from core.rag.embedding.cached_embedding import CacheEmbedding
 from models.dataset import Embedding
 
 

@@ -171,12 +171,12 @@ export function useBasicTypeaheadTriggerMatch(
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {
         const maybeLeadingWhitespace = match[1]
-        const matchingString = match[3]
-        if (matchingString.length >= minLength) {
+        const matchingString = match[3]!
+        if (matchingString!.length >= minLength) {
           return {
-            leadOffset: match.index + maybeLeadingWhitespace.length,
-            matchingString,
-            replaceableString: match[2],
+            leadOffset: match.index + maybeLeadingWhitespace!.length,
+            matchingString: matchingString!,
+            replaceableString: match[2]!,
           }
         }
       }

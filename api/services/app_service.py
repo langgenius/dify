@@ -4,8 +4,6 @@ from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
 
 from configs import dify_config
@@ -17,6 +15,8 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict[str, Any]) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
@@ -78,7 +78,7 @@ class AppService:
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def create_app(self, tenant_id: str, args: dict[str, Any], account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -389,7 +389,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta: dict = {"tool_icons": {}}
+        meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow

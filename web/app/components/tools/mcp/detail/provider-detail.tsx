@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Drawer from '@/app/components/base/drawer'
-import { cn } from '@/utils/classnames'
 import MCPDetailContent from './content'
 
 type Props = {
@@ -38,7 +38,7 @@ const MCPDetailPanel: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       {detail && (
         <MCPDetailContent

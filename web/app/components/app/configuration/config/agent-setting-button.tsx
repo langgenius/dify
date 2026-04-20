@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import AgentSetting from './agent/agent-setting'
 
 type Props = {

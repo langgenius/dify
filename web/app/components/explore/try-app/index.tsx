@@ -2,6 +2,7 @@
 'use client'
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
@@ -10,7 +11,6 @@ import Modal from '@/app/components/base/modal/index'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
-import Button from '../../base/button'
 import App from './app'
 import AppInfo from './app-info'
 import Preview from './preview'
@@ -42,7 +42,7 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className="h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2"
+      className="h-[calc(100vh-32px)] max-w-[calc(100vw-32px)] min-w-[1280px] overflow-x-auto p-2"
     >
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
@@ -67,7 +67,7 @@ const TryApp: FC<Props> = ({
             <Button
               size="large"
               variant="tertiary"
-              className="flex size-7 items-center justify-center radius-lg p-0 text-components-button-tertiary-text"
+              className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
               <span className="i-ri-close-line size-5" />

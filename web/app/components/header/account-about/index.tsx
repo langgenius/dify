@@ -1,9 +1,9 @@
 'use client'
 import type { LangGeniusVersionResponse } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Modal from '@/app/components/base/modal'
 import { IS_CE_EDITION } from '@/config'
@@ -31,7 +31,7 @@ export default function AccountAbout({
       className="w-[480px]! max-w-[480px]! px-6! py-4!"
     >
       <div className="relative">
-        <div className="absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
+        <div className="absolute top-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         <div className="flex flex-col items-center gap-4 py-8">

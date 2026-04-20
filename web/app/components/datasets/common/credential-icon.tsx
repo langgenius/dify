@@ -1,6 +1,6 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 type CredentialIconProps = {
   avatarUrl?: string
@@ -59,7 +59,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
       )}
       style={{ width: `${size}px`, height: `${size}px` }}
     >
-      <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] font-semibold leading-[1.2] text-transparent opacity-90">
+      <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] leading-[1.2] font-semibold text-transparent opacity-90">
         {firstLetter}
       </span>
     </div>

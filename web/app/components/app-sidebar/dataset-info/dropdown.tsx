@@ -1,9 +1,23 @@
 import type { DataSet } from '@/models/datasets'
-import { RiMoreFill } from '@remixicon/react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
@@ -11,11 +25,8 @@ import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import ActionButton from '../../base/action-button'
-import Confirm from '../../base/confirm'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -36,10 +47,6 @@ const DropDown = ({
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
 
-  const handleTrigger = useCallback(() => {
-    setOpen(prev => !prev)
-  }, [])
-
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
 
@@ -49,9 +56,11 @@ const DropDown = ({
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setShowRenameModal(true)
-    handleTrigger()
-  }, [handleTrigger])
+    setOpen(false)
+    queueMicrotask(() => {
+      setShowRenameModal(true)
+    })
+  }, [])
 
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
@@ -59,7 +68,7 @@ const DropDown = ({
     const { pipeline_id, name } = dataset
     if (!pipeline_id)
       return
-    handleTrigger()
+    setOpen(false)
     try {
       const { data } = await exportPipelineConfig({
         pipelineId: pipeline_id,
@@ -71,9 +80,10 @@ const DropDown = ({
     catch {
       toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [dataset, exportPipelineConfig, handleTrigger, t])
+  }, [dataset, exportPipelineConfig, t])
 
   const detectIsUsedByApp = useCallback(async () => {
+    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
@@ -83,10 +93,7 @@ const DropDown = ({
       const res = await e.json()
       toast(res?.message || 'Unknown error', { type: 'error' })
     }
-    finally {
-      handleTrigger()
-    }
-  }, [dataset.id, handleTrigger, t])
+  }, [dataset.id, t])
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -101,32 +108,27 @@ const DropDown = ({
   }, [dataset.id, replace, invalidDatasetList, t])
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement={expand ? 'bottom-end' : 'right'}
-      offset={expand
-        ? {
-            mainAxis: 4,
-            crossAxis: 10,
-          }
-        : {
-            mainAxis: 4,
-          }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className="size-4" />
+      <DropdownMenuTrigger render={<div />}>
+        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', open && 'bg-state-base-hover')}>
+          <span aria-hidden className="i-ri-more-fill size-4" />
         </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-60">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement={expand ? 'bottom-end' : 'right-start'}
+        sideOffset={4}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
         />
-      </PortalToFollowElemContent>
+      </DropdownMenuContent>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -135,16 +137,27 @@ const DropDown = ({
           onSuccess={refreshDataset}
         />
       )}
-      {showConfirmDelete && (
-        <Confirm
-          title={t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
-          content={confirmMessage}
-          isShow={showConfirmDelete}
-          onConfirm={onConfirmDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />
-      )}
-    </PortalToFollowElem>
+      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {confirmMessage}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DropdownMenu>
   )
 }
 

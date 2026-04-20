@@ -10,9 +10,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: (props: {
     variant?: string
     children?: React.ReactNode
     className?: string
@@ -81,16 +80,16 @@ describe('ButtonStyleDropdown', () => {
     expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({
       variant: 'ghost',
     }))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('portal'))!.toHaveAttribute('data-open', 'false')
 
     fireEvent.click(screen.getByTestId('portal-trigger'))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByText('nodes.humanInput.userActions.chooseStyle')).toBeInTheDocument()
+    expect(screen.getByTestId('portal'))!.toHaveAttribute('data-open', 'true')
+    expect(screen.getByText('nodes.humanInput.userActions.chooseStyle'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('button-primary').parentElement as HTMLElement)
     fireEvent.click(screen.getByTestId('button-secondary').parentElement as HTMLElement)
     fireEvent.click(screen.getByTestId('button-secondary-accent').parentElement as HTMLElement)
-    fireEvent.click(screen.getAllByTestId('button-ghost')[1].parentElement as HTMLElement)
+    fireEvent.click(screen.getAllByTestId('button-ghost')[1]!.parentElement as HTMLElement)
 
     expect(onChange).toHaveBeenNthCalledWith(1, UserActionButtonType.Primary)
     expect(onChange).toHaveBeenNthCalledWith(2, UserActionButtonType.Default)
@@ -114,7 +113,7 @@ describe('ButtonStyleDropdown', () => {
 
     fireEvent.click(screen.getByTestId('portal-trigger'))
 
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('portal'))!.toHaveAttribute('data-open', 'false')
     expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })

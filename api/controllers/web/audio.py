@@ -2,7 +2,6 @@ import logging
 
 from flask import request
 from flask_restx import fields, marshal_with
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import field_validator
 from werkzeug.exceptions import InternalServerError
 
@@ -22,6 +21,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from models.model import App
 from services.audio_service import AudioService

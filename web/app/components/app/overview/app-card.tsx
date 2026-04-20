@@ -2,12 +2,12 @@
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
@@ -180,7 +180,7 @@ function AppCard({
 
   return (
     <div
-      className={`${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
+      className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
         {triggerModeDisabled && (
@@ -247,7 +247,7 @@ function AppCard({
               offset={24}
             >
               <div>
-                <Switch value={cardState.runningStatus} onChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
               </div>
             </Tooltip>
           </div>

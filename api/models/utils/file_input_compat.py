@@ -4,9 +4,9 @@ from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Any
 
-from graphon.file import File, FileTransferMethod
-
 from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.file.constants import FILE_MODEL_IDENTITY, maybe_file_object
 
 
 @lru_cache(maxsize=1)
@@ -44,6 +44,124 @@ def resolve_file_mapping_tenant_id(
     return tenant_resolver()
 
 
+def build_file_from_mapping_without_lookup(*, file_mapping: Mapping[str, Any]) -> File:
+    """Build a graph `File` directly from serialized metadata."""
+
+    def _coerce_file_type(value: Any) -> FileType:
+        if isinstance(value, FileType):
+            return value
+        if isinstance(value, str):
+            return FileType.value_of(value)
+        raise ValueError("file type is required in file mapping")
+
+    mapping = dict(file_mapping)
+    transfer_method_value = mapping.get("transfer_method")
+    if isinstance(transfer_method_value, FileTransferMethod):
+        transfer_method = transfer_method_value
+    elif isinstance(transfer_method_value, str):
+        transfer_method = FileTransferMethod.value_of(transfer_method_value)
+    else:
+        raise ValueError("transfer_method is required in file mapping")
+
+    file_id = mapping.get("file_id")
+    if not isinstance(file_id, str) or not file_id:
+        legacy_id = mapping.get("id")
+        file_id = legacy_id if isinstance(legacy_id, str) and legacy_id else None
+
+    related_id = resolve_file_record_id(mapping)
+    if related_id is None:
+        raw_related_id = mapping.get("related_id")
+        related_id = raw_related_id if isinstance(raw_related_id, str) and raw_related_id else None
+
+    remote_url = mapping.get("remote_url")
+    if not isinstance(remote_url, str) or not remote_url:
+        url = mapping.get("url")
+        remote_url = url if isinstance(url, str) and url else None
+
+    reference = mapping.get("reference")
+    if not isinstance(reference, str) or not reference:
+        reference = None
+
+    filename = mapping.get("filename")
+    if not isinstance(filename, str):
+        filename = None
+
+    extension = mapping.get("extension")
+    if not isinstance(extension, str):
+        extension = None
+
+    mime_type = mapping.get("mime_type")
+    if not isinstance(mime_type, str):
+        mime_type = None
+
+    size = mapping.get("size", -1)
+    if not isinstance(size, int):
+        size = -1
+
+    storage_key = mapping.get("storage_key")
+    if not isinstance(storage_key, str):
+        storage_key = None
+
+    tenant_id = mapping.get("tenant_id")
+    if not isinstance(tenant_id, str):
+        tenant_id = None
+
+    dify_model_identity = mapping.get("dify_model_identity")
+    if not isinstance(dify_model_identity, str):
+        dify_model_identity = FILE_MODEL_IDENTITY
+
+    tool_file_id = mapping.get("tool_file_id")
+    if not isinstance(tool_file_id, str):
+        tool_file_id = None
+
+    upload_file_id = mapping.get("upload_file_id")
+    if not isinstance(upload_file_id, str):
+        upload_file_id = None
+
+    datasource_file_id = mapping.get("datasource_file_id")
+    if not isinstance(datasource_file_id, str):
+        datasource_file_id = None
+
+    return File(
+        file_id=file_id,
+        tenant_id=tenant_id,
+        file_type=_coerce_file_type(mapping.get("file_type", mapping.get("type"))),
+        transfer_method=transfer_method,
+        remote_url=remote_url,
+        reference=reference,
+        related_id=related_id,
+        filename=filename,
+        extension=extension,
+        mime_type=mime_type,
+        size=size,
+        storage_key=storage_key,
+        dify_model_identity=dify_model_identity,
+        url=remote_url,
+        tool_file_id=tool_file_id,
+        upload_file_id=upload_file_id,
+        datasource_file_id=datasource_file_id,
+    )
+
+
+def rebuild_serialized_graph_files_without_lookup(value: Any) -> Any:
+    """Recursively rebuild serialized graph file payloads into `File` objects.
+
+    `graphon` 0.2.2 no longer accepts legacy serialized file mappings via
+    `model_validate_json()`. Dify keeps this recovery path at the model boundary
+    so historical JSON blobs remain readable without reintroducing global graph
+    patches or test-local coercion.
+    """
+    if isinstance(value, list):
+        return [rebuild_serialized_graph_files_without_lookup(item) for item in value]
+
+    if isinstance(value, dict):
+        if maybe_file_object(value):
+            return build_file_from_mapping_without_lookup(file_mapping=value)
+        return {key: rebuild_serialized_graph_files_without_lookup(item) for key, item in value.items()}
+
+    return value
+
+
 def build_file_from_stored_mapping(
     *,
     file_mapping: Mapping[str, Any],
@@ -77,12 +195,7 @@ def build_file_from_stored_mapping(
             pass
 
     if transfer_method == FileTransferMethod.REMOTE_URL and record_id is None:
-        remote_url = mapping.get("remote_url")
-        if not isinstance(remote_url, str) or not remote_url:
-            url = mapping.get("url")
-            if isinstance(url, str) and url:
-                mapping["remote_url"] = url
-        return File.model_validate(mapping)
+        return build_file_from_mapping_without_lookup(file_mapping=mapping)
 
     return file_factory.build_from_mapping(
         mapping=mapping,

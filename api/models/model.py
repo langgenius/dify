@@ -14,9 +14,6 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -24,6 +21,9 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
@@ -1009,7 +1009,7 @@ class OAuthProviderApp(TypeBase):
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
+    app_label: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
@@ -1080,7 +1080,7 @@ class Conversation(Base):
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
-        "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
+        lambda: MessageAnnotation, backref="conversation", lazy="select", passive_deletes="all"
     )
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -1839,7 +1839,7 @@ class MessageFile(TypeBase):
     )
 
 
-class MessageAnnotation(Base):
+class MessageAnnotation(TypeBase):
     __tablename__ = "message_annotations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1848,17 +1848,25 @@ class MessageAnnotation(Base):
         sa.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID)
-    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
-    message_id: Mapped[str | None] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), default=None)
+    message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -2489,7 +2497,7 @@ class TraceAppConfig(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    tracing_config: Mapped[dict[str, Any] | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

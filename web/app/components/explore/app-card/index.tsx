@@ -2,14 +2,15 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { AppTypeIcon } from '../../app/type-selector'
-import Button from '../../base/button'
 
 export type AppCardProps = {
   app: App
@@ -31,12 +32,19 @@ const AppCard = ({
   const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const handleTryApp = () => {
+    trackEvent('preview_template', {
+      template_id: app.app_id,
+      template_name: appBasicInfo.name,
+      template_mode: appBasicInfo.mode,
+      template_category: app.category,
+      page: 'explore',
+    })
     onTry({ appId: app.app_id, app })
   }
 
   return (
     <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
-      <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]">
+      <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
         <div className="relative shrink-0">
           <AppIcon
             size="large"
@@ -52,10 +60,10 @@ const AppCard = ({
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
+          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
             <div className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
-          <div className="flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary">
+          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
             {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
             {appBasicInfo.mode === AppModeEnum.CHAT && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
             {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
@@ -64,13 +72,13 @@ const AppCard = ({
           </div>
         </div>
       </div>
-      <div className="description-wrapper h-[90px] px-[14px] text-text-tertiary system-xs-regular">
+      <div className="description-wrapper h-[90px] px-[14px] system-xs-regular text-text-tertiary">
         <div className="line-clamp-4 group-hover:line-clamp-2">
           {app.description}
         </div>
       </div>
       {isExplore && (canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && 'grid-cols-2')}>
             {
               canCreate && (

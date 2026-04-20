@@ -46,7 +46,7 @@ const PreviewItem: FC<IPreviewItemProps> = ({
   return (
     <div className="rounded-xl bg-gray-50 p-4">
       <div className="flex h-5 items-center justify-between text-xs text-gray-500">
-        <div className="box-border flex h-[18px] items-center space-x-1 rounded-md border border-gray-200 pl-1 pr-1.5 font-medium italic">
+        <div className="box-border flex h-[18px] items-center space-x-1 rounded-md border border-gray-200 pr-1.5 pl-1 font-medium italic">
           {sharpIcon}
           <span>{formattedIndex}</span>
         </div>
