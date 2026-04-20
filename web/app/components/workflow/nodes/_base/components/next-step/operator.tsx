@@ -2,17 +2,17 @@ import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,

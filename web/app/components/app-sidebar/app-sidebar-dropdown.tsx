@@ -1,6 +1,11 @@
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   RiEqualizer2Line,
   RiMenuLine,
 } from '@remixicon/react'
@@ -8,11 +13,6 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { useAppContext } from '@/context/app-context'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'

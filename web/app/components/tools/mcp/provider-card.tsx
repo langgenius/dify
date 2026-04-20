@@ -1,10 +1,5 @@
 'use client'
 import type { ToolWithProvider } from '../../workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiHammerFill } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,7 +7,12 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiHammerFill } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'

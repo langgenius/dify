@@ -1,6 +1,6 @@
+import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { DropdownMenu, DropdownMenuContent } from '@/app/components/base/ui/dropdown-menu'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
 import MenuItem from '../menu-item'
 

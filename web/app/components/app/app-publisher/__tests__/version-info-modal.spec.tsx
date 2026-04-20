@@ -1,6 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import VersionInfoModal from '../version-info-modal'
 
 vi.mock('react-i18next', () => ({
@@ -9,7 +9,7 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },

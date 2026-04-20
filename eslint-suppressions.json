@@ -59,7 +59,7 @@
   },
   "web/__tests__/embedded-user-id-store.test.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/__tests__/goto-anything/command-selector.test.tsx": {
@@ -1182,14 +1182,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/base/features/new-feature-panel/feature-bar.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2113,11 +2105,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/switch/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tab-slider/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
@@ -2454,9 +2441,6 @@
     }
   },
   "web/app/components/datasets/create/website/firecrawl/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2473,9 +2457,6 @@
     }
   },
   "web/app/components/datasets/create/website/jina-reader/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2492,9 +2473,6 @@
     }
   },
   "web/app/components/datasets/create/website/watercrawl/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -3083,11 +3061,6 @@
   },
   "web/app/components/header/account-about/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-dropdown/compliance.tsx": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -6211,7 +6184,7 @@
   },
   "web/app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 9
+      "count": 10
     }
   },
   "web/app/components/workflow/utils/node-navigation.ts": {
@@ -6424,11 +6397,6 @@
   "web/context/external-knowledge-api-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    }
-  },
-  "web/context/global-public-context.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 3
     }
   },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {

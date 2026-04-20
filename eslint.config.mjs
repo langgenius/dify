@@ -13,6 +13,7 @@ export default antfu(
       '!e2e/**',
       '!eslint.config.mjs',
       '!package.json',
+      '!pnpm-workspace.yaml',
       '!vite.config.ts',
       ...original,
     ],
@@ -35,7 +36,6 @@ export default antfu(
       },
     },
     e18e: false,
-    pnpm: false,
   },
   markdownPreferences.configs.standard,
   {

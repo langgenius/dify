@@ -1,9 +1,9 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import Indicator from '@/app/components/header/indicator'
 import Card from './card'
 

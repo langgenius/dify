@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { useMembers } from '@/service/use-common'
 
 type Props = {

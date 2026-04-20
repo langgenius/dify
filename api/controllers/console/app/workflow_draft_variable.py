@@ -102,7 +102,7 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
 
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     value_type = workflow_draft_var.value_type
-    return value_type.exposed_type().value
+    return str(value_type.exposed_type())
 
 
 class FullContentDict(TypedDict):
@@ -122,7 +122,7 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict 
 
     result: FullContentDict = {
         "size_bytes": variable_file.size,
-        "value_type": variable_file.value_type.exposed_type().value,
+        "value_type": str(variable_file.value_type.exposed_type()),
         "length": variable_file.length,
         "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
     }
@@ -598,7 +598,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.exposed_type().value,
+                    "value_type": str(v.value_type.exposed_type()),
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,
