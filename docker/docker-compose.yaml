@@ -6,6 +6,7 @@
 
 x-shared-env: &shared-api-worker-env
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+  CONSOLE_API_URL_NEW: ${CONSOLE_API_URL_NEW:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   TRIGGER_URL: ${TRIGGER_URL:-http://localhost}
@@ -61,7 +62,7 @@ x-shared-env: &shared-api-worker-env
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
   DB_HOST: ${DB_HOST:-db_postgres}
-  DB_PORT: ${DB_PORT:-5432}
+  DB_PORT: ${DB_PORT:-5433}
   DB_DATABASE: ${DB_DATABASE:-dify}
   SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
   SQLALCHEMY_MAX_OVERFLOW: ${SQLALCHEMY_MAX_OVERFLOW:-10}
@@ -82,7 +83,7 @@ x-shared-env: &shared-api-worker-env
   MYSQL_INNODB_LOG_FILE_SIZE: ${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
   MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT: ${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
   REDIS_HOST: ${REDIS_HOST:-redis}
-  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_PORT: ${REDIS_PORT:-6390}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
@@ -748,7 +749,7 @@ services:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
-      MODE: api
+      MODE: apina
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
