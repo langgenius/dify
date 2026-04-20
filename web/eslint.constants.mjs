@@ -33,7 +33,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/tooltip',
       '**/base/tooltip/index',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/tooltip instead. See issue #32767.',
   },
   {
     group: [
@@ -41,7 +41,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/modal/index',
       '**/base/modal/modal',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
   {
     group: [
@@ -50,35 +50,14 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/select/custom',
       '**/base/select/pure',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/confirm',
-      '**/base/confirm/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/popover',
-      '**/base/popover/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dropdown',
-      '**/base/dropdown/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/select instead. See issue #32767.',
   },
   {
     group: [
       '**/base/dialog',
       '**/base/dialog/index',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
 ]
 
@@ -94,7 +73,6 @@ export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
   'app/components/base/chip/index.tsx',
   'app/components/base/date-and-time-picker/date-picker/index.tsx',
   'app/components/base/date-and-time-picker/time-picker/index.tsx',
-  'app/components/base/dropdown/index.tsx',
   'app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx',
   'app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx',
   'app/components/base/file-uploader/file-from-link-or-local/index.tsx',

@@ -4,6 +4,7 @@ import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } fro
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -26,10 +27,10 @@ import {
 } from '@/app/components/workflow/hooks'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
 import VarFullPathPanel from './var-full-path-panel'
@@ -124,6 +125,7 @@ const VarReferencePicker: FC<Props> = ({
   const store = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
+  const isWorkflowDataLoaded = useWorkflowStore(s => s.isWorkflowDataLoaded)
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
@@ -184,7 +186,7 @@ const VarReferencePicker: FC<Props> = ({
     isLoopVar,
     iterationNode,
     loopNode,
-    outputVarNodeId,
+    outputVarNodeId: outputVarNodeId!,
     startNode,
     value,
   }), [availableNodes, hasValue, isConstant, isIterationVar, isLoopVar, iterationNode, loopNode, outputVarNodeId, startNode, value])
@@ -221,7 +223,7 @@ const VarReferencePicker: FC<Props> = ({
     const newValue = produce(value, (draft) => {
       if (draft[1] && draft[1].startsWith('sys.')) {
         draft.shift()
-        const paths = draft[0].split('.')
+        const paths = draft[0]!.split('.')
         paths.forEach((p, i) => {
           draft[i] = p
         })
@@ -252,10 +254,10 @@ const VarReferencePicker: FC<Props> = ({
     } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = currentNode.position
+    const position = currentNode!.position
     setViewport({
-      x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
-      y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+      x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [availableNodes, reactflow, store])
@@ -270,13 +272,14 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const { isEnv, isChatVar, isGlobal, isRagVar, isValidVar } = useMemo(
-    () => getVariableMeta(outputVarNode, value, varName),
-    [outputVarNode, value, varName],
+    () => getVariableMeta(outputVarNode, value, varName, outputVars, isWorkflowDataLoaded),
+    [isWorkflowDataLoaded, outputVarNode, outputVars, value, varName],
   )
   const isException = useMemo(
     () => isExceptionVariable(varName, outputVarNode?.type),
     [outputVarNode?.type, varName],
   )
+  const showErrorIcon = hasValue && !isValidVar
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const {
@@ -385,6 +388,7 @@ const VarReferencePicker: FC<Props> = ({
             schemaWithDynamicSelect={schemaWithDynamicSelect}
             setControlFocus={setControlFocus}
             setOpen={setOpen}
+            showErrorIcon={showErrorIcon}
             tooltipPopup={tooltipPopup}
             triggerRef={triggerRef}
             type={type}

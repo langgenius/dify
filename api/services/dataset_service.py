@@ -7,15 +7,12 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -31,6 +28,9 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
@@ -105,6 +105,16 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
+
+
+class ProcessRulesDict(TypedDict):
+    mode: str
+    rules: dict[str, Any]
+
+
+class AutoDisableLogsDict(TypedDict):
+    document_ids: list[str]
+    count: int
 
 
 class DatasetService:
@@ -182,7 +192,7 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def get_process_rules(dataset_id):
+    def get_process_rules(dataset_id) -> ProcessRulesDict:
         # get the latest process rule
         dataset_process_rule = db.session.execute(
             select(DatasetProcessRule)
@@ -192,10 +202,10 @@ class DatasetService:
         ).scalar_one_or_none()
         if dataset_process_rule:
             mode = dataset_process_rule.mode
-            rules = dataset_process_rule.rules_dict
+            rules = dataset_process_rule.rules_dict or {}
         else:
-            mode = DocumentService.DEFAULT_RULES["mode"]
-            rules = DocumentService.DEFAULT_RULES["rules"]
+            mode = str(DocumentService.DEFAULT_RULES["mode"])
+            rules = dict(DocumentService.DEFAULT_RULES.get("rules") or {})
         return {"mode": mode, "rules": rules}
 
     @staticmethod
@@ -223,7 +233,7 @@ class DatasetService:
         embedding_model_provider: str | None = None,
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: dict[str, Any] | None = None,
     ):
         # check if dataset name already exists
         if db.session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -518,6 +528,8 @@ class DatasetService:
             raise ValueError("External knowledge id is required.")
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
+        # Ensure the referenced external API template exists and belongs to the dataset tenant.
+        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -541,22 +553,22 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
-            external_knowledge_binding = (
-                session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+        with sessionmaker(db.engine).begin() as session:
+            external_knowledge_binding = session.scalar(
+                select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == dataset_id).limit(1)
             )
 
             if not external_knowledge_binding:
                 raise ValueError("External knowledge binding not found.")
 
-        # Update binding if values have changed
-        if (
-            external_knowledge_binding.external_knowledge_id != external_knowledge_id
-            or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
-        ):
-            external_knowledge_binding.external_knowledge_id = external_knowledge_id
-            external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
+            # Update binding if values have changed
+            if (
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+            ):
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):
@@ -1199,7 +1211,7 @@ class DatasetService:
         db.session.commit()
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str):
+    def get_dataset_auto_disable_logs(dataset_id: str) -> AutoDisableLogsDict:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         features = FeatureService.get_features(current_user.current_tenant_id)
@@ -1444,15 +1456,17 @@ class DocumentService:
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
         with session_factory.create_session() as session:
-            updated_count = (
-                session.query(Document)
-                .filter(
+            result = session.execute(
+                update(Document)
+                .where(
                     Document.id.in_(document_id_list),
                     Document.dataset_id == dataset_id,
                     Document.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                 )
-                .update({Document.need_summary: need_summary}, synchronize_session=False)
+                .values(need_summary=need_summary)
+                .execution_options(synchronize_session=False)
             )
+            updated_count = result.rowcount  # type: ignore[union-attr,attr-defined]
             session.commit()
             logger.info(
                 "Updated need_summary to %s for %d documents in dataset %s",
@@ -2479,7 +2493,7 @@ class DocumentService:
         data_source_type: str,
         document_form: str,
         document_language: str,
-        data_source_info: dict,
+        data_source_info: dict[str, Any],
         created_from: str,
         position: int,
         account: Account,
@@ -2812,6 +2826,10 @@ class DocumentService:
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
+            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+                if not knowledge_config.process_rule.rules.parent_mode:
+                    knowledge_config.process_rule.rules.parent_mode = "paragraph"
+
             if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")
 
@@ -2832,7 +2850,7 @@ class DocumentService:
                     raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @classmethod
-    def estimate_args_validate(cls, args: dict):
+    def estimate_args_validate(cls, args: dict[str, Any]):
         if "info_list" not in args or not args["info_list"]:
             raise ValueError("Data source info is required")
 
@@ -3114,7 +3132,7 @@ class DocumentService:
 
 class SegmentService:
     @classmethod
-    def segment_create_args_validate(cls, args: dict, document: Document):
+    def segment_create_args_validate(cls, args: dict[str, Any], document: Document):
         if document.doc_form == IndexStructureType.QA_INDEX:
             if "answer" not in args or not args["answer"]:
                 raise ValueError("Answer is required")
@@ -3131,7 +3149,7 @@ class SegmentService:
                 raise ValueError(f"Exceeded maximum attachment limit of {single_chunk_attachment_limit}")
 
     @classmethod
-    def create_segment(cls, args: dict, document: Document, dataset: Dataset):
+    def create_segment(cls, args: dict[str, Any], document: Document, dataset: Dataset):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 

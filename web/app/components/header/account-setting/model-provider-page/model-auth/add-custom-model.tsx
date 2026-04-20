@@ -4,6 +4,10 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  Button,
+} from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
   RiAddCircleFill,
   RiAddLine,
 } from '@remixicon/react'
@@ -14,16 +18,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Button,
-} from '@/app/components/base/button'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'
@@ -136,7 +136,7 @@ const AddCustomModel = ({
                     modelName={model.model}
                   />
                   <div
-                    className="grow truncate text-text-primary system-md-regular"
+                    className="grow truncate system-md-regular text-text-primary"
                     title={model.model}
                   >
                     {model.model}
@@ -148,7 +148,7 @@ const AddCustomModel = ({
           {
             !notAllowCustomCredential && (
               <div
-                className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only system-xs-medium"
+                className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
                 onClick={() => {
                   handleOpenModalForAddNewCustomModel()
                   setOpen(false)

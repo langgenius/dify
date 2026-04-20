@@ -1,4 +1,12 @@
 import type { Node } from './types'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
   memo,
@@ -7,15 +15,8 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuGroupLabel,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
+import { useStore as useReactFlowStore } from 'reactflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -181,8 +182,8 @@ const distributeNodes = (
   const lastNode = sortedNodes[sortedNodes.length - 1]
 
   const totalGap = isHorizontal
-    ? lastNode.position.x + (lastNode.width || 0) - firstNode.position.x
-    : lastNode.position.y + (lastNode.height || 0) - firstNode.position.y
+    ? lastNode!.position.x + (lastNode!.width || 0) - firstNode!.position.x
+    : lastNode!.position.y + (lastNode!.height || 0) - firstNode!.position.y
 
   const fixedSpace = sortedNodes.reduce((sum, node) =>
     sum + (isHorizontal ? (node.width || 0) : (node.height || 0)), 0)
@@ -193,12 +194,12 @@ const distributeNodes = (
 
   return produce(nodes, (draft) => {
     let currentPosition = isHorizontal
-      ? firstNode.position.x + (firstNode.width || 0)
-      : firstNode.position.y + (firstNode.height || 0)
+      ? firstNode!.position.x + (firstNode!.width || 0)
+      : firstNode!.position.y + (firstNode!.height || 0)
 
     for (let index = 1; index < sortedNodes.length - 1; index++) {
       const nodeToAlign = sortedNodes[index]
-      const currentNode = draft.find(node => node.id === nodeToAlign.id)
+      const currentNode = draft.find(node => node.id === nodeToAlign!.id)
       if (!currentNode)
         continue
 
@@ -207,14 +208,14 @@ const distributeNodes = (
         currentNode.position.x = nextX
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.x = nextX
-        currentPosition = nextX + (nodeToAlign.width || 0)
+        currentPosition = nextX + (nodeToAlign!.width || 0)
       }
       else {
         const nextY = currentPosition + spacing
         currentNode.position.y = nextY
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.y = nextY
-        currentPosition = nextY + (nodeToAlign.height || 0)
+        currentPosition = nextY + (nodeToAlign!.height || 0)
       }
     }
   })
@@ -226,8 +227,12 @@ const SelectionContextmenu = () => {
   const { handleSelectionContextmenuCancel } = useSelectionInteractions()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
-  const store = useStoreApi()
+
+  // Access React Flow methods
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  // Get selected nodes for alignment logic
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
@@ -276,7 +281,33 @@ const SelectionContextmenu = () => {
 
     workflowStore.setState({ nodeAnimation: false })
 
-    const nodes = store.getState().getNodes()
+    // Get all current nodes
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+
+    // Get all selected nodes
+    const selectedNodeIds = selectedNodes.map(node => node.id)
+
+    // Find container nodes and their children
+    // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
+    // when the container is selected. This prevents child nodes from being moved outside their containers.
+    const childNodeIds = new Set<string>()
+
+    nodes.forEach((node) => {
+      // Check if this is a container node (Iteration or Loop)
+      if (node.data._children && node.data._children.length > 0) {
+        // If container node is selected, add its children to the exclusion set
+        if (selectedNodeIds.includes(node.id)) {
+          // Add all its children to the childNodeIds set
+          node.data._children.forEach((child: { nodeId: string, nodeType: string }) => {
+            childNodeIds.add(child.nodeId)
+          })
+        }
+      }
+    })
+
+    // Filter out child nodes from the alignment operation
+    // Only align nodes that are selected AND are not children of container nodes
+    // This ensures container nodes can be aligned while their children stay in the same relative position
     const nodesToAlign = getAlignableNodes(nodes, selectedNodes)
 
     if (nodesToAlign.length <= 1) {
@@ -293,7 +324,7 @@ const SelectionContextmenu = () => {
     if (alignType === AlignType.DistributeHorizontal || alignType === AlignType.DistributeVertical) {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
-        store.getState().setNodes(distributedNodes)
+        setNodes(distributedNodes)
         handleSelectionContextmenuCancel()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
@@ -318,7 +349,10 @@ const SelectionContextmenu = () => {
     })
 
     try {
-      store.getState().setNodes(newNodes)
+      // Directly use setNodes to update nodes - consistent with handleNodeDrag
+      setNodes(newNodes)
+
+      // Close popup
       handleSelectionContextmenuCancel()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
       setHelpLineHorizontal()
@@ -329,7 +363,7 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
 
   if (!selectionMenu)
     return null
@@ -379,9 +413,9 @@ const SelectionContextmenu = () => {
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
+            <ContextMenuLabel>
               {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
+            </ContextMenuLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem

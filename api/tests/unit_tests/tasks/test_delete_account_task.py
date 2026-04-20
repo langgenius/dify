@@ -26,9 +26,6 @@ def mock_db_session():
         cm.__exit__.return_value = None
         mock_sf.create_session.return_value = cm
 
-        query = MagicMock()
-        session.query.return_value = query
-        query.where.return_value = query
         yield session
 
 
@@ -49,12 +46,12 @@ def mock_deps():
 
 def _set_account_found(mock_db_session, email: str = "user@example.com"):
     account = SimpleNamespace(email=email)
-    mock_db_session.query.return_value.where.return_value.first.return_value = account
+    mock_db_session.scalar.return_value = account
     return account
 
 
 def _set_account_missing(mock_db_session):
-    mock_db_session.query.return_value.where.return_value.first.return_value = None
+    mock_db_session.scalar.return_value = None
 
 
 class TestDeleteAccountTask:

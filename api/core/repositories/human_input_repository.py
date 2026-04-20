@@ -4,13 +4,11 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     BoundRecipient,
     DeliveryChannelConfig,
     EmailDeliveryMethod,
@@ -19,6 +17,8 @@ from core.workflow.human_input_compat import (
     InteractiveSurfaceDeliveryMethod,
     is_human_input_webapp_enabled,
 )
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin

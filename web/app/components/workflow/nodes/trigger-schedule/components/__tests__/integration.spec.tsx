@@ -1,6 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FrequencySelector from '../frequency-selector'
 import ModeSwitcher from '../mode-switcher'
@@ -45,13 +45,8 @@ describe('trigger-schedule components', () => {
 
       const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
       await user.click(trigger)
-
-      await waitFor(() => {
-        expect(trigger).toHaveAttribute('aria-expanded', 'true')
-      })
-
-      const listbox = await screen.findByRole('listbox')
-      await user.click(within(listbox).getByRole('option', { name: 'workflow.nodes.triggerSchedule.frequency.weekly' }))
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('weekly')

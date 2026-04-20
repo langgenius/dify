@@ -1,7 +1,7 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLargeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { cn } from '@/utils/classnames'
 
 type IModal = {
   className?: string
@@ -26,7 +26,7 @@ export default function FullScreenModal({
 }: IModal) {
   return (
     <Transition show={open} appear>
-      <Dialog as="div" className={cn('modal-dialog', wrapperClassName)} onClose={onClose}>
+      <Dialog as="div" className={cn('relative z-50', wrapperClassName)} onClose={onClose}>
         <TransitionChild>
           <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]', 'duration-300 ease-in data-closed:opacity-0', 'data-enter:opacity-100', 'data-leave:opacity-0')} />
         </TransitionChild>
@@ -44,8 +44,8 @@ export default function FullScreenModal({
                 {closable
                   && (
                     <div
-                      className="absolute right-3 top-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center
-                  radius-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
+                      className="absolute top-3 right-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center
+                  rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
                       onClick={(e) => {
                         e.stopPropagation()
                         onClose()

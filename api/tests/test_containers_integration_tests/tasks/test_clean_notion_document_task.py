@@ -11,6 +11,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
@@ -18,6 +20,14 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Se
 from services.account_service import AccountService, TenantService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+
+
+def _count_documents(session: Session, condition: ColumnElement[bool]) -> int:
+    return session.scalar(select(func.count()).select_from(Document).where(condition)) or 0
+
+
+def _count_segments(session: Session, condition: ColumnElement[bool]) -> int:
+    return session.scalar(select(func.count()).select_from(DocumentSegment).where(condition)) or 0
 
 
 class TestCleanNotionDocumentTask:
@@ -145,24 +155,14 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(document_ids)).count() == 3
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(document_ids))
-            .count()
-            == 6
-        )
+        assert _count_documents(db_session_with_containers, Document.id.in_(document_ids)) == 3
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(document_ids)) == 6
 
         # Execute cleanup task
         clean_notion_document_task(document_ids, dataset.id)
 
         # Verify segments are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(document_ids))
-            .count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(document_ids)) == 0
 
         # Verify index processor was called
         mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
@@ -322,12 +322,7 @@ class TestCleanNotionDocumentTask:
             # The task properly handles various index types and document configurations.
 
             # Verify segments are deleted
-            assert (
-                db_session_with_containers.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == document.id)
-                .count()
-                == 0
-            )
+            assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
             # Reset mock for next iteration
             mock_index_processor_factory.reset_mock()
@@ -410,10 +405,7 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task([document.id], dataset.id)
 
         # Verify segments are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
         # Note: This test successfully verifies that segments without index_node_ids
         # are properly deleted from the database.
@@ -499,11 +491,8 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count() == 5
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
-            == 10
-        )
+        assert _count_documents(db_session_with_containers, Document.dataset_id == dataset.id) == 5
+        assert _count_segments(db_session_with_containers, DocumentSegment.dataset_id == dataset.id) == 10
 
         # Clean up only first 3 documents
         documents_to_clean = [doc.id for doc in documents[:3]]
@@ -513,22 +502,12 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task(documents_to_clean, dataset.id)
 
         # Verify only specified documents' segments are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(documents_to_clean))
-            .count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(documents_to_clean)) == 0
 
         # Verify remaining documents and segments are intact
         remaining_docs = [doc.id for doc in documents[3:]]
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(remaining_docs)).count() == 2
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(remaining_docs))
-            .count()
-            == 4
-        )
+        assert _count_documents(db_session_with_containers, Document.id.in_(remaining_docs)) == 2
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(remaining_docs)) == 4
 
         # Note: This test successfully verifies partial document cleanup operations.
         # The database operations work correctly, isolating only the specified documents.
@@ -612,19 +591,13 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all segments exist before cleanup
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
-            == 4
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 4
 
         # Execute cleanup task
         clean_notion_document_task([document.id], dataset.id)
 
         # Verify all segments are deleted regardless of status
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
         # Note: This test successfully verifies database operations.
         # IndexProcessor verification would require more sophisticated mocking.
@@ -794,12 +767,9 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all data exists before cleanup
+        assert _count_documents(db_session_with_containers, Document.dataset_id == dataset.id) == num_documents
         assert (
-            db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count()
-            == num_documents
-        )
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            _count_segments(db_session_with_containers, DocumentSegment.dataset_id == dataset.id)
             == num_documents * num_segments_per_doc
         )
 
@@ -808,10 +778,7 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task(all_document_ids, dataset.id)
 
         # Verify all segments are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.dataset_id == dataset.id) == 0
 
         # Note: This test successfully verifies bulk document cleanup operations.
         # The database efficiently handles large-scale deletions.
@@ -906,8 +873,8 @@ class TestCleanNotionDocumentTask:
 
         # Verify all data exists before cleanup
         # Note: There may be documents from previous tests, so we check for at least 3
-        assert db_session_with_containers.query(Document).count() >= 3
-        assert db_session_with_containers.query(DocumentSegment).count() >= 9
+        assert db_session_with_containers.scalar(select(func.count()).select_from(Document)) >= 3
+        assert db_session_with_containers.scalar(select(func.count()).select_from(DocumentSegment)) >= 9
 
         # Clean up documents from only the first dataset
         target_dataset = datasets[0]
@@ -918,22 +885,12 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task([target_document.id], target_dataset.id)
 
         # Verify only documents' segments from target dataset are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == target_document.id)
-            .count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == target_document.id) == 0
 
         # Verify documents from other datasets remain intact
         remaining_docs = [doc.id for doc in all_documents[1:]]
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(remaining_docs)).count() == 2
-        assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(remaining_docs))
-            .count()
-            == 6
-        )
+        assert _count_documents(db_session_with_containers, Document.id.in_(remaining_docs)) == 2
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(remaining_docs)) == 6
 
         # Note: This test successfully verifies multi-tenant isolation.
         # Only documents from the target dataset are affected, maintaining tenant separation.
@@ -1028,11 +985,9 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count() == len(
-            document_statuses
-        )
+        assert _count_documents(db_session_with_containers, Document.dataset_id == dataset.id) == len(document_statuses)
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            _count_segments(db_session_with_containers, DocumentSegment.dataset_id == dataset.id)
             == len(document_statuses) * 2
         )
 
@@ -1041,10 +996,7 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task(all_document_ids, dataset.id)
 
         # Verify all segments are deleted regardless of status
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.dataset_id == dataset.id) == 0
 
         # Note: This test successfully verifies cleanup of documents in various states.
         # All documents are deleted regardless of their indexing status.
@@ -1142,20 +1094,14 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.id == document.id).count() == 1
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
-            == 3
-        )
+        assert _count_documents(db_session_with_containers, Document.id == document.id) == 1
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 3
 
         # Execute cleanup task
         clean_notion_document_task([document.id], dataset.id)
 
         # Verify segments are deleted
-        assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
-            == 0
-        )
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
         # Note: This test successfully verifies cleanup of documents with rich metadata.
         # The task properly handles complex document structures and metadata fields.

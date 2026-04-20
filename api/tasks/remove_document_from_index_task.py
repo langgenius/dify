@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -26,7 +26,7 @@ def remove_document_from_index_task(document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        document = session.query(Document).where(Document.id == document_id).first()
+        document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
@@ -68,13 +68,15 @@ def remove_document_from_index_task(document_id: str):
                 except Exception:
                     logger.exception("clean dataset %s from index failed", dataset.id)
             # update segment to disable
-            session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).update(
-                {
-                    DocumentSegment.enabled: False,
-                    DocumentSegment.disabled_at: naive_utc_now(),
-                    DocumentSegment.disabled_by: document.disabled_by,
-                    DocumentSegment.updated_at: naive_utc_now(),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(DocumentSegment.document_id == document.id)
+                .values(
+                    enabled=False,
+                    disabled_at=naive_utc_now(),
+                    disabled_by=document.disabled_by,
+                    updated_at=naive_utc_now(),
+                )
             )
             session.commit()
 

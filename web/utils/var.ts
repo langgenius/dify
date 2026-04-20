@@ -64,7 +64,7 @@ export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]): t
     return 'tooLong'
 
   if (otherAllowedRegex.test(key)) {
-    if (/\d/.test(key[0]))
+    if (/\d/.test(key[0]!))
       return 'notStartWithNumber'
 
     return true
@@ -102,7 +102,7 @@ export const hasDuplicateStr = (strArr: string[]) => {
     else
       strObj[str] = 1
   })
-  return !!Object.keys(strObj).find(key => strObj[key] > 1)
+  return !!Object.keys(strObj).find(key => strObj[key]! > 1)
 }
 
 const varRegex = /\{\{([a-z_]\w*)\}\}/gi

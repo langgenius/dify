@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -5,7 +6,6 @@ import { Group } from '@/app/components/base/icons/src/vender/other'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
@@ -72,7 +72,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
         className={cn('relative')}
         ref={containerRef}
       >
-        <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+        <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
           {(() => {
             if (iconFetchError || !icon)
               return <Group className="h-3 w-3 opacity-35" />
@@ -98,7 +98,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
             return <Group className="h-3 w-3 opacity-35" />
           })()}
         </div>
-        {indicator && <Indicator color={indicator} className="absolute -right-px -top-px" />}
+        {indicator && <Indicator color={indicator} className="absolute -top-px -right-px" />}
       </div>
     </Tooltip>
   )

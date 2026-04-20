@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
-from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
@@ -46,6 +45,8 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
@@ -610,33 +611,33 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_database_session_rolls_back_on_error(self, monkeypatch):
         pipeline = _make_pipeline()
-        calls = {"commit": 0, "rollback": 0}
+        calls = {"enter": 0, "exit_exc": None}
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
+        class _BeginContext:
             def __enter__(self):
-                return self
+                calls["enter"] += 1
+                return MagicMock()
 
             def __exit__(self, exc_type, exc, tb):
+                calls["exit_exc"] = exc_type
                 return False
 
-            def commit(self):
-                calls["commit"] += 1
+        class _Sessionmaker:
+            def __init__(self, *args, **kwargs):
+                pass
 
-            def rollback(self):
-                calls["rollback"] += 1
+            def begin(self):
+                return _BeginContext()
 
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.Session", _Session)
+        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.sessionmaker", _Sessionmaker)
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
 
         with pytest.raises(RuntimeError, match="db error"):
             with pipeline._database_session():
                 raise RuntimeError("db error")
 
-        assert calls["commit"] == 0
-        assert calls["rollback"] == 1
+        assert calls["enter"] == 1
+        assert calls["exit_exc"] is RuntimeError
 
     def test_node_retry_and_started_handlers_cover_none_and_value(self):
         pipeline = _make_pipeline()

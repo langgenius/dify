@@ -1,6 +1,6 @@
 import type { TagSelectorProps } from './selector'
-import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useUnmount } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -9,13 +9,12 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { toast } from '@/app/components/base/ui/toast'
 import { bindTag, createTag, unBindTag } from '@/service/tag'
 import { useStore as useTagStore } from './store'
 
 type PanelProps = {
   onCreate: () => void
-} & HtmlContentProps & TagSelectorProps
+} & TagSelectorProps
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
@@ -115,7 +114,7 @@ const Panel = (props: PanelProps) => {
         <div className="p-1">
           <div className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" data-testid="create-tag-option" onClick={createNewTag}>
             <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-            <div className="grow truncate px-1 text-text-secondary system-md-regular">
+            <div className="grow truncate px-1 system-md-regular text-text-secondary">
               {`${t('tag.create', { ns: 'common' })} `}
               <span className="system-md-medium">{`'${keywords}'`}</span>
             </div>
@@ -128,7 +127,7 @@ const Panel = (props: PanelProps) => {
           {filteredSelectedTagList.map(tag => (
             <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag)} data-testid="tag-row">
               <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
-              <div title={tag.name} className="grow truncate px-1 text-text-secondary system-md-regular">
+              <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
               </div>
             </div>
@@ -136,7 +135,7 @@ const Panel = (props: PanelProps) => {
           {filteredTagList.map(tag => (
             <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag)} data-testid="tag-row">
               <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
-              <div title={tag.name} className="grow truncate px-1 text-text-secondary system-md-regular">
+              <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
               </div>
             </div>
@@ -147,7 +146,7 @@ const Panel = (props: PanelProps) => {
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
             <span className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />
-            <div className="text-text-tertiary system-xs-regular">{t('tag.noTag', { ns: 'common' })}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
       )}
@@ -155,7 +154,7 @@ const Panel = (props: PanelProps) => {
       <div className="p-1">
         <div className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => setShowTagManagementModal(true)}>
           <span className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
-          <div className="grow truncate px-1 text-text-secondary system-md-regular">
+          <div className="grow truncate px-1 system-md-regular text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}
           </div>
         </div>

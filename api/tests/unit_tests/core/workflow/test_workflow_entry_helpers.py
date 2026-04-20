@@ -4,8 +4,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
+
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.model_manager import ModelInstance
+from core.workflow import workflow_entry
+from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
@@ -17,17 +22,11 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.runtime import ChildGraphNotFoundError, VariablePool
 from graphon.variables.variables import StringVariable
-
-from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.model_manager import ModelInstance
-from core.workflow import workflow_entry
-from core.workflow.system_variables import default_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 def _build_typed_node_config(node_type: NodeType):
-    return NodeConfigDictAdapter.validate_python({"id": "node-id", "data": {"type": node_type}})
+    return {"id": "node-id", "data": BaseNodeData(type=node_type)}
 
 
 def _build_wrapped_model_instance() -> tuple[SimpleNamespace, ModelInstance]:
@@ -165,14 +164,11 @@ class TestWorkflowChildEngineBuilder:
         def build_graph(*, graph_config, node_factory, root_node_id):
             _ = graph_config
             node = node_cls(
-                id=root_node_id,
-                config={
-                    "id": root_node_id,
-                    "data": {
-                        "type": node_cls.node_type,
-                        "title": "Child Model",
-                    },
-                },
+                node_id=root_node_id,
+                config=BaseNodeData(
+                    type=node_cls.node_type,
+                    title="Child Model",
+                ),
                 graph_init_params=node_factory.graph_init_params,
                 graph_runtime_state=node_factory.graph_runtime_state,
             )
@@ -349,7 +345,7 @@ class TestWorkflowEntrySingleStepRun:
         ]
 
         with (
-            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(
                 workflow_entry,
                 "GraphRuntimeState",
@@ -358,7 +354,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeLLMNode),
-            patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
             patch.object(workflow_entry, "load_into_variable_pool"),
             patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool"),
             patch.object(
@@ -412,12 +408,12 @@ class TestWorkflowEntrySingleStepRun:
                 raise NotImplementedError
 
         with (
-            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
-            patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
             patch.object(
@@ -481,12 +477,12 @@ class TestWorkflowEntrySingleStepRun:
                 return {"question": ["node", "question"]}
 
         with (
-            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeDatasourceNode),
-            patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
             patch.object(
@@ -541,12 +537,12 @@ class TestWorkflowEntrySingleStepRun:
                 return "1"
 
         with (
-            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
-            patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool"),
             patch.object(workflow_entry, "load_into_variable_pool"),
             patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool"),
@@ -651,14 +647,18 @@ class TestWorkflowEntryHelpers:
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool) as variable_pool_cls,
             patch.object(workflow_entry, "add_variables_to_pool") as add_variables_to_pool,
             patch.object(
-                workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params
-            ) as graph_init_params,
+                workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context
+            ) as graph_init_context_cls,
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(
                 workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}
             ) as build_dify_run_context,
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
-            patch.object(workflow_entry, "DifyNodeFactory", return_value=dify_node_factory) as dify_node_factory_cls,
+            patch.object(
+                workflow_entry.DifyNodeFactory,
+                "from_graph_init_context",
+                return_value=dify_node_factory,
+            ) as dify_node_factory_cls,
             patch.object(
                 workflow_entry.WorkflowEntry,
                 "mapping_user_inputs_to_variable_pool",
@@ -688,7 +688,7 @@ class TestWorkflowEntryHelpers:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
         )
-        graph_init_params.assert_called_once_with(
+        graph_init_context_cls.assert_called_once_with(
             workflow_id="",
             graph_config=workflow_entry.WorkflowEntry._create_single_node_graph(
                 "node-id", {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"}
@@ -697,7 +697,7 @@ class TestWorkflowEntryHelpers:
             call_depth=0,
         )
         dify_node_factory_cls.assert_called_once_with(
-            graph_init_params=sentinel.graph_init_params,
+            graph_init_context=sentinel.graph_init_context,
             graph_runtime_state=sentinel.graph_runtime_state,
         )
         mapping_user_inputs_to_variable_pool.assert_called_once_with(
@@ -734,11 +734,15 @@ class TestWorkflowEntryHelpers:
             patch.object(workflow_entry, "default_system_variables", return_value=sentinel.system_variables),
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool),
             patch.object(workflow_entry, "add_variables_to_pool"),
-            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
-            patch.object(workflow_entry, "DifyNodeFactory", return_value=dify_node_factory),
+            patch.object(
+                workflow_entry.DifyNodeFactory,
+                "from_graph_init_context",
+                return_value=dify_node_factory,
+            ),
             patch.object(
                 workflow_entry.WorkflowEntry,
                 "mapping_user_inputs_to_variable_pool",
@@ -756,7 +760,7 @@ class TestWorkflowEntryHelpers:
 
     def test_handle_special_values_serializes_nested_files(self):
         file = File(
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image.png",
             filename="image.png",

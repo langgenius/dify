@@ -4,6 +4,7 @@ import type {
   AddOAuthButtonProps,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -14,7 +15,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -104,7 +104,7 @@ const Configure = ({
             }
             {
               !!canApiKey && !!canOAuth && (
-                <div className="flex h-4 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
+                <div className="flex h-4 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
                   <div className="mr-2 h-px grow bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
                   OR
                   <div className="ml-2 h-px grow bg-linear-to-r from-[rgba(16,24,40,0.08)]" />

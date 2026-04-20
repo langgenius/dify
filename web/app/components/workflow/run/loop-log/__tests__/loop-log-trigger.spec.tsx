@@ -77,8 +77,8 @@ describe('LoopLogTrigger', () => {
         </div>,
       )
 
-      expect(screen.getByText(/workflow\.nodes\.loop\.loop/)).toBeInTheDocument()
-      expect(screen.getByText(/workflow\.nodes\.loop\.error/)).toBeInTheDocument()
+      expect(screen.getByText(/workflow\.nodes\.loop\.loop/))!.toBeInTheDocument()
+      expect(screen.getByText(/workflow\.nodes\.loop\.error/))!.toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))
 
@@ -134,7 +134,7 @@ describe('LoopLogTrigger', () => {
       await user.click(screen.getByRole('button'))
 
       expect(onShowLoopResultList).toHaveBeenCalledTimes(1)
-      const [structuredList, durations, variableMap] = onShowLoopResultList.mock.calls[0]
+      const [structuredList, durations, variableMap] = (onShowLoopResultList.mock.calls[0] ?? []) as [any, any, any]
       expect(structuredList).toHaveLength(2)
       expect(structuredList).toEqual(
         expect.arrayContaining([
