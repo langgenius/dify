@@ -1465,7 +1465,7 @@
   },
   "web/app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
@@ -3856,6 +3856,11 @@
   "web/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 9
+    }
+  },
+  "web/app/components/workflow/nodes/question-classifier/components/advanced-setting.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
