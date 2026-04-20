@@ -1,9 +1,9 @@
 'use client'
 
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import {
@@ -62,22 +62,22 @@ const SnippetCreateCard = () => {
     <>
       <div className="relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity">
         <div className="grow rounded-t-xl p-2">
-          <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('create')}</div>
+          <div className="px-6 pt-2 pb-1 text-xs leading-[18px] font-medium text-text-tertiary">{t('create')}</div>
           <button
             type="button"
-            className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
             disabled={createSnippetMutation.isPending}
             onClick={handleCreateFromBlank}
           >
-            <span aria-hidden className="i-ri-sticky-note-add-line mr-2 h-4 w-4 shrink-0" />
+            <span aria-hidden className="mr-2 i-ri-sticky-note-add-line h-4 w-4 shrink-0" />
             {t('createFromBlank')}
           </button>
           <button
             type="button"
-            className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+            className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             onClick={handleImportDSL}
           >
-            <span aria-hidden className="i-ri-file-upload-line mr-2 h-4 w-4 shrink-0" />
+            <span aria-hidden className="mr-2 i-ri-file-upload-line h-4 w-4 shrink-0" />
             {t('importDSL', { ns: 'app' })}
           </button>
         </div>

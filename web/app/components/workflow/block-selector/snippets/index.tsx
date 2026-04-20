@@ -1,4 +1,16 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import { useInfiniteScroll } from 'ahooks'
 import {
   memo,
@@ -8,18 +20,6 @@ import {
   useState,
 } from 'react'
 import Loading from '@/app/components/base/loading'
-import {
-  ScrollAreaContent,
-  ScrollAreaRoot,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@/app/components/base/ui/scroll-area'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreateSnippetDialog from '../../create-snippet-dialog'
 import SnippetDetailCard from './snippet-detail-card'

@@ -1,6 +1,6 @@
 import type { SnippetInputField } from '@/models/snippet'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetInputFieldActions } from '../use-snippet-input-field-actions'
 
@@ -23,7 +23,7 @@ let snippetDetailStoreState: {
   toggleInputPanel: typeof mockToggleInputPanel
 }
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },

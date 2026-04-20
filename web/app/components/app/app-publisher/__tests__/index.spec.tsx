@@ -18,6 +18,7 @@ const mockToastError = vi.fn()
 const mockConvertWorkflowType = vi.fn()
 const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
+let mockCanAccessSnippetsAndEvaluation = true
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -70,6 +71,13 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
+}))
+
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: mockCanAccessSnippetsAndEvaluation,
+    isReady: true,
+  }),
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -194,6 +202,7 @@ describe('AppPublisher', () => {
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
+    mockCanAccessSnippetsAndEvaluation = true
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
@@ -656,5 +665,26 @@ describe('AppPublisher', () => {
     expect(mockConvertWorkflowType).not.toHaveBeenCalled()
     expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
     expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('common.switchToEvaluationWorkflowDisabledTip')
+  })
+
+  it('should keep the evaluation workflow switch visible but disabled when the current plan cannot access it', () => {
+    mockCanAccessSnippetsAndEvaluation = false
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+
+    expect(sectionProps.summary?.workflowTypeSwitchConfig).toEqual({
+      targetType: AppTypeEnum.EVALUATION,
+      publishLabelKey: 'common.publishAsEvaluationWorkflow',
+      switchLabelKey: 'common.switchToEvaluationWorkflow',
+      tipKey: 'common.switchToEvaluationWorkflowTip',
+    })
+    expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
+    expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('compliance.sandboxUpgradeTooltip')
   })
 })

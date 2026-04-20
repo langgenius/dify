@@ -1,16 +1,16 @@
 import type { EvaluationResourceProps } from '../../types'
 import type { EvaluationLog, EvaluationLogFile } from '@/types/evaluation'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Pagination from '@/app/components/base/pagination'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Pagination from '@/app/components/base/pagination'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
@@ -92,15 +92,15 @@ const HistoryTab = ({
           </colgroup>
           <thead>
             <tr className="border-b border-divider-regular">
-              <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">
+              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
                 <span className="inline-flex items-center gap-0.5">
                   {t('history.columns.time')}
                   <span aria-hidden="true" className="i-ri-arrow-down-line h-3.5 w-3.5" />
                 </span>
               </th>
-              <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('history.columns.creator')}</th>
-              <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('history.columns.version')}</th>
-              <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('history.columns.status')}</th>
+              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.creator')}</th>
+              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.version')}</th>
+              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.status')}</th>
               <th className="h-7 text-center text-text-tertiary">
                 <span aria-hidden="true" className="i-ri-download-2-line inline-block h-3.5 w-3.5" />
               </th>
@@ -128,9 +128,9 @@ const HistoryTab = ({
                     setSelectedRunId(resourceType, resourceId, runId)
                 }}
               >
-                <td className="system-sm-regular h-10 truncate px-3 text-text-secondary">{formatCreatedAt(record.created_at)}</td>
-                <td className="system-sm-regular h-10 truncate px-3 text-text-secondary">{record.created_by}</td>
-                <td className="system-sm-regular h-10 truncate px-3 text-text-secondary">{record.version || '-'}</td>
+                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{formatCreatedAt(record.created_at)}</td>
+                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.created_by}</td>
+                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.version || '-'}</td>
                 <td className="h-10 px-3 text-center">
                   {record.result_file
                     ? <span aria-label={t('history.status.completed')} className="i-ri-checkbox-circle-fill inline-block h-4 w-4 text-util-colors-green-green-600" />
@@ -181,7 +181,7 @@ const HistoryTab = ({
           </tbody>
         </table>
         {!isInitialLoading && records.length === 0 && (
-          <div className="system-sm-regular rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center text-text-tertiary">
+          <div className="rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center system-sm-regular text-text-tertiary">
             {t('history.empty')}
           </div>
         )}

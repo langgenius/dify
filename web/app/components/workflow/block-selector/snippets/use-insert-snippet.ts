@@ -1,9 +1,9 @@
 import type { Edge, Node } from '../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { toast } from '@/app/components/base/ui/toast'
 import { consoleQuery } from '@/service/client'
 import { useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks'
 

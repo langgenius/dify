@@ -2,16 +2,16 @@
 
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import type { NodeInfo } from '@/types/evaluation'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEvaluationStore } from '../../store'
 import { dedupeNodeInfoList, getMetricVisual, getNodeVisual, getToneClasses } from '../metric-selector/utils'
 
@@ -53,7 +53,7 @@ const BuiltinMetricCard = ({
             <span aria-hidden="true" className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
           </div>
           <div className="flex min-w-0 items-center gap-0.5">
-            <div className="system-md-medium truncate text-text-secondary">{metric.label}</div>
+            <div className="truncate system-md-medium text-text-secondary">{metric.label}</div>
             <span
               aria-hidden="true"
               className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-quaternary transition-transform', !isExpanded && '-rotate-90')}
@@ -87,7 +87,7 @@ const BuiltinMetricCard = ({
                     <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
                       <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                     </div>
-                    <span className="system-xs-regular px-1 text-text-primary">{nodeInfo.title}</span>
+                    <span className="px-1 system-xs-regular text-text-primary">{nodeInfo.title}</span>
                     <button
                       type="button"
                       className="flex h-4 w-4 items-center justify-center rounded-sm text-text-quaternary transition-colors hover:text-text-secondary"
@@ -105,7 +105,7 @@ const BuiltinMetricCard = ({
                 )
               })
             : (
-                <span className="system-xs-regular px-1 text-text-tertiary">{t('metrics.nodesAll')}</span>
+                <span className="px-1 system-xs-regular text-text-tertiary">{t('metrics.nodesAll')}</span>
               )}
 
           {shouldShowAddNode && (
@@ -144,7 +144,7 @@ const BuiltinMetricCard = ({
                         <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
                           <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                         </div>
-                        <span className="system-sm-medium truncate text-text-secondary">{nodeInfo.title}</span>
+                        <span className="truncate system-sm-medium text-text-secondary">{nodeInfo.title}</span>
                       </div>
                     </DropdownMenuItem>
                   )

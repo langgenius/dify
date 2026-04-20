@@ -26,14 +26,14 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (args: { data: Blob, fileName: string }) => mockDownloadBlob(args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({
     open,
     onOpenChange,

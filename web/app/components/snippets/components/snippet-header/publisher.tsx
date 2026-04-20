@@ -1,13 +1,13 @@
 'use client'
 
 import type { SnippetDetailUIModel } from '@/models/snippet'
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import PublishMenu from '../publish-menu'
 
 type PublisherProps = {

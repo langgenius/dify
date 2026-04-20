@@ -6,11 +6,8 @@ import type {
   EvaluationResourceProps,
   JudgmentConditionItem,
 } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import {
   Select,
   SelectContent,
@@ -19,7 +16,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import { getAllowedOperators, requiresConditionValue, useEvaluationResource, useEvaluationStore } from '../../store'
 import {
   buildConditionMetricOptions,
@@ -71,15 +71,15 @@ const ConditionMetricLabel = ({
   placeholder,
 }: ConditionMetricLabelProps) => {
   if (!metric)
-    return <span className="system-sm-regular px-1 text-components-input-text-placeholder">{placeholder}</span>
+    return <span className="px-1 system-sm-regular text-components-input-text-placeholder">{placeholder}</span>
 
   return (
     <div className="flex min-w-0 items-center gap-2 px-1">
       <div className="inline-flex h-6 min-w-0 items-center gap-1 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] shadow-xs">
         <span className={cn(getMetricValueTypeIconClassName(metric.valueType), 'h-3 w-3 shrink-0 text-text-secondary')} />
-        <span className="system-xs-medium truncate text-text-secondary">{metric.itemLabel}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
       </div>
-      <span className="system-xs-regular shrink-0 text-text-tertiary">{metric.groupLabel}</span>
+      <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.groupLabel}</span>
     </div>
   )
 }
@@ -110,13 +110,13 @@ const ConditionMetricSelect = ({
       <SelectContent popupClassName="w-[360px]">
         {groupedMetricOptions.map(group => (
           <SelectGroup key={group.label}>
-            <SelectGroupLabel className="system-xs-medium-uppercase px-3 pt-2 pb-1 text-text-tertiary">{group.label}</SelectGroupLabel>
+            <SelectGroupLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{group.label}</SelectGroupLabel>
             {group.options.map(option => (
               <SelectItem key={option.id} value={serializeVariableSelector(option.variableSelector)}>
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className={cn(getMetricValueTypeIconClassName(option.valueType), 'h-3.5 w-3.5 shrink-0 text-text-tertiary')} />
                   <span className="truncate">{option.itemLabel}</span>
-                  <span className="system-xs-medium ml-auto shrink-0 text-text-quaternary">
+                  <span className="ml-auto shrink-0 system-xs-medium text-text-quaternary">
                     {t(getConditionMetricValueTypeTranslationKey(option.valueType))}
                   </span>
                 </div>
@@ -139,7 +139,7 @@ const ConditionOperatorSelect = ({
   return (
     <Select value={operator} onValueChange={value => value && onChange(value as ComparisonOperator)}>
       <SelectTrigger className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-        <span className="system-xs-medium truncate text-text-secondary">{getComparisonOperatorLabel(operator, t)}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{getComparisonOperatorLabel(operator, t)}</span>
       </SelectTrigger>
       <SelectContent className="z-[1002]" popupClassName="w-[240px] bg-components-panel-bg-blur backdrop-blur-[10px]">
         {operators.map(nextOperator => (
@@ -232,7 +232,7 @@ const ConditionGroup = ({
                 key={operator}
                 type="button"
                 className={cn(
-                  'system-xs-medium-uppercase rounded-md px-3 py-1.5',
+                  'rounded-md px-3 py-1.5 system-xs-medium-uppercase',
                   resource.judgmentConfig.logicalOperator === operator
                     ? 'bg-components-card-bg text-text-primary shadow-xs'
                     : 'text-text-tertiary',

@@ -1,5 +1,5 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
@@ -15,7 +15,7 @@ vi.mock('ahooks', () => ({
   useKeyPress: (...args: Parameters<typeof mockUseKeyPress>) => mockUseKeyPress(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),

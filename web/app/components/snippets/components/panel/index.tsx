@@ -2,9 +2,9 @@
 
 import type { SortableItem } from '@/app/components/rag-pipeline/components/panel/input-field/field-list/types'
 import type { SnippetInputField } from '@/models/snippet'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import FieldListContainer from '@/app/components/rag-pipeline/components/panel/input-field/field-list/field-list-container'
 
 type SnippetInputFieldPanelProps = {
@@ -45,12 +45,12 @@ const SnippetInputFieldPanel = ({
 
   return (
     <div className="mr-1 flex h-full w-[min(400px,calc(100vw-24px))] flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
-      <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-4">
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <div className="min-w-0">
-          <div className="text-text-primary system-xl-semibold">
+          <div className="system-xl-semibold text-text-primary">
             {t('panelTitle')}
           </div>
-          <div className="pt-1 text-text-tertiary system-sm-regular">
+          <div className="pt-1 system-sm-regular text-text-tertiary">
             {t('panelDescription')}
           </div>
         </div>

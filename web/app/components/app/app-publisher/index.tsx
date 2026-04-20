@@ -149,11 +149,8 @@ const AppPublisher = ({
     if (!isWorkflowTypeConversionTarget(appDetail?.type))
       return undefined
 
-    if (appDetail.type !== AppTypeEnum.EVALUATION && !canAccessSnippetsAndEvaluation)
-      return undefined
-
     return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
-  }, [appDetail?.type, canAccessSnippetsAndEvaluation])
+  }, [appDetail?.type])
   const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
   const {
     refetch: refetchEvaluationWorkflowAssociatedTargets,
@@ -163,11 +160,14 @@ const AppPublisher = ({
     if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
       return undefined
 
+    if (!canAccessSnippetsAndEvaluation)
+      return t('compliance.sandboxUpgradeTooltip', { ns: 'common' })
+
     if (!hasHumanInputNode && !hasTriggerNode)
       return undefined
 
     return t('common.switchToEvaluationWorkflowDisabledTip', { ns: 'workflow' })
-  }, [hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
+  }, [canAccessSnippetsAndEvaluation, hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)

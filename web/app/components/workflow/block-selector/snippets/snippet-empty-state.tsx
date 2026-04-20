@@ -1,6 +1,6 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 
 type SnippetEmptyStateProps = {
   onCreate: () => void
@@ -14,7 +14,7 @@ const SnippetEmptyState: FC<SnippetEmptyStateProps> = ({
   return (
     <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 px-4">
       <span className="i-custom-vender-line-others-search-menu h-8 w-8 text-text-tertiary" />
-      <div className="text-text-secondary system-sm-regular">
+      <div className="system-sm-regular text-text-secondary">
         {t('tabs.noSnippetsFound', { ns: 'workflow' })}
       </div>
       <Button
