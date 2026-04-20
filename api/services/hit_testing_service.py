@@ -144,7 +144,9 @@ class HitTestingService:
             query=query,
             attachment_ids=attachment_ids,
             top_k=retrieval_model.top_k,
-            score_threshold=(retrieval_model.score_threshold or 0.0) if retrieval_model.score_threshold_enabled else 0.0,
+            score_threshold=(retrieval_model.score_threshold or 0.0)
+            if retrieval_model.score_threshold_enabled
+            else 0.0,
             reranking_model=cls._serialize_reranking_model(retrieval_model),
             reranking_mode=retrieval_model.reranking_mode or "reranking_model",
             weights=cls._serialize_weights(retrieval_model),
