@@ -1182,14 +1182,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/base/features/new-feature-panel/feature-bar.tsx": {
     "no-restricted-imports": {
       "count": 1
