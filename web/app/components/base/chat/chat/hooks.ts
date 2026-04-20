@@ -209,6 +209,19 @@ export const useChat = (
     cb?.()
   }, [handleStop])
 
+  const abortInflightRequests = useCallback(() => {
+    conversationMessagesAbortControllerRef.current?.abort()
+    suggestedQuestionsAbortControllerRef.current?.abort()
+    workflowEventsAbortControllerRef.current?.abort()
+  }, [])
+
+  // Abort all in-flight fetch/SSE requests when the consumer unmounts
+  useEffect(() => {
+    return () => {
+      abortInflightRequests()
+    }
+  }, [abortInflightRequests])
+
   const createAudioPlayerManager = useCallback(() => {
     let ttsUrl = ''
     let ttsIsPublic = false
