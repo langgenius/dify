@@ -20,7 +20,6 @@ type PanelOperatorProps = {
   triggerClassName?: string
   offset?: OffsetOptions | number
   onOpenChange?: (open: boolean) => void
-  inNode?: boolean
   showHelpLink?: boolean
 }
 const PanelOperator = ({
@@ -45,15 +44,14 @@ const PanelOperator = ({
     ? offset.crossAxis
     : 0
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    setOpen(newOpen)
-
-    if (onOpenChange)
-      onOpenChange(newOpen)
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen)
+    onOpenChange?.(nextOpen)
   }, [onOpenChange])
 
   return (
     <DropdownMenu
+      modal={false}
       open={open}
       onOpenChange={handleOpenChange}
     >
@@ -62,7 +60,7 @@ const PanelOperator = ({
         aria-label={t('operation.more', { ns: 'common' })}
         className={cn(
           'nodrag nopan nowheel flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover',
-          open && 'bg-state-base-hover',
+          'data-[popup-open]:bg-state-base-hover',
           triggerClassName,
         )}
       >
@@ -77,7 +75,7 @@ const PanelOperator = ({
         <PanelOperatorPopup
           id={id}
           data={data}
-          onClosePopup={() => handleOpenChange(false)}
+          onClosePopup={() => setOpen(false)}
           showHelpLink={showHelpLink}
         />
       </DropdownMenuContent>

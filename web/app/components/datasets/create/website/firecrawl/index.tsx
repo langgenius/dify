@@ -27,11 +27,12 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
-enum Step {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+const Step = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+type Step = typeof Step[keyof typeof Step]
 type CrawlState = {
   current: number
   total: number

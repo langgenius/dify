@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "اكتمل التنزيل.",
   "operation.duplicate": "تكرار",
   "operation.edit": "تعديل",
+  "operation.exporting": "جارٍ التصدير",
   "operation.format": "تنسيق",
   "operation.getForFree": "احصل عليه مجانا",
   "operation.imageCopied": "تم نسخ الصورة",

@@ -490,8 +490,8 @@ describe('Capacity Full Components Integration', () => {
       expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
       // Should show usage/total fraction "5/5"
       expect(screen.getByText(/5\/5/)).toBeInTheDocument()
-      // Should have a progress bar rendered
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
+      // Should have a meter rendered
+      expect(screen.getByRole('meter')).toBeInTheDocument()
     })
 
     it('should display upgrade tip and upgrade button for professional plan', () => {
@@ -531,10 +531,9 @@ describe('Capacity Full Components Integration', () => {
         total: { buildApps: 5 },
       })
 
-      render(<AppsFull loc="test" />)
+      const { container } = render(<AppsFull loc="test" />)
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+      expect(container.querySelector('.bg-components-progress-error-progress')).toBeInTheDocument()
     })
   })
 
@@ -819,8 +818,8 @@ describe('Usage Display Edge Cases', () => {
 
       render(<PlanComp loc="test" />)
 
-      // Should have an indeterminate progress bar
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      // Below-threshold storage renders the redacted placeholder instead of a Meter
+      expect(document.body.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
     it('should show actual usage for pro plan above threshold', () => {
@@ -846,15 +845,10 @@ describe('Usage Display Edge Cases', () => {
         total: { buildApps: 5 },
       })
 
-      render(<PlanComp loc="test" />)
+      const { container } = render(<PlanComp loc="test" />)
 
-      // 20% usage - normal color
-      const progressBars = screen.getAllByTestId('billing-progress-bar')
-      // At least one should have the normal progress color
-      const hasNormalColor = progressBars.some(bar =>
-        bar.classList.contains('bg-components-progress-bar-progress-solid'),
-      )
-      expect(hasNormalColor).toBe(true)
+      // 20% usage — at least one Meter indicator should carry the neutral tone
+      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
     })
   })
 

@@ -1,10 +1,6 @@
 {
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "types": ["vitest/globals", "@testing-library/jest-dom"],
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true
-  },
-  "include": ["src", "tests", ".storybook", "tailwind.config.ts", "vite.config.ts"]
+    "types": ["vite-plus/test/globals"]
+  }
 }

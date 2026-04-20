@@ -1,5 +1,6 @@
 import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
@@ -19,14 +20,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    systemFeatures: {
-      branding: { enabled: false },
-    },
   }),
 }))
 
@@ -192,9 +185,13 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
-// Render helper wrapping with shared nuqs testing helper.
+// Render helper wrapping with shared nuqs testing helper plus a seeded
+// systemFeatures cache so List can resolve its useSuspenseQuery.
 const renderList = (searchParams = '') => {
-  return renderWithNuqs(<List />, { searchParams })
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { branding: { enabled: false } },
+  })
+  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
 
 describe('List', () => {
@@ -390,7 +387,7 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { unmount } = renderWithNuqs(<List />)
+      const { unmount } = renderList()
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
 
       unmount()

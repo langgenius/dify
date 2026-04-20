@@ -1,316 +1,252 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import { render } from 'vitest-browser-react'
 import { toast, ToastHost } from '../index'
 
-describe('base/ui/toast', () => {
+const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+
+declare global {
+  // eslint-disable-next-line vars-on-top
+  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined
+}
+
+describe('@langgenius/dify-ui/toast', () => {
+  beforeAll(() => {
+    // Base UI waits for `requestAnimationFrame` + `getAnimations().finished`
+    // before unmounting a toast. Fake timers can't reliably drive that path,
+    // so short-circuit it to keep auto-dismiss assertions deterministic in CI.
+    globalThis.BASE_UI_ANIMATIONS_DISABLED = true
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    act(() => {
-      toast.dismiss()
-    })
+    vi.useFakeTimers()
+    toast.dismiss()
   })
 
   afterEach(() => {
-    act(() => {
-      toast.dismiss()
-      vi.runOnlyPendingTimers()
-    })
+    toast.dismiss()
+    vi.runOnlyPendingTimers()
     vi.useRealTimers()
   })
 
-  // Core host and manager integration.
-  it('should render a success toast when called through the typed shortcut', async () => {
-    render(<ToastHost />)
+  afterAll(() => {
+    globalThis.BASE_UI_ANIMATIONS_DISABLED = undefined
+  })
 
-    act(() => {
-      toast.success('Saved', {
-        description: 'Your changes are available now.',
-      })
+  it('should render a success toast when called through the typed shortcut', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast.success('Saved', {
+      description: 'Your changes are available now.',
     })
 
-    expect(await screen.findByText('Saved')).toBeInTheDocument()
-    expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    const viewport = screen.getByRole('region', { name: 'Notifications' })
-    expect(viewport).toHaveAttribute('aria-live', 'polite')
-    expect(viewport).toHaveClass('z-1003')
-    expect(viewport.firstElementChild).toHaveClass('top-4')
-    expect(screen.getByRole('dialog')).not.toHaveClass('outline-hidden')
+    await expect.element(screen.getByText('Saved')).toBeInTheDocument()
+    await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-1003')
+    expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
+    expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
     expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
   })
 
-  // Collapsed stacks should keep multiple toast roots mounted for smooth stack animation.
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    act(() => {
-      toast('First toast')
-    })
+    toast('First toast')
+    await expect.element(screen.getByText('First toast')).toBeInTheDocument()
 
-    expect(await screen.findByText('First toast')).toBeInTheDocument()
+    toast('Second toast')
+    toast('Third toast')
 
-    act(() => {
-      toast('Second toast')
-      toast('Third toast')
-    })
-
-    expect(await screen.findByText('Third toast')).toBeInTheDocument()
-    expect(screen.getAllByRole('dialog')).toHaveLength(3)
+    await expect.element(screen.getByText('Third toast')).toBeInTheDocument()
+    expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
     expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
+    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
+      bubbles: true,
+    }))
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
     })
   })
 
-  // Neutral calls should map directly to a toast with only a title.
   it('should render a neutral toast when called directly', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    act(() => {
-      toast('Neutral toast')
-    })
+    toast('Neutral toast')
 
-    expect(await screen.findByText('Neutral toast')).toBeInTheDocument()
+    await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
   })
 
-  // Base UI limit should cap the visible stack and mark overflow toasts as limited.
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
-    render(<ToastHost limit={1} />)
+    const screen = await render(<ToastHost limit={1} />)
 
-    act(() => {
-      toast('First toast')
-      toast('Second toast')
-    })
+    toast('First toast')
+    toast('Second toast')
 
-    expect(await screen.findByText('Second toast')).toBeInTheDocument()
+    await expect.element(screen.getByText('Second toast')).toBeInTheDocument()
     expect(document.body.querySelector('[data-limited]')).toBeInTheDocument()
   })
 
-  // Closing should work through the public manager API.
   it('should dismiss a toast when dismiss(id) is called', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    let toastId = ''
-    act(() => {
-      toastId = toast('Closable', {
-        description: 'This toast can be removed.',
-      })
+    const toastId = toast('Closable', {
+      description: 'This toast can be removed.',
     })
 
-    expect(await screen.findByText('Closable')).toBeInTheDocument()
+    await expect.element(screen.getByText('Closable')).toBeInTheDocument()
 
-    act(() => {
-      toast.dismiss(toastId)
-    })
+    toast.dismiss(toastId)
 
-    await waitFor(() => {
-      expect(screen.queryByText('Closable')).not.toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Closable')
     })
   })
 
-  // User dismissal needs to remain accessible.
   it('should close a toast when the dismiss button is clicked', async () => {
     const onClose = vi.fn()
+    const screen = await render(<ToastHost />)
 
-    render(<ToastHost />)
-
-    act(() => {
-      toast('Dismiss me', {
-        description: 'Manual dismissal path.',
-        onClose,
-      })
+    toast('Dismiss me', {
+      description: 'Manual dismissal path.',
+      onClose,
     })
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
+    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
+      bubbles: true,
+    }))
 
-    const dismissButton = await screen.findByRole('button', { name: 'Close notification' })
+    await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+    asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
-    act(() => {
-      dismissButton.click()
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Dismiss me')).not.toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Dismiss me')
     })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  // Base UI default timeout should apply when no timeout is provided.
   it('should auto dismiss toasts with the Base UI default timeout', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    act(() => {
-      toast('Default timeout')
-    })
+    toast('Default timeout')
+    await expect.element(screen.getByText('Default timeout')).toBeInTheDocument()
 
-    expect(await screen.findByText('Default timeout')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(4999)
+    expect(document.body).toHaveTextContent('Default timeout')
 
-    act(() => {
-      vi.advanceTimersByTime(4999)
-    })
-
-    expect(screen.getByText('Default timeout')).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Default timeout')).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(1)
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Default timeout')
     })
   })
 
-  // Provider timeout should apply to all toasts when configured.
   it('should respect the host timeout configuration', async () => {
-    render(<ToastHost timeout={3000} />)
+    const screen = await render(<ToastHost timeout={3000} />)
 
-    act(() => {
-      toast('Configured timeout')
-    })
+    toast('Configured timeout')
+    await expect.element(screen.getByText('Configured timeout')).toBeInTheDocument()
 
-    expect(await screen.findByText('Configured timeout')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(2999)
+    expect(document.body).toHaveTextContent('Configured timeout')
 
-    act(() => {
-      vi.advanceTimersByTime(2999)
-    })
-
-    expect(screen.getByText('Configured timeout')).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Configured timeout')).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(1)
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Configured timeout')
     })
   })
 
-  // Callers must be able to override or disable timeout per toast.
   it('should respect custom timeout values including zero', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    act(() => {
-      toast('Custom timeout', {
-        timeout: 1000,
-      })
+    toast('Custom timeout', {
+      timeout: 1000,
+    })
+    await expect.element(screen.getByText('Custom timeout')).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Custom timeout')
     })
 
-    expect(await screen.findByText('Custom timeout')).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(1000)
+    toast('Persistent', {
+      timeout: 0,
     })
+    await expect.element(screen.getByText('Persistent')).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.queryByText('Custom timeout')).not.toBeInTheDocument()
-    })
-
-    act(() => {
-      toast('Persistent', {
-        timeout: 0,
-      })
-    })
-
-    expect(await screen.findByText('Persistent')).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(10000)
-    })
-
-    expect(screen.getByText('Persistent')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(document.body).toHaveTextContent('Persistent')
   })
 
-  // Updates should flow through the same manager state.
   it('should update an existing toast', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    let toastId = ''
-    act(() => {
-      toastId = toast.info('Loading', {
-        description: 'Preparing your data…',
-      })
+    const toastId = toast.info('Loading', {
+      description: 'Preparing your data…',
+    })
+    await expect.element(screen.getByText('Loading')).toBeInTheDocument()
+
+    toast.update(toastId, {
+      title: 'Done',
+      description: 'Your data is ready.',
+      type: 'success',
     })
 
-    expect(await screen.findByText('Loading')).toBeInTheDocument()
-
-    act(() => {
-      toast.update(toastId, {
-        title: 'Done',
-        description: 'Your data is ready.',
-        type: 'success',
-      })
-    })
-
-    expect(screen.getByText('Done')).toBeInTheDocument()
-    expect(screen.getByText('Your data is ready.')).toBeInTheDocument()
-    expect(screen.queryByText('Loading')).not.toBeInTheDocument()
+    await expect.element(screen.getByText('Done')).toBeInTheDocument()
+    await expect.element(screen.getByText('Your data is ready.')).toBeInTheDocument()
+    expect(document.body).not.toHaveTextContent('Loading')
   })
 
-  // Re-adding the same toast id should upsert in place instead of stacking duplicates.
   it('should upsert an existing toast when add is called with the same id', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
-    act(() => {
-      toast('Syncing', {
-        id: 'sync-job',
-        description: 'Uploading changes…',
-      })
+    toast('Syncing', {
+      id: 'sync-job',
+      description: 'Uploading changes…',
+    })
+    await expect.element(screen.getByText('Syncing')).toBeInTheDocument()
+
+    toast.success('Synced', {
+      id: 'sync-job',
+      description: 'All changes are uploaded.',
     })
 
-    expect(await screen.findByText('Syncing')).toBeInTheDocument()
-
-    act(() => {
-      toast.success('Synced', {
-        id: 'sync-job',
-        description: 'All changes are uploaded.',
-      })
+    await vi.waitFor(() => {
+      expect(document.body).not.toHaveTextContent('Syncing')
     })
-
-    expect(screen.queryByText('Syncing')).not.toBeInTheDocument()
-    expect(screen.getByText('Synced')).toBeInTheDocument()
-    expect(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
-    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    await expect.element(screen.getByText('Synced')).toBeInTheDocument()
+    await expect.element(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
+    expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   })
 
-  // Action props should pass through to the Base UI action button.
   it('should render and invoke toast action props', async () => {
     const onAction = vi.fn()
+    const screen = await render(<ToastHost />)
 
-    render(<ToastHost />)
-
-    act(() => {
-      toast('Action toast', {
-        actionProps: {
-          children: 'Undo',
-          onClick: onAction,
-        },
-      })
+    toast('Action toast', {
+      actionProps: {
+        children: 'Undo',
+        onClick: onAction,
+      },
     })
 
-    const actionButton = await screen.findByRole('button', { name: 'Undo' })
-
-    act(() => {
-      actionButton.click()
-    })
+    await expect.element(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
+    asHTMLElement(screen.getByRole('button', { name: 'Undo' }).element()).click()
 
     expect(onAction).toHaveBeenCalledTimes(1)
   })
 
-  // Promise helpers are part of the public API and need a regression test.
   it('should transition a promise toast from loading to success', async () => {
-    render(<ToastHost />)
+    const screen = await render(<ToastHost />)
 
     let resolvePromise: ((value: string) => void) | undefined
     const promise = new Promise<string>((resolve) => {
       resolvePromise = resolve
     })
 
-    void act(() => toast.promise(promise, {
+    void toast.promise(promise, {
       loading: 'Saving…',
       success: result => ({
         title: 'Saved',
@@ -318,16 +254,14 @@ describe('base/ui/toast', () => {
         type: 'success',
       }),
       error: 'Failed',
-    }))
-
-    expect(await screen.findByText('Saving…')).toBeInTheDocument()
-
-    await act(async () => {
-      resolvePromise?.('Your changes are available now.')
-      await promise
     })
 
-    expect(await screen.findByText('Saved')).toBeInTheDocument()
-    expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
+    await expect.element(screen.getByText('Saving…')).toBeInTheDocument()
+
+    resolvePromise?.('Your changes are available now.')
+    await promise
+
+    await expect.element(screen.getByText('Saved')).toBeInTheDocument()
+    await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
   })
 })

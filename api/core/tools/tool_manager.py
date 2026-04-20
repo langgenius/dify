@@ -1082,7 +1082,12 @@ class ToolManager:
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
-                        variable = variable_pool.get(tool_input.value)
+                        variable_selector = tool_input.value
+                        if not isinstance(variable_selector, list) or not all(
+                            isinstance(selector_part, str) for selector_part in variable_selector
+                        ):
+                            raise ToolParameterError("Variable tool input must be a variable selector")
+                        variable = variable_pool.get(variable_selector)
                         if variable is None:
                             raise ToolParameterError(f"Variable {tool_input.value} does not exist")
                         parameter_value = variable.value

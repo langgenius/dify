@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -134,12 +135,28 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   })
 }
 
-const renderAppList = (hasEditPermission = false, onSuccess?: () => void, searchParams?: Record<string, string>) => {
+type RenderOptions = {
+  enableExploreBanner?: boolean
+}
+
+const renderAppList = (
+  hasEditPermission = false,
+  onSuccess?: () => void,
+  searchParams?: Record<string, string>,
+  options: RenderOptions = {},
+) => {
   mockMemberRole(hasEditPermission)
-  return renderWithNuqs(
-    <AppList onSuccess={onSuccess} />,
+  const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
+  })
+  const Wrapped = ({ children }: { children: ReactNode }) => (
+    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+  )
+  const rendered = renderWithNuqs(
+    <Wrapped><AppList onSuccess={onSuccess} /></Wrapped>,
     { searchParams },
   )
+  return { ...rendered, queryClient }
 }
 
 describe('AppList', () => {
@@ -435,18 +452,12 @@ describe('AppList', () => {
 
   describe('Banner', () => {
     it('should render banner when enable_explore_banner is true', () => {
-      useGlobalPublicStore.setState({
-        systemFeatures: {
-          ...useGlobalPublicStore.getState().systemFeatures,
-          enable_explore_banner: true,
-        },
-      })
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
 
-      renderAppList()
+      renderAppList(false, undefined, undefined, { enableExploreBanner: true })
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
     })

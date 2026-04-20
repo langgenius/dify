@@ -1,15 +1,16 @@
 'use client'
 
 import { RiHourglass2Fill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { LicenseStatus } from '@/types/feature'
 import PremiumBadge from '../../base/premium-badge'
 
 const LicenseNav = () => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
     const expiredAt = systemFeatures.license?.expired_at
