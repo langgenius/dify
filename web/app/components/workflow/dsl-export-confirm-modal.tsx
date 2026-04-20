@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
@@ -13,7 +13,7 @@ import Modal from '@/app/components/base/modal'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]
-  onConfirm: (state: boolean) => void
+  onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
 }
 
@@ -25,11 +25,21 @@ const DSLExportConfirmModal = ({
   const { t } = useTranslation()
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
+  const [isExporting, setIsExporting] = useState(false)
 
-  const submit = () => {
-    onConfirm(exportSecrets)
-    onClose()
-  }
+  const submit = useCallback(async () => {
+    if (isExporting)
+      return
+
+    setIsExporting(true)
+    try {
+      await onConfirm(exportSecrets)
+      onClose()
+    }
+    finally {
+      setIsExporting(false)
+    }
+  }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
     <Modal
@@ -38,7 +48,10 @@ const DSLExportConfirmModal = ({
       className={cn('w-[480px] max-w-[480px]')}
     >
       <div className="relative pb-6 title-2xl-semi-bold text-text-primary">{t('env.export.title', { ns: 'workflow' })}</div>
-      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
+      <div
+        className={cn('absolute top-4 right-4 p-2', !isExporting && 'cursor-pointer')}
+        onClick={() => !isExporting && onClose()}
+      >
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="relative">
@@ -72,13 +85,31 @@ const DSLExportConfirmModal = ({
         <Checkbox
           className="shrink-0"
           checked={exportSecrets}
+          disabled={isExporting}
           onCheck={() => setExportSecrets(!exportSecrets)}
         />
-        <div className="cursor-pointer system-sm-medium text-text-primary" onClick={() => setExportSecrets(!exportSecrets)}>{t('env.export.checkbox', { ns: 'workflow' })}</div>
+        <div
+          className={cn('system-sm-medium text-text-primary', !isExporting && 'cursor-pointer')}
+          onClick={() => !isExporting && setExportSecrets(!exportSecrets)}
+        >
+          {t('env.export.checkbox', { ns: 'workflow' })}
+        </div>
       </div>
       <div className="flex flex-row-reverse pt-6">
-        <Button className="ml-2" variant="primary" onClick={submit}>{exportSecrets ? t('env.export.export', { ns: 'workflow' }) : t('env.export.ignore', { ns: 'workflow' })}</Button>
-        <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button
+          className="ml-2"
+          variant="primary"
+          loading={isExporting}
+          disabled={isExporting}
+          onClick={submit}
+        >
+          {isExporting
+            ? t('operation.exporting', { ns: 'common' })
+            : exportSecrets
+              ? t('env.export.export', { ns: 'workflow' })
+              : t('env.export.ignore', { ns: 'workflow' })}
+        </Button>
+        <Button disabled={isExporting} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
       </div>
     </Modal>
   )
