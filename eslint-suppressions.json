@@ -4211,11 +4211,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/featured-tools.tsx": {
     "no-restricted-imports": {
       "count": 1
