@@ -27,7 +27,7 @@ const Publisher = () => {
       onOpenChange={handleOpenChange}
     >
       <PopoverTrigger
-        nativeButton={false}
+        nativeButton
         render={(
           <Button
             className="px-2"

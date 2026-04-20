@@ -5,7 +5,12 @@ import TimePicker from '../index'
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, className }: Record<string, unknown>) => (
+  Button: ({ children, onClick, disabled, className }: {
+    children?: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+    className?: string
+  }) => (
     <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined} className={className as string | undefined}>
       {children}
     </button>

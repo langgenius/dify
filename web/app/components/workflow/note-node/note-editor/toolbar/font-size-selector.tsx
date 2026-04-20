@@ -39,7 +39,7 @@ const FontSizeSelector = () => {
       onOpenChange={handleOpenFontSizeSelector}
     >
       <PopoverTrigger
-        nativeButton={false}
+        nativeButton
         render={(
           <button
             type="button"

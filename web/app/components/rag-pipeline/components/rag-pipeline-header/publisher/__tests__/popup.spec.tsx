@@ -16,12 +16,16 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
         )
       : null
   ),
-  AlertDialogActions: ({ children }: { children: unknown }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: unknown }) => <button>{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined}>{children}</button>,
-  AlertDialogContent: ({ children }: { children: unknown }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: unknown }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: unknown }) => <div>{children}</div>,
+  AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
+  AlertDialogConfirmButton: ({ children, onClick, disabled }: {
+    children?: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+  }) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }))
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })

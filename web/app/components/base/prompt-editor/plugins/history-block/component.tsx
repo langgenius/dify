@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { RoleName } from './index'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiMoreFill,
@@ -18,11 +19,6 @@ type HistoryBlockComponentProps = {
   onEditRole: () => void
 }
 
-type HistoryEventPayload = {
-  type?: string
-  payload?: RoleName
-}
-
 const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   nodeKey,
   roleName = { user: '', assistant: '' },
@@ -34,9 +30,12 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [localRoleName, setLocalRoleName] = useState<RoleName>(roleName)
 
-  eventEmitter?.useSubscription((event?: HistoryEventPayload) => {
-    if (event?.type === UPDATE_HISTORY_EVENT_EMITTER && event.payload)
-      setLocalRoleName(event.payload)
+  eventEmitter?.useSubscription((event?: EventEmitterValue) => {
+    if (typeof event === 'string')
+      return
+
+    if (event?.type === UPDATE_HISTORY_EVENT_EMITTER && event.payload && typeof event.payload === 'object')
+      setLocalRoleName(event.payload as RoleName)
   })
 
   return (
@@ -56,12 +55,14 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       >
         <PopoverTrigger
           nativeButton={false}
-          ref={triggerRef}
           render={(
-            <div className={`
+            <div
+              className={`
             flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded
             ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
           `}
+              ref={triggerRef}
+              onClick={e => e.preventDefault()}
             >
               <RiMoreFill className="h-3 w-3" />
             </div>

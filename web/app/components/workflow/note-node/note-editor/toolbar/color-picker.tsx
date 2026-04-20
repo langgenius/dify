@@ -60,7 +60,7 @@ const ColorPicker = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
-        nativeButton={false}
+        nativeButton
         render={(
           <button
             type="button"

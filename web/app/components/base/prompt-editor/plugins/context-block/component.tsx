@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Dataset } from './index'
+import type { EventEmitterValue } from '@/context/event-emitter'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
@@ -16,11 +17,6 @@ type ContextBlockComponentProps = {
   canNotAddContext?: boolean
 }
 
-type DatasetsEventPayload = {
-  type?: string
-  payload?: Dataset[]
-}
-
 const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   nodeKey,
   datasets = [],
@@ -33,9 +29,12 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [localDatasets, setLocalDatasets] = useState<Dataset[]>(datasets)
 
-  eventEmitter?.useSubscription((event?: DatasetsEventPayload) => {
-    if (event?.type === UPDATE_DATASETS_EVENT_EMITTER && event.payload)
-      setLocalDatasets(event.payload)
+  eventEmitter?.useSubscription((event?: EventEmitterValue) => {
+    if (typeof event === 'string')
+      return
+
+    if (event?.type === UPDATE_DATASETS_EVENT_EMITTER && Array.isArray(event.payload))
+      setLocalDatasets(event.payload as Dataset[])
   })
 
   return (
@@ -56,12 +55,14 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
         >
           <PopoverTrigger
             nativeButton={false}
-            ref={triggerRef}
             render={(
-              <div className={`
+              <div
+                className={`
             flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded text-[11px] font-semibold
             ${open ? 'bg-[#6938EF] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
           `}
+                ref={triggerRef}
+                onClick={e => e.preventDefault()}
               >
                 {localDatasets.length}
               </div>
