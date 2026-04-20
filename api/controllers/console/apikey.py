@@ -129,6 +129,14 @@ class BaseApiKeyResource(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            key = session.scalars(
+                select(ApiToken).where(
+                    getattr(ApiToken, self.resource_id_field) == resource_id,
+                    ApiToken.type == self.resource_type,
+                    ApiToken.id == api_key_id,
+                )
+            ).one_or_none()
 
         key = db.session.scalar(
             select(ApiToken)
@@ -151,7 +159,7 @@ class BaseApiKeyResource(Resource):
         db.session.execute(delete(ApiToken).where(ApiToken.id == api_key_id))
         db.session.commit()
 
-        return {"result": "success"}, 204
+            return {"result": "success"}, 204
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
