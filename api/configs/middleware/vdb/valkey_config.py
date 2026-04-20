@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
@@ -30,7 +32,7 @@ class ValkeyConfig(BaseSettings):
         default=False,
     )
 
-    VALKEY_DISTANCE_METRIC: str = Field(
+    VALKEY_DISTANCE_METRIC: Literal["COSINE", "L2", "IP"] = Field(
         description="Distance metric for vector similarity search. Options: COSINE, L2, IP.",
         default="COSINE",
     )
