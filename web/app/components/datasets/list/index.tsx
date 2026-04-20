@@ -56,8 +56,8 @@ const List = () => {
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
-    <div className="scroll-container relative flex h-0 grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
+    <div className="relative flex h-0 grow flex-col overflow-y-auto bg-background-body">
+      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
             <CheckboxWithLabel
