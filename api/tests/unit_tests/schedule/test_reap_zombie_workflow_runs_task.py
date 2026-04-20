@@ -3,18 +3,19 @@ Unit tests for schedule.reap_zombie_workflow_runs_task.
 
 Covers:
   - Stuck SCHEDULED runs are force-failed after timeout
-  - Stuck RUNNING runs are force-failed after timeout
+  - Stuck RUNNING runs are force-failed after timeout (only when no recent node activity)
   - Recent runs within the timeout window are left untouched
   - Both categories reaped in a single invocation
   - finished_at is set on reaped rows
+  - synchronize_session=False is used for bulk updates
 """
 
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.enums import WorkflowExecutionStatus
 
 from configs import dify_config
+from graphon.enums import WorkflowExecutionStatus
 
 
 class TestReapZombieWorkflowRunsTask:
@@ -67,6 +68,7 @@ class TestReapZombieWorkflowRunsTask:
             second_update_args = mock_query.update.call_args_list[1][0][0]
             assert second_update_args["status"] == WorkflowExecutionStatus.FAILED
             assert "timed out" in second_update_args["error"]
+            assert "node activity" in second_update_args["error"]
             assert "finished_at" in second_update_args
 
     def test_no_zombies_still_commits(self, monkeypatch):
@@ -100,3 +102,21 @@ class TestReapZombieWorkflowRunsTask:
 
             assert mock_query.update.call_count == 2
             mock_db.session.commit.assert_called_once()
+
+    def test_uses_synchronize_session_false(self, monkeypatch):
+        """Bulk updates must use synchronize_session=False to avoid errors
+        with correlated subqueries in the RUNNING filter."""
+        with (
+            patch("schedule.reap_zombie_workflow_runs_task.db") as mock_db,
+        ):
+            mock_query = MagicMock()
+            mock_db.session.query.return_value = mock_query
+            mock_query.filter.return_value = mock_query
+            mock_query.update.side_effect = [0, 0]
+
+            from schedule.reap_zombie_workflow_runs_task import reap_zombie_workflow_runs_task
+
+            reap_zombie_workflow_runs_task()
+
+            for call in mock_query.update.call_args_list:
+                assert call[1].get("synchronize_session") is False

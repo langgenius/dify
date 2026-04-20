@@ -8,8 +8,6 @@ from collections.abc import Callable, Generator, Mapping
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from graphon.enums import WorkflowExecutionStatus
-
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -26,6 +24,7 @@ from enums.quota_type import QuotaType, unlimited
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import AppGenerateHandler, trace_span
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType

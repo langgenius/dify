@@ -290,11 +290,15 @@ class WorkflowRunApi(Resource):
                     invoke_from=InvokeFrom.SERVICE_API,
                     idempotency_key=idempotency_key,
                 )
-                return Response(
+                http_response = Response(
                     response=json.dumps(response),
                     status=200 if is_duplicate else 202,
                     content_type="application/json; charset=utf-8",
                 )
+                if not is_duplicate:
+                    http_response.headers["Location"] = f"/v1/workflows/run/{response['workflow_run_id']}"
+                    http_response.headers["Retry-After"] = "1"
+                return http_response
             except TooManyRequests as ex:
                 return {"error": ex.description, "code": "too_many_requests"}, 429
             except ValueError as e:
@@ -376,11 +380,15 @@ class WorkflowRunByIdApi(Resource):
                     invoke_from=InvokeFrom.SERVICE_API,
                     idempotency_key=idempotency_key,
                 )
-                return Response(
+                http_response = Response(
                     response=json.dumps(response),
                     status=200 if is_duplicate else 202,
                     content_type="application/json; charset=utf-8",
                 )
+                if not is_duplicate:
+                    http_response.headers["Location"] = f"/v1/workflows/run/{response['workflow_run_id']}"
+                    http_response.headers["Retry-After"] = "1"
+                return http_response
             except TooManyRequests as ex:
                 return {"error": ex.description, "code": "too_many_requests"}, 429
             except ValueError as e:
