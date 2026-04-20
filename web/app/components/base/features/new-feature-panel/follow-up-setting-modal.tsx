@@ -35,6 +35,7 @@ const DEFAULT_COMPLETION_PARAMS: CompletionParams = {
 }
 
 const DEFAULT_FOLLOW_UP_PROMPT = `Please predict the three most likely follow-up questions a user would ask, keep each question under 20 characters, use the same language as the assistant's latest response, and output a JSON array like ["question1", "question2", "question3"].`
+const CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH = 1000
 
 const getInitialModel = (model?: Model): Model => ({
   provider: model?.provider || '',
@@ -212,6 +213,7 @@ const FollowUpSettingModal = ({
                     className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
                     value={prompt}
                     onChange={e => setPrompt(e.target.value)}
+                    maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
                     placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
                   />
                 )}

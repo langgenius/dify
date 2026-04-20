@@ -70,8 +70,11 @@ describe('FollowUpSettingModal', () => {
 
       await user.click(screen.getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.customPromptOption').closest('button')!)
 
+      const textarea = screen.getByPlaceholderText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder')
+      expect(textarea).toHaveAttribute('maxLength', '1000')
+
       fireEvent.change(
-        screen.getByPlaceholderText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder'),
+        textarea,
         { target: { value: 'Use a custom follow-up prompt.' } },
       )
 

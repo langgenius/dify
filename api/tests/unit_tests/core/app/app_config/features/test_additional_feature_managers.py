@@ -81,6 +81,10 @@ class TestAdditionalFeatureManagers:
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "prompt": 123}}
             )
+        with pytest.raises(ValueError, match="must be less than or equal to 1000 characters"):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": True, "prompt": "a" * 1001}}
+            )
         with pytest.raises(ValueError):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "model": "bad"}}

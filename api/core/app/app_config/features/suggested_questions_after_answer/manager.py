@@ -1,5 +1,7 @@
 from typing import Any
 
+CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH = 1000
+
 
 class SuggestedQuestionsAfterAnswerConfigManager:
     @classmethod
@@ -47,6 +49,14 @@ class SuggestedQuestionsAfterAnswerConfigManager:
             config["suggested_questions_after_answer"]["prompt"], str
         ):
             raise ValueError("prompt in suggested_questions_after_answer must be of string type")
+        if (
+            "prompt" in config["suggested_questions_after_answer"]
+            and len(config["suggested_questions_after_answer"]["prompt"]) > CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH
+        ):
+            raise ValueError(
+                f"prompt in suggested_questions_after_answer must be less than or equal to "
+                f"{CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH} characters"
+            )
 
         if "model" in config["suggested_questions_after_answer"]:
             model_config = config["suggested_questions_after_answer"]["model"]
