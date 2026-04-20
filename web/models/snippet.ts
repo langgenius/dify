@@ -13,6 +13,7 @@ export type SnippetListItem = {
   usage: string
   icon: string
   iconBackground: string
+  is_published?: boolean
   status?: string
 }
 
@@ -25,6 +26,7 @@ export type SnippetDetail = {
   usage: string
   icon: string
   iconBackground: string
+  is_published?: boolean
   status?: string
 }
 

@@ -75,8 +75,8 @@ const alignMenuItems: AlignMenuItem[] = [
   { alignType: AlignType.Top, icon: 'i-ri-align-item-top-line', translationKey: 'operator.alignTop' },
   { alignType: AlignType.Middle, icon: 'i-ri-align-item-vertical-center-line', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
   { alignType: AlignType.Bottom, icon: 'i-ri-align-item-bottom-line', translationKey: 'operator.alignBottom' },
-  { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify-line', translationKey: 'operator.distributeHorizontal' },
-  { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify-line', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
+  { alignType: AlignType.DistributeHorizontal, icon: 'i-custom-vender-line-others-dhs', translationKey: 'operator.distributeHorizontal' },
+  { alignType: AlignType.DistributeVertical, icon: 'i-custom-vender-line-others-dvs', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
 ]
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {

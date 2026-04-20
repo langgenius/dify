@@ -205,7 +205,7 @@ export const PublisherSummarySection = ({
                 <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
                   <button
                     type="button"
-                    className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-1 flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={() => void onWorkflowTypeSwitch()}
                     disabled={workflowTypeSwitchDisabled}
                   >

@@ -6,6 +6,7 @@ const mockMutateAsync = vi.fn()
 const mockSetPublishMenuOpen = vi.fn()
 const mockUseKeyPress = vi.fn()
 const mockSetPublishedAt = vi.fn()
+const mockSetQueryData = vi.fn()
 
 let isPublishMenuOpen = false
 let isPending = false
@@ -20,6 +21,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: vi.fn(),
     success: vi.fn(),
   },
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+  }),
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
@@ -72,6 +79,9 @@ describe('useSnippetPublish', () => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })
+      expect(mockSetQueryData).toHaveBeenCalledTimes(1)
+      const updateSnippetDetail = mockSetQueryData.mock.calls[0][1] as (old: { is_published: boolean }) => { is_published: boolean }
+      expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
       expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
       expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
