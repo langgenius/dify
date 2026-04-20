@@ -1,10 +1,8 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import RootLoading from '@/app/loading'
-import { IS_DEV } from '@/config'
 import { isLegacyBase401 } from '@/service/use-common'
 
 type Props = {
@@ -14,11 +12,6 @@ type Props = {
 
 export default function CommonLayoutError({ error, unstable_retry }: Props) {
   const { t } = useTranslation('common')
-
-  useEffect(() => {
-    if (IS_DEV)
-      console.error('(commonLayout)/error.tsx caught error:', error)
-  }, [error])
 
   // 401 already triggered jumpTo(/signin) inside service/base.ts. Render Loading
   // until the browser navigation completes, matching main's Splash behavior.
