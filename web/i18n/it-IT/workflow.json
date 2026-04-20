@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Interrotto da {{user}}",
   "triggerStatus.disabled": "ATTIVATORE • DISABILITATO",
   "triggerStatus.enabled": "GRILLETTO",
-  "variableReference.assignedVarsDescription": "Le variabili assegnate devono essere variabili scrivibili, ad esempio",
+  "variableReference.assignedVarsDescription": "Le variabili assegnate devono essere variabili scrivibili, ad esempio variabili di conversazione.",
   "variableReference.conversationVars": "Variabili di conversazione",
   "variableReference.noAssignedVars": "Nessuna variabile assegnata disponibile",
   "variableReference.noAvailableVars": "Nessuna variabile disponibile",

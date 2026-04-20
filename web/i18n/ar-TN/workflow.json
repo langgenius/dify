@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "توقف بواسطة {{user}}",
   "triggerStatus.disabled": "مشغل • معطل",
   "triggerStatus.enabled": "مشغل",
-  "variableReference.assignedVarsDescription": "يجب أن تكون المتغيرات المعينة متغيرات قابلة للكتابة، مثل ",
+  "variableReference.assignedVarsDescription": "يجب أن تكون المتغيرات المعينة متغيرات قابلة للكتابة، مثل متغيرات المحادثة.",
   "variableReference.conversationVars": "متغيرات المحادثة",
   "variableReference.noAssignedVars": "لا توجد متغيرات معينة متاحة",
   "variableReference.noAvailableVars": "لا توجد متغيرات متاحة",

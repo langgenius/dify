@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Pásate por {{user}}",
   "triggerStatus.disabled": "DISPARADOR • DESACTIVADO",
   "triggerStatus.enabled": "DISPARADOR",
-  "variableReference.assignedVarsDescription": "Las variables asignadas deben ser variables grabables, como",
+  "variableReference.assignedVarsDescription": "Las variables asignadas deben ser variables grabables, como las variables de conversación.",
   "variableReference.conversationVars": "Variables de conversación",
   "variableReference.noAssignedVars": "No hay variables asignadas disponibles",
   "variableReference.noAvailableVars": "No hay variables disponibles",
