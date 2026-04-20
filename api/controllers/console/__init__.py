@@ -120,6 +120,9 @@ from .explore import (
     saved_message,
     trial,
 )
+
+# Import snippet controllers
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
 
 # Import snippet controllers
@@ -211,6 +214,9 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "socketio_workflow",
     "snippet_workflow",
     "snippet_workflow_draft_variable",

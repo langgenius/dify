@@ -12,27 +12,26 @@ describe('DelimiterInput', () => {
 
   it('should render separator label', () => {
     render(<DelimiterInput />)
-    expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
+    expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
   })
 
   it('should render text input with placeholder', () => {
     render(<DelimiterInput />)
     const input = screen.getByPlaceholderText(`${ns}.stepTwo.separatorPlaceholder`)
-    expect(input)!.toBeInTheDocument()
-    expect(input)!.toHaveAttribute('type', 'text')
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveAttribute('type', 'text')
   })
 
   it('should pass through value and onChange props', () => {
     const onChange = vi.fn()
     render(<DelimiterInput value="test-val" onChange={onChange} />)
-    expect(screen.getByDisplayValue('test-val'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('test-val')).toBeInTheDocument()
   })
 
   it('should render tooltip content', () => {
     render(<DelimiterInput />)
     // Tooltip triggers render; component mounts without error
-    // Tooltip triggers render; component mounts without error
-    expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
+    expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
   })
 
   it('should suppress onChange during IME composition', () => {
@@ -48,7 +47,7 @@ describe('DelimiterInput', () => {
 
     fireEvent.compositionEnd(input)
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0].target.value).toBe(finalValue)
+    expect(onChange.mock.calls[0][0].target.value).toBe(finalValue)
   })
 })
 
@@ -59,24 +58,24 @@ describe('MaxLengthInput', () => {
 
   it('should render max length label', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
-    expect(screen.getByText(`${ns}.stepTwo.maxLength`))!.toBeInTheDocument()
+    expect(screen.getByText(`${ns}.stepTwo.maxLength`)).toBeInTheDocument()
   })
 
   it('should render number input', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input)!.toBeInTheDocument()
+    expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<MaxLengthInput value={500} onChange={vi.fn()} />)
-    expect(screen.getByRole('textbox'))!.toHaveValue('500')
+    expect(screen.getByRole('textbox')).toHaveValue('500')
   })
 
   it('should have min of 1', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input)!.toBeInTheDocument()
+    expect(input).toBeInTheDocument()
   })
 
   it('should reset to the minimum when users clear the value', () => {
@@ -108,18 +107,18 @@ describe('OverlapInput', () => {
   it('should render number input', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input)!.toBeInTheDocument()
+    expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<OverlapInput value={50} onChange={vi.fn()} />)
-    expect(screen.getByRole('textbox'))!.toHaveValue('50')
+    expect(screen.getByRole('textbox')).toHaveValue('50')
   })
 
   it('should have min of 1', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    expect(input)!.toBeInTheDocument()
+    expect(input).toBeInTheDocument()
   })
 
   it('should reset to the minimum when users clear the value', () => {

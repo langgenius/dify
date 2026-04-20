@@ -165,8 +165,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i]!.key === newExternalDataTool.variable && i !== index) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
+          if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
             return false
           }
         }
@@ -220,7 +220,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const handleRemoveVar = useCallback((index: number) => {
     const removeVar = promptVariables[index]
 
-    if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar!.is_context_var) {
+    if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar.is_context_var) {
       showDeleteContextVarModal()
       setRemoveIndex(index)
       return

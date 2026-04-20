@@ -1,11 +1,23 @@
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppTypeEnum } from '@/types/app'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockUseIsChatMode = vi.fn()
+const mockAppType = vi.hoisted<{ current?: string }>(() => ({
+  current: 'workflow',
+}))
 
 vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: mockAppType.current,
+    },
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -15,6 +27,7 @@ vi.mock('@/context/i18n', () => ({
 describe('useAvailableNodesMetaData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppType.current = AppTypeEnum.WORKFLOW
   })
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
@@ -45,5 +58,19 @@ describe('useAvailableNodesMetaData', () => {
       type: BlockEnum.Start,
       title: 'workflow.blocks.start',
     })
+  })
+
+  it('should exclude human input and trigger nodes in evaluation workflows', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+    mockAppType.current = AppTypeEnum.EVALUATION
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.Start]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.End]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.HumanInput]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerSchedule]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.TriggerPlugin]).toBeUndefined()
   })
 })

@@ -64,6 +64,13 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: true,
+    isReady: true,
+  }),
+}))
+
 vi.mock('@/app/components/base/tag-management/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -78,6 +85,16 @@ vi.mock('@/app/components/base/tag-management/store', () => ({
 
 vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
+      ],
+    },
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -98,6 +115,18 @@ vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+}))
+
+vi.mock('@/service/use-snippets', () => ({
+  useInfiniteSnippetList: () => ({
+    data: { pages: [] },
+    isLoading: false,
+    isFetching: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    error: null,
   }),
 }))
 

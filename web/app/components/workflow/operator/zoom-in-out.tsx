@@ -1,8 +1,15 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  RiCheckLine,
+  RiFullscreenLine,
+  RiZoomInLine,
+  RiZoomOutLine,
+} from '@remixicon/react'
+import {
   Fragment,
   memo,
+  useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,14 +17,14 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
+
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Divider from '../../base/divider'
 import {
   useNodesSyncDraft,
   useWorkflowReadOnly,
@@ -26,6 +33,8 @@ import ShortcutsName from '../shortcuts-name'
 import TipPopup from './tip-popup'
 
 enum ZoomType {
+  zoomIn = 'zoomIn',
+  zoomOut = 'zoomOut',
   zoomToFit = 'zoomToFit',
   zoomTo25 = 'zoomTo25',
   zoomTo50 = 'zoomTo50',
@@ -72,7 +81,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   } = useWorkflowReadOnly()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
-  const zoomOptions = [
+  const ZOOM_IN_OUT_OPTIONS = [
     [
       {
         key: ZoomType.zoomTo200,
@@ -126,8 +135,6 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     if (workflowReadOnly)
       return
 
-    setOpen(false)
-
     if (type === ZoomType.zoomToFit)
       fitView()
 
@@ -166,134 +173,154 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     handleSyncWorkflowDraft()
   }
 
-  return (
-    <div className={`
-      h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg
-      p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]
-      hover:bg-state-base-hover
-      ${workflowReadOnly && 'cursor-not-allowed! opacity-50'}
-    `}
-    >
-      <div className="flex h-8 w-[98px] items-center justify-between rounded-lg">
-        <TipPopup
-          title={t('operator.zoomOut', { ns: 'workflow' })}
-          shortcuts={['ctrl', '-']}
-        >
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
-            onClick={(e) => {
-              if (zoom <= 0.25)
-                return
+  const handleTrigger = useCallback(() => {
+    if (getWorkflowReadOnly())
+      return
 
-              e.stopPropagation()
-              zoomOut()
-            }}
-          >
-            <span aria-hidden className="i-ri-zoom-out-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
-          </div>
-        </TipPopup>
-        <DropdownMenu
-          open={open}
-          onOpenChange={setOpen}
+    setOpen(v => !v)
+  }, [getWorkflowReadOnly])
+
+  return (
+    <PortalToFollowElem
+      placement="top-start"
+      open={open}
+      onOpenChange={setOpen}
+      offset={{
+        mainAxis: 4,
+        crossAxis: -2,
+      }}
+    >
+      <PortalToFollowElemTrigger asChild>
+        <div className={`
+          h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg
+          p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]
+          hover:bg-state-base-hover
+          ${workflowReadOnly && 'cursor-not-allowed! opacity-50'}
+        `}
         >
-          <DropdownMenuTrigger
-            disabled={getWorkflowReadOnly()}
-            className={cn(
-              'flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary',
-              open && 'bg-black/5 text-text-secondary',
-            )}
+          <div className={cn(
+            'flex h-8 w-[98px] items-center justify-between rounded-lg',
+          )}
           >
-            {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
-            %
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            placement="top-start"
-            sideOffset={4}
-            alignOffset={-2}
-            popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-          >
-            <div className="w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
-              {zoomOptions.map((options, groupIndex) => (
-                <Fragment key={options[0]!.key}>
-                  {groupIndex !== 0 && (
-                    <DropdownMenuSeparator className="my-0" />
-                  )}
-                  <div className="p-1">
-                    {options.map(option => (
-                      <DropdownMenuItem
+            <TipPopup
+              title={t('operator.zoomOut', { ns: 'workflow' })}
+              shortcuts={['ctrl', '-']}
+            >
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+                onClick={(e) => {
+                  if (zoom <= 0.25)
+                    return
+
+                  e.stopPropagation()
+                  zoomOut()
+                }}
+              >
+                <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+              </div>
+            </TipPopup>
+            <div onClick={handleTrigger} className={cn('w-[34px] system-sm-medium text-text-tertiary hover:text-text-secondary')}>
+              {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
+              %
+            </div>
+            <TipPopup
+              title={t('operator.zoomIn', { ns: 'workflow' })}
+              shortcuts={['ctrl', '+']}
+            >
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
+                onClick={(e) => {
+                  if (zoom >= 2)
+                    return
+
+                  e.stopPropagation()
+                  zoomIn()
+                }}
+              >
+                <RiZoomInLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+              </div>
+            </TipPopup>
+          </div>
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[60]">
+        <div className="w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+          {
+            ZOOM_IN_OUT_OPTIONS.map((options, i) => (
+              <Fragment key={i}>
+                {
+                  i !== 0 && (
+                    <Divider className="m-0" />
+                  )
+                }
+                <div className="p-1">
+                  {
+                    options.map(option => (
+                      <div
                         key={option.key}
-                        className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
-                        disabled={option.key === ZoomType.toggleUserComments && isCommentMode}
+                        className={cn(
+                          'flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pr-2 pl-3 system-md-regular text-text-secondary hover:bg-state-base-hover',
+                          option.key === ZoomType.toggleUserComments && isCommentMode && 'cursor-not-allowed opacity-50',
+                        )}
                         onClick={() => handleZoom(option.key)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center space-x-2">
                           {option.key === ZoomType.toggleUserComments && showUserComments && (
-                            <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleUserComments && !showUserComments && (
-                            <span aria-hidden className="h-4 w-4" />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.toggleUserCursors && showUserCursors && (
-                            <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
-                            <span aria-hidden className="h-4 w-4" />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.toggleMiniMap && showMiniMap && (
-                            <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
-                            <span aria-hidden className="h-4 w-4" />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.zoomToFit && (
-                            <span aria-hidden className="i-ri-fullscreen-line h-4 w-4 text-text-tertiary" />
+                            <RiFullscreenLine className="h-4 w-4 text-text-tertiary" />
                           )}
                           {option.key !== ZoomType.toggleUserComments
                             && option.key !== ZoomType.toggleUserCursors
                             && option.key !== ZoomType.toggleMiniMap
                             && option.key !== ZoomType.zoomToFit && (
-                            <span aria-hidden className="h-4 w-4" />
+                            <div className="h-4 w-4" />
                           )}
                           <span>{option.text}</span>
                         </div>
                         <div className="flex items-center space-x-0.5">
-                          {option.key === ZoomType.zoomToFit && (
-                            <ShortcutsName keys={['ctrl', '1']} />
-                          )}
-                          {option.key === ZoomType.zoomTo50 && (
-                            <ShortcutsName keys={['shift', '5']} />
-                          )}
-                          {option.key === ZoomType.zoomTo100 && (
-                            <ShortcutsName keys={['shift', '1']} />
-                          )}
+                          {
+                            option.key === ZoomType.zoomToFit && (
+                              <ShortcutsName keys={['ctrl', '1']} />
+                            )
+                          }
+                          {
+                            option.key === ZoomType.zoomTo50 && (
+                              <ShortcutsName keys={['shift', '5']} />
+                            )
+                          }
+                          {
+                            option.key === ZoomType.zoomTo100 && (
+                              <ShortcutsName keys={['shift', '1']} />
+                            )
+                          }
                         </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                </Fragment>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <TipPopup
-          title={t('operator.zoomIn', { ns: 'workflow' })}
-          shortcuts={['ctrl', '+']}
-        >
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
-            onClick={(e) => {
-              if (zoom >= 2)
-                return
-
-              e.stopPropagation()
-              zoomIn()
-            }}
-          >
-            <span aria-hidden className="i-ri-zoom-in-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
-          </div>
-        </TipPopup>
-      </div>
-    </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </Fragment>
+            ))
+          }
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

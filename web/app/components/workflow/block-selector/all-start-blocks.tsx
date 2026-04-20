@@ -15,9 +15,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { Button } from '@/app/components/base/ui/button'
+import { filterEvaluationWorkflowRestrictedBlockTypes, isEvaluationWorkflow } from '@/app/components/workflow/utils/evaluation-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
@@ -54,13 +56,21 @@ const AllStartBlocks = ({
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
+  const appType = useAppStore(s => s.appDetail?.type)
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const entryNodeTypes = availableBlocksTypes?.length
-    ? availableBlocksTypes
-    : ENTRY_NODE_TYPES
+  const entryNodeTypes = useMemo(() => {
+    const blockTypes = availableBlocksTypes?.length
+      ? availableBlocksTypes
+      : [...ENTRY_NODE_TYPES]
+
+    if (!isEvaluationWorkflow(appType))
+      return blockTypes
+
+    return filterEvaluationWorkflowRestrictedBlockTypes(blockTypes)
+  }, [appType, availableBlocksTypes])
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
   const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
   const providerMap = useMemo(() => {
@@ -94,7 +104,8 @@ const AllStartBlocks = ({
   const shouldShowFeatured = enableTriggerPlugin
     && enable_marketplace
     && !hasFilter
-  const shouldShowTriggerListTitle = hasStartBlocksContent || hasPluginContent
+  const hasTriggerOptions = entryNodeTypes.some(type => type !== BlockEnumValue.Start)
+  const shouldShowTriggerListTitle = hasTriggerOptions && (hasStartBlocksContent || hasPluginContent)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {

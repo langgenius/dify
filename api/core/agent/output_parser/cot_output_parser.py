@@ -3,8 +3,9 @@ import re
 from collections.abc import Generator
 from typing import Any, Union
 
-from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+
+from core.agent.entities import AgentScratchpadUnit
 
 
 class CotAgentOutputParser:

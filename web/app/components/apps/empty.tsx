@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 
 const DefaultCards = React.memo(() => {
   const renderArray = Array.from({ length: 36 })
@@ -17,15 +16,17 @@ const DefaultCards = React.memo(() => {
   )
 })
 
-const Empty = () => {
-  const { t } = useTranslation()
+type Props = {
+  message: string
+}
 
+const Empty = ({ message }: Props) => {
   return (
     <>
       <DefaultCards />
       <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-linear-to-t from-background-body to-transparent">
         <span className="system-md-medium text-text-tertiary">
-          {t('newApp.noAppsFound', { ns: 'app' })}
+          {message}
         </span>
       </div>
     </>

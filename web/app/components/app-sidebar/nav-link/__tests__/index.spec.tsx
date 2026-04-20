@@ -262,4 +262,20 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(iconWrapper).toHaveClass('-ml-1')
     })
   })
+
+  describe('Button Mode', () => {
+    it('should render as an interactive button when href is omitted', () => {
+      const onClick = vi.fn()
+
+      render(<NavLink {...mockProps} href={undefined} active={true} onClick={onClick} />)
+
+      const buttonElement = screen.getByText('Orchestrate').closest('button')
+      expect(buttonElement).not.toBeNull()
+      expect(buttonElement).toHaveClass('bg-components-menu-item-bg-active')
+      expect(buttonElement).toHaveClass('text-text-accent-light-mode-only')
+
+      buttonElement?.click()
+      expect(onClick).toHaveBeenCalledTimes(1)
+    })
+  })
 })

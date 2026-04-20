@@ -10,42 +10,71 @@ import type {
 } from '@/models/datasets'
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
-export enum Theme {
-  light = 'light',
-  dark = 'dark',
-  system = 'system',
-}
+export type Theme = 'light' | 'dark' | 'system'
+export const Theme = {
+  light: 'light' as Theme,
+  dark: 'dark' as Theme,
+  system: 'system' as Theme,
+} as const
 
-export enum ModelModeType {
-  chat = 'chat',
-  completion = 'completion',
-  unset = '',
-}
+export type ModelModeType = 'chat' | 'completion' | ''
+export const ModelModeType = {
+  chat: 'chat' as ModelModeType,
+  completion: 'completion' as ModelModeType,
+  unset: '' as ModelModeType,
+} as const
 
-export enum RETRIEVE_TYPE {
-  oneWay = 'single',
-  multiWay = 'multiple',
-}
+export type RETRIEVE_TYPE = 'single' | 'multiple'
+export const RETRIEVE_TYPE = {
+  oneWay: 'single' as RETRIEVE_TYPE,
+  multiWay: 'multiple' as RETRIEVE_TYPE,
+} as const
 
-export enum RETRIEVE_METHOD {
-  semantic = 'semantic_search',
-  fullText = 'full_text_search',
-  hybrid = 'hybrid_search',
-  invertedIndex = 'invertedIndex',
-  keywordSearch = 'keyword_search',
-}
+export type RETRIEVE_METHOD
+  = | 'semantic_search'
+    | 'full_text_search'
+    | 'hybrid_search'
+    | 'invertedIndex'
+    | 'keyword_search'
+export const RETRIEVE_METHOD = {
+  semantic: 'semantic_search' as RETRIEVE_METHOD,
+  fullText: 'full_text_search' as RETRIEVE_METHOD,
+  hybrid: 'hybrid_search' as RETRIEVE_METHOD,
+  invertedIndex: 'invertedIndex' as RETRIEVE_METHOD,
+  keywordSearch: 'keyword_search' as RETRIEVE_METHOD,
+} as const
 
 /**
  * App modes
  */
-export enum AppModeEnum {
-  COMPLETION = 'completion',
-  WORKFLOW = 'workflow',
-  CHAT = 'chat',
-  ADVANCED_CHAT = 'advanced-chat',
-  AGENT_CHAT = 'agent-chat',
-}
+export type AppModeEnum
+  = | 'completion'
+    | 'workflow'
+    | 'chat'
+    | 'advanced-chat'
+    | 'agent-chat'
+export const AppModeEnum = {
+  COMPLETION: 'completion' as AppModeEnum,
+  WORKFLOW: 'workflow' as AppModeEnum,
+  CHAT: 'chat' as AppModeEnum,
+  ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
+  AGENT_CHAT: 'agent-chat' as AppModeEnum,
+} as const
 export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
+
+export type AppTypeEnum
+  = | 'workflow'
+    | 'chat'
+    | 'rag-pipeline'
+    | 'snippet'
+    | 'evaluation'
+export const AppTypeEnum = {
+  WORKFLOW: 'workflow' as AppTypeEnum,
+  CHAT: 'chat' as AppTypeEnum,
+  RAG_PIPELINE: 'rag-pipeline' as AppTypeEnum,
+  SNIPPET: 'snippet' as AppTypeEnum,
+  EVALUATION: 'evaluation' as AppTypeEnum,
+} as const
 
 /**
  * Variable type
@@ -123,10 +152,11 @@ export type ToolItem = {
   }
 } | AgentTool
 
-export enum AgentStrategy {
-  functionCall = 'function_call',
-  react = 'react',
-}
+export type AgentStrategy = 'function_call' | 'react'
+export const AgentStrategy = {
+  functionCall: 'function_call' as AgentStrategy,
+  react: 'react' as AgentStrategy,
+} as const
 
 export type CompletionParams = {
   /** Maximum number of tokens in the answer message returned by Completion */
@@ -325,6 +355,8 @@ export type App = {
 
   /** Mode */
   mode: AppModeEnum
+  /** Type */
+  type?: AppTypeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -366,21 +398,24 @@ export type AppSSO = {
   enable_sso: boolean
 }
 
-export enum Resolution {
-  low = 'low',
-  high = 'high',
-}
+export type Resolution = 'low' | 'high'
+export const Resolution = {
+  low: 'low' as Resolution,
+  high: 'high' as Resolution,
+} as const
 
-export enum TransferMethod {
-  all = 'all',
-  local_file = 'local_file',
-  remote_url = 'remote_url',
-}
+export type TransferMethod = 'all' | 'local_file' | 'remote_url'
+export const TransferMethod = {
+  all: 'all' as TransferMethod,
+  local_file: 'local_file' as TransferMethod,
+  remote_url: 'remote_url' as TransferMethod,
+} as const
 
-export enum TtsAutoPlay {
-  enabled = 'enabled',
-  disabled = 'disabled',
-}
+export type TtsAutoPlay = 'enabled' | 'disabled'
+export const TtsAutoPlay = {
+  enabled: 'enabled' as TtsAutoPlay,
+  disabled: 'disabled' as TtsAutoPlay,
+} as const
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 

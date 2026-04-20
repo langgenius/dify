@@ -1,7 +1,8 @@
 import re
 
-from core.app.app_config.entities import RagPipelineVariableEntity
 from graphon.variables.input_entities import VariableEntity
+
+from core.app.app_config.entities import RagPipelineVariableEntity
 from models.workflow import Workflow
 
 

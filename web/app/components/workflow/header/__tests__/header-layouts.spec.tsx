@@ -221,6 +221,20 @@ describe('Header layout components', () => {
       expect(store.getState().showChatVariablePanel).toBe(false)
       expect(store.getState().showGlobalVariablePanel).toBe(false)
     })
+
+    it('should hide env and global variable buttons when the controls are disabled', () => {
+      renderWorkflowComponent(
+        <HeaderInNormal
+          controls={{
+            showEnvButton: false,
+            showGlobalVariableButton: false,
+          }}
+        />,
+      )
+
+      expect(screen.queryByTestId('env-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('global-variable-button')).not.toBeInTheDocument()
+    })
   })
 
   describe('HeaderInRestoring', () => {

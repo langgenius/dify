@@ -8,7 +8,7 @@ import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { Theme } from '@/types/app'
+import { AppTypeEnum, Theme } from '@/types/app'
 import { defaultSystemFeatures } from '@/types/feature'
 import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
 import useNodes from '../../store/workflow/use-nodes'
@@ -17,6 +17,18 @@ import AllStartBlocks from '../all-start-blocks'
 
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn(),
+}))
+
+const mockAppType = vi.hoisted<{ current?: string }>(() => ({
+  current: 'workflow',
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: mockAppType.current,
+    },
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -179,6 +191,7 @@ const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMeta
 describe('AllStartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppType.current = AppTypeEnum.WORKFLOW
     mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(false)))
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseLocale.mockReturnValue('en_US')
@@ -237,6 +250,26 @@ describe('AllStartBlocks', () => {
       )
 
       expect(await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute('href', 'https://marketplace.test/start')
+    })
+
+    it('should hide trigger options in evaluation workflows', async () => {
+      mockAppType.current = AppTypeEnum.EVALUATION
+
+      render(
+        <AllStartBlocks
+          searchText=""
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerPlugin]}
+          allowUserInputSelection
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      })
+
+      expect(screen.queryByText('Provider One')).not.toBeInTheDocument()
+      expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
     })
   })
 

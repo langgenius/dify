@@ -71,7 +71,7 @@ const Operation: FC<Props> = ({
         )}
         {isShowDelete && (
           <DropdownMenuItem
-            variant="destructive"
+            destructive
             className="system-md-regular"
             onClick={() => handleDeferredAction(onDelete)}
           >

@@ -1,11 +1,13 @@
 import type { NodeDefault } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AppTypeEnum } from '@/types/app'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
 import { BlockClassificationEnum } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
+  appType: 'workflow' as string | undefined,
   nodes: [] as Array<{ data: { type?: BlockEnum } }>,
 }))
 
@@ -14,6 +16,14 @@ vi.mock('reactflow', () => ({
     getState: () => ({
       getNodes: () => runtimeState.nodes,
     }),
+  }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: runtimeState.appType,
+    },
   }),
 }))
 
@@ -32,10 +42,31 @@ const createBlock = (type: BlockEnum, title: string, classification = BlockClass
 
 describe('Blocks', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    runtimeState.appType = AppTypeEnum.WORKFLOW
     runtimeState.nodes = []
   })
 
-  it('renders grouped blocks, filters duplicate knowledge-base nodes, and selects a block', async () => {
+  it('should hide human input blocks when the app is an evaluation workflow', () => {
+    runtimeState.appType = AppTypeEnum.EVALUATION
+
+    render(
+      <Blocks
+        searchText=""
+        onSelect={vi.fn()}
+        availableBlocksTypes={[BlockEnum.HumanInput, BlockEnum.LLM]}
+        blocks={[
+          createBlock(BlockEnum.HumanInput, 'Human Input'),
+          createBlock(BlockEnum.LLM, 'LLM'),
+        ]}
+      />,
+    )
+
+    expect(screen.queryByText('Human Input')).not.toBeInTheDocument()
+    expect(screen.getByText('LLM')).toBeInTheDocument()
+  })
+
+  it('should render grouped blocks, filter duplicate knowledge-base nodes, and select a block', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
@@ -64,7 +95,7 @@ describe('Blocks', () => {
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
 
-  it('shows the empty state when no block matches the search', () => {
+  it('should show the empty state when no block matches the search text', () => {
     render(
       <Blocks
         searchText="missing"

@@ -11,6 +11,7 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -24,7 +25,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 
 class StubScalars:

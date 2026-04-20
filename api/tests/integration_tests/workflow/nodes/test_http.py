@@ -3,6 +3,11 @@ import uuid
 from urllib.parse import urlencode
 
 import pytest
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file.file_manager import file_manager
+from graphon.graph import Graph
+from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -11,11 +16,6 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.file.file_manager import file_manager
-from graphon.graph import Graph
-from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
-from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.http",)
@@ -192,7 +192,6 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
-    from core.workflow.system_variables import build_system_variables
     from graphon.enums import BuiltinNodeTypes
     from graphon.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
@@ -202,6 +201,8 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     from graphon.nodes.http_request.exc import AuthorizationConfigError
     from graphon.nodes.http_request.executor import Executor
     from graphon.runtime import VariablePool
+
+    from core.workflow.system_variables import build_system_variables
 
     # Create variable pool
     variable_pool = VariablePool(

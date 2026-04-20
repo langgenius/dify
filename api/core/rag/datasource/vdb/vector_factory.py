@@ -4,6 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 
 from configs import dify_config
@@ -18,7 +19,6 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
 

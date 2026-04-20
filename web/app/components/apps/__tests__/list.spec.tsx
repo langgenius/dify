@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -15,10 +15,14 @@ vi.mock('@/next/navigation', () => ({
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+const mockIsLoadingCurrentWorkspace = vi.fn(() => false)
+const mockCanAccessSnippetsAndEvaluation = vi.fn(() => true)
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace(),
   }),
 }))
 
@@ -30,12 +34,21 @@ vi.mock('@/context/global-public-context', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: mockCanAccessSnippetsAndEvaluation(),
+    isReady: true,
+  }),
+}))
+
 const mockSetQuery = vi.fn()
 const mockQueryState = {
   tagIDs: [] as string[],
+  creatorIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
+
 vi.mock('../hooks/use-apps-query-state', () => ({
   default: () => ({
     query: mockQueryState,
@@ -45,6 +58,7 @@ vi.mock('../hooks/use-apps-query-state', () => ({
 
 let mockOnDSLFileDropped: ((file: File) => void) | null = null
 let mockDragging = false
+
 vi.mock('../hooks/use-dsl-drag-drop', () => ({
   useDSLDragDrop: ({ onDSLFileDropped }: { onDSLFileDropped: (file: File) => void }) => {
     mockOnDSLFileDropped = onDSLFileDropped
@@ -54,11 +68,15 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
 
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
+const mockFetchSnippetNextPage = vi.fn()
+const mockUseInfiniteAppList = vi.fn()
+const mockUseInfiniteSnippetList = vi.fn()
 
 const mockServiceState = {
   error: null as Error | null,
   hasNextPage: false,
   isLoading: false,
+  isFetching: false,
   isFetchingNextPage: false,
 }
 
@@ -97,17 +115,81 @@ const defaultAppData = {
 }
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: defaultAppData,
-    isLoading: mockServiceState.isLoading,
-    isFetchingNextPage: mockServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockServiceState.hasNextPage,
-    error: mockServiceState.error,
-    refetch: mockRefetch,
-  }),
+  useInfiniteAppList: (params: unknown, options: unknown) => {
+    mockUseInfiniteAppList(params, options)
+    return {
+      data: defaultAppData,
+      isLoading: mockServiceState.isLoading,
+      isFetching: mockServiceState.isFetching,
+      isFetchingNextPage: mockServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockServiceState.hasNextPage,
+      error: mockServiceState.error,
+      refetch: mockRefetch,
+    }
+  },
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+const mockSnippetServiceState = {
+  error: null as Error | null,
+  hasNextPage: false,
+  isLoading: false,
+  isFetching: false,
+  isFetchingNextPage: false,
+}
+
+const defaultSnippetData = {
+  pages: [{
+    data: [
+      {
+        id: 'snippet-1',
+        name: 'Tone Rewriter',
+        description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+        type: 'node',
+        is_published: false,
+        use_count: 19,
+        icon_info: {
+          icon_type: 'emoji',
+          icon: '🪄',
+          icon_background: '#E0EAFF',
+          icon_url: '',
+        },
+        created_at: 1704067200,
+        updated_at: '2024-01-02 10:00',
+        author: '',
+      },
+    ],
+    total: 1,
+  }],
+}
+
+vi.mock('@/service/use-snippets', () => ({
+  useInfiniteSnippetList: (params: unknown, options: unknown) => {
+    mockUseInfiniteSnippetList(params, options)
+    return {
+      data: defaultSnippetData,
+      isLoading: mockSnippetServiceState.isLoading,
+      isFetching: mockSnippetServiceState.isFetching,
+      isFetchingNextPage: mockSnippetServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchSnippetNextPage,
+      hasNextPage: mockSnippetServiceState.hasNextPage,
+      error: mockSnippetServiceState.error,
+    }
+  },
+  useCreateSnippetMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useImportSnippetDSLMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useConfirmSnippetImportMutation: () => ({
+    mutate: vi.fn(),
     isPending: false,
   }),
 }))
@@ -124,6 +206,17 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
+        { id: 'user-2', name: 'Alice', email: 'alice@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' },
+      ],
+    },
+  }),
+}))
+
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
@@ -137,13 +230,21 @@ vi.mock('@/next/dynamic', () => ({
         return React.createElement('div', { 'data-testid': 'tag-management-modal' })
       }
     }
+
     if (fnString.includes('create-from-dsl-modal')) {
       return function MockCreateFromDSLModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
         if (!show)
           return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
+
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-dsl-modal' },
+          React.createElement('button', { 'data-testid': 'close-dsl-modal', 'onClick': onClose }, 'Close'),
+          React.createElement('button', { 'data-testid': 'success-dsl-modal', 'onClick': onSuccess }, 'Success'),
+        )
       }
     }
+
     return () => null
   },
 }))
@@ -161,8 +262,8 @@ vi.mock('../new-app-card', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+  default: ({ message }: { message: string }) => {
+    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, message)
   },
 }))
 
@@ -192,151 +293,105 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
-// Render helper wrapping with shared nuqs testing helper.
-const renderList = (searchParams = '') => {
-  return renderWithNuqs(<List />, { searchParams })
+const renderList = (props: React.ComponentProps<typeof List> = {}, searchParams = '') => {
+  return renderWithNuqs(<List {...props} />, { searchParams })
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    defaultSnippetData.pages[0].data = [
+      {
+        id: 'snippet-1',
+        name: 'Tone Rewriter',
+        description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+        type: 'node',
+        is_published: false,
+        use_count: 19,
+        icon_info: {
+          icon_type: 'emoji',
+          icon: '🪄',
+          icon_background: '#E0EAFF',
+          icon_url: '',
+        },
+        created_at: 1704067200,
+        updated_at: '2024-01-02 10:00',
+        author: '',
+      },
+    ]
+    defaultSnippetData.pages[0].total = 1
     useTagStore.setState({
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
       showTagManagementModal: false,
     })
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockIsLoadingCurrentWorkspace.mockReturnValue(false)
+    mockCanAccessSnippetsAndEvaluation.mockReturnValue(true)
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
     mockServiceState.hasNextPage = false
     mockServiceState.isLoading = false
+    mockServiceState.isFetching = false
     mockServiceState.isFetchingNextPage = false
     mockQueryState.tagIDs = []
+    mockQueryState.creatorIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
+    mockSnippetServiceState.error = null
+    mockSnippetServiceState.hasNextPage = false
+    mockSnippetServiceState.isLoading = false
+    mockSnippetServiceState.isFetching = false
+    mockSnippetServiceState.isFetchingNextPage = false
+    mockUseInfiniteAppList.mockClear()
+    mockUseInfiniteSnippetList.mockClear()
     intersectionCallback = null
     localStorage.clear()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-    })
-
-    it('should render tab slider with all app types', () => {
+  describe('Apps Mode', () => {
+    it('should render the apps route switch, dropdown filters, and app cards', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'app.studio.apps' })).toHaveAttribute('href', '/apps')
+      expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute('href', '/snippets')
+      expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
+      expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
     })
 
-    it('should render search input', () => {
-      renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-    })
-
-    it('should render tag filter', () => {
-      renderList()
-      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-    })
-
-    it('should render created by me checkbox', () => {
-      renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
-    })
-
-    it('should render app cards when apps exist', () => {
-      renderList()
-
-      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
-    it('should render new app card for editors', () => {
-      renderList()
-      expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
-    })
-
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
-    })
-
-    it('should render drop DSL hint for editors', () => {
-      renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Tab Navigation', () => {
-    it('should update URL when workflow tab is clicked', async () => {
+    it('should update the category query when selecting an app type from the dropdown', async () => {
       const { onUrlUpdate } = renderList()
 
-      fireEvent.click(screen.getByText('app.types.workflow'))
+      fireEvent.click(screen.getByText('app.studio.filters.types'))
+      fireEvent.click(await screen.findByText('app.types.workflow'))
 
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
     })
 
-    it('should update URL when all tab is clicked', async () => {
-      const { onUrlUpdate } = renderList('?category=workflow')
-
-      fireEvent.click(screen.getByText('app.types.all'))
-
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      // nuqs removes the default value ('all') from URL params
-      expect(lastCall.searchParams.has('category')).toBe(false)
-    })
-  })
-
-  describe('Search Functionality', () => {
-    it('should render search input field', () => {
-      renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-    })
-
-    it('should handle search input change', () => {
+    it('should update creatorIDs when selecting a creator from the dropdown', async () => {
       renderList()
 
-      const input = screen.getByRole('textbox')
-      fireEvent.change(input, { target: { value: 'test search' } })
+      fireEvent.click(screen.getByText('app.studio.filters.allCreators'))
+      fireEvent.click(await screen.findByText('Current User'))
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetQuery).toHaveBeenCalledTimes(1)
     })
 
-    it('should handle search clear button click', () => {
-      mockQueryState.keywords = 'existing search'
+    it('should pass creator_id to the app list query when creatorIDs are selected', () => {
+      mockQueryState.creatorIDs = ['user-1', 'user-2']
 
       renderList()
 
-      const clearButton = document.querySelector('.group')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
-
-      expect(mockSetQuery).toHaveBeenCalled()
-    })
-  })
-
-  describe('Tag Filter', () => {
-    it('should render tag filter component', () => {
-      renderList()
-      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Created By Me Filter', () => {
-    it('should render checkbox with correct label', () => {
-      renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(mockUseInfiniteAppList).toHaveBeenCalledWith(expect.objectContaining({
+        creator_id: 'user-1,user-2',
+      }), expect.any(Object))
     })
 
     it('should handle checkbox change', () => {
@@ -391,39 +446,39 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderWithNuqs(<List />)
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 1')).toBeInTheDocument()
+      expect(screen.getByText('Test App 2')).toBeInTheDocument()
     })
 
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-      expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
   })
 
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
 
     it('should render dragging state overlay when dragging', () => {
       mockDragging = true
       const { container } = renderList()
-      expect(container)!.toBeInTheDocument()
+      expect(container).toBeInTheDocument()
     })
   })
 
@@ -431,12 +486,12 @@ describe('List', () => {
     it('should render all app type tabs', () => {
       renderList()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
+      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
+      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
     })
 
     it('should update URL for each app type tab click', async () => {
@@ -454,7 +509,7 @@ describe('List', () => {
         onUrlUpdate.mockClear()
         fireEvent.click(screen.getByText(text))
         await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
+        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
         expect(lastCall.searchParams.get('category')).toBe(mode)
       }
     })
@@ -464,22 +519,22 @@ describe('List', () => {
     it('should display all app cards from data', () => {
       renderList()
 
-      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
     })
 
     it('should display app names correctly', () => {
       renderList()
 
-      expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Test App 1')).toBeInTheDocument()
+      expect(screen.getByText('Test App 2')).toBeInTheDocument()
     })
   })
 
   describe('Footer Visibility', () => {
     it('should render footer when branding is disabled', () => {
       renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
+      expect(screen.getByTestId('footer')).toBeInTheDocument()
     })
   })
 
@@ -493,99 +548,79 @@ describe('List', () => {
           mockOnDSLFileDropped(mockFile)
       })
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-    })
-
-    it('should close DSL modal when onClose is called', () => {
-      renderList()
-
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
-      })
-
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
-
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })
 
-    it('should close DSL modal and refetch when onSuccess is called', () => {
+    it('should hide the snippets route switch when snippet access is unavailable', () => {
+      mockCanAccessSnippetsAndEvaluation.mockReturnValue(false)
+
       renderList()
 
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
+      expect(screen.getByRole('link', { name: 'app.studio.apps' })).toHaveAttribute('href', '/apps')
+      expect(screen.queryByRole('link', { name: 'workflow.tabs.snippets' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Snippets Mode', () => {
+    it('should render the snippets create card and snippet card from the real query hook', () => {
+      renderList({ pageType: 'snippets' })
+
+      expect(screen.getByText('snippet.create')).toBeInTheDocument()
+      expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
+      expect(screen.getByText('Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Tone Rewriter/i })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
+    })
+
+    it('should request the next snippet page when the infinite-scroll anchor intersects', () => {
+      mockSnippetServiceState.hasNextPage = true
+      renderList({ pageType: 'snippets' })
+
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
       })
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('success-dsl-modal'))
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-      expect(mockRefetch).toHaveBeenCalled()
-    })
-  })
-
-  describe('Infinite Scroll', () => {
-    it('should call fetchNextPage when intersection observer triggers', () => {
-      mockServiceState.hasNextPage = true
-      renderList()
-
-      if (intersectionCallback) {
-        act(() => {
-          intersectionCallback!(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          )
-        })
-      }
-
-      expect(mockFetchNextPage).toHaveBeenCalled()
+      expect(mockFetchSnippetNextPage).toHaveBeenCalled()
     })
 
-    it('should not call fetchNextPage when not intersecting', () => {
-      mockServiceState.hasNextPage = true
-      renderList()
+    it('should not render app-only controls in snippets mode', () => {
+      renderList({ pageType: 'snippets' })
 
-      if (intersectionCallback) {
-        act(() => {
-          intersectionCallback!(
-            [{ isIntersecting: false } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          )
-        })
-      }
-
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
+      expect(screen.queryByText('app.studio.filters.types')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.tag.placeholder')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.newApp.dropDSLToCreateApp')).not.toBeInTheDocument()
     })
 
-    it('should not call fetchNextPage when loading', () => {
-      mockServiceState.hasNextPage = true
-      mockServiceState.isLoading = true
-      renderList()
+    it('should pass creator_id to the snippet list query when creatorIDs are selected', () => {
+      mockQueryState.creatorIDs = ['user-1', 'user-2']
 
-      if (intersectionCallback) {
-        act(() => {
-          intersectionCallback!(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          )
-        })
-      }
+      renderList({ pageType: 'snippets' })
 
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
+      expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.objectContaining({
+        creator_id: 'user-1,user-2',
+      }), expect.any(Object))
     })
-  })
 
-  describe('Error State', () => {
-    it('should handle error state in useEffect', () => {
-      mockServiceState.error = new Error('Test error')
-      const { container } = renderList()
-      expect(container)!.toBeInTheDocument()
+    it('should not fetch the next snippet page when no more data is available', () => {
+      renderList({ pageType: 'snippets' })
+
+      act(() => {
+        intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+      })
+
+      expect(mockFetchSnippetNextPage).not.toHaveBeenCalled()
+    })
+
+    it('should reuse the shared empty state when no snippets are available', () => {
+      defaultSnippetData.pages[0].data = []
+      defaultSnippetData.pages[0].total = 0
+
+      renderList({ pageType: 'snippets' })
+
+      expect(screen.getByTestId('empty-state')).toHaveTextContent('workflow.tabs.noSnippetsFound')
     })
   })
 })

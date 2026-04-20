@@ -84,7 +84,7 @@ const DebugItem: FC<DebugItemProps> = ({
       style={style}
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b-[0.5px] border-divider-regular px-3">
-        <div className="flex h-5 w-6 items-center justify-center font-medium text-text-tertiary italic">
+        <div className="flex h-5 w-6 items-center justify-center font-medium italic text-text-tertiary">
           #
           {index + 1}
         </div>
@@ -115,7 +115,7 @@ const DebugItem: FC<DebugItemProps> = ({
             {showRemove && (
               <>
                 {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
-                <DropdownMenuItem variant="destructive" className="system-md-regular" onClick={handleRemove}>
+                <DropdownMenuItem destructive className="system-md-regular" onClick={handleRemove}>
                   {t('operation.remove', { ns: 'common' })}
                 </DropdownMenuItem>
               </>

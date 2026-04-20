@@ -4,6 +4,10 @@ Tencent APM tracing implementation with separated concerns
 
 import logging
 
+from graphon.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+)
+from graphon.nodes import BuiltinNodeTypes
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,10 +29,6 @@ from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.ops.tencent_trace.utils import TencentTraceUtils
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from graphon.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from graphon.nodes import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
