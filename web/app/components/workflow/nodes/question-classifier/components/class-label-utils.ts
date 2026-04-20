@@ -27,7 +27,7 @@ const getTranslatedDefaultClassLabel = (t: TFunction, index: number) => {
   return resolvedLabel
 }
 
-export const normalizeClassLabel = (label?: string | null) => label?.trim() ?? ''
+const normalizeClassLabel = (label?: string | null) => label?.trim() ?? ''
 
 export const getDefaultClassLabel = (_t: TFunction, index: number) => getCanonicalDefaultClassLabel(index)
 
