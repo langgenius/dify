@@ -26,13 +26,6 @@ type ImportedCollection = {
 
 type ImportedCollections = Record<string, ImportedCollection>
 
-type FlattenedCollection = {
-  prefix: string
-  icons: Record<string, IconData>
-  aliases?: Record<string, AliasData>
-  lastModified?: number
-}
-
 type CollectionInfo = {
   prefix: string
   name: string
@@ -58,32 +51,7 @@ type PackageJson = {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const packageDir = path.resolve(__dirname, '..')
 
-const parseColorOptions = {
-  callback: () => 'currentColor',
-}
-
-const svgOptimizeConfig = {
-  cleanupSVG: true,
-  deOptimisePaths: true,
-  runSVGO: true,
-  parseColors: parseColorOptions,
-}
-
-const customPublicCollections = importSvgCollections({
-  source: path.resolve(packageDir, 'assets/public'),
-  prefix: 'custom-public',
-  ignoreImportErrors: true,
-  ...svgOptimizeConfig,
-}) as ImportedCollections
-
-const customVenderCollections = importSvgCollections({
-  source: path.resolve(packageDir, 'assets/vender'),
-  prefix: 'custom-vender',
-  ignoreImportErrors: true,
-  ...svgOptimizeConfig,
-}) as ImportedCollections
-
-const flattenCollections = (collections: ImportedCollections, prefix: string): FlattenedCollection => {
+const flattenCollections = (collections: ImportedCollections, prefix: string) => {
   const icons: Record<string, IconData> = {}
   const aliases: Record<string, AliasData> = {}
   let lastModified = 0
@@ -109,6 +77,30 @@ const flattenCollections = (collections: ImportedCollections, prefix: string): F
     ...(Object.keys(aliases).length ? { aliases } : {}),
   }
 }
+
+const customPublicCollections = importSvgCollections({
+  source: path.resolve(packageDir, 'assets/public'),
+  prefix: 'custom-public',
+  ignoreImportErrors: true,
+  cleanupSVG: true,
+  deOptimisePaths: true,
+  runSVGO: true,
+  parseColors: false,
+}) as ImportedCollections
+
+const customVenderCollections = importSvgCollections({
+  source: path.resolve(packageDir, 'assets/vender'),
+  prefix: 'custom-vender',
+  ignoreImportErrors: true,
+  cleanupSVG: true,
+  deOptimisePaths: true,
+  runSVGO: true,
+  parseColors: {
+    callback: (_attr, colorString, _parsedColor, tagName) => {
+      return tagName === 'path' ? 'currentColor' : colorString
+    },
+  },
+}) as ImportedCollections
 
 const createCollectionInfo = (
   prefix: string,
@@ -209,7 +201,7 @@ export declare const chars: IconifyChars
 
 const writeCollectionPackage = async (
   directoryName: string,
-  collection: FlattenedCollection,
+  collection: ReturnType<typeof flattenCollections>,
   name: string,
   version: string,
 ): Promise<void> => {
@@ -226,13 +218,12 @@ const writeCollectionPackage = async (
   await writeFile(path.resolve(targetDir, 'index.d.ts'), `${createIndexTypes()}\n`)
 }
 
-const mergedCustomPublicCollection = flattenCollections(customPublicCollections, 'custom-public')
-const mergedCustomVenderCollection = flattenCollections(customVenderCollections, 'custom-vender')
-
 async function main(): Promise<void> {
   const packageJson = JSON.parse(
     await readFile(path.resolve(packageDir, 'package.json'), 'utf8'),
   ) as PackageJson
+  const customPublicCollection = flattenCollections(customPublicCollections, 'custom-public')
+  const customVenderCollection = flattenCollections(customVenderCollections, 'custom-vender')
 
   await rm(path.resolve(packageDir, 'src'), { recursive: true, force: true })
   await rm(path.resolve(packageDir, 'custom-public'), { recursive: true, force: true })
@@ -240,13 +231,13 @@ async function main(): Promise<void> {
 
   await writeCollectionPackage(
     'custom-public',
-    mergedCustomPublicCollection,
+    customPublicCollection,
     'Dify Custom Public',
     packageJson.version,
   )
   await writeCollectionPackage(
     'custom-vender',
-    mergedCustomVenderCollection,
+    customVenderCollection,
     'Dify Custom Vender',
     packageJson.version,
   )
