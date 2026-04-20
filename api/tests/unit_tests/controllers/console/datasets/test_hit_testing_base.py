@@ -13,6 +13,7 @@ from controllers.console.app.error import (
 from controllers.console.datasets.error import DatasetNotInitializedError
 from controllers.console.datasets.hit_testing_base import (
     DatasetsHitTestingBase,
+    HitTestingPayload,
 )
 from core.errors.error import (
     LLMBadRequestError,
@@ -108,7 +109,8 @@ class TestParseArgs:
 
         result = DatasetsHitTestingBase.parse_args(payload)
 
-        assert result["query"] == "hello"
+        assert isinstance(result, HitTestingPayload)
+        assert result.query == "hello"
 
     def test_parse_args_invalid(self):
         payload = {"query": "x" * 300}
@@ -123,85 +125,94 @@ class TestPerformHitTesting:
             "query": "hello",
             "records": [],
         }
+        payload = HitTestingPayload(query="hello")
 
         with patch.object(
             HitTestingService,
             "retrieve",
             return_value=response,
         ):
-            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
         assert result["query"] == "hello"
         assert result["records"] == []
 
     def test_index_not_initialized(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=services.errors.index.IndexNotInitializedError(),
         ):
             with pytest.raises(DatasetNotInitializedError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_provider_token_not_init(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=ProviderTokenNotInitError("token missing"),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_quota_exceeded(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=QuotaExceededError(),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_model_not_supported(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=ModelCurrentlyNotSupportError(),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_llm_bad_request(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=LLMBadRequestError("bad request"),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_invoke_error(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=InvokeError("invoke failed"),
         ):
             with pytest.raises(CompletionRequestError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_value_error(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=ValueError("bad args"),
         ):
             with pytest.raises(ValueError, match="bad args"):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)
 
     def test_unexpected_error(self, dataset):
+        payload = HitTestingPayload(query="hello")
         with patch.object(
             HitTestingService,
             "retrieve",
             side_effect=Exception("boom"),
         ):
             with pytest.raises(InternalServerError, match="boom"):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+                DatasetsHitTestingBase.perform_hit_testing(dataset, payload)

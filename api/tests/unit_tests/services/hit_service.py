@@ -15,6 +15,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
 from models.dataset import Dataset
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 
@@ -213,7 +214,14 @@ class TestHitTestingServiceRetrieve:
             "top_k": 5,
             "score_threshold_enabled": True,
             "score_threshold": 0.7,
-            "weights": {"vector_setting": 0.5, "keyword_setting": 0.5},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.5,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {"keyword_weight": 0.5},
+            },
         }
         external_retrieval_model = {}
 
@@ -257,7 +265,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
         }
@@ -308,7 +316,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
         }
@@ -373,6 +381,138 @@ class TestHitTestingServiceRetrieve:
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["retrieval_method"] == RetrievalMethod.HYBRID_SEARCH
             assert call_kwargs["top_k"] == 3
+
+    def test_retrieve_deep_merges_nested_retrieval_model_dicts(self, mock_db_session):
+        dataset = HitTestingTestDataFactory.create_dataset_mock(
+            retrieval_model={
+                "reranking_mode": "weighted_score",
+                "weights": {
+                    "vector_setting": {
+                        "vector_weight": 0.6,
+                        "embedding_provider_name": "openai",
+                        "embedding_model_name": "text-embedding-3-small",
+                    }
+                },
+            }
+        )
+        account = HitTestingTestDataFactory.create_user_mock()
+        query = "test query"
+        retrieval_model = {
+            "weights": {
+                "keyword_setting": {
+                    "keyword_weight": 0.4,
+                }
+            }
+        }
+        external_retrieval_model = {}
+
+        documents = [HitTestingTestDataFactory.create_document_mock()]
+        mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
+        ):
+            mock_perf_counter.side_effect = [0.0, 0.1]
+            mock_retrieve.return_value = documents
+            mock_format.return_value = mock_records
+
+            HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+
+            call_kwargs = mock_retrieve.call_args[1]
+            assert call_kwargs["reranking_mode"] == "weighted_score"
+            assert call_kwargs["weights"] == {
+                "vector_setting": {
+                    "vector_weight": 0.6,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {
+                    "keyword_weight": 0.4,
+                },
+            }
+
+    def test_retrieve_with_retrieval_model_instance_merges_dataset_optional_fields(self, mock_db_session):
+        dataset = HitTestingTestDataFactory.create_dataset_mock(
+            retrieval_model={
+                "reranking_mode": "weighted_score",
+                "weights": {
+                    "vector_setting": {
+                        "vector_weight": 0.7,
+                        "embedding_provider_name": "openai",
+                        "embedding_model_name": "text-embedding-3-small",
+                    },
+                    "keyword_setting": {
+                        "keyword_weight": 0.3,
+                    },
+                },
+            }
+        )
+        account = HitTestingTestDataFactory.create_user_mock()
+        query = "test query"
+        retrieval_model = RetrievalModel(
+            search_method=RetrievalMethod.KEYWORD_SEARCH,
+            reranking_enable=False,
+            top_k=2,
+            score_threshold_enabled=False,
+        )
+        external_retrieval_model = {}
+
+        documents = [HitTestingTestDataFactory.create_document_mock()]
+        mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
+        ):
+            mock_perf_counter.side_effect = [0.0, 0.1]
+            mock_retrieve.return_value = documents
+            mock_format.return_value = mock_records
+
+            HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+
+            call_kwargs = mock_retrieve.call_args[1]
+            assert call_kwargs["retrieval_method"] == RetrievalMethod.KEYWORD_SEARCH
+            assert call_kwargs["reranking_mode"] == "weighted_score"
+            assert call_kwargs["weights"] == dataset.retrieval_model["weights"]
+
+    def test_retrieve_falls_back_to_zero_score_threshold_when_enabled_but_unset(self, mock_db_session):
+        dataset = HitTestingTestDataFactory.create_dataset_mock()
+        account = HitTestingTestDataFactory.create_user_mock()
+        query = "test query"
+        retrieval_model = {
+            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+            "reranking_enable": False,
+            "top_k": 4,
+            "score_threshold_enabled": True,
+            "score_threshold": None,
+        }
+        external_retrieval_model = {}
+
+        documents = [HitTestingTestDataFactory.create_document_mock()]
+        mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
+        ):
+            mock_perf_counter.side_effect = [0.0, 0.1]
+            mock_retrieve.return_value = documents
+            mock_format.return_value = mock_records
+
+            HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+
+            call_kwargs = mock_retrieve.call_args[1]
+            assert call_kwargs["score_threshold"] == 0.0
 
 
 class TestHitTestingServiceExternalRetrieve:
@@ -708,7 +848,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": ""}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_none_query(self):
@@ -721,7 +861,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": None}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_too_long_query(self):
@@ -734,7 +874,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": "a" * 251}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_exactly_250_characters(self):

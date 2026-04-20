@@ -83,6 +83,7 @@ class RetrievalModel(BaseModel):
     score_threshold_enabled: bool
     score_threshold: float | None = None
     weights: WeightModel | None = None
+    metadata_filtering_conditions: dict[str, Any] | None = None
 
 
 class MetaDataConfig(BaseModel):

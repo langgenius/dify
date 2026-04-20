@@ -1,10 +1,12 @@
 import json
 import logging
 import time
+from copy import deepcopy
 from typing import Any, TypedDict
 
 from core.app.app_config.entities import ModelConfig
-from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -14,6 +16,7 @@ from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ class RetrieveResponseDict(TypedDict):
     records: list[dict[str, Any]]
 
 
-default_retrieval_model = {
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -37,37 +40,94 @@ default_retrieval_model = {
 
 
 class HitTestingService:
+    @staticmethod
+    def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+        merged = deepcopy(base)
+        for key, value in override.items():
+            current_value = merged.get(key)
+            if isinstance(current_value, dict) and isinstance(value, dict):
+                merged[key] = HitTestingService._deep_merge_dicts(current_value, value)
+            else:
+                merged[key] = value
+        return merged
+
+    @classmethod
+    def _normalize_retrieval_model(
+        cls, dataset: Dataset, retrieval_model: RetrievalModel | dict[str, Any] | None
+    ) -> RetrievalModel:
+        merged_model_dict: dict[str, Any] = deepcopy(dict(default_retrieval_model))
+        if dataset.retrieval_model:
+            merged_model_dict = cls._deep_merge_dicts(merged_model_dict, dataset.retrieval_model)
+
+        if isinstance(retrieval_model, RetrievalModel):
+            incoming_model_dict = retrieval_model.model_dump(exclude_unset=True)
+        else:
+            incoming_model_dict = retrieval_model or {}
+
+        if incoming_model_dict:
+            merged_model_dict = cls._deep_merge_dicts(merged_model_dict, incoming_model_dict)
+
+        return RetrievalModel.model_validate(merged_model_dict)
+
+    @staticmethod
+    def _serialize_reranking_model(retrieval_model: RetrievalModel) -> RerankingModelDict | None:
+        if not retrieval_model.reranking_enable or not retrieval_model.reranking_model:
+            return None
+
+        return {
+            "reranking_provider_name": retrieval_model.reranking_model.reranking_provider_name or "",
+            "reranking_model_name": retrieval_model.reranking_model.reranking_model_name or "",
+        }
+
+    @staticmethod
+    def _serialize_weights(retrieval_model: RetrievalModel) -> WeightsDict | None:
+        if (
+            not retrieval_model.weights
+            or not retrieval_model.weights.vector_setting
+            or not retrieval_model.weights.keyword_setting
+        ):
+            return None
+
+        return {
+            "vector_setting": {
+                "vector_weight": retrieval_model.weights.vector_setting.vector_weight,
+                "embedding_provider_name": retrieval_model.weights.vector_setting.embedding_provider_name,
+                "embedding_model_name": retrieval_model.weights.vector_setting.embedding_model_name,
+            },
+            "keyword_setting": {
+                "keyword_weight": retrieval_model.weights.keyword_setting.keyword_weight,
+            },
+        }
+
     @classmethod
     def retrieve(
         cls,
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: dict[str, Any] | None,
+        retrieval_model: RetrievalModel | dict[str, Any] | None,
         external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
     ):
         start = time.perf_counter()
 
-        # get retrieval model , if the model is not setting , using default
-        if not retrieval_model:
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
-        assert isinstance(retrieval_model, dict)
+        retrieval_model = cls._normalize_retrieval_model(dataset, retrieval_model)
+
         document_ids_filter = None
-        metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
+        metadata_filtering_conditions = retrieval_model.metadata_filtering_conditions or {}
         if metadata_filtering_conditions and query:
             dataset_retrieval = DatasetRetrieval()
 
             from core.rag.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            metadata_filtering_conditions_obj = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
                 query=query,
                 metadata_filtering_mode="manual",
-                metadata_filtering_conditions=metadata_filtering_conditions,
+                metadata_filtering_conditions=metadata_filtering_conditions_obj,
                 inputs={},
                 tenant_id="",
                 user_id="",
@@ -78,19 +138,17 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=RetrievalMethod(retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
+            retrieval_method=RetrievalMethod(retrieval_model.search_method or RetrievalMethod.SEMANTIC_SEARCH),
             dataset_id=dataset.id,
             query=query,
             attachment_ids=attachment_ids,
-            top_k=retrieval_model.get("top_k", 4),
-            score_threshold=retrieval_model.get("score_threshold", 0.0)
-            if retrieval_model["score_threshold_enabled"]
+            top_k=retrieval_model.top_k,
+            score_threshold=(retrieval_model.score_threshold or 0.0)
+            if retrieval_model.score_threshold_enabled
             else 0.0,
-            reranking_model=retrieval_model.get("reranking_model", None)
-            if retrieval_model["reranking_enable"]
-            else None,
-            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
-            weights=retrieval_model.get("weights", None),
+            reranking_model=cls._serialize_reranking_model(retrieval_model),
+            reranking_mode=retrieval_model.reranking_mode or "reranking_model",
+            weights=cls._serialize_weights(retrieval_model),
             document_ids_filter=document_ids_filter,
         )
 
@@ -126,7 +184,7 @@ class HitTestingService:
         account: Account,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
-    ):
+    ) -> RetrieveResponseDict:
         if dataset.provider != "external":
             return {
                 "query": {"content": query},
@@ -157,7 +215,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
+        return cls.compact_external_retrieve_response(dataset, query, all_documents)
 
     @classmethod
     def compact_retrieve_response(cls, query: str, documents: list[Document]) -> RetrieveResponseDict:

@@ -128,7 +128,6 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
 
         dataset = self.get_and_validate_dataset(dataset_id_str)
         payload = HitTestingPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
-        self.hit_testing_args_check(args)
+        self.hit_testing_args_check(payload)
 
-        return HitTestingResponse.model_validate(self.perform_hit_testing(dataset, args)).model_dump(mode="json")
+        return HitTestingResponse.model_validate(self.perform_hit_testing(dataset, payload)).model_dump(mode="json")

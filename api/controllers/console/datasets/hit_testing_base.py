@@ -53,26 +53,27 @@ class DatasetsHitTestingBase:
         return dataset
 
     @staticmethod
-    def hit_testing_args_check(args: dict[str, Any]):
+    def hit_testing_args_check(args: dict[str, Any] | HitTestingPayload):
+        if isinstance(args, HitTestingPayload):
+            args = args.model_dump(exclude_none=True)
         HitTestingService.hit_testing_args_check(args)
 
     @staticmethod
-    def parse_args(payload: dict[str, Any]) -> dict[str, Any]:
+    def parse_args(payload: dict[str, Any]) -> HitTestingPayload:
         """Validate and return hit-testing arguments from an incoming payload."""
-        hit_testing_payload = HitTestingPayload.model_validate(payload or {})
-        return hit_testing_payload.model_dump(exclude_none=True)
+        return HitTestingPayload.model_validate(payload or {})
 
     @staticmethod
-    def perform_hit_testing(dataset, args):
+    def perform_hit_testing(dataset, args: HitTestingPayload):
         assert isinstance(current_user, Account)
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=args.get("query"),
+                query=args.query,
                 account=current_user,
-                retrieval_model=args.get("retrieval_model"),
-                external_retrieval_model=args.get("external_retrieval_model"),
-                attachment_ids=args.get("attachment_ids"),
+                retrieval_model=args.retrieval_model,
+                external_retrieval_model=args.external_retrieval_model or {},
+                attachment_ids=args.attachment_ids,
                 limit=10,
             )
             return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}
