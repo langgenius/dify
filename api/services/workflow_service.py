@@ -577,7 +577,7 @@ class WorkflowService:
         """Publish draft workflow as an evaluation workflow version.
 
         Compared to standard publish:
-        - force published workflow type to ``evaluation``;
+        - set business kind to ``evaluation``;
         - reject graphs containing trigger or human-input nodes.
         """
         draft_workflow_stmt = select(Workflow).where(
