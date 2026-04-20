@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Oprit de {{user}}",
   "triggerStatus.disabled": "TRIGGER • DEZACTIVAT",
   "triggerStatus.enabled": "DECLANȘATOR",
-  "variableReference.assignedVarsDescription": "Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi",
+  "variableReference.assignedVarsDescription": "Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi variabilele de conversație.",
   "variableReference.conversationVars": "Variabile de conversație",
   "variableReference.noAssignedVars": "Nu există variabile atribuite disponibile",
   "variableReference.noAvailableVars": "Nu există variabile disponibile",
