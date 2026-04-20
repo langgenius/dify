@@ -8,7 +8,7 @@ declare global {
   var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined
 }
 
-describe('base/ui/toast', () => {
+describe('@langgenius/dify-ui/toast', () => {
   beforeAll(() => {
     // Base UI waits for `requestAnimationFrame` + `getAnimations().finished`
     // before unmounting a toast. Fake timers can't reliably drive that path,
