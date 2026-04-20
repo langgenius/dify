@@ -21,7 +21,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectTrigger,
 }) => {
   const { t } = useTranslation()
-  const appType = useAppStore(s => s.appDetail?.workflow_type)
+  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
   const isEvaluationWorkflowType = isEvaluationWorkflow(appType)
 

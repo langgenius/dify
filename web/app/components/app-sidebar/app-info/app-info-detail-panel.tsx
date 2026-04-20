@@ -126,7 +126,7 @@ const AppInfoDetailPanel = ({
           secondaryOperations={secondaryOperations}
         />
       </div>
-      {appDetail.workflow_type !== AppTypeEnum.EVALUATION && (
+      {appDetail.workflow_kind !== AppTypeEnum.EVALUATION && (
         <CardView
           appId={appDetail.id}
           isInPanel={true}

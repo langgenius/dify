@@ -31,7 +31,7 @@ const Blocks = ({
 }: BlocksProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const appType = useAppStore(s => s.appDetail?.workflow_type)
+  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const blocksFromHooks = useBlocks()
   const filteredAvailableBlocksTypes = useMemo(() => {
     if (!isEvaluationWorkflow(appType))

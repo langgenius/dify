@@ -147,15 +147,15 @@ const AppPublisher = ({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
   const workflowTypeSwitchConfig = useMemo(() => {
-    if (!appDetail?.workflow_type)
+    if (!appDetail?.workflow_kind)
       return WORKFLOW_TYPE_SWITCH_CONFIG.workflow
 
-    if (!isWorkflowTypeConversionTarget(appDetail?.workflow_type))
+    if (!isWorkflowTypeConversionTarget(appDetail?.workflow_kind))
       return undefined
 
-    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.workflow_type]
-  }, [appDetail?.workflow_type])
-  const isEvaluationWorkflowType = appDetail?.workflow_type === AppTypeEnum.EVALUATION
+    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.workflow_kind]
+  }, [appDetail?.workflow_kind])
+  const isEvaluationWorkflowType = appDetail?.workflow_kind === AppTypeEnum.EVALUATION
   const {
     refetch: refetchEvaluationWorkflowAssociatedTargets,
     isFetching: isFetchingEvaluationWorkflowAssociatedTargets,
@@ -281,11 +281,42 @@ const AppPublisher = ({
     }
   }, [appDetail, setAppDetail])
 
+  const getWorkflowTypeSwitchPublishUrl = useCallback(() => {
+    if (!appDetail?.id || !workflowTypeSwitchConfig)
+      return undefined
+
+    if (workflowTypeSwitchConfig.targetType === AppTypeEnum.EVALUATION)
+      return `/apps/${appDetail.id}/workflows/publish/evaluation`
+
+    return `/apps/${appDetail.id}/workflows/publish`
+  }, [appDetail?.id, workflowTypeSwitchConfig])
+
   const performWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
       return false
 
     try {
+      if (!publishedAt) {
+        const publishUrl = getWorkflowTypeSwitchPublishUrl()
+        if (!publishUrl)
+          return false
+
+        await handlePublish({
+          url: publishUrl,
+          title: '',
+          releaseNotes: '',
+        })
+
+        const latestAppDetail = await fetchAppDetailDirect({
+          url: '/apps',
+          id: appDetail.id,
+        })
+        setAppDetail(latestAppDetail)
+        setShowEvaluationWorkflowSwitchConfirm(false)
+        setEvaluationWorkflowSwitchTargets([])
+        return true
+      }
+
       await convertWorkflowType({
         params: {
           appId: appDetail.id,
@@ -294,9 +325,6 @@ const AppPublisher = ({
           target_type: workflowTypeSwitchConfig.targetType,
         },
       })
-
-      if (!publishedAt)
-        await handlePublish()
 
       const latestAppDetail = await fetchAppDetailDirect({
         url: '/apps',
@@ -314,7 +342,7 @@ const AppPublisher = ({
     catch {
       return false
     }
-  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
+  }, [appDetail?.id, convertWorkflowType, getWorkflowTypeSwitchPublishUrl, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
 
   const handleWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
@@ -324,7 +352,7 @@ const AppPublisher = ({
       return
     }
 
-    if (appDetail.workflow_type === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
+    if (appDetail.workflow_kind === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
       const associatedTargetsResult = await refetchEvaluationWorkflowAssociatedTargets()
 
       if (associatedTargetsResult.isError) {
@@ -343,7 +371,7 @@ const AppPublisher = ({
     await performWorkflowTypeSwitch()
   }, [
     appDetail?.id,
-    appDetail?.workflow_type,
+    appDetail?.workflow_kind,
     performWorkflowTypeSwitch,
     refetchEvaluationWorkflowAssociatedTargets,
     t,

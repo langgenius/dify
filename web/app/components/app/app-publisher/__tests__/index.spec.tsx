@@ -491,7 +491,7 @@ describe('AppPublisher', () => {
   it('should switch workflow type, refresh app detail, and close the popover for published apps', async () => {
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       id: 'app-1',
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     })
 
     render(
@@ -511,16 +511,49 @@ describe('AppPublisher', () => {
       expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
       expect(mockSetAppDetail).toHaveBeenCalledWith({
         id: 'app-1',
-        type: AppTypeEnum.EVALUATION,
+        workflow_kind: AppTypeEnum.EVALUATION,
       })
     })
-    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should publish an unpublished workflow as evaluation workflow through the evaluation publish endpoint', async () => {
+    mockOnPublish.mockResolvedValue(undefined)
+    mockFetchAppDetailDirect.mockResolvedValueOnce({
+      id: 'app-1',
+      workflow_kind: AppTypeEnum.EVALUATION,
+    })
+
+    render(
+      <AppPublisher
+        onPublish={mockOnPublish}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledWith({
+        url: '/apps/app-1/workflows/publish/evaluation',
+        title: '',
+        releaseNotes: '',
+      })
+      expect(mockConvertWorkflowType).not.toHaveBeenCalled()
+      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetAppDetail).toHaveBeenCalledWith({
+        id: 'app-1',
+        workflow_kind: AppTypeEnum.EVALUATION,
+      })
+    })
   })
 
   it('should hide access and actions sections for evaluation workflow apps', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
 
     render(
@@ -545,7 +578,7 @@ describe('AppPublisher', () => {
   it('should confirm before switching an evaluation workflow with associated targets to a standard workflow', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockEvaluationWorkflowAssociatedTargets = {
       items: [
@@ -595,7 +628,7 @@ describe('AppPublisher', () => {
   it('should switch an evaluation workflow directly when there are no associated targets', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
 
     render(
@@ -620,7 +653,7 @@ describe('AppPublisher', () => {
   it('should block switching an evaluation workflow when associated targets fail to load', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
       data: undefined,

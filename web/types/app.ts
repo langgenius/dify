@@ -391,7 +391,7 @@ export type App = {
   /** whether workflow trigger has un-published draft */
   has_draft_trigger?: boolean
   /** Type */
-  workflow_type?: AppTypeEnum
+  workflow_kind?: AppTypeEnum
 }
 
 export type AppSSO = {

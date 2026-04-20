@@ -57,7 +57,7 @@ const AllStartBlocks = ({
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
-  const appType = useAppStore(s => s.appDetail?.workflow_type)
+  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
