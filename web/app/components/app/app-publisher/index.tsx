@@ -5,6 +5,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import {
   memo,
@@ -21,13 +22,13 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -103,7 +104,7 @@ const AppPublisher = ({
   const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
 

@@ -12,7 +12,6 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
 
 export const Dialog = BaseDialog.Root
-/** @public */
 export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description

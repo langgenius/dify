@@ -44,7 +44,7 @@ dependencies = [
 
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.1.2",
+    "graphon~=0.2.2",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.2",
 ]
@@ -173,7 +173,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.60.0",
+    "pyrefly>=0.61.1",
     "xinference-client>=2.4.0",
 ]
 

@@ -1,8 +1,8 @@
 import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { consoleQuery } from './client'
 import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 
@@ -66,18 +66,22 @@ export const useUpdateAppPinStatus = () => {
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  // useQuery (not useSuspenseQuery) to keep this service hook's call contract
+  // unchanged from the zustand era: callers should not need a Suspense boundary.
+  // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const webappAuthEnabled = systemFeatures?.webapp_auth.enabled ?? false
   const appAccessModeInput = { query: { appId: appId ?? '' } }
   const installedAppId = appAccessModeInput.query.appId
 
   return useQuery({
     queryKey: [
       ...consoleQuery.explore.appAccessMode.queryKey({ input: appAccessModeInput }),
-      systemFeatures.webapp_auth.enabled,
+      webappAuthEnabled,
       installedAppId,
     ],
     queryFn: () => {
-      if (systemFeatures.webapp_auth.enabled === false) {
+      if (webappAuthEnabled === false) {
         return {
           accessMode: AccessMode.PUBLIC,
         }

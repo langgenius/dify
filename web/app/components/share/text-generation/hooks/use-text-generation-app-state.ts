@@ -3,14 +3,15 @@ import type { MoreLikeThisConfig, PromptConfig, SavedMessage, TextToSpeechConfig
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { changeLanguage } from '@/i18n-config/client'
 import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 
@@ -33,7 +34,7 @@ type ShareAppParams = {
 export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTextGenerationAppStateOptions) => {
   const { t } = useTranslation()
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appData = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const accessMode = useWebAppStore(s => s.webAppAccessMode)

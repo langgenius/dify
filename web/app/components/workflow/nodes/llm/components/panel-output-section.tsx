@@ -43,7 +43,6 @@ const PanelOutputSection: FC<Props> = ({
             {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <div>
                       <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
@@ -61,7 +60,6 @@ const PanelOutputSection: FC<Props> = ({
             <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
             <Tooltip>
               <TooltipTrigger
-                delay={0}
                 render={(
                   <div>
                     <RiQuestionLine className="size-3.5 text-text-quaternary" />

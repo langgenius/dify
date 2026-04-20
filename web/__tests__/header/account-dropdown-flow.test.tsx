@@ -1,6 +1,6 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -52,20 +52,6 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = {
-      systemFeatures: {
-        branding: {
-          enabled: false,
-          workspace_logo: null,
-        },
-      },
-    }
-    return selector ? selector(state) : state
-  },
-}))
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -108,18 +94,14 @@ vi.mock('@/next/link', () => ({
 }))
 
 const renderAccountDropdown = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
+  return renderWithSystemFeatures(<AccountDropdown />, {
+    systemFeatures: {
+      branding: {
+        enabled: false,
+        workspace_logo: '',
+      },
     },
   })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AccountDropdown />
-    </QueryClientProvider>,
-  )
 }
 
 describe('Header Account Dropdown Flow', () => {

@@ -1,12 +1,13 @@
 import type { RestoreCompleteData, RestoreIntentData, RestoreRequestData } from '../collaboration/types/collaboration'
 import type { SyncCallback } from './use-nodes-sync-draft'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -115,7 +116,10 @@ export const useLeaderRestore = () => {
     versionId: string
     callbacks: RestoreCallbacks | null
   } | null>(null)
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
 
   const requestRestore = useCallback((data: RestoreRequestData, callbacks?: RestoreCallbacks) => {
     if (!isCollaborationEnabled || !collaborationManager.isConnected() || collaborationManager.getIsLeader()) {

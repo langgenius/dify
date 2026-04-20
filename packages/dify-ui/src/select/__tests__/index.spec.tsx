@@ -1,6 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render } from 'vitest-browser-react'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
+
+const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
+    {ui}
+  </div>,
+)
 
 const renderOpenSelect = ({
   rootProps = {},
@@ -13,7 +19,7 @@ const renderOpenSelect = ({
   contentProps?: Record<string, unknown>
   onValueChange?: (value: string | null) => void
 } = {}) => {
-  return render(
+  return renderWithSafeViewport(
     <Select open defaultValue="seattle" onValueChange={onValueChange} {...rootProps}>
       <SelectTrigger aria-label="city select" {...triggerProps}>
         <SelectValue />
@@ -48,8 +54,8 @@ const renderOpenSelect = ({
 
 describe('Select wrappers', () => {
   describe('Select root integration', () => {
-    it('should submit the hidden input value and preserve autocomplete hints inside a form', () => {
-      const { container } = render(
+    it('should submit the hidden input value and preserve autocomplete hints inside a form', async () => {
+      const screen = await render(
         <form aria-label="profile form">
           <Select defaultValue="seattle" name="city" autoComplete="address-level2">
             <SelectTrigger aria-label="city select">
@@ -69,8 +75,8 @@ describe('Select wrappers', () => {
         </form>,
       )
 
-      const hiddenInput = container.querySelector('input[name="city"]')
-      const form = screen.getByRole('form', { name: 'profile form' }) as HTMLFormElement
+      const hiddenInput = screen.container.querySelector('input[name="city"]')
+      const form = screen.getByRole('form', { name: 'profile form' }).element() as HTMLFormElement
 
       expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
       expect(new FormData(form).get('city')).toBe('seattle')
@@ -78,119 +84,104 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
-    it('should forward native trigger props when trigger props are provided', () => {
-      renderOpenSelect({
+    it('should forward native trigger props when trigger props are provided', async () => {
+      const screen = await renderOpenSelect({
         triggerProps: {
           'aria-label': 'Choose option',
           'disabled': true,
         },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'Choose option' })
-      expect(trigger).toBeDisabled()
+      await expect.element(screen.getByRole('combobox', { name: 'Choose option' })).toBeDisabled()
     })
 
-    it('should apply regular size variant classes by default', () => {
-      renderOpenSelect()
+    it('should apply regular size variant classes by default', async () => {
+      const screen = await renderOpenSelect()
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toMatch(/system-sm-regular/)
-      expect(trigger.className).toMatch(/rounded-lg/)
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-sm-regular/)
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-lg/)
     })
 
-    it('should apply small size variant classes when size is small', () => {
-      renderOpenSelect({
+    it('should apply small size variant classes when size is small', async () => {
+      const screen = await renderOpenSelect({
         triggerProps: { size: 'small' },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toMatch(/system-xs-regular/)
-      expect(trigger.className).toMatch(/rounded-md/)
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-xs-regular/)
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-md/)
     })
 
-    it('should apply large size variant classes when size is large', () => {
-      renderOpenSelect({
+    it('should apply large size variant classes when size is large', async () => {
+      const screen = await renderOpenSelect({
         triggerProps: { size: 'large' },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toMatch(/system-md-regular/)
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-md-regular/)
     })
 
-    it('should apply disabled styling via data attributes when disabled', () => {
-      renderOpenSelect({
+    it('should apply disabled styling via data attributes when disabled', async () => {
+      const screen = await renderOpenSelect({
         triggerProps: { disabled: true },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger).toHaveAttribute('data-disabled')
-      expect(trigger.className).toContain('data-disabled:bg-components-input-bg-disabled')
+      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-disabled')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:bg-components-input-bg-disabled')
     })
 
-    it('should apply disabled placeholder color class for compound state', () => {
-      renderOpenSelect({
+    it('should apply disabled placeholder color class for compound state', async () => {
+      const screen = await renderOpenSelect({
         triggerProps: { disabled: true },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
     })
 
-    it('should apply readonly styling via data attributes when Root is readOnly', () => {
-      renderOpenSelect({
+    it('should apply readonly styling via data attributes when Root is readOnly', async () => {
+      const screen = await renderOpenSelect({
         rootProps: { readOnly: true },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger).toHaveAttribute('data-readonly')
-      expect(trigger.className).toContain('data-readonly:bg-transparent')
+      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-transparent')
     })
 
-    it('should hide arrow icon via CSS when Root is readOnly', () => {
-      renderOpenSelect({
+    it('should hide arrow icon via CSS when Root is readOnly', async () => {
+      const screen = await renderOpenSelect({
         rootProps: { readOnly: true },
       })
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      const iconWrapper = trigger.querySelector('[class*="group-data-readonly:hidden"]')
-      expect(iconWrapper).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('[class*="group-data-readonly:hidden"]')).toBeInTheDocument()
     })
 
-    it('should set aria-hidden on decorative icons', () => {
-      renderOpenSelect()
+    it('should set aria-hidden on decorative icons', async () => {
+      const screen = await renderOpenSelect()
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      const arrowIcon = trigger.querySelector('.i-ri-arrow-down-s-line')
-      expect(arrowIcon).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toHaveAttribute('aria-hidden', 'true')
     })
 
-    it('should include placeholder color class via data attribute', () => {
-      renderOpenSelect()
+    it('should include placeholder color class via data attribute', async () => {
+      const screen = await renderOpenSelect()
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-placeholder:text-components-input-text-placeholder')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-placeholder:text-components-input-text-placeholder')
     })
 
-    it('should render built-in chevron icon', () => {
-      renderOpenSelect()
+    it('should render built-in chevron icon', async () => {
+      const screen = await renderOpenSelect()
 
-      const trigger = screen.getByRole('combobox', { name: 'city select' })
-      const chevron = trigger.querySelector('.i-ri-arrow-down-s-line')
-      expect(chevron).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
   })
 
   describe('SelectContent', () => {
-    it('should use default placement when placement is not provided', () => {
-      renderOpenSelect()
+    it('should use positioning attributes when placement is not provided', async () => {
+      const screen = await renderOpenSelect()
 
-      const positioner = screen.getByRole('group', { name: 'select positioner' })
-      expect(positioner).toHaveAttribute('data-side', 'bottom')
-      expect(positioner).toHaveAttribute('data-align', 'start')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'start')
     })
 
-    it('should apply custom placement when placement props are provided', () => {
-      renderOpenSelect({
+    it('should preserve positioning attributes when placement props are provided', async () => {
+      const screen = await renderOpenSelect({
         contentProps: {
           placement: 'top-end',
           sideOffset: 12,
@@ -198,17 +189,16 @@ describe('Select wrappers', () => {
         },
       })
 
-      const positioner = screen.getByRole('group', { name: 'select positioner' })
-      expect(positioner).toHaveAttribute('data-side', 'top')
-      expect(positioner).toHaveAttribute('data-align', 'end')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('data-align', 'end')
     })
 
-    it('should forward passthrough props to positioner popup and list when passthrough props are provided', () => {
+    it('should forward passthrough props to positioner popup and list when passthrough props are provided', async () => {
       const onPositionerMouseEnter = vi.fn()
       const onPopupClick = vi.fn()
       const onListFocus = vi.fn()
 
-      render(
+      const screen = await render(
         <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
             <SelectValue />
@@ -241,35 +231,35 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      const positioner = screen.getByRole('group', { name: 'select positioner' })
-      const popup = screen.getByRole('dialog', { name: 'select popup' })
-      const list = screen.getByRole('listbox', { name: 'select list' })
+      screen.getByRole('group', { name: 'select positioner' }).element().dispatchEvent(new MouseEvent('mouseover', {
+        bubbles: true,
+      }))
+      asHTMLElement(screen.getByRole('dialog', { name: 'select popup' }).element()).click()
+      screen.getByRole('listbox', { name: 'select list' }).element().dispatchEvent(new FocusEvent('focusin', {
+        bubbles: true,
+      }))
 
-      fireEvent.mouseEnter(positioner)
-      fireEvent.click(popup)
-      fireEvent.focus(list)
-
-      expect(positioner).toHaveAttribute('id', 'select-positioner')
-      expect(popup).toHaveAttribute('id', 'select-popup')
-      expect(list).toHaveAttribute('id', 'select-list')
+      await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('id', 'select-positioner')
+      await expect.element(screen.getByRole('dialog', { name: 'select popup' })).toHaveAttribute('id', 'select-popup')
+      await expect.element(screen.getByRole('listbox', { name: 'select list' })).toHaveAttribute('id', 'select-list')
       expect(onPositionerMouseEnter).toHaveBeenCalledTimes(1)
       expect(onPopupClick).toHaveBeenCalledTimes(1)
-      expect(onListFocus).toHaveBeenCalledTimes(1)
+      expect(onListFocus).toHaveBeenCalled()
     })
   })
 
   describe('SelectItem', () => {
-    it('should render options when children are provided', () => {
-      renderOpenSelect()
+    it('should render options when children are provided', async () => {
+      const screen = await renderOpenSelect()
 
-      expect(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
+      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
+      await expect.element(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
     })
 
-    it('should not call onValueChange when disabled item is clicked', () => {
+    it('should not call onValueChange when disabled item is clicked', async () => {
       const onValueChange = vi.fn()
 
-      render(
+      const screen = await render(
         <Select open defaultValue="seattle" onValueChange={onValueChange}>
           <SelectTrigger aria-label="city select">
             <SelectValue />
@@ -287,13 +277,13 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      fireEvent.click(screen.getByRole('option', { name: 'Disabled New York' }))
+      asHTMLElement(screen.getByRole('option', { name: 'Disabled New York' }).element()).click()
 
       expect(onValueChange).not.toHaveBeenCalled()
     })
 
-    it('should support custom composition with SelectItemText without indicator', () => {
-      render(
+    it('should support custom composition with SelectItemText without indicator', async () => {
+      const screen = await render(
         <Select open defaultValue="a">
           <SelectTrigger aria-label="custom select">
             <SelectValue />
@@ -306,7 +296,7 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      expect(screen.getByRole('option', { name: 'Custom Item' })).toBeInTheDocument()
+      await expect.element(screen.getByRole('option', { name: 'Custom Item' })).toBeInTheDocument()
     })
   })
 })

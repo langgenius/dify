@@ -37,6 +37,10 @@
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
     },
+    "./meter": {
+      "types": "./src/meter/index.tsx",
+      "import": "./src/meter/index.tsx"
+    },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
@@ -99,15 +103,12 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
-    "@testing-library/jest-dom": "catalog:",
-    "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
-    "happy-dom": "catalog:",
+    "playwright": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "storybook": "catalog:",
@@ -115,6 +116,6 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vitest-browser-react": "catalog:"
   }
 }

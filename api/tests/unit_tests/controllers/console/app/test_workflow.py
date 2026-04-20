@@ -31,7 +31,7 @@ def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     file_list = [
         File(
             tenant_id="t1",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="http://u",
         )
