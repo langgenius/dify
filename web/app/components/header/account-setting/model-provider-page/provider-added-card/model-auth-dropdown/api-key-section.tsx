@@ -1,7 +1,7 @@
 import type { Credential, CustomModel, ModelProvider } from '../../declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 
 type ApiKeySectionProps = {

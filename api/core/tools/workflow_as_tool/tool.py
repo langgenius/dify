@@ -357,7 +357,10 @@ class WorkflowTool(Tool):
 
     def _update_file_mapping(self, file_dict: dict[str, Any]) -> dict[str, Any]:
         file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
-        transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
+        transfer_method_value = file_dict.get("transfer_method")
+        if not isinstance(transfer_method_value, str):
+            raise ValueError("Workflow file mapping is missing a valid transfer_method")
+        transfer_method = FileTransferMethod.value_of(transfer_method_value)
         match transfer_method:
             case FileTransferMethod.TOOL_FILE:
                 file_dict["tool_file_id"] = file_id

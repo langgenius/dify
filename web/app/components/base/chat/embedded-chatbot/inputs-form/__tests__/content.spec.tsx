@@ -16,7 +16,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
 
 }))
 
@@ -198,6 +198,17 @@ describe('InputsFormContent', () => {
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+  })
+
+  it('should render select dropdown above the settings dialog layer', async () => {
+    render(<InputsFormContent />)
+    const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
+    if (!selectTrigger)
+      throw new Error('Select trigger not found')
+
+    await user.click(selectTrigger)
+
+    expect(screen.getByText('Option 1').closest('.z-\\[60\\]')).not.toBeNull()
   })
 
   it('should handle single file upload change', async () => {

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
@@ -6,7 +7,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { downloadUrl } from '@/utils/download'
 
 type ImagePreviewProps = {

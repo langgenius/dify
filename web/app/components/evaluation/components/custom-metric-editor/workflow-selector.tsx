@@ -2,24 +2,24 @@
 
 import type { AvailableEvaluationWorkflow } from '@/types/evaluation'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteScroll } from 'ahooks'
-import * as React from 'react'
-import { useDeferredValue, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Loading from '@/app/components/base/loading'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
 import {
   ScrollAreaContent,
   ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
-} from '@/app/components/base/ui/scroll-area'
+} from '@langgenius/dify-ui/scroll-area'
+import { useInfiniteScroll } from 'ahooks'
+import * as React from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Loading from '@/app/components/base/loading'
 import { useAvailableEvaluationWorkflows } from '@/service/use-evaluation'
 
 type WorkflowSelectorProps = {
@@ -119,7 +119,7 @@ const WorkflowSelector = ({
               </div>
               <div className="min-w-0 flex-1 px-1 py-1 text-left">
                 <div className={cn(
-                  'system-sm-regular truncate',
+                  'truncate system-sm-regular',
                   currentWorkflowName ? 'text-text-secondary' : 'text-components-input-text-placeholder',
                 )}
                 >
@@ -158,7 +158,7 @@ const WorkflowSelector = ({
               )
             : !workflows.length
                 ? (
-                    <div className="system-sm-regular flex h-[120px] items-center justify-center text-text-tertiary">
+                    <div className="flex h-[120px] items-center justify-center system-sm-regular text-text-tertiary">
                       {t('noData', { ns: 'common' })}
                     </div>
                   )
@@ -184,7 +184,7 @@ const WorkflowSelector = ({
                                   <span aria-hidden="true" className="i-ri-equalizer-2-line h-3.5 w-3.5 text-text-tertiary" />
                                 </div>
                               </div>
-                              <div className="system-sm-medium min-w-0 flex-1 truncate px-1 py-1 text-text-secondary">
+                              <div className="min-w-0 flex-1 truncate px-1 py-1 system-sm-medium text-text-secondary">
                                 {getWorkflowName(workflow)}
                               </div>
                               {workflow.id === value && (

@@ -1,9 +1,9 @@
 import type { MockedFunction, MockInstance } from 'vitest'
 import type { DatasetConfigs } from '@/models/debug'
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,

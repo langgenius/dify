@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -12,7 +13,7 @@ const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
 
-let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string } }> } } | null = null
+let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
 
@@ -167,6 +168,182 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('overview.appInfo.launch'))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(`https://example.com${basePath}/chat/access-token`, '_blank')
+  })
+
+  it('should open the workflow web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/workflow/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden workflow inputs from the config action before launching the workflow web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Secret'), {
+      target: { value: 'top-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/workflow/access-token?secret=${encodeURIComponent('top-secret')}`,
+        '_blank',
+      )
+    })
+  })
+
+  it('should open the chat web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/chat/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden chatflow inputs from the config action before launching the chat web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Chat Secret'), {
+      target: { value: 'chat-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/chat/access-token?chat_secret=${encodeURIComponent('chat-secret')}`,
+        '_blank',
+      )
+    })
   })
 
   it('should show the access-control not-set badge when specific access has no subjects', () => {

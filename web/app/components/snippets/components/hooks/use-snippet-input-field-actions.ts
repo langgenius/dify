@@ -2,7 +2,7 @@ import type { SnippetInputField } from '@/models/snippet'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useSnippetDetailStore } from '../../store'
 

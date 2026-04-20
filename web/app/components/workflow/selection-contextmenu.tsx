@@ -1,6 +1,15 @@
 import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
   memo,
@@ -11,20 +20,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
-import { cn } from '@langgenius/dify-ui/cn'
 import CreateSnippetDialog from './create-snippet-dialog'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -185,8 +187,8 @@ const distributeNodes = (
   const lastNode = sortedNodes[sortedNodes.length - 1]
 
   const totalGap = isHorizontal
-    ? lastNode.position.x + (lastNode.width || 0) - firstNode.position.x
-    : lastNode.position.y + (lastNode.height || 0) - firstNode.position.y
+    ? lastNode!.position.x + (lastNode!.width || 0) - firstNode!.position.x
+    : lastNode!.position.y + (lastNode!.height || 0) - firstNode!.position.y
 
   const fixedSpace = sortedNodes.reduce((sum, node) =>
     sum + (isHorizontal ? (node.width || 0) : (node.height || 0)), 0)
@@ -197,12 +199,12 @@ const distributeNodes = (
 
   return produce(nodes, (draft) => {
     let currentPosition = isHorizontal
-      ? firstNode.position.x + (firstNode.width || 0)
-      : firstNode.position.y + (firstNode.height || 0)
+      ? firstNode!.position.x + (firstNode!.width || 0)
+      : firstNode!.position.y + (firstNode!.height || 0)
 
     for (let index = 1; index < sortedNodes.length - 1; index++) {
       const nodeToAlign = sortedNodes[index]
-      const currentNode = draft.find(node => node.id === nodeToAlign.id)
+      const currentNode = draft.find(node => node.id === nodeToAlign!.id)
       if (!currentNode)
         continue
 
@@ -211,14 +213,14 @@ const distributeNodes = (
         currentNode.position.x = nextX
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.x = nextX
-        currentPosition = nextX + (nodeToAlign.width || 0)
+        currentPosition = nextX + (nodeToAlign!.width || 0)
       }
       else {
         const nextY = currentPosition + spacing
         currentNode.position.y = nextY
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.y = nextY
-        currentPosition = nextY + (nodeToAlign.height || 0)
+        currentPosition = nextY + (nodeToAlign!.height || 0)
       }
     }
   })
@@ -271,11 +273,11 @@ const getSelectedSnippetGraph = (
           position: nextPosition,
           positionAbsolute: node.positionAbsolute
             ? (isRootNode
-                ? {
-                    x: node.positionAbsolute.x - minRootX,
-                    y: node.positionAbsolute.y - minRootY,
-                  }
-                : node.positionAbsolute)
+              ? {
+                x: node.positionAbsolute.x - minRootX,
+                y: node.positionAbsolute.y - minRootY,
+              }
+              : node.positionAbsolute)
             : undefined,
           selected: false,
           data: {

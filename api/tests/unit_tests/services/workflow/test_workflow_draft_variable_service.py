@@ -145,8 +145,8 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference="upload-1",
             filename="test.txt",

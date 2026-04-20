@@ -1,16 +1,16 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   title: string
@@ -71,7 +71,7 @@ const Operation: FC<Props> = ({
         )}
         {isShowDelete && (
           <DropdownMenuItem
-            destructive
+            variant="destructive"
             className="system-md-regular"
             onClick={() => handleDeferredAction(onDelete)}
           >

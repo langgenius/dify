@@ -59,7 +59,7 @@ from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
 )
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 

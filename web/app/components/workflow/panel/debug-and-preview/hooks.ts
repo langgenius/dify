@@ -6,6 +6,7 @@ import type {
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import {
@@ -26,7 +27,6 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   CUSTOM_NODE,
 } from '@/app/components/workflow/constants'

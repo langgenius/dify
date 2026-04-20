@@ -5,7 +5,7 @@ import { act } from 'react'
 import * as React from 'react'
 import TestRunMenu, { TriggerType } from '../test-run-menu'
 
-vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
   const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
 
@@ -41,7 +41,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
       return open ? <div>{children}</div> : null
     },
     DropdownMenuGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuGroupLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
+    DropdownMenuLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
     DropdownMenuSeparator: ({ className }: { className?: string }) => <div className={className} data-testid="dropdown-separator" />,
     DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement>, className?: string }) => {
       const { setOpen } = useDropdownMenuContext()

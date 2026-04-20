@@ -4,6 +4,29 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigModalFormFields from '../form-fields'
 
+vi.mock('react-i18next', async () => {
+  const React = await import('react')
+  return {
+    useTranslation: () => ({
+      t: (key: string, options?: Record<string, unknown>) => {
+        const ns = options?.ns as string | undefined
+        return ns ? `${ns}.${key}` : key
+      },
+      i18n: { language: 'en', changeLanguage: vi.fn() },
+    }),
+    Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
+      <span data-i18n-key={i18nKey}>
+        {i18nKey}
+        {components?.docLink}
+      </span>
+    ),
+  }
+})
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
+}))
+
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: Array<Record<string, unknown>>) => void }) => (
     <button
@@ -44,8 +67,8 @@ vi.mock('@/app/components/base/select', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
   return {
     ...actual,
@@ -63,6 +86,12 @@ vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
     SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
   }
 })
+
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
 
 vi.mock('../field', () => ({
   default: ({ children, title }: { children: ReactNode, title: string }) => (
@@ -167,6 +196,15 @@ describe('ConfigModalFormFields', () => {
   })
 
   it('should wire file, json schema, and visibility controls', () => {
+    const textInputProps = createBaseProps()
+    const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
+    expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
+    expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input')
+    expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
+    textInputView.unmount()
+
     const singleFileProps = createBaseProps()
     singleFileProps.tempPayload = {
       ...singleFileProps.tempPayload,
@@ -175,7 +213,9 @@ describe('ConfigModalFormFields', () => {
       allowed_file_extensions: [],
       allowed_file_upload_methods: ['remote_url'],
     }
-    render(<ConfigModalFormFields {...singleFileProps} />)
+    const singleFileView = render(<ConfigModalFormFields {...singleFileProps} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
     fireEvent.click(screen.getAllByText('unchecked')[0]!)
@@ -186,7 +226,8 @@ describe('ConfigModalFormFields', () => {
       fileId: 'file-1',
     }))
     expect(singleFileProps.payloadChangeHandlers.required).toHaveBeenCalledWith(true)
-    expect(singleFileProps.payloadChangeHandlers.hide).toHaveBeenCalledWith(true)
+    expect(singleFileProps.payloadChangeHandlers.hide).not.toHaveBeenCalled()
+    singleFileView.unmount()
 
     const multiFileProps = createBaseProps()
     multiFileProps.tempPayload = {
@@ -197,6 +238,7 @@ describe('ConfigModalFormFields', () => {
       allowed_file_upload_methods: ['remote_url'],
     }
     render(<ConfigModalFormFields {...multiFileProps} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('multi-file-setting'))
     fireEvent.click(screen.getAllByText('upload-file')[1]!)
     expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })

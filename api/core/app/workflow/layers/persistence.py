@@ -350,7 +350,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
         execution.outputs = execution.outputs or runtime_state.outputs
-        execution.exceptions_count = runtime_state.exceptions_count
+        execution.exceptions_count = max(execution.exceptions_count, runtime_state.exceptions_count)
 
     def _update_node_execution(
         self,

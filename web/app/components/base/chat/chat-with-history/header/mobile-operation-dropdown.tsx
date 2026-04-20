@@ -1,12 +1,12 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
 type Props = {
   handleResetChat: () => void

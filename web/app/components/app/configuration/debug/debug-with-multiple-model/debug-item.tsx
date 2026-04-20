@@ -1,15 +1,15 @@
 import type { CSSProperties, FC } from 'react'
 import type { ModelAndParameter } from '../types'
-import { memo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
@@ -84,7 +84,7 @@ const DebugItem: FC<DebugItemProps> = ({
       style={style}
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b-[0.5px] border-divider-regular px-3">
-        <div className="flex h-5 w-6 items-center justify-center font-medium italic text-text-tertiary">
+        <div className="flex h-5 w-6 items-center justify-center font-medium text-text-tertiary italic">
           #
           {index + 1}
         </div>
@@ -115,7 +115,7 @@ const DebugItem: FC<DebugItemProps> = ({
             {showRemove && (
               <>
                 {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
-                <DropdownMenuItem destructive className="system-md-regular" onClick={handleRemove}>
+                <DropdownMenuItem variant="destructive" className="system-md-regular" onClick={handleRemove}>
                   {t('operation.remove', { ns: 'common' })}
                 </DropdownMenuItem>
               </>

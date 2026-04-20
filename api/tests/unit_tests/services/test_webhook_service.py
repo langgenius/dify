@@ -567,7 +567,6 @@ class TestWebhookServiceUnit:
 from types import SimpleNamespace
 from typing import Any, cast
 
-from graphon.variables.types import SegmentType
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -576,6 +575,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
+from graphon.variables.types import SegmentType
 from models.enums import AppTriggerStatus
 from models.model import App
 from models.trigger import WorkflowWebhookTrigger

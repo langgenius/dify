@@ -1,4 +1,5 @@
 import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -54,11 +54,11 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 const {
-  mockGetProcessedInputsFromUrlParams,
+  mockGetRawInputsFromUrlParams,
   mockGetProcessedSystemVariablesFromUrlParams,
   mockGetProcessedUserVariablesFromUrlParams,
 } = vi.hoisted(() => ({
-  mockGetProcessedInputsFromUrlParams: vi.fn(),
+  mockGetRawInputsFromUrlParams: vi.fn(),
   mockGetProcessedSystemVariablesFromUrlParams: vi.fn(),
   mockGetProcessedUserVariablesFromUrlParams: vi.fn(),
 }))
@@ -67,7 +67,7 @@ vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
-    getProcessedInputsFromUrlParams: mockGetProcessedInputsFromUrlParams,
+    getRawInputsFromUrlParams: mockGetRawInputsFromUrlParams,
     getProcessedSystemVariablesFromUrlParams: mockGetProcessedSystemVariablesFromUrlParams,
     getProcessedUserVariablesFromUrlParams: mockGetProcessedUserVariablesFromUrlParams,
   }
@@ -152,7 +152,7 @@ describe('useEmbeddedChatbot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Re-establish default mock implementations after clearAllMocks
-    mockGetProcessedInputsFromUrlParams.mockResolvedValue({})
+    mockGetRawInputsFromUrlParams.mockResolvedValue({})
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
     mockGetProcessedUserVariablesFromUrlParams.mockResolvedValue({})
     localStorage.removeItem(CONVERSATION_ID_INFO)
@@ -409,7 +409,7 @@ describe('useEmbeddedChatbot', () => {
     }
 
     it('should map various types properly with max_length truncation when defaults supplied via URL', async () => {
-      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
+      mockGetRawInputsFromUrlParams.mockResolvedValue({
         p1: 'toolongparagraph', // truncated to 5
         n1: '99',
         c1: true,
@@ -422,7 +422,7 @@ describe('useEmbeddedChatbot', () => {
 
       // Wait for the mock to be called
       await waitFor(() => {
-        expect(mockGetProcessedInputsFromUrlParams).toHaveBeenCalled()
+        expect(mockGetRawInputsFromUrlParams).toHaveBeenCalled()
       })
 
       await waitFor(() => {
@@ -623,7 +623,7 @@ describe('useEmbeddedChatbot', () => {
           { checkbox: { variable: 'c1', default: false } },
         ],
       } as unknown as ChatConfig
-      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
+      mockGetRawInputsFromUrlParams.mockResolvedValue({
         n1: 'not-a-number',
         c1: 'true',
       })
@@ -640,7 +640,7 @@ describe('useEmbeddedChatbot', () => {
           { select: { variable: 's1', options: ['A'], default: 'A' } },
         ],
       } as unknown as ChatConfig
-      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
+      mockGetRawInputsFromUrlParams.mockResolvedValue({
         s1: 'INVALID',
       })
 

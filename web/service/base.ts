@@ -27,8 +27,8 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
-import { toast } from '@/app/components/base/ui/toast'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'

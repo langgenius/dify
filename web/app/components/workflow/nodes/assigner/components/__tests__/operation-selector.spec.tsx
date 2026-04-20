@@ -4,7 +4,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { WriteMode } from '../../types'
 import OperationSelector from '../operation-selector'
 
-vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
   const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
 
@@ -47,7 +47,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
       return open ? <div>{children}</div> : null
     },
     DropdownMenuGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuGroupLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuSeparator: () => <div data-testid="dropdown-separator" />,
     DropdownMenuItem: ({
       children,

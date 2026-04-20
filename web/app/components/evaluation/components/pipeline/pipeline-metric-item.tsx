@@ -2,10 +2,10 @@
 
 import type { MetricOption } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { DEFAULT_PIPELINE_METRIC_THRESHOLD } from '../../store-utils'
 
@@ -37,7 +37,7 @@ const PipelineMetricItem = ({
         onClick={onToggle}
       >
         <Checkbox checked={selected} />
-        <span className="system-sm-medium truncate text-text-secondary">{metric.label}</span>
+        <span className="truncate system-sm-medium text-text-secondary">{metric.label}</span>
         <Tooltip>
           <TooltipTrigger
             render={(

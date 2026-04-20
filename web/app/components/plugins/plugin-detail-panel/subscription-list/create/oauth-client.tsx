@@ -1,5 +1,7 @@
 'use client'
 import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiClipboardLine,
   RiInformation2Fill,
@@ -7,8 +9,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import Modal from '@/app/components/base/modal/modal'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { usePluginStore } from '../../store'
 import { ClientTypeEnum, useOAuthClientState } from './hooks/use-oauth-client-state'

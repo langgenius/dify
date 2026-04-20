@@ -1,10 +1,10 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'

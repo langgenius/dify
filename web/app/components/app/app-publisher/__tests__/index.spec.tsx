@@ -17,6 +17,7 @@ const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
 const mockConvertWorkflowType = vi.fn()
 const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
+const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
@@ -111,7 +112,7 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -124,11 +125,11 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
     ? (
-        <div data-testid="embedded-modal">
-          embedded modal
-          <button onClick={onClose}>close-embedded-modal</button>
-        </div>
-      )
+      <div data-testid="embedded-modal">
+        embedded modal
+        <button onClick={onClose}>close-embedded-modal</button>
+      </div>
+    )
     : null),
 }))
 
@@ -182,6 +183,12 @@ vi.mock('../sections', () => ({
       <div>
         <button onClick={props.handleEmbed}>publisher-embed</button>
         <button onClick={() => void props.handleOpenInExplore()}>publisher-open-in-explore</button>
+        {props.handleOpenRunConfig && (
+          <>
+            <button onClick={() => props.handleOpenRunConfig(props.appURL)}>publisher-run-config</button>
+            <button onClick={() => props.handleOpenRunConfig(`${props.appURL}?mode=batch`)}>publisher-batch-run-config</button>
+          </>
+        )}
       </div>
     )
   },
@@ -220,6 +227,10 @@ describe('AppPublisher', () => {
     })
     mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
       await resolver()
+    })
+    Object.defineProperty(window, 'open', {
+      writable: true,
+      value: mockWindowOpen,
     })
   })
 
@@ -275,6 +286,75 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('publisher-embed'))
 
     expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
+  })
+
+  it('should collect hidden inputs before opening published run links from config actions', async () => {
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        inputs={[{
+          variable: 'secret',
+          label: 'Secret',
+          type: 'text-input',
+          required: true,
+          hide: true,
+          default: '',
+        } as any]}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-run-config'))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Secret'), {
+      target: { value: 'top-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/chat/token-1?secret=${encodeURIComponent('top-secret')}`,
+        '_blank',
+      )
+    })
+  })
+
+  it('should open batch run config links with the configured hidden inputs', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        inputs={[{
+          variable: 'batch_secret',
+          label: 'Batch Secret',
+          type: 'text-input',
+          required: true,
+          hide: true,
+          default: '',
+        } as any]}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-batch-run-config'))
+
+    fireEvent.change(screen.getByLabelText('Batch Secret'), {
+      target: { value: 'batch-value' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/workflow/token-1?mode=batch&batch_secret=${encodeURIComponent('batch-value')}`,
+        '_blank',
+      )
+    })
   })
 
   it('should close embedded and access control panels through child callbacks', async () => {

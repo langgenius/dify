@@ -151,6 +151,7 @@
   "common.branch": "فرع",
   "common.chooseDSL": "اختر ملف DSL",
   "common.chooseStartNodeToRun": "اختر عقدة البداية للتشغيل",
+  "common.clipboardVersionCompatibilityWarning": "تم نسخ هذا المحتوى من إصدار مختلف من تطبيق Dify. قد تكون بعض الأجزاء غير متوافقة.",
   "common.commentMode": "وضع التعليقات",
   "common.configure": "تكوين",
   "common.configureRequired": "التكوين مطلوب",

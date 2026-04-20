@@ -1,14 +1,6 @@
 {
-  "extends": "@dify/tsconfig/base.json",
+  "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
-    "outDir": "dist",
-    "sourceMap": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true
-  },
-  "include": ["src"]
+    "types": ["vite-plus/test/globals"]
+  }
 }

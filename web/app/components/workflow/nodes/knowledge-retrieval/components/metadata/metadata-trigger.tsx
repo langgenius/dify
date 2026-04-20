@@ -1,4 +1,5 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiFilter3Line } from '@remixicon/react'
 import {
   useEffect,
@@ -10,7 +11,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import MetadataPanel from './metadata-panel'
 
 const MetadataTrigger = ({

@@ -1,8 +1,8 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
 

@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import {
   cloneElement,
   isValidElement,
   useEffect,
 } from 'react'
-import { DropdownMenuItem } from '@/app/components/base/ui/dropdown-menu'
 import ShortcutsName from '../shortcuts-name'
 
 export type ShortcutMapping = {

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBook2Line,
   RiFileEditLine,
@@ -11,7 +12,6 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import { Button } from '@/app/components/base/ui/button'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'

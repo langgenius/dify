@@ -4,7 +4,7 @@ import type { SortableItem } from '@/app/components/rag-pipeline/components/pane
 import type { SnippetInputField } from '@/models/snippet'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import FieldListContainer from '@/app/components/rag-pipeline/components/panel/input-field/field-list/field-list-container'
 
 type SnippetInputFieldPanelProps = {

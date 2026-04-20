@@ -1,14 +1,14 @@
 import type { ChangeEvent, DragEvent } from 'react'
 import type { InputField } from './input-fields-utils'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getExampleValue } from './input-fields-utils'
 
 type UploadRunPopoverProps = {
@@ -92,10 +92,10 @@ const UploadRunPopover = ({
                       <span aria-hidden="true" className="i-ri-file-excel-fill h-6 w-6 text-util-colors-green-green-600" />
                     </div>
                     <div className="min-w-0 flex-1 py-1 pr-2">
-                      <div className="system-xs-medium truncate text-text-secondary">
+                      <div className="truncate system-xs-medium text-text-secondary">
                         {currentFileName}
                       </div>
-                      <div className="system-2xs-medium mt-0.5 flex h-3 items-center gap-1 text-text-tertiary">
+                      <div className="mt-0.5 flex h-3 items-center gap-1 system-2xs-medium text-text-tertiary">
                         {!!currentFileExtension && <span className="uppercase">{currentFileExtension}</span>}
                         {!!currentFileExtension && !!currentFileSize && <span className="text-text-quaternary">·</span>}
                         {!!currentFileSize && <span>{currentFileSize}</span>}
@@ -138,7 +138,7 @@ const UploadRunPopover = ({
                         {' '}
                         {t('batch.uploadDropzoneSuffix')}
                       </div>
-                      <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                      <div className="mt-0.5 system-xs-regular text-text-tertiary">
                         {t('batch.uploadDropzoneDownloadPrefix')}
                         {' '}
                         <button
@@ -159,10 +159,10 @@ const UploadRunPopover = ({
                 <div className="flex overflow-hidden rounded-lg border border-divider-regular">
                   {previewFields.map((field, index) => (
                     <div key={field.name} className={cn('min-w-0 flex-1', index < previewFields.length - 1 && 'border-r border-divider-subtle')}>
-                      <div className="system-xs-medium-uppercase min-h-8 border-b border-divider-regular px-3 py-2 text-text-tertiary">
+                      <div className="min-h-8 border-b border-divider-regular px-3 py-2 system-xs-medium-uppercase text-text-tertiary">
                         {field.name}
                       </div>
-                      <div className="system-sm-regular min-h-8 px-3 py-2 text-text-secondary">
+                      <div className="min-h-8 px-3 py-2 system-sm-regular text-text-secondary">
                         {getExampleValue(field, booleanExampleValue)}
                       </div>
                     </div>

@@ -151,6 +151,7 @@
   "common.branch": "กิ่ง",
   "common.chooseDSL": "เลือกไฟล์ DSL",
   "common.chooseStartNodeToRun": "เลือกโหนดเริ่มต้นเพื่อรัน",
+  "common.clipboardVersionCompatibilityWarning": "เนื้อหานี้ถูกคัดลอกจากแอป Dify คนละเวอร์ชัน บางส่วนอาจไม่เข้ากัน",
   "common.commentMode": "โหมดความคิดเห็น",
   "common.configure": "กําหนดค่า",
   "common.configureRequired": "กําหนดค่าที่จําเป็น",

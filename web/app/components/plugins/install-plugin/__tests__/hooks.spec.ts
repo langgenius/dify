@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { checkForUpdates, fetchReleases, handleUpload } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((...args: unknown[]) => mockNotify(...args), {
     success: (...args: unknown[]) => mockNotify(...args),
     error: (...args: unknown[]) => mockNotify(...args),

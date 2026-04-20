@@ -140,8 +140,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
 
     start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
-        id=start_config["id"],
-        config=start_config,
+        node_id=start_config["id"],
+        config=StartNodeData(title="Start", variables=[]),
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -155,8 +155,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
     human_a = HumanInputNode(
-        id=human_a_config["id"],
-        config=human_a_config,
+        node_id=human_a_config["id"],
+        config=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
@@ -165,8 +165,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
     human_b = HumanInputNode(
-        id=human_b_config["id"],
-        config=human_b_config,
+        node_id=human_b_config["id"],
+        config=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
@@ -183,8 +183,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     )
     end_config = {"id": "end", "data": end_data.model_dump()}
     end_node = EndNode(
-        id=end_config["id"],
-        config=end_config,
+        node_id=end_config["id"],
+        config=end_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

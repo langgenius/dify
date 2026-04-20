@@ -1,6 +1,7 @@
 import type { Operation } from './app-operations'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { App, AppSSO } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -14,7 +15,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import ContentDialog from '@/app/components/base/content-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'
@@ -61,17 +61,17 @@ const AppInfoDetailPanel = ({
   const secondaryOperations = useMemo<Operation[]>(() => [
     ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
       ? [{
-          id: 'import',
-          title: t('common.importDSL', { ns: 'workflow' }),
-          icon: <RiFileUploadLine />,
-          onClick: () => openModal('importDSL'),
-        }]
+        id: 'import',
+        title: t('common.importDSL', { ns: 'workflow' }),
+        icon: <RiFileUploadLine />,
+        onClick: () => openModal('importDSL'),
+      }]
       : [],
     {
       id: 'divider-1',
       title: '',
       icon: <></>,
-      onClick: () => {},
+      onClick: () => { },
       type: 'divider' as const,
     },
     {
@@ -97,7 +97,7 @@ const AppInfoDetailPanel = ({
     <ContentDialog
       show={show}
       onClose={onClose}
-      className="absolute top-2 bottom-2 left-2 flex w-[420px] flex-col rounded-2xl p-0!"
+      className="absolute top-2 bottom-2 left-2 flex w-[452px] max-w-[calc(100vw-1rem)] flex-col rounded-2xl p-0!"
     >
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">
@@ -145,8 +145,9 @@ const AppInfoDetailPanel = ({
             <span className="system-sm-medium text-text-tertiary">{switchOperation.title}</span>
           </Button>
         </div>
-      )}
-    </ContentDialog>
+      )
+      }
+    </ContentDialog >
   )
 }
 

@@ -84,10 +84,10 @@ class ConversationVariableResponse(ResponseModel):
     def normalize_value_type(cls, value: Any) -> str:
         exposed_type = getattr(value, "exposed_type", None)
         if callable(exposed_type):
-            return str(exposed_type().value)
+            return str(exposed_type())
         if isinstance(value, str):
             try:
-                return str(SegmentType(value).exposed_type().value)
+                return str(SegmentType(value).exposed_type())
             except ValueError:
                 return value
         try:

@@ -46,4 +46,26 @@ describe('SuggestedAction', () => {
 
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
+
+  it('should render and trigger the trailing action button when configured', () => {
+    const handleActionClick = vi.fn()
+
+    render(
+      <SuggestedAction
+        link="https://example.com/docs"
+        actionButton={{
+          ariaLabel: 'Configure action',
+          icon: <span>config</span>,
+          onClick: handleActionClick,
+        }}
+      >
+        Configurable action
+      </SuggestedAction>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure action' }))
+
+    expect(screen.getByRole('link', { name: 'Configurable action' })).toHaveAttribute('href', 'https://example.com/docs')
+    expect(handleActionClick).toHaveBeenCalledTimes(1)
+  })
 })

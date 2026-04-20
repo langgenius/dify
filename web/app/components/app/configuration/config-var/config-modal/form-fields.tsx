@@ -3,11 +3,6 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
-import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
-import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import {
   Select,
   SelectContent,
@@ -16,11 +11,20 @@ import {
   SelectItemText,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import { RiQuestionLine } from '@remixicon/react'
+import * as React from 'react'
+import { Trans } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -68,6 +72,8 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   t,
 }) => {
   const { type, label, variable } = tempPayload
+  const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const docLink = useDocLink()
 
   return (
     <div className="space-y-2">
@@ -105,7 +111,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.textInput && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
@@ -126,7 +132,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
             type="number"
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
@@ -186,7 +192,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </>
       )}
 
-      {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
+      {isFileInput && (
         <>
           <FileUploadSetting
             payload={tempPayload as UploadFileSetting}
@@ -227,14 +233,41 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
+        <Checkbox checked={tempPayload.required} disabled={!isFileInput && tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
       </div>
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-        <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
-      </div>
+      {!isFileInput && (
+        <div className="mt-5! flex h-6 items-center space-x-2">
+          <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
+          <div className="flex items-center gap-1">
+            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="flex h-4 w-4 items-center justify-center">
+                  <RiQuestionLine className="h-3.5 w-3.5 text-text-tertiary" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <Trans
+                  i18nKey="variableConfig.hiddenDescription"
+                  ns="appDebug"
+                  components={{
+                    docLink: (
+                      <a
+                        href={docLink('/use-dify/nodes/user-input')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-accent hover:underline"
+                      />
+                    ),
+                  }}
+                />
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

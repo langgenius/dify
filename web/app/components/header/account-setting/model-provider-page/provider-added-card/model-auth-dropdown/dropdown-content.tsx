@@ -1,7 +1,5 @@
 import type { Credential, ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CredentialPanelState } from '../use-credential-panel-state'
-import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,7 +8,9 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum } from '../../declarations'
 import { useAuth } from '../../model-auth/hooks'
 import ApiKeySection from './api-key-section'

@@ -5,13 +5,13 @@ import type { NodeInfo } from '@/types/evaluation'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useEvaluationStore } from '../../store'
 import { dedupeNodeInfoList, getMetricVisual, getNodeVisual, getToneClasses } from '../metric-selector/utils'
 
@@ -76,37 +76,37 @@ const BuiltinMetricCard = ({
         <div className="flex flex-wrap gap-1 px-3 pt-1 pb-3">
           {selectedNodeInfoList.length
             ? selectedNodeInfoList.map((nodeInfo) => {
-                const nodeVisual = getNodeVisual(nodeInfo)
-                const nodeToneClasses = getToneClasses(nodeVisual.tone)
+              const nodeVisual = getNodeVisual(nodeInfo)
+              const nodeToneClasses = getToneClasses(nodeVisual.tone)
 
-                return (
-                  <div
-                    key={nodeInfo.node_id}
-                    className="inline-flex min-w-[18px] items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1.5 shadow-xs"
-                  >
-                    <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
-                      <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
-                    </div>
-                    <span className="system-xs-regular px-1 text-text-primary">{nodeInfo.title}</span>
-                    <button
-                      type="button"
-                      className="flex h-4 w-4 items-center justify-center rounded-sm text-text-quaternary transition-colors hover:text-text-secondary"
-                      aria-label={nodeInfo.title}
-                      onClick={() => updateBuiltinMetric(
-                        resourceType,
-                        resourceId,
-                        metric.optionId,
-                        selectedNodeInfoList.filter(item => item.node_id !== nodeInfo.node_id),
-                      )}
-                    >
-                      <span aria-hidden="true" className="i-ri-close-line h-3.5 w-3.5" />
-                    </button>
+              return (
+                <div
+                  key={nodeInfo.node_id}
+                  className="inline-flex min-w-[18px] items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1.5 shadow-xs"
+                >
+                  <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
+                    <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
                   </div>
-                )
-              })
+                  <span className="system-xs-regular px-1 text-text-primary">{nodeInfo.title}</span>
+                  <button
+                    type="button"
+                    className="flex h-4 w-4 items-center justify-center rounded-sm text-text-quaternary transition-colors hover:text-text-secondary"
+                    aria-label={nodeInfo.title}
+                    onClick={() => updateBuiltinMetric(
+                      resourceType,
+                      resourceId,
+                      metric.optionId,
+                      selectedNodeInfoList.filter(item => item.node_id !== nodeInfo.node_id),
+                    )}
+                  >
+                    <span aria-hidden="true" className="i-ri-close-line h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )
+            })
             : (
-                <span className="system-xs-regular px-1 text-text-tertiary">{t('metrics.nodesAll')}</span>
-              )}
+              <span className="system-xs-regular px-1 text-text-tertiary">{t('metrics.nodesAll')}</span>
+            )}
 
           {shouldShowAddNode && (
             <DropdownMenu>

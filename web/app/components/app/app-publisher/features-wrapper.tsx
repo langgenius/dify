@@ -2,13 +2,6 @@ import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { produce } from 'immer'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import AppPublisher from '@/app/components/app/app-publisher'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -17,7 +10,14 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppPublisher from '@/app/components/app/app-publisher'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 

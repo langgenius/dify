@@ -1,10 +1,10 @@
 'use client'
 import type { SuccessInvitationResult } from '.'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {

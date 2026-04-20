@@ -41,9 +41,9 @@ from services.variable_truncator import (
 @pytest.fixture
 def file() -> File:
     return File(
-        id=str(uuid4()),  # Generate new UUID for File.id
+        file_id=str(uuid4()),  # Generate new UUID for File.id
         tenant_id=str(uuid.uuid4()),
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id=str(uuid.uuid4()),
         filename="test_file.txt",
