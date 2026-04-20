@@ -1203,7 +1203,7 @@
   "tracing.stopBy": "由{{user}}终止",
   "triggerStatus.disabled": "触发器 • 已禁用",
   "triggerStatus.enabled": "触发器",
-  "variableReference.assignedVarsDescription": "赋值变量必须是可写入的变量，例如：",
+  "variableReference.assignedVarsDescription": "赋值变量必须是可写入的变量，例如会话变量。",
   "variableReference.conversationVars": "会话变量",
   "variableReference.noAssignedVars": "没有可用的赋值变量",
   "variableReference.noAvailableVars": "没有可用变量",
