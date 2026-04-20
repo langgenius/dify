@@ -263,6 +263,56 @@ class TestChangeEmailValidity:
     @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit")
     @patch("libs.login.check_csrf_token", return_value=None)
     @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_reject_validity_when_token_phase_is_unknown(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_is_rate_limit,
+        mock_get_data,
+        mock_add_rate,
+        mock_revoke_token,
+        mock_generate_token,
+        mock_reset_rate,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        """A token whose phase marker is a string but not a known transition must be rejected."""
+        from controllers.console.auth.error import InvalidTokenError
+
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        mock_current_account.return_value = (_build_account("old@example.com", "acc"), None)
+        mock_is_rate_limit.return_value = False
+        mock_get_data.return_value = {
+            "email": "user@example.com",
+            "code": "1234",
+            "old_email": "old@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: "something_else",
+        }
+
+        with app.test_request_context(
+            "/account/change-email/validity",
+            method="POST",
+            json={"email": "user@example.com", "code": "1234", "token": "token-123"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            with pytest.raises(InvalidTokenError):
+                ChangeEmailCheckApi().post()
+
+        mock_revoke_token.assert_not_called()
+        mock_generate_token.assert_not_called()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.reset_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.generate_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.add_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
     def test_should_reject_validity_when_token_has_no_phase(
         self,
         mock_features,
@@ -462,6 +512,49 @@ class TestChangeEmailReset:
         mock_revoke_token.assert_not_called()
         mock_update_account.assert_not_called()
         mock_send_notify.assert_not_called()
+
+
+class TestAccountServiceSendChangeEmailEmail:
+    """Service-level coverage for the phase-bound changes in `send_change_email_email`."""
+
+    def test_should_raise_value_error_for_invalid_phase(self):
+        with pytest.raises(ValueError, match="phase must be one of"):
+            AccountService.send_change_email_email(
+                email="user@example.com",
+                old_email="user@example.com",
+                phase="old_email_verified",
+            )
+
+    @patch("services.account_service.send_change_mail_task")
+    @patch("services.account_service.AccountService.change_email_rate_limiter")
+    @patch("services.account_service.AccountService.generate_change_email_token")
+    def test_should_stamp_phase_into_generated_token(
+        self,
+        mock_generate_token,
+        mock_rate_limiter,
+        mock_mail_task,
+    ):
+        mock_rate_limiter.is_rate_limited.return_value = False
+        mock_generate_token.return_value = ("123456", "the-token")
+
+        returned = AccountService.send_change_email_email(
+            email="user@example.com",
+            old_email="user@example.com",
+            language="en-US",
+            phase=AccountService.CHANGE_EMAIL_PHASE_NEW,
+        )
+
+        assert returned == "the-token"
+        mock_generate_token.assert_called_once_with(
+            "user@example.com",
+            None,
+            old_email="user@example.com",
+            additional_data={
+                AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_NEW,
+            },
+        )
+        mock_mail_task.delay.assert_called_once()
+        mock_rate_limiter.increment_rate_limit.assert_called_once_with("user@example.com")
 
 
 class TestAccountDeletionFeedback:
