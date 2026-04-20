@@ -147,12 +147,15 @@ const AppPublisher = ({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
   const workflowTypeSwitchConfig = useMemo(() => {
-    if (!isWorkflowTypeConversionTarget(appDetail?.type))
+    if (!appDetail?.workflow_type)
+      return WORKFLOW_TYPE_SWITCH_CONFIG.workflow
+
+    if (!isWorkflowTypeConversionTarget(appDetail?.workflow_type))
       return undefined
 
-    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
-  }, [appDetail?.type])
-  const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
+    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.workflow_type]
+  }, [appDetail?.workflow_type])
+  const isEvaluationWorkflowType = appDetail?.workflow_type === AppTypeEnum.EVALUATION
   const {
     refetch: refetchEvaluationWorkflowAssociatedTargets,
     isFetching: isFetchingEvaluationWorkflowAssociatedTargets,
@@ -321,7 +324,7 @@ const AppPublisher = ({
       return
     }
 
-    if (appDetail.type === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
+    if (appDetail.workflow_type === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
       const associatedTargetsResult = await refetchEvaluationWorkflowAssociatedTargets()
 
       if (associatedTargetsResult.isError) {
@@ -340,7 +343,7 @@ const AppPublisher = ({
     await performWorkflowTypeSwitch()
   }, [
     appDetail?.id,
-    appDetail?.type,
+    appDetail?.workflow_type,
     performWorkflowTypeSwitch,
     refetchEvaluationWorkflowAssociatedTargets,
     t,

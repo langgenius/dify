@@ -355,8 +355,6 @@ export type App = {
 
   /** Mode */
   mode: AppModeEnum
-  /** Type */
-  type?: AppTypeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -392,6 +390,8 @@ export type App = {
   max_active_requests?: number | null
   /** whether workflow trigger has un-published draft */
   has_draft_trigger?: boolean
+  /** Type */
+  workflow_type?: AppTypeEnum
 }
 
 export type AppSSO = {
