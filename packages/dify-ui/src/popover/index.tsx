@@ -11,9 +11,7 @@ export type { Placement }
 export const Popover = BasePopover.Root
 export const PopoverTrigger = BasePopover.Trigger
 export const PopoverClose = BasePopover.Close
-/** @public */
 export const PopoverTitle = BasePopover.Title
-/** @public */
 export const PopoverDescription = BasePopover.Description
 
 type PopoverContentProps = {

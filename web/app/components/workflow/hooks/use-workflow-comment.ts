@@ -1,10 +1,11 @@
 import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useParams } from '@/next/navigation'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
@@ -50,7 +51,10 @@ export const useWorkflowComment = () => {
     appId ? state.mentionableUsersCache[appId] ?? EMPTY_USERS : EMPTY_USERS
   ))
   const { userProfile } = useAppContext()
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
 

@@ -27,11 +27,12 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
-enum Step {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+const Step = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+type Step = typeof Step[keyof typeof Step]
 const WaterCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlResultChange, onJobIdChange, crawlOptions, onCrawlOptionsChange }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)

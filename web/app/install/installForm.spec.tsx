@@ -1,8 +1,12 @@
+import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui)
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -17,14 +21,6 @@ vi.mock('@/service/common', () => ({
   setup: vi.fn(),
   login: vi.fn(),
 }))
-
-vi.mock('@/context/global-public-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/global-public-context')>()
-  return {
-    ...actual,
-    useIsSystemFeaturesPending: () => false,
-  }
-})
 
 const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
 const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)

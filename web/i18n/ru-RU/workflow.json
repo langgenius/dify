@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Остановлено {{user}}",
   "triggerStatus.disabled": "ТРЕВОГА • ОТКЛЮЧЕНО",
   "triggerStatus.enabled": "СПУСКОВОЙ МЕХАНИЗМ",
-  "variableReference.assignedVarsDescription": "Назначаемые переменные должны быть доступными для записи, такими как",
+  "variableReference.assignedVarsDescription": "Назначаемые переменные должны быть доступными для записи, например переменными беседы.",
   "variableReference.conversationVars": "Переменные беседы",
   "variableReference.noAssignedVars": "Нет доступных назначенных переменных",
   "variableReference.noAvailableVars": "Нет доступных переменных",

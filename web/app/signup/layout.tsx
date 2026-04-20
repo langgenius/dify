@@ -1,12 +1,13 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { useSuspenseQuery } from '@tanstack/react-query'
 import Header from '@/app/signin/_header'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function RegisterLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (
     <>

@@ -17,7 +17,6 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-/** @public */
 export type { Placement }
 
 export const ContextMenu = BaseContextMenu.Root

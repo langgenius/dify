@@ -1,19 +1,17 @@
 'use client'
+import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ProgressBar from '@/app/components/billing/progress-bar'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
-
-const LOW = 50
-const MIDDLE = 80
 
 const AppsFull: FC<{ loc: string, className?: string }> = ({
   loc,
@@ -25,16 +23,8 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const isTeam = plan.type === Plan.team
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
-  const percent = usage / total * 100
-  const color = (() => {
-    if (percent < LOW)
-      return 'bg-components-progress-bar-progress-solid'
-
-    if (percent < MIDDLE)
-      return 'bg-components-progress-warning-progress'
-
-    return 'bg-components-progress-error-progress'
-  })()
+  const percent = total > 0 ? (usage / total) * 100 : 0
+  const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
   return (
     <div className={cn(
       'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
@@ -78,10 +68,11 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             {total}
           </div>
         </div>
-        <ProgressBar
-          percent={percent}
-          color={color}
-        />
+        <MeterRoot value={Math.min(percent, 100)} max={100}>
+          <MeterTrack>
+            <MeterIndicator tone={tone} />
+          </MeterTrack>
+        </MeterRoot>
       </div>
     </div>
   )

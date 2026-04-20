@@ -69,7 +69,7 @@ export const useMCPServiceCardState = (
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished
-    ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp`
+    ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${server_code}/mcp`
     : '***********'
 
   // App state checks

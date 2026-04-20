@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "แวะที่ {{user}}",
   "triggerStatus.disabled": "ทริกเกอร์ • ปิดการใช้งาน",
   "triggerStatus.enabled": "ทริกเกอร์",
-  "variableReference.assignedVarsDescription": "ตัวแปรที่กําหนดต้องเป็นตัวแปรที่เขียนได้ เช่น",
+  "variableReference.assignedVarsDescription": "ตัวแปรที่กําหนดต้องเป็นตัวแปรที่เขียนได้ เช่น ตัวแปรการสนทนา",
   "variableReference.conversationVars": "ตัวแปรการสนทนา",
   "variableReference.noAssignedVars": "ไม่มีตัวแปรที่กําหนด",
   "variableReference.noAvailableVars": "ไม่มีตัวแปรที่ใช้ได้",

@@ -2,29 +2,27 @@
 
 ## ⚠️ Important: What NOT to Mock
 
-### DO NOT Mock Base Components
+### DO NOT Mock Base Components or dify-ui Primitives
 
-**Never mock components from `@/app/components/base/`** such as:
+**Never mock components from `@/app/components/base/` or from `@langgenius/dify-ui/*`** such as:
 
-- `Loading`, `Spinner`
-- `Button`, `Input`, `Select`
-- `Tooltip`, `Modal`, `Dropdown`
-- `Icon`, `Badge`, `Tag`
+- Legacy base (`@/app/components/base/*`): `Loading`, `Spinner`, `Input`, `Badge`, `Tag`
+- dify-ui primitives (`@langgenius/dify-ui/*`): `Button`, `Tooltip`, `Dialog`, `Popover`, `DropdownMenu`, `ContextMenu`, `Select`, `AlertDialog`, `Toast`
 
 **Why?**
 
-- Base components will have their own dedicated tests
+- These components have their own dedicated tests
 - Mocking them creates false positives (tests pass but real integration fails)
 - Using real components tests actual integration behavior
 
 ```typescript
-// ❌ WRONG: Don't mock base components
+// ❌ WRONG: Don't mock base components or dify-ui primitives
 vi.mock('@/app/components/base/loading', () => () => <div>Loading</div>)
-vi.mock('@/app/components/base/button', () => ({ children }: any) => <button>{children}</button>)
+vi.mock('@langgenius/dify-ui/button', () => ({ Button: ({ children }: any) => <button>{children}</button> }))
 
-// ✅ CORRECT: Import and use real base components
+// ✅ CORRECT: Import and use the real components
 import Loading from '@/app/components/base/loading'
-import Button from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
 // They will render normally in tests
 ```
 
@@ -319,7 +317,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 
 ### ✅ DO
 
-1. **Use real base components** - Import from `@/app/components/base/` directly
+1. **Use real base components and dify-ui primitives** - Import from `@/app/components/base/` or `@langgenius/dify-ui/*` directly
 1. **Use real project components** - Prefer importing over mocking
 1. **Use real Zustand stores** - Set test state via `store.setState()`
 1. **Reset mocks in `beforeEach`**, not `afterEach`
@@ -330,7 +328,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 
 ### ❌ DON'T
 
-1. **Don't mock base components** (`Loading`, `Button`, `Tooltip`, etc.)
+1. **Don't mock base components or dify-ui primitives** (`Loading`, `Input`, `Button`, `Tooltip`, `Dialog`, etc.)
 1. **Don't mock Zustand store modules** - Use real stores with `setState()`
 1. Don't mock components you can import directly
 1. Don't create overly simplified mocks that miss conditional logic
@@ -342,7 +340,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 ```
 Need to use a component in test?
 │
-├─ Is it from @/app/components/base/*?
+├─ Is it from @/app/components/base/* or @langgenius/dify-ui/*?
 │  └─ YES → Import real component, DO NOT mock
 │
 ├─ Is it a project component?

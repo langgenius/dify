@@ -1,16 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import AllTools from '../all-tools'
-import { createGlobalPublicStoreState, createToolProvider } from './factories'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
+import { createToolProvider } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -36,9 +33,11 @@ vi.mock('@/utils/var', async importOriginal => ({
 }))
 
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
+
+const render = (ui: ReactElement, enableMarketplace = false) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
 const createMarketplacePluginsMock = () => ({
   plugins: [],
@@ -57,7 +56,6 @@ const createMarketplacePluginsMock = () => ({
 describe('AllTools', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(false)))
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())

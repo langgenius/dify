@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "{{user}}によって停止",
   "triggerStatus.disabled": "トリガー • 無効",
   "triggerStatus.enabled": "トリガー",
-  "variableReference.assignedVarsDescription": "書き込み可能な変数（例：",
+  "variableReference.assignedVarsDescription": "代入される変数は、会話変数などの書き込み可能な変数である必要があります。",
   "variableReference.conversationVars": "会話変数",
   "variableReference.noAssignedVars": "割り当て可能な変数がありません",
   "variableReference.noAvailableVars": "利用可能な変数がありません",

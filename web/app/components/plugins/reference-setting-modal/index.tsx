@@ -3,13 +3,14 @@ import type { FC } from 'react'
 import type { AutoUpdateConfig } from './auto-update-setting/types'
 import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
 import Label from './label'
@@ -30,7 +31,10 @@ const PluginSettingModal: FC<Props> = ({
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
       setTempPrivilege({

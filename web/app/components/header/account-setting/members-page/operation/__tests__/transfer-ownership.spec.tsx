@@ -1,35 +1,37 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ICurrentWorkspace } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 import TransferOwnership from '../transfer-ownership'
 
 vi.mock('@/context/app-context')
-vi.mock('@/context/global-public-context')
 vi.mock('@/service/use-workspace')
 
 describe('TransferOwnership', () => {
-  const setupMocks = ({
-    brandingEnabled,
+  const setupPermissions = ({
     isFetching,
     allowOwnerTransfer,
   }: {
-    brandingEnabled: boolean
     isFetching: boolean
     allowOwnerTransfer?: boolean
   }) => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: brandingEnabled } },
-    } as unknown as Parameters<typeof selector>[0]))
     vi.mocked(useWorkspacePermissions).mockReturnValue({
       data: allowOwnerTransfer === undefined ? null : { allow_owner_transfer: allowOwnerTransfer },
       isFetching,
     } as unknown as ReturnType<typeof useWorkspacePermissions>)
   }
+
+  const renderTransferOwnership = (
+    brandingEnabled: boolean,
+    onOperate: () => void = vi.fn(),
+  ) =>
+    renderWithSystemFeatures(<TransferOwnership onOperate={onOperate} />, {
+      systemFeatures: { branding: { enabled: brandingEnabled } },
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,17 +41,17 @@ describe('TransferOwnership', () => {
   })
 
   it('should show loading status while permissions are loading', () => {
-    setupMocks({ brandingEnabled: true, isFetching: true })
+    setupPermissions({ isFetching: true })
 
-    render(<TransferOwnership onOperate={vi.fn()} />)
+    renderTransferOwnership(true)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should show owner text without transfer menu when transfer is forbidden', () => {
-    setupMocks({ brandingEnabled: true, isFetching: false, allowOwnerTransfer: false })
+    setupPermissions({ isFetching: false, allowOwnerTransfer: false })
 
-    render(<TransferOwnership onOperate={vi.fn()} />)
+    renderTransferOwnership(true)
 
     expect(screen.getByText(/members\.owner/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.transferOwnership/i)).toBeNull()
@@ -59,9 +61,9 @@ describe('TransferOwnership', () => {
     const user = userEvent.setup()
     const onOperate = vi.fn()
 
-    setupMocks({ brandingEnabled: true, isFetching: false, allowOwnerTransfer: true })
+    setupPermissions({ isFetching: false, allowOwnerTransfer: true })
 
-    render(<TransferOwnership onOperate={onOperate} />)
+    renderTransferOwnership(true, onOperate)
 
     await user.click(screen.getByRole('button', { name: /members\.owner/i }))
     const transferOptionText = await screen.findByText(/members\.transferOwnership/i)
@@ -78,9 +80,9 @@ describe('TransferOwnership', () => {
   it('should allow transfer menu when branding is disabled', async () => {
     const user = userEvent.setup()
 
-    setupMocks({ brandingEnabled: false, isFetching: false })
+    setupPermissions({ isFetching: false })
 
-    render(<TransferOwnership onOperate={vi.fn()} />)
+    renderTransferOwnership(false)
 
     await user.click(screen.getByRole('button', { name: /members\.owner/i }))
 

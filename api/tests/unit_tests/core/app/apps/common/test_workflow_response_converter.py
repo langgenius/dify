@@ -11,8 +11,8 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
     def create_test_file(self, file_id: str = "test_file_1") -> File:
         """Create a test File object"""
         return File(
-            id=file_id,
-            type=FileType.DOCUMENT,
+            file_id=file_id,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related_123",
             filename=f"{file_id}.txt",

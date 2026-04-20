@@ -4,13 +4,14 @@ import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import AppListContext from '@/context/app-list-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
@@ -26,7 +27,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
