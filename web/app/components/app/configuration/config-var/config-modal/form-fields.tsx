@@ -68,6 +68,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   t,
 }) => {
   const { type, label, variable } = tempPayload
+  const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
 
   return (
     <div className="space-y-2">
@@ -174,7 +175,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </>
       )}
 
-      {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
+      {isFileInput && (
         <>
           <FileUploadSetting
             payload={tempPayload as UploadFileSetting}
@@ -215,26 +216,28 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
+        <Checkbox checked={tempPayload.required} disabled={!isFileInput && tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
       </div>
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-        <div className="flex items-center gap-1">
-          <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
-          <Tooltip>
-            <TooltipTrigger>
-              <div className="flex h-4 w-4 items-center justify-center">
-                <RiQuestionLine className="h-3.5 w-3.5 text-text-tertiary" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              {t('variableConfig.hiddenDescription', { ns: 'appDebug' })}
-            </TooltipContent>
-          </Tooltip>
+      {!isFileInput && (
+        <div className="mt-5! flex h-6 items-center space-x-2">
+          <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
+          <div className="flex items-center gap-1">
+            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="flex h-4 w-4 items-center justify-center">
+                  <RiQuestionLine className="h-3.5 w-3.5 text-text-tertiary" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('variableConfig.hiddenDescription', { ns: 'appDebug' })}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

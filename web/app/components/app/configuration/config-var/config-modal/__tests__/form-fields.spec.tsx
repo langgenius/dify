@@ -166,6 +166,12 @@ describe('ConfigModalFormFields', () => {
   })
 
   it('should wire file, json schema, and visibility controls', () => {
+    const textInputProps = createBaseProps()
+    const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
+    expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
+    expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    textInputView.unmount()
+
     const singleFileProps = createBaseProps()
     singleFileProps.tempPayload = {
       ...singleFileProps.tempPayload,
@@ -174,20 +180,20 @@ describe('ConfigModalFormFields', () => {
       allowed_file_extensions: [],
       allowed_file_upload_methods: ['remote_url'],
     }
-    render(<ConfigModalFormFields {...singleFileProps} />)
-    expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
-    expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    const singleFileView = render(<ConfigModalFormFields {...singleFileProps} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
-    fireEvent.click(screen.getAllByText('unchecked')[0])
-    fireEvent.click(screen.getAllByText('unchecked')[1])
+    fireEvent.click(screen.getByText('unchecked'))
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
     expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
       fileId: 'file-1',
     }))
     expect(singleFileProps.payloadChangeHandlers.required).toHaveBeenCalledWith(true)
-    expect(singleFileProps.payloadChangeHandlers.hide).toHaveBeenCalledWith(true)
+    expect(singleFileProps.payloadChangeHandlers.hide).not.toHaveBeenCalled()
+    singleFileView.unmount()
 
     const multiFileProps = createBaseProps()
     multiFileProps.tempPayload = {
@@ -198,8 +204,9 @@ describe('ConfigModalFormFields', () => {
       allowed_file_upload_methods: ['remote_url'],
     }
     render(<ConfigModalFormFields {...multiFileProps} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('multi-file-setting'))
-    fireEvent.click(screen.getAllByText('upload-file')[1])
+    fireEvent.click(screen.getByText('upload-file'))
     expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })
     expect(multiFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith([
       expect.objectContaining({ fileId: 'file-1' }),
