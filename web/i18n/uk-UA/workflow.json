@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Зупинено користувачем {{user}}",
   "triggerStatus.disabled": "ТРІГЕР • ВІДСУТНІЙ",
   "triggerStatus.enabled": "СПУСКОВИЙ МЕХАНІЗМ",
-  "variableReference.assignedVarsDescription": "Призначені змінні мають бути доступними для запису, такими як",
+  "variableReference.assignedVarsDescription": "Призначені змінні мають бути доступними для запису, такими як змінні розмови.",
   "variableReference.conversationVars": "Змінні розмови",
   "variableReference.noAssignedVars": "Немає доступних призначених змінних",
   "variableReference.noAvailableVars": "Немає доступних змінних",
