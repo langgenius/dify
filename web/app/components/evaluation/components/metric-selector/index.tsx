@@ -2,16 +2,16 @@
 
 import type { ChangeEvent } from 'react'
 import type { MetricSelectorProps } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import SelectorEmptyState from './selector-empty-state'
 import SelectorFooter from './selector-footer'
@@ -68,17 +68,17 @@ const MetricSelector = ({
         render={(
           triggerStyle === 'text'
             ? (
-              <button type="button" className={cn('system-sm-medium inline-flex items-center text-text-accent', triggerClassName)}>
-                <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-                {t('metrics.add')}
-              </button>
-            )
+                <button type="button" className={cn('inline-flex items-center system-sm-medium text-text-accent', triggerClassName)}>
+                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+                  {t('metrics.add')}
+                </button>
+              )
             : (
-              <Button variant="ghost-accent" className={triggerClassName}>
-                <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-                {t('metrics.add')}
-              </Button>
-            )
+                <Button variant="ghost-accent" className={triggerClassName}>
+                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+                  {t('metrics.add')}
+                </Button>
+              )
         )}
       />
       <PopoverContent popupClassName="w-[360px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]">

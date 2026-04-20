@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 
 type SectionHeaderProps = {
   title: string
@@ -32,7 +32,7 @@ const SectionHeader = ({
     <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
       <div>
         <div className={cn('system-xl-semibold text-text-primary', titleClassName)}>{title}</div>
-        {description && <div className={cn('system-sm-regular mt-1 text-text-tertiary', descriptionClassName)}>{description}</div>}
+        {description && <div className={cn('mt-1 system-sm-regular text-text-tertiary', descriptionClassName)}>{description}</div>}
       </div>
       {action}
     </div>

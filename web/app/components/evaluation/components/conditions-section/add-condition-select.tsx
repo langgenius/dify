@@ -2,8 +2,6 @@
 
 import type { ConditionMetricOptionGroup, EvaluationResourceProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
@@ -11,7 +9,9 @@ import {
   SelectItem,
   SelectLabel,
   SelectTrigger,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEvaluationStore } from '../../store'
 import { getConditionMetricValueTypeTranslationKey } from '../../utils'
 

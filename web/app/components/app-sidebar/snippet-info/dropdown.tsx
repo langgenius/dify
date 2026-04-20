@@ -2,9 +2,6 @@
 
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { SnippetDetail } from '@/models/snippet'
-import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,7 +10,8 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
@@ -53,10 +53,10 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     description: snippet.description,
     icon: snippet.icon
       ? {
-        type: 'emoji' as const,
-        icon: snippet.icon,
-        background: snippet.iconBackground || FALLBACK_ICON.background,
-      }
+          type: 'emoji' as const,
+          icon: snippet.icon,
+          background: snippet.iconBackground || FALLBACK_ICON.background,
+        }
       : FALLBACK_ICON,
   }), [snippet.description, snippet.icon, snippet.iconBackground, snippet.name])
 
