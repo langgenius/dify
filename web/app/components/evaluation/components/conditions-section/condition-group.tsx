@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Select,
   SelectContent,

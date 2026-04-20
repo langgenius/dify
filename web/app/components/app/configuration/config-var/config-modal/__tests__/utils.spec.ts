@@ -49,11 +49,13 @@ describe('config-modal utils', () => {
       const payload = createInputVar({
         type: InputVarType.textInput,
         default: 'hello',
+        hide: true,
       })
 
       const nextPayload = createPayloadForType(payload, InputVarType.multiFiles)
 
       expect(nextPayload.type).toBe(InputVarType.multiFiles)
+      expect(nextPayload.hide).toBe(false)
       expect(nextPayload.max_length).toBe(DEFAULT_FILE_UPLOAD_SETTING.max_length)
       expect(nextPayload.allowed_file_types).toEqual(DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types)
       expect(nextPayload.default).toBe('hello')
@@ -247,6 +249,24 @@ describe('config-modal utils', () => {
           afterKey: 'question_new',
         },
       })
+    })
+
+    it('should force file inputs to stay visible when saving', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.singleFile,
+          hide: true,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_extensions: [],
+        }),
+        payload: createInputVar(),
+        checkVariableName: () => true,
+        t,
+      })
+
+      expect(result.payloadToSave).toEqual(expect.objectContaining({
+        hide: false,
+      }))
     })
 
     it('should stop validation when the variable name checker rejects the payload', () => {

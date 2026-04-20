@@ -12,11 +12,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   useWorkflowInteractions,
   useWorkflowRun,

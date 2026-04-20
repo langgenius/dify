@@ -13,7 +13,7 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@/context/app-context')
 vi.mock('@/service/common')
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },

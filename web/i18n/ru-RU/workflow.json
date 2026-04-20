@@ -151,6 +151,7 @@
   "common.branch": "ВЕТКА",
   "common.chooseDSL": "Выберите файл DSL(yml)",
   "common.chooseStartNodeToRun": "Выберите начальный узел для запуска",
+  "common.clipboardVersionCompatibilityWarning": "Этот контент был скопирован из другой версии приложения Dify. Некоторые части могут быть несовместимы.",
   "common.commentMode": "Режим комментариев",
   "common.configure": "Настроить",
   "common.configureRequired": "Требуется настройка",

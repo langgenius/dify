@@ -31,7 +31,7 @@ const toastMocks = vi.hoisted(() => ({
 }))
 const mockRouterPush = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'success', message, ...options }),
     error: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'error', message, ...options }),

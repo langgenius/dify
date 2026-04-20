@@ -2,6 +2,14 @@ import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
   memo,
@@ -12,13 +20,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'
@@ -271,11 +273,11 @@ const getSelectedSnippetGraph = (
           position: nextPosition,
           positionAbsolute: node.positionAbsolute
             ? (isRootNode
-                ? {
-                    x: node.positionAbsolute.x - minRootX,
-                    y: node.positionAbsolute.y - minRootY,
-                  }
-                : node.positionAbsolute)
+              ? {
+                x: node.positionAbsolute.x - minRootX,
+                y: node.positionAbsolute.y - minRootY,
+              }
+              : node.positionAbsolute)
             : undefined,
           selected: false,
           data: {

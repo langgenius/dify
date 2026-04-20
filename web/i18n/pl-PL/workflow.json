@@ -151,6 +151,7 @@
   "common.branch": "GAŁĄŹ",
   "common.chooseDSL": "Wybierz plik DSL(yml)",
   "common.chooseStartNodeToRun": "Wybierz węzeł początkowy, aby uruchomić",
+  "common.clipboardVersionCompatibilityWarning": "Ta zawartość została skopiowana z innej wersji aplikacji Dify. Niektóre elementy mogą być niekompatybilne.",
   "common.commentMode": "Tryb komentarzy",
   "common.configure": "Skonfiguruj",
   "common.configureRequired": "Wymagana konfiguracja",

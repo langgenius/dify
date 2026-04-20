@@ -33,7 +33,7 @@ vi.mock('@/service/common', () => ({
   switchWorkspace: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -45,8 +45,8 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
   return {
     ...actual,

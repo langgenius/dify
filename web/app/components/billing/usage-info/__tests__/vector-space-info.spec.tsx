@@ -3,6 +3,8 @@ import { defaultPlan } from '../../config'
 import { Plan } from '../../type'
 import VectorSpaceInfo from '../vector-space-info'
 
+const queryPlaceholder = () => document.body.querySelector('[aria-hidden="true"]')
+
 // Mock provider context with configurable plan
 let mockPlanType = Plan.sandbox
 let mockVectorSpaceUsage = 30
@@ -55,16 +57,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 30
     })
 
-    it('should render indeterminate progress bar when usage is below threshold', () => {
+    it('should render the redacted placeholder when usage is below threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
-    })
-
-    it('should render indeterminate bar for sandbox users', () => {
-      render(<VectorSpaceInfo />)
-
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeInTheDocument()
+      expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     })
 
     it('should display "< 50" format for sandbox below threshold', () => {
@@ -80,11 +77,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 50
     })
 
-    it('should render determinate progress bar when at full capacity', () => {
+    it('should render the Meter when at full capacity', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-      expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+      expect(screen.getByRole('meter')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeNull()
     })
 
     it('should display "50 / 50 MB" format when at full capacity', () => {
@@ -101,10 +98,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 30
     })
 
-    it('should render indeterminate progress bar when usage is below threshold', () => {
+    it('should render the redacted placeholder when usage is below threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeInTheDocument()
+      expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     })
 
     it('should display "< 50 / total" format when below threshold', () => {
@@ -121,11 +119,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 100
     })
 
-    it('should render normal progress bar when usage >= threshold', () => {
+    it('should render the Meter when usage >= threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-      expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+      expect(screen.getByRole('meter')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeNull()
     })
 
     it('should display actual usage when above threshold', () => {
@@ -142,10 +140,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 30
     })
 
-    it('should render indeterminate progress bar when usage is below threshold', () => {
+    it('should render the redacted placeholder when usage is below threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeInTheDocument()
+      expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     })
 
     it('should display "< 50 / total" format when below threshold', () => {
@@ -163,11 +162,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 100
     })
 
-    it('should render normal progress bar when usage >= threshold', () => {
+    it('should render the Meter when usage >= threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-      expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+      expect(screen.getByRole('meter')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeNull()
     })
 
     it('should display actual usage when above threshold', () => {
@@ -179,23 +178,26 @@ describe('VectorSpaceInfo', () => {
   })
 
   describe('Pro/Team Plan Usage States', () => {
-    const renderAndGetBarClass = (usage: number) => {
+    const findToneClass = (usage: number) => {
       mockPlanType = Plan.professional
       mockVectorSpaceUsage = usage
-      const { unmount } = render(<VectorSpaceInfo />)
-      const className = screen.getByTestId('billing-progress-bar').className
+      const { container, unmount } = render(<VectorSpaceInfo />)
+      const indicator = container.querySelector(
+        '[class*="bg-components-progress-"]:not([class*="progress-bar-bg"])',
+      )
+      const className = indicator?.className ?? ''
       unmount()
       return className
     }
 
-    it('should show distinct progress bar styling at different usage levels', () => {
-      const normalClass = renderAndGetBarClass(100)
-      const warningClass = renderAndGetBarClass(4100)
-      const errorClass = renderAndGetBarClass(5200)
+    it('should apply neutral / warning / error tone at distinct usage levels', () => {
+      const normalClass = findToneClass(100)
+      const warningClass = findToneClass(4100)
+      const errorClass = findToneClass(5200)
 
-      expect(normalClass).not.toBe(warningClass)
-      expect(warningClass).not.toBe(errorClass)
-      expect(normalClass).not.toBe(errorClass)
+      expect(normalClass).toContain('bg-components-progress-bar-progress-solid')
+      expect(warningClass).toContain('bg-components-progress-warning-progress')
+      expect(errorClass).toContain('bg-components-progress-error-progress')
     })
   })
 
@@ -214,16 +216,11 @@ describe('VectorSpaceInfo', () => {
       expect(screen.getByText('102400MB')).toBeInTheDocument()
     })
 
-    it('should render indeterminate progress bar when usage is below threshold', () => {
+    it('should render the redacted placeholder when usage is below threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
-    })
-
-    it('should render indeterminate bar for enterprise below threshold', () => {
-      render(<VectorSpaceInfo />)
-
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeInTheDocument()
+      expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     })
 
     it('should display "< 50 / total" format when below threshold', () => {
@@ -241,11 +238,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceTotal = 102400 // 100 GB
     })
 
-    it('should render normal progress bar when usage >= threshold', () => {
+    it('should render the Meter when usage >= threshold', () => {
       render(<VectorSpaceInfo />)
 
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-      expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+      expect(screen.getByRole('meter')).toBeInTheDocument()
+      expect(queryPlaceholder()).toBeNull()
     })
 
     it('should display actual usage when above threshold', () => {

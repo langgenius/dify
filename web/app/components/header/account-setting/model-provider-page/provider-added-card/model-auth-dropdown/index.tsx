@@ -1,13 +1,13 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
-import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { memo, useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DropdownContent from './dropdown-content'
 
 type ModelAuthDropdownProps = {

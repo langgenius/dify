@@ -42,7 +42,7 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 

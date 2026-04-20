@@ -2,19 +2,19 @@ import type {
   DataSourceCredential,
 } from './types'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {

@@ -31,7 +31,7 @@ from graphon.model_runtime.entities.provider_entities import (
     FormType,
     ProviderEntity,
 )
-from graphon.model_runtime.model_providers.__base.ai_model import AIModel
+from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.runtime import ModelRuntime
 from libs.datetime_utils import naive_utc_now
@@ -363,7 +363,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         for key, value in validated_credentials.items():
-            if key in provider_credential_secret_variables:
+            if key in provider_credential_secret_variables and isinstance(value, str):
                 validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return validated_credentials
@@ -912,7 +912,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         for key, value in validated_credentials.items():
-            if key in provider_credential_secret_variables:
+            if key in provider_credential_secret_variables and isinstance(value, str):
                 validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return validated_credentials

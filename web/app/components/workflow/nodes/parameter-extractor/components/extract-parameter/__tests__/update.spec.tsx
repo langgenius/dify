@@ -1,11 +1,11 @@
 import type { Param } from '../../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { ParamType } from '../../../types'
 import Update from '../update'
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

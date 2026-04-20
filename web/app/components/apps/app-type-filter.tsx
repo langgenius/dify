@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 

@@ -3,7 +3,7 @@ import type { InputField } from './input-fields-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
   PopoverContent,
@@ -87,71 +87,71 @@ const UploadRunPopover = ({
             />
             {currentFileName
               ? (
-                  <div className="flex h-20 items-center gap-3 rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3">
-                    <div className="flex p-3">
-                      <span aria-hidden="true" className="i-ri-file-excel-fill h-6 w-6 text-util-colors-green-green-600" />
+                <div className="flex h-20 items-center gap-3 rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3">
+                  <div className="flex p-3">
+                    <span aria-hidden="true" className="i-ri-file-excel-fill h-6 w-6 text-util-colors-green-green-600" />
+                  </div>
+                  <div className="min-w-0 flex-1 py-1 pr-2">
+                    <div className="system-xs-medium truncate text-text-secondary">
+                      {currentFileName}
                     </div>
-                    <div className="min-w-0 flex-1 py-1 pr-2">
-                      <div className="system-xs-medium truncate text-text-secondary">
-                        {currentFileName}
-                      </div>
-                      <div className="system-2xs-medium mt-0.5 flex h-3 items-center gap-1 text-text-tertiary">
-                        {!!currentFileExtension && <span className="uppercase">{currentFileExtension}</span>}
-                        {!!currentFileExtension && !!currentFileSize && <span className="text-text-quaternary">·</span>}
-                        {!!currentFileSize && <span>{currentFileSize}</span>}
-                      </div>
+                    <div className="system-2xs-medium mt-0.5 flex h-3 items-center gap-1 text-text-tertiary">
+                      {!!currentFileExtension && <span className="uppercase">{currentFileExtension}</span>}
+                      {!!currentFileExtension && !!currentFileSize && <span className="text-text-quaternary">·</span>}
+                      {!!currentFileSize && <span>{currentFileSize}</span>}
                     </div>
-                    <div className="flex items-center gap-1 pr-3">
-                      {isFileUploading && (
-                        <span aria-hidden="true" className="i-ri-loader-4-line h-4 w-4 animate-spin text-text-accent" />
-                      )}
+                  </div>
+                  <div className="flex items-center gap-1 pr-3">
+                    {isFileUploading && (
+                      <span aria-hidden="true" className="i-ri-loader-4-line h-4 w-4 animate-spin text-text-accent" />
+                    )}
+                    <button
+                      type="button"
+                      className="rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                      onClick={onClearUploadedFile}
+                      aria-label={t('batch.removeUploadedFile')}
+                    >
+                      <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+              : (
+                <div
+                  className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-left hover:border-components-button-secondary-border"
+                  onDragOver={event => event.preventDefault()}
+                  onDrop={handleDropFile}
+                >
+                  <button
+                    type="button"
+                    className="flex shrink-0 p-3"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <span aria-hidden="true" className="i-ri-file-upload-line h-6 w-6 text-text-tertiary" />
+                    <span className="sr-only">{t('batch.uploadTitle')}</span>
+                  </button>
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="system-md-regular text-text-secondary">
+                      {t('batch.uploadDropzonePrefix')}
+                      {' '}
+                      <span className="system-md-semibold">{t('batch.uploadDropzoneEmphasis')}</span>
+                      {' '}
+                      {t('batch.uploadDropzoneSuffix')}
+                    </div>
+                    <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                      {t('batch.uploadDropzoneDownloadPrefix')}
+                      {' '}
                       <button
                         type="button"
-                        className="rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                        onClick={onClearUploadedFile}
-                        aria-label={t('batch.removeUploadedFile')}
+                        className="text-text-accent hover:underline"
+                        onClick={onDownloadTemplate}
                       >
-                        <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />
+                        {t('batch.uploadDropzoneDownloadLink')}
                       </button>
                     </div>
                   </div>
-                )
-              : (
-                  <div
-                    className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-left hover:border-components-button-secondary-border"
-                    onDragOver={event => event.preventDefault()}
-                    onDrop={handleDropFile}
-                  >
-                    <button
-                      type="button"
-                      className="flex shrink-0 p-3"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <span aria-hidden="true" className="i-ri-file-upload-line h-6 w-6 text-text-tertiary" />
-                      <span className="sr-only">{t('batch.uploadTitle')}</span>
-                    </button>
-                    <div className="min-w-0 flex-1 text-left">
-                      <div className="system-md-regular text-text-secondary">
-                        {t('batch.uploadDropzonePrefix')}
-                        {' '}
-                        <span className="system-md-semibold">{t('batch.uploadDropzoneEmphasis')}</span>
-                        {' '}
-                        {t('batch.uploadDropzoneSuffix')}
-                      </div>
-                      <div className="system-xs-regular mt-0.5 text-text-tertiary">
-                        {t('batch.uploadDropzoneDownloadPrefix')}
-                        {' '}
-                        <button
-                          type="button"
-                          className="text-text-accent hover:underline"
-                          onClick={onDownloadTemplate}
-                        >
-                          {t('batch.uploadDropzoneDownloadLink')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </div>
+              )}
 
             {!!previewFields.length && (
               <div className="space-y-1">

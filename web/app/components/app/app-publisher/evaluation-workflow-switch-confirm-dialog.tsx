@@ -12,7 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
 import Link from '@/next/link'
 
 type EvaluationWorkflowSwitchConfirmDialogProps = {

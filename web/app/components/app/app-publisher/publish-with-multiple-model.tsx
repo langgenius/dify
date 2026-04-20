@@ -1,16 +1,16 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'

@@ -52,7 +52,7 @@ export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
-  default?: string | number
+  default?: string | number | boolean
   required?: boolean
   options?: string[]
   max_length?: number

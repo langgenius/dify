@@ -7,7 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
 import PublishMenu from '../publish-menu'
 
 type PublisherProps = {

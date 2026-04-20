@@ -22,7 +22,7 @@ vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
   default: ({ modelName }: { modelName: string }) => <span data-testid="model-icon">{modelName}</span>,
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const ReactModule = await vi.importActual<typeof import('react')>('react')
   const OpenContext = ReactModule.createContext<{ open: boolean, setOpen: (nextOpen: boolean) => void } | null>(null)
 

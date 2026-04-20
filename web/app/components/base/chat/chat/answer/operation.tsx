@@ -4,6 +4,7 @@ import type {
   Feedback,
 } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -19,7 +20,6 @@ import Modal from '@/app/components/base/modal/modal'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { useChatContext } from '../context'
 
 type OperationProps = {

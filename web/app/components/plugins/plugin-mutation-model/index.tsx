@@ -1,10 +1,10 @@
 import type { UseMutationResult } from '@tanstack/react-query'
 import type { FC, ReactNode } from 'react'
 import type { Plugin } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { memo } from 'react'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import Card from '@/app/components/plugins/card'
 
 type Props = {

@@ -20,8 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
@@ -53,10 +53,10 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     description: snippet.description,
     icon: snippet.icon
       ? {
-          type: 'emoji' as const,
-          icon: snippet.icon,
-          background: snippet.iconBackground || FALLBACK_ICON.background,
-        }
+        type: 'emoji' as const,
+        icon: snippet.icon,
+        background: snippet.iconBackground || FALLBACK_ICON.background,
+      }
       : FALLBACK_ICON,
   }), [snippet.description, snippet.icon, snippet.iconBackground, snippet.name])
 

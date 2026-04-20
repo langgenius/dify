@@ -55,13 +55,14 @@ class MockNodeMixin:
 
     def __init__(
         self,
-        id: str,
-        config: Mapping[str, Any],
+        node_id: str,
+        config: Any,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
@@ -96,7 +97,7 @@ class MockNodeMixin:
             kwargs.setdefault("message_transformer", MagicMock())
 
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

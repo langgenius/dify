@@ -43,7 +43,7 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },

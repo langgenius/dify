@@ -5,6 +5,7 @@ import { useTextGenerationAppState } from '../use-text-generation-app-state'
 const {
   changeLanguageMock,
   fetchSavedMessageMock,
+  getRawInputsFromUrlParamsMock,
   notifyMock,
   removeMessageMock,
   saveMessageMock,
@@ -13,6 +14,7 @@ const {
 } = vi.hoisted(() => ({
   changeLanguageMock: vi.fn(() => Promise.resolve()),
   fetchSavedMessageMock: vi.fn(),
+  getRawInputsFromUrlParamsMock: vi.fn(),
   notifyMock: vi.fn(),
   removeMessageMock: vi.fn(),
   saveMessageMock: vi.fn(),
@@ -20,7 +22,7 @@ const {
   useDocumentTitleMock: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: notifyMock,
   },
@@ -42,6 +44,10 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/i18n-config/client', () => ({
   changeLanguage: changeLanguageMock,
+}))
+
+vi.mock('@/app/components/base/chat/utils', () => ({
+  getRawInputsFromUrlParams: getRawInputsFromUrlParamsMock,
 }))
 
 vi.mock('@/service/share', async () => {
@@ -181,6 +187,7 @@ describe('useTextGenerationAppState', () => {
     })
     removeMessageMock.mockResolvedValue(undefined)
     saveMessageMock.mockResolvedValue(undefined)
+    getRawInputsFromUrlParamsMock.mockResolvedValue({})
   })
 
   it('should initialize app state and fetch saved messages for non-workflow web apps', async () => {
@@ -300,5 +307,58 @@ describe('useTextGenerationAppState', () => {
     expect(useAppFaviconMock).toHaveBeenCalledWith(expect.objectContaining({
       enable: false,
     }))
+  })
+
+  it('should apply workflow launch inputs from the url to hidden prompt variables', async () => {
+    mockWebAppState.appParams = {
+      ...defaultAppParams,
+      user_input_form: [
+        {
+          'text-input': {
+            label: 'Visible',
+            variable: 'visible',
+            required: true,
+            max_length: 48,
+            default: 'Shown',
+            hide: false,
+          },
+        },
+        {
+          'text-input': {
+            label: 'Hidden Secret',
+            variable: 'secret',
+            required: true,
+            max_length: 48,
+            default: '',
+            hide: true,
+          },
+        },
+      ],
+    }
+    getRawInputsFromUrlParamsMock.mockResolvedValue({
+      secret: 'prefilled-secret',
+    })
+
+    const { result } = renderHook(() => useTextGenerationAppState({
+      isInstalledApp: false,
+      isWorkflow: true,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          key: 'visible',
+          default: 'Shown',
+        }),
+        expect.objectContaining({
+          key: 'secret',
+          hide: true,
+          default: 'prefilled-secret',
+        }),
+      ]))
+    })
+
+    expect(getRawInputsFromUrlParamsMock).toHaveBeenCalled()
+    expect(fetchSavedMessageMock).not.toHaveBeenCalled()
   })
 })

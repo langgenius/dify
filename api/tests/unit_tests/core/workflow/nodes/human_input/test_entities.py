@@ -19,7 +19,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -136,6 +136,26 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.status_value = HumanInputFormStatus.SUBMITTED
 
 
+def _build_human_input_node(
+    *,
+    node_id: str,
+    node_data: HumanInputNodeData | Mapping[str, Any],
+    graph_init_params: GraphInitParams,
+    graph_runtime_state: GraphRuntimeState,
+    runtime: DifyHumanInputNodeRuntime,
+) -> HumanInputNode:
+    typed_node_data = (
+        node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
+    )
+    return HumanInputNode(
+        node_id=node_id,
+        config=typed_node_data,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+        runtime=runtime,
+    )
+
+
 class TestDeliveryMethod:
     """Test DeliveryMethod entity."""
 
@@ -239,7 +259,7 @@ class TestUserAction:
         data[field_name] = value
 
         with pytest.raises(ValidationError) as exc_info:
-            UserAction(**data)
+            UserAction.model_validate(data)
 
         errors = exc_info.value.errors()
         assert any(error["loc"] == (field_name,) and error["type"] == "string_too_long" for error in errors)
@@ -465,9 +485,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -530,9 +550,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -595,9 +615,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -671,9 +691,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -770,9 +790,9 @@ class TestHumanInputNodeRenderedContent:
         form_repository = InMemoryHumanInputFormRepository()
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,

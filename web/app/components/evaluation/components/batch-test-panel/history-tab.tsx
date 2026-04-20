@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { useEvaluationResource, useEvaluationStore } from '../../store'

@@ -49,7 +49,7 @@ vi.mock('@/service/use-tools', () => ({
 
 // Mock Toast - need to verify notification calls
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),
