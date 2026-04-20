@@ -46,20 +46,7 @@ describe('TooltipContent', () => {
     })
   })
 
-  describe('Variant and popup props', () => {
-    it('should render popup content when variant is plain', async () => {
-      const screen = await render(
-        <Tooltip open>
-          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
-          <TooltipContent variant="plain" role="tooltip" aria-label="plain tooltip">
-            Plain tooltip body
-          </TooltipContent>
-        </Tooltip>,
-      )
-
-      await expect.element(screen.getByRole('tooltip', { name: 'plain tooltip' })).toHaveTextContent('Plain tooltip body')
-    })
-
+  describe('Popup props', () => {
     it('should forward popup props and handlers when popup props are provided', async () => {
       const onMouseEnter = vi.fn()
 
