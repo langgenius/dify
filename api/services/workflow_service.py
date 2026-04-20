@@ -70,7 +70,13 @@ from models import Account
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.errors.app import (
@@ -278,7 +284,7 @@ class WorkflowService:
         """
         stmt = select(Workflow).where(
             Workflow.tenant_id == tenant_id,
-            Workflow.type == WorkflowType.EVALUATION,
+            Workflow.kind == WorkflowKind.EVALUATION.value,
             Workflow.version != Workflow.VERSION_DRAFT,
         )
 
@@ -347,6 +353,7 @@ class WorkflowService:
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=WorkflowType.from_app_mode(app_model.mode).value,
+                kind=WorkflowKind.STANDARD.value,
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
                 features=json.dumps(features),
@@ -363,6 +370,8 @@ class WorkflowService:
             workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
+            if workflow.resolved_kind == WorkflowKind.STANDARD:
+                workflow.kind = WorkflowKind.STANDARD
 
         # commit db session changes
         db.session.commit()
@@ -593,7 +602,7 @@ class WorkflowService:
         workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type=WorkflowType.EVALUATION.value,
+            type=draft_workflow.type.value,
             version=Workflow.version_from_datetime(naive_utc_now()),
             graph=draft_workflow.graph,
             created_by=account.id,
@@ -603,6 +612,7 @@ class WorkflowService:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
+            kind=WorkflowKind.EVALUATION.value,
         )
 
         session.add(workflow)
@@ -618,17 +628,16 @@ class WorkflowService:
         *,
         session: Session,
         app_model: App,
-        target_type: WorkflowType,
+        target_type: WorkflowKind,
         account: Account,
     ) -> Workflow:
         """
-        Convert a published workflow type in-place.
+        Convert a published workflow business kind in-place.
 
         This endpoint only supports conversion between standard workflow and evaluation workflow.
         """
-        if target_type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION}:
-            raise ValueError(
-                "target_type must be either 'workflow' or 'evaluation'")
+        if target_type not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
+            raise ValueError("target_type must be either 'standard' or 'evaluation'")
 
         if not app_model.workflow_id:
             raise WorkflowNotFoundError("Published workflow not found")
@@ -646,13 +655,13 @@ class WorkflowService:
             raise IsDraftWorkflowError(
                 "Current effective workflow cannot be a draft version.")
 
-        if workflow.type == target_type:
+        if workflow.resolved_kind == target_type:
             return workflow
 
-        if target_type == WorkflowType.EVALUATION:
+        if target_type == WorkflowKind.EVALUATION:
             self._validate_evaluation_workflow_nodes(workflow)
 
-        workflow.type = target_type
+        workflow.kind = target_type
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
 
@@ -1881,7 +1890,7 @@ def _setup_variable_pool(
         }
 
         # Only add chatflow-specific variables for chat-like workflow types.
-        if workflow.type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION}:
+        if workflow.type != WorkflowType.WORKFLOW:
             system_variable_values.update(
                 {
                     "query": query,
