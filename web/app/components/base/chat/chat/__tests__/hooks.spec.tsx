@@ -1292,7 +1292,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-reconnect/events?include_state_snapshot=true',
+        '/workflow/wr-reconnect/events?include_state_snapshot=true&replay=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1537,6 +1537,89 @@ describe('useChat', () => {
       renderHook(() => useChat(undefined, undefined, undefined, undefined, true, clearChatListCallback))
 
       expect(clearChatListCallback).toHaveBeenCalledWith(false)
+    })
+  })
+
+  describe('onWorkflowStarted re-enables responding in handleSend', () => {
+    it('should set isResponding back to true when onWorkflowStarted fires after stop', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const stopChat = vi.fn()
+      const { result } = renderHook(() => useChat(undefined, undefined, undefined, stopChat))
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'workflow restart' }, {})
+      })
+      expect(result.current.isResponding).toBe(true)
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onData('part', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      act(() => {
+        result.current.handleStop()
+      })
+      expect(result.current.isResponding).toBe(false)
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-2', task_id: 't-2' })
+      })
+      expect(result.current.isResponding).toBe(true)
+    })
+  })
+
+  describe('abortInflightRequests on unmount', () => {
+    it('should abort all in-flight requests when the hook unmounts', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const workflowAbort = createAbortControllerMock()
+      const conversationAbort = createAbortControllerMock()
+      const suggestedAbort = createAbortControllerMock()
+
+      const config = { suggested_questions_after_answer: { enabled: true } }
+      const onGetConversationMessages = vi.fn().mockImplementation(async (_id: string, setAbort: (ac: AbortController) => void) => {
+        setAbort(conversationAbort)
+        return {
+          data: [{
+            id: 'm-1',
+            answer: 'a',
+            message: [{ role: 'assistant', text: 'a' }],
+            created_at: Date.now(),
+            answer_tokens: 1,
+            message_tokens: 1,
+            provider_response_latency: 0.1,
+            inputs: {},
+            query: 'q',
+          }],
+        }
+      })
+      const onGetSuggestedQuestions = vi.fn().mockImplementation(async (_id: string, setAbort: (ac: AbortController) => void) => {
+        setAbort(suggestedAbort)
+        return { data: [] }
+      })
+
+      const { result, unmount } = renderHook(() => useChat(config as ChatConfig))
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'unmount' }, {
+          onGetConversationMessages,
+          onGetSuggestedQuestions,
+        })
+      })
+      act(() => {
+        callbacks.getAbortController(workflowAbort)
+      })
+
+      unmount()
+
+      expect(workflowAbort.abort).toHaveBeenCalled()
     })
   })
 

@@ -1836,6 +1836,82 @@ describe('useChatWithHistory', () => {
       expect(messageWithFiles?.children?.[0]?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files).toHaveLength(1)
     })
+
+    it('should pass through workflow_run_id from item and created_at', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-running',
+            query: 'Running query',
+            answer: 'Running answer',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'normal',
+            workflow_run_id: 'wf-direct-id',
+            created_at: 1700000000,
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.workflow_run_id).toBe('wf-direct-id')
+      expect(answerNode?.created_at).toBe(1700000000)
+    })
+
+    it('should prefer item.workflow_run_id over extra_contents workflow_run_id', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-both',
+            query: 'Both query',
+            answer: 'Both answer',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'paused',
+            workflow_run_id: 'wf-item-level',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: false,
+                form_definition: { fields: [] },
+                workflow_run_id: 'wf-extra-level',
+              },
+            ],
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.workflow_run_id).toBe('wf-item-level')
+    })
   })
 
   // Scenario: newConversation merge replaces existing conversation item when id already exists.

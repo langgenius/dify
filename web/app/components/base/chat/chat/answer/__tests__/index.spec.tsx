@@ -143,6 +143,67 @@ describe('Answer Component', () => {
     })
   })
 
+  describe('ContentSwitch visibility while responding', () => {
+    it('should hide ContentSwitch when responding in non-human-inputs layout', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={true}
+          item={{
+            ...defaultProps.item,
+            siblingCount: 3,
+            siblingIndex: 1,
+            prevSibling: 'msg-0',
+            nextSibling: 'msg-2',
+          } as unknown as ChatItem}
+          switchSibling={vi.fn()}
+        />,
+      )
+      expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+    })
+
+    it('should hide ContentSwitch when responding in human-inputs layout with content', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={true}
+          item={{
+            ...defaultProps.item,
+            content: 'partial response',
+            siblingCount: 3,
+            siblingIndex: 1,
+            prevSibling: 'msg-0',
+            nextSibling: 'msg-2',
+            humanInputFormDataList: [{ id: 'form1' }],
+          } as unknown as ChatItem}
+          switchSibling={vi.fn()}
+        />,
+      )
+      expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+    })
+
+    it('should show ContentSwitch when not responding with siblings', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={false}
+          item={{
+            ...defaultProps.item,
+            siblingCount: 3,
+            siblingIndex: 1,
+            prevSibling: 'msg-0',
+            nextSibling: 'msg-2',
+          } as unknown as ChatItem}
+          switchSibling={vi.fn()}
+        />,
+      )
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument()
+    })
+  })
+
   describe('Interactions', () => {
     it('should handle switch sibling', () => {
       const mockSwitchSibling = vi.fn()
