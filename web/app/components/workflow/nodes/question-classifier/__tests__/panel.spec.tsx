@@ -144,6 +144,7 @@ describe('question-classifier/panel', () => {
     expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)
     expect(handleVisionResolutionChange).toHaveBeenCalledWith({ resolution: 'high' })
     expect(screen.getByText('class_name:string')).toBeInTheDocument()
+    expect(screen.getByText('class_label:string')).toBeInTheDocument()
     expect(screen.getByText('usage:object')).toBeInTheDocument()
   })
 })

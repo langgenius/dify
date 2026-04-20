@@ -1,7 +1,7 @@
 import type { Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType, Topic } from './types'
 import { produce } from 'immer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -69,15 +69,17 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
-      handleModelChanged({
-        provider: currentProvider?.provider,
-        modelId: currentModel?.model,
-        mode: currentModel?.model_properties?.mode as string,
+      startTransition(() => {
+        handleModelChanged({
+          provider: currentProvider?.provider,
+          modelId: currentModel?.model,
+          mode: currentModel?.model_properties?.mode as string | undefined,
+        })
       })
     }
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
-  const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+  const handleCompletionParamsChange = useCallback((newParams: Record<string, unknown>) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.completion_params = newParams
     })
@@ -88,9 +90,11 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   useEffect(() => {
     if (!modelChanged)
       return
-    setModelChanged(false)
-    handleVisionConfigAfterModelChanged()
-  }, [isVisionModel, modelChanged])
+    startTransition(() => {
+      setModelChanged(false)
+      handleVisionConfigAfterModelChanged()
+    })
+  }, [handleVisionConfigAfterModelChanged, isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -101,22 +105,58 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   useEffect(() => {
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
-    if (isReady) {
-      let query_variable_selector: ValueSelector = []
-      if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId)
-        query_variable_selector = [startNodeId, 'sys.query']
-      setInputs({
-        ...inputs,
-        ...defaultConfig,
-        query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
-      })
-    }
-  }, [defaultConfig])
+    if (!isReady)
+      return
 
-  const handleClassesChange = useCallback((newClasses: any) => {
+    const currentInputs = inputRef.current
+    let shouldUpdate = false
+
+    const nextInputs = produce(currentInputs, (draft) => {
+      if (!draft.model)
+        draft.model = defaultConfig.model
+
+      if (!draft.classes)
+        draft.classes = defaultConfig.classes
+
+      if (!draft._targetBranches)
+        draft._targetBranches = defaultConfig._targetBranches
+
+      if (!draft.vision)
+        draft.vision = defaultConfig.vision
+
+      if (draft.query_variable_selector.length === 0 && isChatMode && startNodeId) {
+        draft.query_variable_selector = [startNodeId, 'sys.query']
+        shouldUpdate = true
+      }
+
+      if (!currentInputs.model && defaultConfig.model)
+        shouldUpdate = true
+
+      if (!currentInputs.classes && defaultConfig.classes)
+        shouldUpdate = true
+
+      if (!currentInputs._targetBranches && defaultConfig._targetBranches)
+        shouldUpdate = true
+
+      if (!currentInputs.vision && defaultConfig.vision)
+        shouldUpdate = true
+    })
+
+    if (!shouldUpdate)
+      return
+
+    startTransition(() => {
+      setInputs(nextInputs)
+    })
+  }, [defaultConfig, isChatMode, setInputs, startNodeId])
+
+  const handleClassesChange = useCallback((newClasses: Topic[]) => {
     const newInputs = produce(inputs, (draft) => {
       draft.classes = newClasses
-      draft._targetBranches = newClasses
+      draft._targetBranches = newClasses.map((item: Topic) => ({
+        id: item.id,
+        name: item.name,
+      }))
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -170,7 +210,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const handleSortTopic = useCallback((newTopics: (Topic & { id: string })[]) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.classes = newTopics.filter(Boolean).map(item => ({
+      const sortedTopics = newTopics.filter(Boolean)
+      draft.classes = sortedTopics.map(item => ({
+        id: item.id,
+        name: item.name,
+        label: item.label,
+      }))
+      draft._targetBranches = sortedTopics.map(item => ({
         id: item.id,
         name: item.name,
       }))

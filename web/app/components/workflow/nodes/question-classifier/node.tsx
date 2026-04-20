@@ -2,28 +2,28 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
-
-const i18nPrefix = 'nodes.questionClassifiers'
+import { getDisplayClassLabel } from './components/class-label-utils'
 
 const MAX_CLASS_TEXT_LENGTH = 50
 
 type TruncatedClassItemProps = {
-  topic: { id: string, name: string }
+  topic: { id: string, name: string, label?: string }
   index: number
   nodeId: string
   t: TFunction
 }
 
 const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId, t }) => {
+  const displayLabel = getDisplayClassLabel(topic.label, index + 1, t)
   const truncatedText = topic.name.length > MAX_CLASS_TEXT_LENGTH
     ? `${topic.name.slice(0, MAX_CLASS_TEXT_LENGTH)}...`
     : topic.name
@@ -42,19 +42,20 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
   return (
     <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
-      <div className="system-2xs-semibold-uppercase text-text-secondary uppercase">
-        {`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
+      <div className="text-xs leading-4 font-semibold text-text-secondary">
+        {displayLabel}
       </div>
       {shouldShowTooltip
         ? (
-            <Tooltip
-              popupContent={(
+            <Tooltip>
+              <TooltipTrigger>
+                {content}
+              </TooltipTrigger>
+              <TooltipContent>
                 <div className="max-w-[300px] wrap-break-word">
                   <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
                 </div>
-              )}
-            >
-              {content}
+              </TooltipContent>
             </Tooltip>
           )
         : content}

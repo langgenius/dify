@@ -173,6 +173,10 @@ export const QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
     type: VarType.string,
   },
   {
+    variable: 'class_label',
+    type: VarType.string,
+  },
+  {
     variable: 'usage',
     type: VarType.object,
   },
