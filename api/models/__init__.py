@@ -118,6 +118,7 @@ from .workflow import (
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
     WorkflowArchiveLog,
+    WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -240,5 +241,6 @@ __all__ = [
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
+    "WorkflowKind",
     "WorkflowType",
 ]

@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Sequence
 
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
 
@@ -58,8 +60,6 @@ from dify_trace_aliyun.utils import (
     serialize_json_data,
 )
 from extensions.ext_database import db
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)

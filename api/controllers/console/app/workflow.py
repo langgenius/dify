@@ -5,6 +5,11 @@ from typing import Any, Literal
 
 from flask import abort, request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.file import helpers as file_helpers
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
@@ -37,18 +42,13 @@ from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from graphon.enums import NodeType
-from graphon.file import File
-from graphon.file import helpers as file_helpers
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowKind
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
@@ -1139,7 +1139,7 @@ class WorkflowTypeConvertApi(Resource):
     def post(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = WorkflowTypeConvertQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        target_type = WorkflowType.value_of(args.target_type)
+        target_type = WorkflowKind.EVALUATION if args.target_type == "evaluation" else WorkflowKind.STANDARD
 
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
@@ -1163,6 +1163,7 @@ class WorkflowTypeConvertApi(Resource):
             "result": "success",
             "workflow_id": workflow.id,
             "type": workflow.type.value,
+            "kind": workflow.kind_or_standard,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 

@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from faker import Faker
+from graphon.enums import BuiltinNodeTypes
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -16,7 +17,6 @@ from core.trigger.constants import (
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
 from extensions.ext_redis import redis_client
-from graphon.enums import BuiltinNodeTypes
 from models import Account, AppMode
 from models.model import AppModelConfig, IconType
 from services import app_dsl_service

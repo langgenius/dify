@@ -1,8 +1,8 @@
 from flask_restx import fields
+from graphon.variables import SecretVariable, SegmentType, VariableBase
 
 from core.helper import encrypter
 from fields.member_fields import simple_account_fields
-from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
@@ -68,6 +68,7 @@ pipeline_variable_fields = {
 
 workflow_fields = {
     "id": fields.String,
+    "kind": fields.String(attribute="kind_or_standard"),
     "graph": fields.Raw(attribute="graph_dict"),
     "features": fields.Raw(attribute="features_dict"),
     "hash": fields.String(attribute="unique_hash"),

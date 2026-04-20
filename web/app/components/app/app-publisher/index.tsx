@@ -285,7 +285,7 @@ const AppPublisher = ({
         throw new Error('App not found')
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
+        return `${basePath}/explore/installed/${installed_apps[0].id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {

@@ -41,6 +41,7 @@ def apply_published_workflow_snapshot_to_draft(
             tenant_id=tenant_id,
             app_id=app_id,
             type=workflow_type,
+            kind=source_workflow.kind_or_standard,
             version=Workflow.VERSION_DRAFT,
             graph=source_workflow.graph,
             features=source_workflow.serialized_features,
@@ -51,6 +52,7 @@ def apply_published_workflow_snapshot_to_draft(
 
     draft_workflow.graph = source_workflow.graph
     draft_workflow.features = source_workflow.serialized_features
+    draft_workflow.kind = source_workflow.resolved_kind
     draft_workflow.updated_by = account.id
     draft_workflow.updated_at = updated_at_factory()
     draft_workflow.copy_serialized_variable_storage_from(source_workflow)

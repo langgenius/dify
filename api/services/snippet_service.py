@@ -16,6 +16,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import (
     Workflow,
+    WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowType,
@@ -46,6 +47,11 @@ class SnippetService:
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+    @staticmethod
+    def _snippet_kind_filter():
+        """Match snippet workflows by business kind."""
+        return Workflow.kind == WorkflowKind.SNIPPET.value
 
     @staticmethod
     def validate_snippet_graph_forbidden_nodes(graph: Mapping[str, Any]) -> None:
@@ -271,7 +277,7 @@ class SnippetService:
             .where(
                 Workflow.tenant_id == snippet.tenant_id,
                 Workflow.app_id == snippet.id,
-                Workflow.type == WorkflowType.SNIPPET.value,
+                self._snippet_kind_filter(),
                 Workflow.version == "draft",
             )
             .first()
@@ -293,7 +299,7 @@ class SnippetService:
             .where(
                 Workflow.tenant_id == snippet.tenant_id,
                 Workflow.app_id == snippet.id,
-                Workflow.type == WorkflowType.SNIPPET.value,
+                self._snippet_kind_filter(),
                 Workflow.id == snippet.workflow_id,
             )
             .first()
@@ -336,7 +342,8 @@ class SnippetService:
                 tenant_id=snippet.tenant_id,
                 app_id=snippet.id,
                 features="{}",
-                type=WorkflowType.SNIPPET.value,
+                type=WorkflowType.WORKFLOW.value,
+                kind=WorkflowKind.SNIPPET.value,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
@@ -348,6 +355,8 @@ class SnippetService:
         else:
             # Update existing draft workflow
             workflow.graph = json.dumps(graph)
+            workflow.type = WorkflowType.WORKFLOW.value
+            workflow.kind = WorkflowKind.SNIPPET
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = []
@@ -381,7 +390,7 @@ class SnippetService:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == snippet.tenant_id,
             Workflow.app_id == snippet.id,
-            Workflow.type == WorkflowType.SNIPPET.value,
+            self._snippet_kind_filter(),
             Workflow.version == "draft",
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
@@ -394,7 +403,7 @@ class SnippetService:
         workflow = Workflow.new(
             tenant_id=snippet.tenant_id,
             app_id=snippet.id,
-            type=draft_workflow.type,
+            type=WorkflowType.WORKFLOW.value,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
@@ -402,6 +411,7 @@ class SnippetService:
             environment_variables=[],
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
+            kind=WorkflowKind.SNIPPET.value,
             marked_name="",
             marked_comment="",
         )
@@ -440,7 +450,7 @@ class SnippetService:
             select(Workflow)
             .where(
                 Workflow.app_id == snippet.id,
-                Workflow.type == WorkflowType.SNIPPET.value,
+                self._snippet_kind_filter(),
                 Workflow.version != "draft",
             )
             .order_by(Workflow.version.desc())

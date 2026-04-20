@@ -164,7 +164,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
         const prevIndex = newConfigs.findIndex(item => item.credential_id === modelCredential.credential_id && item.name !== '__inherit__')
         const newIndex = available_credentials.findIndex(c => c.credential_id === modelCredential.credential_id)
         if (newIndex > -1 && prevIndex > -1)
-          newConfigs[prevIndex]!.name = available_credentials[newIndex]!.credential_name || ''
+          newConfigs[prevIndex].name = available_credentials[newIndex].credential_name || ''
         return {
           ...prev,
           configs: newConfigs,

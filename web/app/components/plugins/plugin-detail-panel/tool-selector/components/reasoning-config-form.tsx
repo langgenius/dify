@@ -137,7 +137,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         asChild={false}
       />
     ))
-    const varInput = value[variable]!.value
+    const varInput = value[variable].value
     const {
       isString,
       isNumber,
@@ -179,7 +179,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               >
                 <div
                   className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
+                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle)}
                 >
                   <RiBracesLine className="size-3.5" />
                 </div>

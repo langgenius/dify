@@ -35,10 +35,9 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       // Check that key elements are rendered
-      // Check that key elements are rendered
-      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-      expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
+      expect(screen.getByText(/crawlSubPage/i)).toBeInTheDocument()
+      expect(screen.getByText(/limit/i)).toBeInTheDocument()
+      expect(screen.getByText(/maxDepth/i)).toBeInTheDocument()
     })
 
     it('should render all form fields', () => {
@@ -46,16 +45,14 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       // Checkboxes
-      // Checkboxes
-      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
-      expect(screen.getByText(/extractOnlyMainContent/i))!.toBeInTheDocument()
+      expect(screen.getByText(/crawlSubPage/i)).toBeInTheDocument()
+      expect(screen.getByText(/extractOnlyMainContent/i)).toBeInTheDocument()
 
       // Text/Number fields
-      // Text/Number fields
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-      expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
-      expect(screen.getByText(/excludePaths/i))!.toBeInTheDocument()
-      expect(screen.getByText(/includeOnlyPaths/i))!.toBeInTheDocument()
+      expect(screen.getByText(/limit/i)).toBeInTheDocument()
+      expect(screen.getByText(/maxDepth/i)).toBeInTheDocument()
+      expect(screen.getByText(/excludePaths/i)).toBeInTheDocument()
+      expect(screen.getByText(/includeOnlyPaths/i)).toBeInTheDocument()
     })
 
     it('should render with custom className', () => {
@@ -65,7 +62,7 @@ describe('Options', () => {
       )
 
       const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
+      expect(rootElement).toHaveClass('custom-class')
     })
 
     it('should render limit field with required indicator', () => {
@@ -74,7 +71,7 @@ describe('Options', () => {
 
       // Limit field should have required indicator (*)
       const requiredIndicator = screen.getByText('*')
-      expect(requiredIndicator)!.toBeInTheDocument()
+      expect(requiredIndicator).toBeInTheDocument()
     })
 
     it('should render placeholder for excludes field', () => {
@@ -82,7 +79,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const excludesInput = screen.getByPlaceholderText('blog/*, /about/*')
-      expect(excludesInput)!.toBeInTheDocument()
+      expect(excludesInput).toBeInTheDocument()
     })
 
     it('should render placeholder for includes field', () => {
@@ -90,7 +87,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const includesInput = screen.getByPlaceholderText('articles/*')
-      expect(includesInput)!.toBeInTheDocument()
+      expect(includesInput).toBeInTheDocument()
     })
 
     it('should render two checkboxes', () => {
@@ -109,8 +106,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       // First checkbox should have check icon when checked
-      // First checkbox should have check icon when checked
-      expect(screen.queryByTestId('check-icon-crawl-sub-page'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('check-icon-crawl-sub-page')).toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
@@ -122,7 +118,7 @@ describe('Options', () => {
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
       render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByTestId('check-icon-only-main-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('check-icon-only-main-content')).toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {
@@ -136,7 +132,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const limitInput = screen.getByDisplayValue('25')
-      expect(limitInput)!.toBeInTheDocument()
+      expect(limitInput).toBeInTheDocument()
     })
 
     it('should display max_depth value in input', () => {
@@ -144,7 +140,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const maxDepthInput = screen.getByDisplayValue('5')
-      expect(maxDepthInput)!.toBeInTheDocument()
+      expect(maxDepthInput).toBeInTheDocument()
     })
 
     it('should display excludes value in input', () => {
@@ -152,7 +148,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const excludesInput = screen.getByDisplayValue('test/*')
-      expect(excludesInput)!.toBeInTheDocument()
+      expect(excludesInput).toBeInTheDocument()
     })
 
     it('should display includes value in input', () => {
@@ -160,7 +156,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const includesInput = screen.getByDisplayValue('docs/*')
-      expect(includesInput)!.toBeInTheDocument()
+      expect(includesInput).toBeInTheDocument()
     })
   })
 
@@ -170,7 +166,7 @@ describe('Options', () => {
       const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
       const checkboxes = getCheckboxes(container)
-      fireEvent.click(checkboxes[0]!)
+      fireEvent.click(checkboxes[0])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,
@@ -183,7 +179,7 @@ describe('Options', () => {
       const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
       const checkboxes = getCheckboxes(container)
-      fireEvent.click(checkboxes[1]!)
+      fireEvent.click(checkboxes[1])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,
@@ -255,8 +251,7 @@ describe('Options', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       // Component should render without crashing
-      // Component should render without crashing
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/limit/i)).toBeInTheDocument()
     })
 
     it('should handle zero values', () => {
@@ -278,8 +273,8 @@ describe('Options', () => {
       })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('9999'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('100'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('9999')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('100')).toBeInTheDocument()
     })
 
     it('should handle special characters in text fields', () => {
@@ -289,8 +284,8 @@ describe('Options', () => {
       })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('path/*/file?query=1&param=2'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('docs/**/*.md'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('path/*/file?query=1&param=2')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('docs/**/*.md')).toBeInTheDocument()
     })
 
     it('should preserve other payload fields when updating one field', () => {
@@ -362,7 +357,7 @@ describe('Options', () => {
 
       rerender(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/limit/i)).toBeInTheDocument()
     })
 
     it('should re-render when payload changes', () => {
@@ -370,10 +365,10 @@ describe('Options', () => {
       const payload2 = createMockCrawlOptions({ limit: 20 })
 
       const { rerender } = render(<Options payload={payload1} onChange={mockOnChange} />)
-      expect(screen.getByDisplayValue('10'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
 
       rerender(<Options payload={payload2} onChange={mockOnChange} />)
-      expect(screen.getByDisplayValue('20'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('20')).toBeInTheDocument()
     })
   })
 })

@@ -26,28 +26,26 @@ describe('MethodSelector', () => {
       renderComponent()
 
       // Should display the current method text
-      // Should display the current method text
-      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter')).toBeInTheDocument()
     })
 
     it('should render with llm value selected', () => {
       renderComponent({ value: 'llm' })
 
-      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter')).toBeInTheDocument()
     })
 
     it('should render with form value selected', () => {
       renderComponent({ value: 'form' })
 
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
     })
 
     it('should render with undefined value', () => {
       renderComponent({ value: undefined })
 
       // When value is undefined, it should show the form method text (else branch)
-      // When value is undefined, it should show the form method text (else branch)
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
     })
 
     it('should render arrow down icon', () => {
@@ -55,7 +53,7 @@ describe('MethodSelector', () => {
 
       // The arrow icon is rendered with remixicon
       const arrowIcon = document.querySelector('.remixicon')
-      expect(arrowIcon)!.toBeInTheDocument()
+      expect(arrowIcon).toBeInTheDocument()
     })
   })
 
@@ -64,19 +62,19 @@ describe('MethodSelector', () => {
     it('should display methodParameter when value is llm', () => {
       renderComponent({ value: 'llm' })
 
-      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter')).toBeInTheDocument()
     })
 
     it('should display methodSetting when value is form', () => {
       renderComponent({ value: 'form' })
 
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
     })
 
     it('should handle empty string value as non-llm', () => {
       renderComponent({ value: '' })
 
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
     })
   })
 
@@ -92,8 +90,8 @@ describe('MethodSelector', () => {
 
       // Dropdown should now show both options with tips
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
-        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip')).toBeInTheDocument()
       })
     })
 
@@ -108,12 +106,12 @@ describe('MethodSelector', () => {
 
       // Wait for dropdown to open
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
       })
 
       // Click the llm option (by finding the method parameter option in dropdown)
       const llmOption = screen.getAllByText('tools.createTool.toolInput.methodParameter')[0]
-      await user.click(llmOption!)
+      await user.click(llmOption)
 
       expect(onChange).toHaveBeenCalledWith('llm')
     })
@@ -129,12 +127,12 @@ describe('MethodSelector', () => {
 
       // Wait for dropdown to open
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip')).toBeInTheDocument()
       })
 
       // Click the form option (by finding the method setting option in dropdown)
       const formOption = screen.getAllByText('tools.createTool.toolInput.methodSetting')[0]
-      await user.click(formOption!)
+      await user.click(formOption)
 
       expect(onChange).toHaveBeenCalledWith('form')
     })
@@ -148,7 +146,7 @@ describe('MethodSelector', () => {
       // First click - open
       await user.click(trigger)
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
       })
 
       // Second click - close
@@ -165,7 +163,7 @@ describe('MethodSelector', () => {
       renderComponent()
 
       const trigger = document.querySelector('.hover\\:bg-background-section-burn')
-      expect(trigger)!.toBeInTheDocument()
+      expect(trigger).toBeInTheDocument()
     })
 
     it('should apply open state styles when dropdown is open', async () => {
@@ -177,7 +175,7 @@ describe('MethodSelector', () => {
 
       await waitFor(() => {
         const openTrigger = document.querySelector('.bg-background-section-burn\\!')
-        expect(openTrigger)!.toBeInTheDocument()
+        expect(openTrigger).toBeInTheDocument()
       })
     })
 
@@ -191,7 +189,7 @@ describe('MethodSelector', () => {
       await waitFor(() => {
         // Check icon should be visible for llm option
         const checkIcon = document.querySelector('.text-text-accent')
-        expect(checkIcon)!.toBeInTheDocument()
+        expect(checkIcon).toBeInTheDocument()
       })
     })
 
@@ -205,7 +203,7 @@ describe('MethodSelector', () => {
       await waitFor(() => {
         // Check icon should be visible for form option
         const checkIcon = document.querySelector('.text-text-accent')
-        expect(checkIcon)!.toBeInTheDocument()
+        expect(checkIcon).toBeInTheDocument()
       })
     })
   })
@@ -221,9 +219,8 @@ describe('MethodSelector', () => {
 
       await waitFor(() => {
         // Should show both option titles and descriptions
-        // Should show both option titles and descriptions
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
-        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip')).toBeInTheDocument()
       })
     })
 
@@ -236,9 +233,9 @@ describe('MethodSelector', () => {
 
       await waitFor(() => {
         const dropdown = document.querySelector('.w-\\[320px\\]')
-        expect(dropdown)!.toBeInTheDocument()
-        expect(dropdown)!.toHaveClass('rounded-lg')
-        expect(dropdown)!.toHaveClass('shadow-lg')
+        expect(dropdown).toBeInTheDocument()
+        expect(dropdown).toHaveClass('rounded-lg')
+        expect(dropdown).toHaveClass('shadow-lg')
       })
     })
 
@@ -270,8 +267,7 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       // Should not crash and should be in a consistent state
-      // Should not crash and should be in a consistent state
-      expect(trigger)!.toBeInTheDocument()
+      expect(trigger).toBeInTheDocument()
     })
 
     it('should handle selecting the already selected value', async () => {
@@ -283,12 +279,12 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
       })
 
       // Click the llm option in the dropdown (the one with the tip text nearby)
       const llmOptionContainer = screen.getByText('tools.createTool.toolInput.methodParameterTip').closest('.cursor-pointer')
-      expect(llmOptionContainer)!.toBeInTheDocument()
+      expect(llmOptionContainer).toBeInTheDocument()
       await user.click(llmOptionContainer!)
 
       // Should call onChange
@@ -302,7 +298,7 @@ describe('MethodSelector', () => {
       renderComponent()
 
       const trigger = document.querySelector('.cursor-pointer')
-      expect(trigger)!.toBeInTheDocument()
+      expect(trigger).toBeInTheDocument()
     })
 
     it('should have clickable dropdown options', async () => {

@@ -161,8 +161,7 @@ describe('TTSParamsPanel', () => {
       const { container } = render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(container)!.toBeInTheDocument()
+      expect(container).toBeInTheDocument()
     })
 
     it('should render language label', () => {
@@ -173,8 +172,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByText('appDebug.voice.voiceSettings.language'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.voice.voiceSettings.language')).toBeInTheDocument()
     })
 
     it('should render voice label', () => {
@@ -185,8 +183,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByText('appDebug.voice.voiceSettings.voice'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.voice.voiceSettings.voice')).toBeInTheDocument()
     })
 
     it('should render two Select components', () => {
@@ -210,7 +207,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const values = screen.getAllByTestId('selected-value')
-      expect(values[0])!.toHaveTextContent('zh-Hans')
+      expect(values[0]).toHaveTextContent('zh-Hans')
     })
 
     it('should render voice select with correct value', () => {
@@ -222,7 +219,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const values = screen.getAllByTestId('selected-value')
-      expect(values[1])!.toHaveTextContent('echo')
+      expect(values[1]).toHaveTextContent('echo')
     })
 
     it('should only show supported languages in language select', () => {
@@ -233,10 +230,9 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-en-US'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-zh-Hans'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-ja-JP'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-en-US')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-zh-Hans')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-ja-JP')).toBeInTheDocument()
       expect(screen.queryByTestId('select-item-unsupported-lang')).not.toBeInTheDocument()
     })
 
@@ -248,10 +244,9 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-echo'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-fable'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-echo')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-fable')).toBeInTheDocument()
     })
   })
 
@@ -265,9 +260,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
-      expect(screen.getByTestId('tts-voice-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
+      expect(screen.getByTestId('tts-language-select-trigger')).toHaveAttribute('data-class', 'w-full')
+      expect(screen.getByTestId('tts-voice-select-trigger')).toHaveAttribute('data-class', 'w-full')
     })
 
     it('should apply popup className to SelectContent', () => {
@@ -279,8 +273,8 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const contents = screen.getAllByTestId('select-content')
-      expect(contents[0])!.toHaveAttribute('data-popup-class', 'w-[354px]')
-      expect(contents[1])!.toHaveAttribute('data-popup-class', 'w-[354px]')
+      expect(contents[0]).toHaveAttribute('data-popup-class', 'w-[354px]')
+      expect(contents[1]).toHaveAttribute('data-popup-class', 'w-[354px]')
     })
   })
 
@@ -403,37 +397,6 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
-      // Assert - no voice items should be rendered
       expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
       expect(screen.queryByTestId('select-item-echo')).not.toBeInTheDocument()
     })
@@ -451,37 +414,6 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
 
@@ -498,9 +430,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-voice-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-voice-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-1')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-2')).toBeInTheDocument()
     })
 
     it('should handle currentModel with empty voices array', () => {
@@ -513,7 +444,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert - no voice items (except language items)
-      expect(screen.getAllByTestId('select-content')[1]!.children).toHaveLength(0)
+      expect(screen.getAllByTestId('select-content')[1].children).toHaveLength(0)
       expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
 
@@ -529,8 +460,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-single-voice'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-single-voice')).toBeInTheDocument()
     })
   })
 
@@ -545,7 +475,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const values = screen.getAllByTestId('selected-value')
-      expect(values[0])!.toHaveTextContent('')
+      expect(values[0]).toHaveTextContent('')
     })
 
     it('should handle empty voice value', () => {
@@ -557,7 +487,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const values = screen.getAllByTestId('selected-value')
-      expect(values[1])!.toHaveTextContent('')
+      expect(values[1]).toHaveTextContent('')
     })
 
     it('should handle many voices', () => {
@@ -574,9 +504,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-voice-0'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-voice-19'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-0')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-19')).toBeInTheDocument()
     })
 
     it('should handle voice with special characters in mode', () => {
@@ -591,8 +520,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-voice-with_special.chars'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-voice-with_special.chars')).toBeInTheDocument()
     })
 
     it('should handle onChange not being called multiple times', () => {
@@ -618,13 +546,13 @@ describe('TTSParamsPanel', () => {
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
       const values = screen.getAllByTestId('selected-value')
-      expect(values[0])!.toHaveTextContent('en-US')
+      expect(values[0]).toHaveTextContent('en-US')
 
       rerender(<TTSParamsPanel {...props} language="zh-Hans" />)
 
       // Assert
       const updatedValues = screen.getAllByTestId('selected-value')
-      expect(updatedValues[0])!.toHaveTextContent('zh-Hans')
+      expect(updatedValues[0]).toHaveTextContent('zh-Hans')
     })
 
     it('should update when voice prop changes', () => {
@@ -634,13 +562,13 @@ describe('TTSParamsPanel', () => {
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
       const values = screen.getAllByTestId('selected-value')
-      expect(values[1])!.toHaveTextContent('alloy')
+      expect(values[1]).toHaveTextContent('alloy')
 
       rerender(<TTSParamsPanel {...props} voice="echo" />)
 
       // Assert
       const updatedValues = screen.getAllByTestId('selected-value')
-      expect(updatedValues[1])!.toHaveTextContent('echo')
+      expect(updatedValues[1]).toHaveTextContent('echo')
     })
 
     it('should update voice list when currentModel changes', () => {
@@ -652,7 +580,7 @@ describe('TTSParamsPanel', () => {
 
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
-      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy')).toBeInTheDocument()
       expect(screen.queryByTestId('select-item-nova')).not.toBeInTheDocument()
 
       const newModel = createCurrentModel([
@@ -662,9 +590,8 @@ describe('TTSParamsPanel', () => {
       rerender(<TTSParamsPanel {...props} currentModel={newModel} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
-      expect(screen.getByTestId('select-item-nova'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy')).toBeInTheDocument()
+      expect(screen.getByTestId('select-item-nova')).toBeInTheDocument()
     })
 
     it('should handle currentModel becoming null', () => {
@@ -673,41 +600,10 @@ describe('TTSParamsPanel', () => {
 
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
-      expect(screen.getByTestId('select-item-alloy'))!.toBeInTheDocument()
+      expect(screen.getByTestId('select-item-alloy')).toBeInTheDocument()
 
       rerender(<TTSParamsPanel {...props} currentModel={null} />)
 
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       // Assert
       expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
@@ -740,7 +636,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const languageLabel = screen.getByText('appDebug.voice.voiceSettings.language')
-      expect(languageLabel)!.toHaveClass('system-sm-semibold')
+      expect(languageLabel).toHaveClass('system-sm-semibold')
     })
 
     it('should have proper label structure for voice select', () => {
@@ -752,7 +648,7 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       const voiceLabel = screen.getByText('appDebug.voice.voiceSettings.voice')
-      expect(voiceLabel)!.toHaveClass('system-sm-semibold')
+      expect(voiceLabel).toHaveClass('system-sm-semibold')
     })
   })
 })
