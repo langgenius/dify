@@ -1,8 +1,8 @@
 import type { SimpleDetail } from '../../../store'
 import type { TriggerOAuthConfig, TriggerProviderApiEntity, TriggerSubscription, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
@@ -34,7 +34,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),

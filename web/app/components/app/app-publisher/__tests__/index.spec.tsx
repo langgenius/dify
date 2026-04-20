@@ -1,10 +1,15 @@
 /* eslint-disable ts/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import AppPublisher from '../index'
+
+const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { webapp_auth: { enabled: true } },
+})
 
 const mockOnPublish = vi.fn()
 const mockOnToggle = vi.fn()
@@ -49,16 +54,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: { enabled: boolean } } }) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: () => 'moments ago',
@@ -93,7 +88,7 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

@@ -18,9 +18,9 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly,
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
-    normalize_human_input_node_data_for_graph,
+    adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
 from core.workflow.node_factory import (
@@ -802,7 +802,7 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum = NodeType(node_type)
+        node_type_enum: NodeType = node_type
         node_mapping = get_node_type_classes_mapping()
 
         # return default block config
@@ -1107,7 +1107,7 @@ class WorkflowService:
             raise ValueError("Node type must be human-input.")
 
         node_data = HumanInputNodeData.model_validate(
-            normalize_human_input_node_data_for_graph(node_config["data"]),
+            adapt_human_input_node_data_for_graph(node_config["data"]),
             from_attributes=True,
         )
         delivery_method = self._resolve_human_input_delivery_method(
@@ -1248,9 +1248,10 @@ class WorkflowService:
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
         )
+        node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(node_config["data"]))
         node = HumanInputNode(
-            id=node_config["id"],
-            config=node_config,
+            node_id=node_config["id"],
+            config=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
@@ -1540,7 +1541,7 @@ class WorkflowService:
         from graphon.nodes.human_input.entities import HumanInputNodeData
 
         try:
-            HumanInputNodeData.model_validate(normalize_human_input_node_data_for_graph(node_data))
+            HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 

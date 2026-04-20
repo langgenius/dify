@@ -1,6 +1,15 @@
 # @langgenius/dify-ui
 
-This package provides shared design tokens (colors, shadows, typography), the `cn()` utility, and a Tailwind CSS preset consumed by `web/`.
+Shared design tokens, the `cn()` utility, a Tailwind CSS preset, and headless primitive components consumed by `web/`.
+
+## Component Authoring Rules
+
+- Use `@base-ui/react` primitives + `cva` + `cn`.
+- Inside dify-ui, cross-component imports use relative paths (`../button`). External consumers use subpath exports (`@langgenius/dify-ui/button`).
+- No imports from `web/`. No dependencies on next / i18next / ky / jotai / zustand.
+- One component per folder: `src/<name>/index.tsx`, optional `index.stories.tsx` and `__tests__/index.spec.tsx`. Add a matching `./<name>` subpath to `package.json#exports`.
+- Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
+- When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
 
 ## Border Radius: Figma Token → Tailwind Class Mapping
 

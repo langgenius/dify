@@ -5,6 +5,7 @@ import {
   shift,
   useFloating,
 } from '@floating-ui/react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditLine,
@@ -19,7 +20,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
 

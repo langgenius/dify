@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {

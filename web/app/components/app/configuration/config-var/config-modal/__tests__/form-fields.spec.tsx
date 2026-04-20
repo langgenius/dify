@@ -44,8 +44,8 @@ vi.mock('@/app/components/base/select', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
   return {
     ...actual,

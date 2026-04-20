@@ -14,12 +14,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector({
-    systemFeatures: { enable_marketplace: false },
-  }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({
     plugins: [],

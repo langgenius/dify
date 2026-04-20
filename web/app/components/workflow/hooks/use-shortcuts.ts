@@ -46,6 +46,7 @@ export const useShortcuts = (): void => {
     zoomTo,
     getZoom,
     fitView,
+    getNodes,
   } = useReactFlow()
 
   // Zoom out to a minimum of 0.25 for shortcut
@@ -67,9 +68,14 @@ export const useShortcuts = (): void => {
   }, [])
 
   const shouldHandleCopy = useCallback(() => {
+    // Box selection can leave incidental DOM text selection behind while the
+    // workflow selection itself lives on node.data._isBundled.
+    if (getNodes().some(node => node.data._isBundled))
+      return true
+
     const selection = document.getSelection()
-    return !selection || selection.isCollapsed
-  }, [])
+    return !selection || selection.isCollapsed || !selection.rangeCount
+  }, [getNodes])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {

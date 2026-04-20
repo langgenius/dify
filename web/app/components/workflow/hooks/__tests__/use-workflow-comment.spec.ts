@@ -1,5 +1,6 @@
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 import { act, waitFor } from '@testing-library/react'
+import { createTestQueryClient, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import { useWorkflowComment } from '../use-workflow-comment'
@@ -47,14 +48,6 @@ vi.mock('@/context/app-context', () => ({
       name: 'Alice',
       email: 'alice@example.com',
       avatar_url: 'alice.png',
-    },
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => unknown) => selector({
-    systemFeatures: {
-      enable_collaboration_mode: globalFeatureState.enableCollaboration,
     },
   }),
 }))
@@ -120,6 +113,14 @@ const baseCommentDetail = (): WorkflowCommentDetail => ({
   replies: [],
 })
 
+const createSeededQueryClient = () => {
+  const queryClient = createTestQueryClient()
+  seedSystemFeatures(queryClient, {
+    enable_collaboration_mode: globalFeatureState.enableCollaboration,
+  })
+  return queryClient
+}
+
 describe('useWorkflowComment', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -139,7 +140,9 @@ describe('useWorkflowComment', () => {
     const comment = baseComment()
     mockFetchWorkflowComments.mockResolvedValue([comment])
 
-    const { store } = renderWorkflowHook(() => useWorkflowComment())
+    const { store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+    })
 
     await waitFor(() => {
       expect(mockFetchWorkflowComments).toHaveBeenCalledWith('app-1')
@@ -152,7 +155,9 @@ describe('useWorkflowComment', () => {
   it('does not load comment list when collaboration is disabled', async () => {
     globalFeatureState.enableCollaboration = false
 
-    renderWorkflowHook(() => useWorkflowComment())
+    renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+    })
 
     await Promise.resolve()
 
@@ -161,6 +166,7 @@ describe('useWorkflowComment', () => {
 
   it('creates a comment, updates local cache, and emits collaboration sync', async () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [],
         pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
@@ -214,6 +220,7 @@ describe('useWorkflowComment', () => {
     mockUpdateWorkflowComment.mockRejectedValue(new Error('update failed'))
 
     const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [comment],
         activeCommentId: comment.id,
@@ -254,6 +261,7 @@ describe('useWorkflowComment', () => {
     mockFetchWorkflowComment.mockResolvedValue({ data: detail })
 
     const { unmount } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
       initialStoreState: {
         activeCommentId: comment.id,
       },
@@ -295,6 +303,7 @@ describe('useWorkflowComment', () => {
     })
 
     const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [commentA, commentB],
         commentDetailCache: {
@@ -363,6 +372,7 @@ describe('useWorkflowComment', () => {
     })
 
     const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [commentA, commentB],
         activeCommentId: commentA.id,

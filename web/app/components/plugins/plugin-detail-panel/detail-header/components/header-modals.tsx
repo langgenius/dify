@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,7 +11,8 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { useTranslation } from 'react-i18next'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'

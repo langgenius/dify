@@ -2,9 +2,9 @@
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,

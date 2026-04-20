@@ -81,7 +81,7 @@ vi.mock('@/app/components/base/drawer', () => ({
 
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,

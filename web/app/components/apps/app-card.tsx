@@ -6,15 +6,6 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
-import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { AppTypeIcon } from '@/app/components/app/type-selector'
-import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
-import TagSelector from '@/app/components/base/tag-management/selector'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -23,19 +14,28 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import * as React from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
+import AppIcon from '@/app/components/base/app-icon'
+import Input from '@/app/components/base/input'
+import TagSelector from '@/app/components/base/tag-management/selector'
+import Tooltip from '@/app/components/base/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
@@ -44,6 +44,7 @@ import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -182,7 +183,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
 type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
 
 const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
     appId: props.app.id,
     enabled: systemFeatures.webapp_auth.enabled,
@@ -205,7 +206,7 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
 const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()

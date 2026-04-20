@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.engine import Engine
 
 from configs import dify_config
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,

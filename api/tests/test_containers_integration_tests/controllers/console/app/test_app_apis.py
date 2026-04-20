@@ -234,6 +234,35 @@ class TestAppEndpoints:
                 }
             )
 
+    def test_app_icon_post_should_forward_icon_type(self, app, monkeypatch):
+        api = app_module.AppIconApi()
+        method = _unwrap(api.post)
+        payload = {
+            "icon": "https://example.com/icon.png",
+            "icon_type": "image",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app_icon.return_value = SimpleNamespace()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
+
+        with (
+            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+        ):
+            response = method(app_model=SimpleNamespace())
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app_icon.call_args.args[1:] == (
+            payload["icon"],
+            payload["icon_background"],
+            app_module.IconType.IMAGE,
+        )
+
 
 class TestOpsTraceEndpoints:
     @pytest.fixture

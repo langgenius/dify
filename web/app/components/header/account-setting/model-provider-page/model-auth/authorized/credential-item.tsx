@@ -1,5 +1,6 @@
 import type { Credential } from '../../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useMemo,
@@ -7,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import Indicator from '@/app/components/header/indicator'
 
 type CredentialItemProps = {

@@ -4,15 +4,6 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean } from 'ahooks'
-import { produce } from 'immer'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ReactSortable } from 'react-sortablejs'
-import { useContext } from 'use-context-selector'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,8 +12,17 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
+import { useContext } from 'use-context-selector'
+import Tooltip from '@/app/components/base/tooltip'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
