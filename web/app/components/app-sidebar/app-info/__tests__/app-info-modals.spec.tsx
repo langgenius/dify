@@ -75,9 +75,9 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
-  onExport: vi.fn(),
+  onExport: vi.fn(async () => {}),
   exportCheck: vi.fn(),
-  handleConfirmExport: vi.fn(),
+  handleConfirmExport: vi.fn(async () => {}),
   onConfirmDelete: vi.fn(),
 }
 
@@ -236,6 +236,42 @@ describe('AppInfoModals', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(defaultProps.handleConfirmExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('should disable export confirm button and avoid duplicate submits while confirming export', async () => {
+    let resolveConfirmExport: () => void
+    const handleConfirmExport = vi.fn(() => new Promise<void>((resolve) => {
+      resolveConfirmExport = resolve
+    }))
+    const user = userEvent.setup()
+
+    await act(async () => {
+      render(
+        <AppInfoModals
+          {...defaultProps}
+          activeModal="exportWarning"
+          handleConfirmExport={handleConfirmExport}
+        />,
+      )
+    })
+
+    const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
+
+    const firstClick = user.click(confirmButton)
+    await waitFor(() => {
+      expect(confirmButton).toBeDisabled()
+      expect(confirmButton).toHaveTextContent('common.operation.exporting')
+    })
+    await user.click(confirmButton)
+
+    expect(handleConfirmExport).toHaveBeenCalledTimes(1)
+
+    resolveConfirmExport!()
+    await firstClick
+    await waitFor(() => {
+      expect(confirmButton).not.toBeDisabled()
+      expect(confirmButton).toHaveTextContent('common.operation.confirm')
+    })
   })
 
   it('should call exportCheck when backup on importDSL modal', async () => {
