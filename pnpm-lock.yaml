@@ -719,6 +719,9 @@ importers:
       iconify-import-svg:
         specifier: 'catalog:'
         version: 0.2.0
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
 
   packages/migrate-no-unchecked-indexed-access:
     dependencies:
