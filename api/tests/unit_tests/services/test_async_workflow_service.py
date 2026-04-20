@@ -73,11 +73,6 @@ class TestAsyncWorkflowService:
 
         mock_dispatcher = MagicMock()
         mock_quota_service = MagicMock()
-        mock_get_workflow = MagicMock()
-
-        mock_professional_task = MagicMock()
-        mock_team_task = MagicMock()
-        mock_sandbox_task = MagicMock()
 
         with (
             patch.object(
@@ -474,9 +469,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(
-            app_model, "workflow-123", session=None
-        )
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123", session=None)
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
