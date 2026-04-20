@@ -168,7 +168,7 @@ class TestAsyncWorkflowService:
 
         mocks["quota_service"].reserve.assert_called_once()
         quota_charge_mock.commit.assert_called_once()
-        assert session.commit.call_count == 2
+        assert session.commit.call_count == 3
 
         created_log = mocks["repo"].create.call_args[0][0]
         assert created_log.status == WorkflowTriggerStatus.QUEUED
@@ -271,7 +271,7 @@ class TestAsyncWorkflowService:
                 trigger_data=trigger_data,
             )
 
-        assert session.commit.call_count == 2
+        assert session.commit.call_count == 3
         updated_log = mocks["repo"].update.call_args[0][0]
         assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
         assert "Quota limit reached" in updated_log.error
@@ -474,7 +474,9 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123")
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app_model, "workflow-123", session=None
+        )
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
@@ -502,7 +504,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model)
+        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=None)
         workflow_service.get_published_workflow_by_id.assert_not_called()
 
     def test_should_raise_when_default_published_workflow_not_found(self):
