@@ -1,6 +1,6 @@
 {
   "prefix": "custom-public",
-  "lastModified": 1776668148,
+  "lastModified": 1776670621,
   "icons": {
     "avatar-user": {
       "body": "<g fill=\"none\"><g clip-path=\"url(#svgID0)\"><rect width=\"512\" height=\"512\" fill=\"#B2DDFF\" rx=\"256\"/><circle cx=\"256\" cy=\"196\" r=\"84\" fill=\"#fff\" opacity=\".68\"/><ellipse cx=\"256\" cy=\"583.5\" fill=\"#fff\" opacity=\".68\" rx=\"266\" ry=\"274.5\"/></g><defs><clipPath id=\"svgID0\"><rect width=\"512\" height=\"512\" fill=\"#fff\" rx=\"256\"/></clipPath></defs></g>",

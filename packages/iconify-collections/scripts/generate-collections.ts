@@ -94,11 +94,9 @@ const customVenderCollections = importSvgCollections({
   ignoreImportErrors: true,
   cleanupSVG: true,
   deOptimisePaths: true,
-  runSVGO: true,
+  runSVGO: false,
   parseColors: {
-    callback: (_attr, colorString, _parsedColor, tagName) => {
-      return tagName === 'path' ? 'currentColor' : colorString
-    },
+    callback: () => 'currentColor',
   },
 }) as ImportedCollections
 
