@@ -99,9 +99,3 @@ Once all legacy overlays are removed:
 1. Remove this section from the migration guide.
 
 [`packages/dify-ui/README.md`]: ../../packages/dify-ui/README.md
-
-## React Refresh policy for dify-ui primitives
-
-- We keep primitive aliases (for example `DropdownMenu = Menu.Root`) in the same module.
-- For `../packages/dify-ui/src/**/*.tsx`, `react-refresh/only-export-components` is currently set to `off` in ESLint to avoid false positives and IDE noise during migration.
-- Do not use file-level `eslint-disable` comments for this policy; keep control in the scoped ESLint override.
