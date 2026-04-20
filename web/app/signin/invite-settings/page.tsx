@@ -1,5 +1,7 @@
 'use client'
 import type { Locale } from '@/i18n-config'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
@@ -7,8 +9,6 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { setLocaleOnClient } from '@/i18n-config'
@@ -55,7 +55,7 @@ export default function InviteSettingsPage() {
       })
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
-        await setLocaleOnClient(language, false)
+        await setLocaleOnClient(language!, false)
         const redirectUrl = resolvePostLoginRedirect()
         router.replace(redirectUrl || '/apps')
       }

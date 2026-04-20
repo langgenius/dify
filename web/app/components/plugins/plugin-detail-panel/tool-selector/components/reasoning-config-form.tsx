@@ -7,6 +7,7 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -16,7 +17,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -137,7 +137,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         asChild={false}
       />
     ))
-    const varInput = value[variable].value
+    const varInput = value[variable]!.value
     const {
       isString,
       isNumber,
@@ -179,7 +179,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               >
                 <div
                   className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle)}
+                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                 >
                   <RiBracesLine className="size-3.5" />
                 </div>

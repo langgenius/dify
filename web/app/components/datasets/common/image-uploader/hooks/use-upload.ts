@@ -1,10 +1,10 @@
 import type { FileEntity, FileUploadConfig } from '../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { useFileUploadConfig } from '@/service/use-common'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
@@ -44,7 +44,7 @@ export const useUpload = () => {
 
   const checkFileType = useCallback((file: File) => {
     const ext = getFileType(file)
-    return ACCEPT_TYPES.includes(ext.toLowerCase())
+    return ACCEPT_TYPES.includes(ext!.toLowerCase())
   }, [])
 
   const checkFileSize = useCallback((file: File) => {
@@ -131,13 +131,13 @@ export const useUpload = () => {
     const index = files.findIndex(file => file.id === fileId)
 
     if (index > -1) {
-      const uploadingFile = files[index]
+      const uploadingFile = files[index]!
       const newFiles = produce(files, (draft) => {
-        draft[index].progress = 0
+        draft[index]!.progress = 0
       })
       setFiles(newFiles)
       fileUpload({
-        file: uploadingFile.originalFile!,
+        file: uploadingFile!.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
         },

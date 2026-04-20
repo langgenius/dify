@@ -57,7 +57,7 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -151,7 +151,7 @@ describe('SimplePromptInput', () => {
 
     fireEvent.click(screen.getByText('blur-prompt'))
 
-    expect(screen.getByText('autoAddVar')).toBeInTheDocument()
+    expect(screen.getByText('autoAddVar'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('operation.add'))
 
@@ -180,7 +180,7 @@ describe('SimplePromptInput', () => {
     fireEvent.click(screen.getByText('open-tool-modal'))
 
     expect(mockSetShowExternalDataToolModal).toHaveBeenCalledTimes(1)
-    const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0][0]
+    const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
 
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
     expect(mockToastError).toHaveBeenCalledWith('varKeyError.keyAlreadyExists')
@@ -267,10 +267,10 @@ describe('SimplePromptInput', () => {
       </ConfigContext.Provider>,
     )
 
-    expect(screen.getByText('datasets:Knowledge Base')).toBeInTheDocument()
-    expect(screen.getByText('variables:existing_var')).toBeInTheDocument()
-    expect(screen.getByText('external-tools:search_api')).toBeInTheDocument()
-    expect(screen.getByText('query-selectable:false')).toBeInTheDocument()
+    expect(screen.getByText('datasets:Knowledge Base'))!.toBeInTheDocument()
+    expect(screen.getByText('variables:existing_var'))!.toBeInTheDocument()
+    expect(screen.getByText('external-tools:search_api'))!.toBeInTheDocument()
+    expect(screen.getByText('query-selectable:false'))!.toBeInTheDocument()
   })
 
   it('should skip external tool variables and incomplete prompt variables when deciding whether to auto add', () => {
@@ -312,7 +312,7 @@ describe('SimplePromptInput', () => {
     )
 
     fireEvent.click(screen.getByText('blur-prompt'))
-    expect(screen.getByText('autoAddVar')).toBeInTheDocument()
+    expect(screen.getByText('autoAddVar'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('operation.cancel'))
     expect(mockOnChange).toHaveBeenCalledWith('Hello {{existing_var}}', [])

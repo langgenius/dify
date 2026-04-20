@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Slider } from '@langgenius/dify-ui/slider'
 import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +12,6 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
-import { Slider } from '@/app/components/base/ui/slider'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import {
   ChunkStructureEnum,

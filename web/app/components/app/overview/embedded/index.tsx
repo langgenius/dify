@@ -174,7 +174,7 @@ const EmbeddedContent = ({
     if (option === 'chromePlugin') {
       const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
       if (splitUrl.length > 1)
-        copy(splitUrl[1])
+        copy(splitUrl[1]!)
     }
     else if (option === 'iframe') {
       copy(getEmbeddedIframeSnippet(latestIframeUrl))

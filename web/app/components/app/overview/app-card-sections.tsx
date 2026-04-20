@@ -9,10 +9,6 @@ import type {
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Divider from '@/app/components/base/divider'
-import ShareQRCode from '@/app/components/base/qrcode'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,19 +17,23 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
+} from '@langgenius/dify-ui/dialog'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/tooltip'
+import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import CopyFeedback from '@/app/components/base/copy-feedback'
+import Divider from '@/app/components/base/divider'
+import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
@@ -49,9 +49,9 @@ type OperationIcon = ComponentType<{ className?: string }>
 
 type AccessModeLabelKey
   = | 'accessControlDialog.accessItems.organization'
-    | 'accessControlDialog.accessItems.specific'
-    | 'accessControlDialog.accessItems.anyone'
-    | 'accessControlDialog.accessItems.external'
+  | 'accessControlDialog.accessItems.specific'
+  | 'accessControlDialog.accessItems.anyone'
+  | 'accessControlDialog.accessItems.external'
 
 type AppCardOperation = {
   key: OverviewOperationKey

@@ -1,6 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
 import {
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
@@ -66,7 +66,7 @@ const InputFieldPanel = () => {
     const globalInputFields: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
       const inputFields = inputFieldsMap.current[key]
-      inputFields.forEach((inputField) => {
+      inputFields!.forEach((inputField) => {
         if (key === 'shared') {
           globalInputFields.push({
             ...inputField,
@@ -149,7 +149,7 @@ const InputFieldPanel = () => {
                 <FieldList
                   key={key}
                   nodeId={key}
-                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
+                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
                   inputFields={inputFields}
                   readonly={isPreviewing || isEditing}
                   labelClassName="pt-1 pb-1"

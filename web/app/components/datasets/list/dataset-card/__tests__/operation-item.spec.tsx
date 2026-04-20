@@ -1,11 +1,10 @@
-import { RiEditLine } from '@remixicon/react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import OperationItem from '../operation-item'
 
 describe('OperationItem', () => {
   const defaultProps = {
-    Icon: RiEditLine,
+    iconClassName: 'i-ri-edit-line',
     name: 'Edit',
   }
 
@@ -17,7 +16,7 @@ describe('OperationItem', () => {
 
     it('should render the icon', () => {
       const { container } = render(<OperationItem {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('.i-ri-edit-line')
       expect(icon).toBeInTheDocument()
       expect(icon).toHaveClass('size-4', 'text-text-tertiary')
     })

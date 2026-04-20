@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
   useEffect,
@@ -13,7 +14,6 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import { toast } from '@/app/components/base/ui/toast'
 import { IterationStartNodeDumb } from '../iteration-start'
 import AddBlock from './add-block'
 import { useNodeIterationInteractions } from './use-interactions'
@@ -57,7 +57,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
         )
       }
       {
-        data._children!.length === 1 && (
+        data._children?.length === 1 && (
           <AddBlock
             iterationNodeId={id}
             iterationNodeData={data}

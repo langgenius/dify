@@ -1,16 +1,16 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { PluginSource } from '../types'
 
@@ -73,7 +73,7 @@ const OperationDropdown: FC<Props> = ({
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
           <DropdownMenuSeparator />
         )}
-        <DropdownMenuItem destructive onClick={onRemove}>
+        <DropdownMenuItem variant="destructive" onClick={onRemove}>
           {t('detailPanel.operation.remove', { ns: 'plugin' })}
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,10 +1,10 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
-import { Button } from '@/app/components/base/ui/button'
 
 type InSiteMessageAction = 'link' | 'close'
 type InSiteMessageButtonType = 'primary' | 'default'

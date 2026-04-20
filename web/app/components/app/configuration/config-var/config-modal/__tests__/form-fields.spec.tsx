@@ -67,20 +67,27 @@ vi.mock('@/app/components/base/select', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
-    <div>
-      <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
-      {children}
-    </div>
-  ),
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectValue: () => <span>select-value</span>,
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
-vi.mock('@/app/components/base/ui/tooltip', () => ({
+  return {
+    ...actual,
+    Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
+      <div>
+        <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
+        {children}
+      </div>
+    ),
+    SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectValue: () => <span>select-value</span>,
+    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+    SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
+  }
+})
+
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -211,7 +218,8 @@ describe('ConfigModalFormFields', () => {
     expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
-    fireEvent.click(screen.getByText('unchecked'))
+    fireEvent.click(screen.getAllByText('unchecked')[0]!)
+    fireEvent.click(screen.getAllByText('unchecked')[1]!)
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
     expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
@@ -232,7 +240,7 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...multiFileProps} />)
     expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('multi-file-setting'))
-    fireEvent.click(screen.getByText('upload-file'))
+    fireEvent.click(screen.getAllByText('upload-file')[1]!)
     expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })
     expect(multiFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith([
       expect.objectContaining({ fileId: 'file-1' }),

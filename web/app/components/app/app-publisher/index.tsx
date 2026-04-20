@@ -1,13 +1,18 @@
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useKeyPress } from 'ahooks'
 import {
 
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -23,12 +28,9 @@ import {
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -36,9 +38,10 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { useInvalidateAppWorkflow } from '@/service/use-workflow'
+import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { toast } from '../../base/ui/toast'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import {
@@ -110,6 +113,7 @@ const AppPublisher = ({
   const [workflowLaunchTargetUrl, setWorkflowLaunchTargetUrl] = useState('')
   const [workflowLaunchValues, setWorkflowLaunchValues] = useState<Record<string, WorkflowLaunchInputValue>>({})
 
+  const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -137,6 +141,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const openAsyncWindow = useAsyncWindowOpen()
 
   const isAppAccessSet = useMemo(() => isPublisherAccessConfigured(appDetail, appAccessSubjects), [appAccessSubjects, appDetail])
@@ -164,12 +169,35 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+
+      const appId = appDetail?.id
+      const socket = appId ? webSocketClient.getSocket(appId) : null
+      if (appId)
+        invalidateAppWorkflow(appId)
+      else
+        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+      if (socket) {
+        const timestamp = Date.now()
+        socket.emit('collaboration_event', {
+          type: 'app_publish_update',
+          data: {
+            action: 'published',
+            timestamp,
+          },
+          timestamp,
+        })
+      }
+      else if (appId) {
+        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+      }
+
       trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
     }
-    catch {
+    catch (error) {
+      console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
-  }, [appDetail, onPublish])
+  }, [appDetail, onPublish, invalidateAppWorkflow])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -179,20 +207,18 @@ const AppPublisher = ({
     catch { }
   }, [onRestore])
 
-  const handleTrigger = useCallback(() => {
-    const state = !open
-
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (disabled) {
       setOpen(false)
       return
     }
 
-    onToggle?.(state)
-    setOpen(state)
+    onToggle?.(nextOpen)
+    setOpen(nextOpen)
 
-    if (state)
+    if (nextOpen)
       setPublished(false)
-  }, [disabled, onToggle, open])
+  }, [disabled, onToggle])
 
   const handleOpenInExplore = useCallback(async () => {
     await openAsyncWindow(async () => {
@@ -200,7 +226,7 @@ const AppPublisher = ({
         throw new Error('App not found')
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0].id}`
+        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
@@ -254,6 +280,29 @@ const AppPublisher = ({
     handlePublish()
   }, { exactMatch: true, useCapture: true })
 
+  useEffect(() => {
+    const appId = appDetail?.id
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
+      const action = typeof update.data.action === 'string' ? update.data.action : undefined
+      if (action === 'published') {
+        invalidateAppWorkflow(appId)
+        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
+          .then((publishedWorkflow) => {
+            if (publishedWorkflow?.created_at)
+              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
+          })
+          .catch((error) => {
+            console.warn('[app-publisher] refresh published workflow failed', error)
+          })
+      }
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
+
   const hasPublishedVersion = !!publishedAt
   const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable
     ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
@@ -267,26 +316,28 @@ const AppPublisher = ({
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={open}
-        onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: crossAxisOffset,
-        }}
+        onOpenChange={handleOpenChange}
       >
-        <PortalToFollowElemTrigger onClick={handleTrigger}>
-          <Button
-            variant="primary"
-            className="py-2 pr-2 pl-3"
-            disabled={disabled}
-          >
-            {t('common.publish', { ns: 'workflow' })}
-            <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-11">
+        <PopoverTrigger
+          render={(
+            <Button
+              variant="primary"
+              className="py-2 pr-2 pl-3"
+              disabled={disabled}
+            >
+              {t('common.publish', { ns: 'workflow' })}
+              <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
+            </Button>
+          )}
+        />
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={4}
+          alignOffset={crossAxisOffset}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <PublisherSummarySection
               debugWithMultipleModel={debugWithMultipleModel}
@@ -308,7 +359,10 @@ const AppPublisher = ({
               isAppAccessSet={isAppAccessSet}
               isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
               accessMode={appDetail?.access_mode}
-              onClick={() => setShowAppAccessControl(true)}
+              onClick={() => {
+                handleOpenChange(false)
+                setShowAppAccessControl(true)
+              }}
             />
             <PublisherActionsSection
               appDetail={appDetail}
@@ -317,9 +371,12 @@ const AppPublisher = ({
               disabledFunctionTooltip={disabledFunctionTooltip}
               handleEmbed={() => {
                 setEmbeddingModalOpen(true)
-                handleTrigger()
+                handleOpenChange(false)
               }}
-              handleOpenInExplore={handleOpenInExplore}
+              handleOpenInExplore={() => {
+                handleOpenChange(false)
+                handleOpenInExplore()
+              }}
               handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
               handlePublish={handlePublish}
               hasHumanInputNode={hasHumanInputNode}
@@ -337,7 +394,7 @@ const AppPublisher = ({
               workflowToolMessage={workflowToolMessage}
             />
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
         <EmbeddedModal
           siteInfo={appDetail?.site}
           isShow={embeddingModalOpen}
@@ -357,7 +414,7 @@ const AppPublisher = ({
           onValueChange={handleWorkflowLaunchValueChange}
           onSubmit={handleWorkflowLaunchConfirm}
         />
-      </PortalToFollowElem>
+      </Popover>
     </>
   )
 }

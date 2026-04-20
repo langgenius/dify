@@ -8,7 +8,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/base/ui/select'
+} from '@langgenius/dify-ui/select'
+
 import { InputVarType } from '@/app/components/workflow/types'
 
 type WorkflowHiddenInputFieldsProps = {

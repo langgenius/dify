@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -10,7 +11,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import Popup from './popup'
 

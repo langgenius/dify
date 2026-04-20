@@ -84,7 +84,7 @@ describe('tool/mixed-variable-text-input', () => {
     fireEvent.click(screen.getByRole('button', { name: 'prompt-editor' }))
 
     expect(handleChange).toHaveBeenCalledWith('updated value')
-    expect(mockPromptEditor.mock.calls[0][0]).toMatchObject({
+    expect(mockPromptEditor.mock.calls[0]![0]).toMatchObject({
       editable: true,
       value: 'initial value',
       workflowVariableBlock: {
@@ -108,7 +108,7 @@ describe('tool/mixed-variable-text-input', () => {
         },
       },
     })
-    expect(isValidElement(mockPromptEditor.mock.calls[0][0].placeholder)).toBe(true)
+    expect(isValidElement(mockPromptEditor.mock.calls[0]![0].placeholder)).toBe(true)
   })
 
   it('should disable editing and variable insertion when requested', () => {
@@ -119,7 +119,7 @@ describe('tool/mixed-variable-text-input', () => {
       />,
     )
 
-    expect(mockPromptEditor.mock.calls[0][0]).toMatchObject({
+    expect(mockPromptEditor.mock.calls[0]![0]).toMatchObject({
       editable: false,
       value: '',
       workflowVariableBlock: {
@@ -130,6 +130,6 @@ describe('tool/mixed-variable-text-input', () => {
         onManageInputField: undefined,
       },
     })
-    expect(isValidElement(mockPromptEditor.mock.calls[0][0].placeholder)).toBe(true)
+    expect(isValidElement(mockPromptEditor.mock.calls[0]![0].placeholder)).toBe(true)
   })
 })

@@ -116,7 +116,7 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.getByRole('button'))!.toBeInTheDocument()
   })
 
   it('should render Authorized with workspace default when authorized', async () => {
@@ -126,8 +126,8 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByRole('button')).toBeInTheDocument()
-    expect(screen.getByText('plugin.auth.workspaceDefault')).toBeInTheDocument()
+    expect(screen.getByRole('button'))!.toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
   it('should show credential name when credentialId is provided', async () => {
@@ -143,7 +143,7 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} credentialId="selected-id" />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('Selected Credential')).toBeInTheDocument()
+    expect(screen.getByText('Selected Credential'))!.toBeInTheDocument()
   })
 
   it('should show auth removed when credential not found', async () => {
@@ -158,7 +158,7 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} credentialId="non-existent-id" />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByText('plugin.auth.authRemoved')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.authRemoved'))!.toBeInTheDocument()
   })
 
   it('should show unavailable when credential is not allowed to use', async () => {
@@ -192,7 +192,7 @@ describe('PluginAuthInAgent Component', () => {
       { wrapper: createWrapper() },
     )
     const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
+    fireEvent.click(buttons[0]!)
     expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
   })
 
@@ -214,7 +214,7 @@ describe('PluginAuthInAgent Component', () => {
     fireEvent.click(triggerButton)
     const workspaceDefaultItems = screen.getAllByText('plugin.auth.workspaceDefault')
     const popupItem = workspaceDefaultItems.length > 1 ? workspaceDefaultItems[1] : workspaceDefaultItems[0]
-    fireEvent.click(popupItem)
+    fireEvent.click(popupItem!)
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('')
   })
 
@@ -240,7 +240,7 @@ describe('PluginAuthInAgent Component', () => {
     fireEvent.click(triggerButton)
     const credentialItems = screen.getAllByText('Specific Credential')
     const popupItem = credentialItems[credentialItems.length - 1]
-    fireEvent.click(popupItem)
+    fireEvent.click(popupItem!)
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('specific-cred-id')
   })
 

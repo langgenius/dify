@@ -11,7 +11,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -20,10 +19,12 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Divider from '../../base/divider'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   useNodesReadOnly,
   useWorkflowHistory,
 } from '../hooks'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import TipPopup from '../operator/tip-popup'
 
 type ChangeHistoryEntry = {
@@ -48,7 +49,7 @@ const ViewWorkflowHistory = () => {
     setCurrentLogItem: state.setCurrentLogItem,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))
-  const reactFlowStore = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { store, getHistoryLabel } = useWorkflowHistory()
 
   const { pastStates, futureStates, undo, redo, clear } = store.temporal.getState()
@@ -60,7 +61,6 @@ const ViewWorkflowHistory = () => {
   }, [clear])
 
   const handleSetState = useCallback(({ index }: ChangeHistoryEntry) => {
-    const { setEdges, setNodes } = reactFlowStore.getState()
     const diff = currentHistoryStateIndex + index
     if (diff === 0)
       return
@@ -74,9 +74,13 @@ const ViewWorkflowHistory = () => {
     if (edges.length === 0 && nodes.length === 0)
       return
 
-    setEdges(edges)
-    setNodes(nodes)
-  }, [currentHistoryStateIndex, reactFlowStore, redo, store, undo])
+    const shouldBroadcast = collaborationManager.isConnected()
+    const { setEdges, setNodes } = collaborativeWorkflow.getState()
+    setEdges(edges, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast, 'history:jump')
+    if (collaborationManager.isConnected())
+      collaborationManager.emitHistoryAction('jump')
+  }, [collaborativeWorkflow, currentHistoryStateIndex, redo, store, undo])
 
   const calculateStepLabel = useCallback((index: number) => {
     if (!index)

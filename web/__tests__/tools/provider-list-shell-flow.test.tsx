@@ -174,7 +174,7 @@ describe('Tool Provider List Shell Flow', () => {
     fireEvent.click(screen.getByTestId('tool-card-plugin-tool'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('tool-plugin-detail-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('tool-plugin-detail-panel'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'update-plugin-detail' }))
@@ -196,10 +196,10 @@ describe('Tool Provider List Shell Flow', () => {
     fireEvent.click(screen.getByTestId('tab-item-workflow'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
+      expect(screen.getByTestId('workflow-empty'))!.toBeInTheDocument()
     })
 
-    const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+    const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
     expect(update.searchParams.get('category')).toBe('workflow')
   })
 })

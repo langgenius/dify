@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -18,6 +17,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
 from models.account import (
     Account,
     AccountStatus,

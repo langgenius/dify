@@ -3,16 +3,16 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { RiSettings2Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
-import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
+import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { appDefaultIconBackground } from '@/config'
@@ -118,76 +118,76 @@ export const PublisherSummarySection = ({
       </div>
       {publishedAt
         ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center system-sm-medium text-text-secondary">
-                {t('common.publishedAt', { ns: 'workflow' })}
-                {' '}
-                {formatTimeFromNow(publishedAt)}
-              </div>
-              {isChatApp && (
-                <Button
-                  variant="secondary-accent"
-                  size="small"
-                  onClick={handleRestore}
-                  disabled={published}
-                >
-                  {t('common.restore', { ns: 'workflow' })}
-                </Button>
-              )}
-            </div>
-          )
-        : (
+          <div className="flex items-center justify-between">
             <div className="flex items-center system-sm-medium text-text-secondary">
-              {t('common.autoSaved', { ns: 'workflow' })}
+              {t('common.publishedAt', { ns: 'workflow' })}
               {' '}
-              ·
-              {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+              {formatTimeFromNow(publishedAt)}
             </div>
-          )}
+            {isChatApp && (
+              <Button
+                variant="secondary-accent"
+                size="small"
+                onClick={handleRestore}
+                disabled={published}
+              >
+                {t('common.restore', { ns: 'workflow' })}
+              </Button>
+            )}
+          </div>
+        )
+        : (
+          <div className="flex items-center system-sm-medium text-text-secondary">
+            {t('common.autoSaved', { ns: 'workflow' })}
+            {' '}
+            ·
+            {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+          </div>
+        )}
       {debugWithMultipleModel
         ? (
-            <PublishWithMultipleModel
-              multipleModelConfigs={multipleModelConfigs}
-              onSelect={item => handlePublish(item)}
-            />
-          )
+          <PublishWithMultipleModel
+            multipleModelConfigs={multipleModelConfigs}
+            onSelect={item => handlePublish(item)}
+          />
+        )
         : (
-            <>
-              <Button
-                variant="primary"
-                className="mt-3 w-full"
-                onClick={() => handlePublish()}
-                disabled={publishDisabled || published}
-              >
-                {published
-                  ? t('common.published', { ns: 'workflow' })
-                  : (
-                      <div className="flex gap-1">
-                        <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                        <ShortcutsName keys={publishShortcut} bgColor="white" />
-                      </div>
-                    )}
-              </Button>
-              {startNodeLimitExceeded && (
-                <div className="mt-3 flex flex-col items-stretch">
-                  <p
-                    className="text-sm leading-5 font-semibold text-transparent"
-                    style={upgradeHighlightStyle}
-                  >
-                    <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
-                    <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
-                  </p>
-                  <p className="mt-1 text-xs leading-4 text-text-secondary">
-                    {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
-                  </p>
-                  <UpgradeBtn
-                    isShort
-                    className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
-                  />
-                </div>
-              )}
-            </>
-          )}
+          <>
+            <Button
+              variant="primary"
+              className="mt-3 w-full"
+              onClick={() => handlePublish()}
+              disabled={publishDisabled || published}
+            >
+              {published
+                ? t('common.published', { ns: 'workflow' })
+                : (
+                  <div className="flex gap-1">
+                    <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
+                    <ShortcutsName keys={publishShortcut} bgColor="white" />
+                  </div>
+                )}
+            </Button>
+            {startNodeLimitExceeded && (
+              <div className="mt-3 flex flex-col items-stretch">
+                <p
+                  className="text-sm leading-5 font-semibold text-transparent"
+                  style={upgradeHighlightStyle}
+                >
+                  <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
+                  <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
+                </p>
+                <p className="mt-1 text-xs leading-4 text-text-secondary">
+                  {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
+                </p>
+                <UpgradeBtn
+                  isShort
+                  className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
+                />
+              </div>
+            )}
+          </>
+        )}
     </div>
   )
 }
@@ -293,10 +293,10 @@ export const PublisherActionsSection = ({
           icon={<span className="i-ri-play-circle-line h-4 w-4" />}
           actionButton={showRunConfig
             ? {
-                ariaLabel: t('operation.config', { ns: 'common' }),
-                icon: <RiSettings2Line className="h-4 w-4" />,
-                onClick: () => handleOpenRunConfig?.(appURL),
-              }
+              ariaLabel: t('operation.config', { ns: 'common' }),
+              icon: <RiSettings2Line className="h-4 w-4" />,
+              onClick: () => handleOpenRunConfig?.(appURL),
+            }
             : undefined}
         >
           {t('common.runApp', { ns: 'workflow' })}
@@ -304,33 +304,33 @@ export const PublisherActionsSection = ({
       </ActionTooltip>
       {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
         ? (
-            <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-              <SuggestedAction
-                className="flex-1"
-                disabled={disabledFunctionButton}
-                link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
-                actionButton={showBatchRunConfig
-                  ? {
-                      ariaLabel: t('operation.config', { ns: 'common' }),
-                      icon: <RiSettings2Line className="h-4 w-4" />,
-                      onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
-                    }
-                  : undefined}
-              >
-                {t('common.batchRunApp', { ns: 'workflow' })}
-              </SuggestedAction>
-            </ActionTooltip>
-          )
-        : (
+          <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
             <SuggestedAction
-              onClick={handleEmbed}
-              disabled={!publishedAt}
-              icon={<CodeBrowser className="h-4 w-4" />}
+              className="flex-1"
+              disabled={disabledFunctionButton}
+              link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+              icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
+              actionButton={showBatchRunConfig
+                ? {
+                  ariaLabel: t('operation.config', { ns: 'common' }),
+                  icon: <RiSettings2Line className="h-4 w-4" />,
+                  onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
+                }
+                : undefined}
             >
-              {t('common.embedIntoSite', { ns: 'workflow' })}
+              {t('common.batchRunApp', { ns: 'workflow' })}
             </SuggestedAction>
-          )}
+          </ActionTooltip>
+        )
+        : (
+          <SuggestedAction
+            onClick={handleEmbed}
+            disabled={!publishedAt}
+            icon={<CodeBrowser className="h-4 w-4" />}
+          >
+            {t('common.embedIntoSite', { ns: 'workflow' })}
+          </SuggestedAction>
+        )}
       <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
         <SuggestedAction
           className="flex-1"

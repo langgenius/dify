@@ -16,6 +16,7 @@ const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
 const mockWindowOpen = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -89,7 +90,11 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/service/use-workflow', () => ({
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -102,11 +107,11 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
     ? (
-        <div data-testid="embedded-modal">
-          embedded modal
-          <button onClick={onClose}>close-embedded-modal</button>
-        </div>
-      )
+      <div data-testid="embedded-modal">
+        embedded modal
+        <button onClick={onClose}>close-embedded-modal</button>
+      </div>
+    )
     : null),
 }))
 
@@ -213,7 +218,7 @@ describe('AppPublisher', () => {
 
     fireEvent.click(screen.getByText('common.publish'))
 
-    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+    expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
     expect(mockOnToggle).toHaveBeenCalledWith(true)
 
     await waitFor(() => {
@@ -254,7 +259,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-embed'))
 
-    expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
   })
 
   it('should collect hidden inputs before opening published run links from config actions', async () => {
@@ -340,7 +345,7 @@ describe('AppPublisher', () => {
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
     fireEvent.click(screen.getByText('close-access-control'))
     expect(screen.queryByTestId('access-control')).not.toBeInTheDocument()
   })
@@ -355,7 +360,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
 
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('confirm-access-control'))
 
@@ -413,7 +418,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -442,7 +447,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -456,7 +461,7 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(onRestore).toHaveBeenCalledTimes(1)
     })
-    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+    expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
   })
 
   it('should report missing explore installations', async () => {
@@ -530,6 +535,6 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
     })
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })
 })

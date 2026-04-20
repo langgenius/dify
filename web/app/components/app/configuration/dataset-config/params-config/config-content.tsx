@@ -10,14 +10,14 @@ import type {
   DatasetConfigs,
 } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -121,10 +121,10 @@ const ConfigContent: FC<Props> = ({
         ...datasetConfigs.weights!,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
-          vector_weight: value.value[0],
+          vector_weight: value.value[0]!,
         },
         keyword_setting: {
-          keyword_weight: value.value[1],
+          keyword_weight: value.value[1]!,
         },
       },
     }

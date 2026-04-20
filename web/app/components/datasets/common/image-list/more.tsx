@@ -32,7 +32,7 @@ const More = ({ count, onClick }: MoreProps) => {
           </span>
         </div>
       </div>
-      <div className="absolute -right-0.5 top-1 z-0 h-6 w-1 rounded-r-md bg-divider-regular" />
+      <div className="absolute top-1 -right-0.5 z-0 h-6 w-1 rounded-r-md bg-divider-regular" />
     </div>
   )
 }

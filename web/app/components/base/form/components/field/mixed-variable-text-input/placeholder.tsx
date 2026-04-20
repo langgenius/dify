@@ -25,9 +25,9 @@ const Placeholder = () => {
     >
       <div className="flex grow items-center">
         Type or press
-        <div className="system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray text-text-placeholder">/</div>
+        <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
         <div
-          className="system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
+          className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
           onClick={((e) => {
             e.stopPropagation()
             handleInsert('/')

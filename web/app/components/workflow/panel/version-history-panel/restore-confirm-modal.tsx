@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
