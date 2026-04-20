@@ -163,7 +163,7 @@ catalog:
   html-to-image: 1.11.13
   i18next: 26.0.4
   i18next-resources-to-backend: 1.2.1
-  iconify-import-svg: 0.1.2
+  iconify-import-svg: 0.2.0
   immer: 11.1.4
   jotai: 2.19.1
   js-audio-recorder: 1.0.7
