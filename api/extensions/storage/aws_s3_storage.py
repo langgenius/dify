@@ -26,13 +26,19 @@ class AwsS3Storage(BaseStorage):
         else:
             logger.info("Using ak and sk for S3")
 
+            config = Config(
+                s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            )
+
             self.client = boto3.client(
                 "s3",
                 aws_secret_access_key=dify_config.S3_SECRET_KEY,
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
+                config=config,
             )
         # create bucket
         try:
