@@ -69,7 +69,15 @@ const NodePanel: FC<Props> = ({
     doSetCollapseState(state)
   }, [hideProcessDetail])
   const titleRef = useRef<HTMLDivElement>(null)
-  const [isTitleTruncated, setIsTitleTruncated] = useState(false)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
+  const handleTooltipOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      const el = titleRef.current
+      if (!el || el.scrollWidth <= el.clientWidth)
+        return
+    }
+    setIsTooltipOpen(open)
+  }, [])
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -93,27 +101,6 @@ const NodePanel: FC<Props> = ({
   useEffect(() => {
     setCollapseState(!nodeInfo.expand)
   }, [nodeInfo.expand, setCollapseState])
-
-  useEffect(() => {
-    const titleElement = titleRef.current
-    if (!titleElement)
-      return
-
-    let frameId = 0
-    const updateIsTitleTruncated = () => {
-      setIsTitleTruncated(titleElement.scrollWidth > titleElement.clientWidth)
-    }
-
-    frameId = requestAnimationFrame(updateIsTitleTruncated)
-
-    const resizeObserver = new ResizeObserver(updateIsTitleTruncated)
-    resizeObserver.observe(titleElement)
-
-    return () => {
-      cancelAnimationFrame(frameId)
-      resizeObserver.disconnect()
-    }
-  }, [nodeInfo.title])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration && !!nodeInfo.details?.length
   const isLoopNode = nodeInfo.node_type === BlockEnum.Loop && !!nodeInfo.details?.length
@@ -155,14 +142,13 @@ const NodePanel: FC<Props> = ({
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <Tooltip>
+          <Tooltip open={isTooltipOpen} onOpenChange={handleTooltipOpenChange}>
             <TooltipTrigger
-              disabled={!isTitleTruncated}
               render={(
                 <div
                   ref={titleRef}
                   className={cn(
-                    'grow truncate system-xs-semibold-uppercase text-text-secondary',
+                    'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
                     hideInfo && 'text-xs!',
                   )}
                 >
