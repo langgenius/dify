@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "{{user}} द्वारा रोका गया",
   "triggerStatus.disabled": "ट्रिगर • अक्षम",
   "triggerStatus.enabled": "ट्रिगर",
-  "variableReference.assignedVarsDescription": "असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे",
+  "variableReference.assignedVarsDescription": "असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे वार्तालाप चर।",
   "variableReference.conversationVars": "बातचीत चर",
   "variableReference.noAssignedVars": "कोई उपलब्ध असाइन किए गए चर नहीं",
   "variableReference.noAvailableVars": "कोई उपलब्ध चर नहीं",

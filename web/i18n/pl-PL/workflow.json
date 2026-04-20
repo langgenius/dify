@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Zatrzymane przez {{user}}",
   "triggerStatus.disabled": "WYZWALACZ • WYŁĄCZONY",
   "triggerStatus.enabled": "WYZWALACZ",
-  "variableReference.assignedVarsDescription": "Przypisane zmienne muszą być zmiennymi zapisywalnymi, takimi jak",
+  "variableReference.assignedVarsDescription": "Przypisane zmienne muszą być zmiennymi zapisywalnymi, takimi jak zmienne konwersacji.",
   "variableReference.conversationVars": "Zmienne konwersacji",
   "variableReference.noAssignedVars": "Brak dostępnych przypisanych zmiennych",
   "variableReference.noAvailableVars": "Brak dostępnych zmiennych",

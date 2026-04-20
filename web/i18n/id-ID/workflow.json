@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Singgah di {{user}}",
   "triggerStatus.disabled": "PEICU • DINONAKTIFKAN",
   "triggerStatus.enabled": "PEICU",
-  "variableReference.assignedVarsDescription": "Variabel yang ditetapkan harus berupa variabel yang dapat ditulis, seperti",
+  "variableReference.assignedVarsDescription": "Variabel yang ditetapkan harus berupa variabel yang dapat ditulis, seperti variabel percakapan.",
   "variableReference.conversationVars": "variabel percakapan",
   "variableReference.noAssignedVars": "Tidak ada variabel yang ditetapkan yang tersedia",
   "variableReference.noAvailableVars": "Tidak ada variabel yang tersedia",

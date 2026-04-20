@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "{{user}} tarafından durduruldu",
   "triggerStatus.disabled": "TETİKLEYİCİ • DEVRE DIŞI",
   "triggerStatus.enabled": "TETİK",
-  "variableReference.assignedVarsDescription": "Atanan değişkenler, örneğin yazılabilir değişkenler olmalıdır",
+  "variableReference.assignedVarsDescription": "Atanan değişkenler, konuşma değişkenleri gibi yazılabilir değişkenler olmalıdır.",
   "variableReference.conversationVars": "Konuşma değişkenleri",
   "variableReference.noAssignedVars": "Kullanılabilir atanmış değişken yok",
   "variableReference.noAvailableVars": "Kullanılabilir değişken yok",
