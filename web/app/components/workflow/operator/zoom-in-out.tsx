@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   Fragment,
   memo,
@@ -17,7 +18,7 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useNodesSyncDraft,
   useWorkflowReadOnly,
@@ -70,7 +71,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     workflowReadOnly,
     getWorkflowReadOnly,
   } = useWorkflowReadOnly()
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
 
   const zoomOptions = [
     [

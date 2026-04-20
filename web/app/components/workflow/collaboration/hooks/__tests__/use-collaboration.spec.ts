@@ -1,5 +1,6 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
-import { renderHook, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useCollaboration } from '../use-collaboration'
 
 type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[1]>
@@ -28,11 +29,6 @@ let isCollaborationEnabled = true
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
 const cursorServiceInstances: Array<{ startTracking: typeof mockStartTracking, stopTracking: typeof mockStopTracking }> = []
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => boolean) =>
-    selector({ systemFeatures: { enable_collaboration_mode: isCollaborationEnabled } }),
-}))
 
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
@@ -92,7 +88,9 @@ describe('useCollaboration', () => {
     const reactFlowStore: HookReactFlowStore = {
       getState: vi.fn(),
     }
-    const { result, unmount } = renderHook(() => useCollaboration('app-1', reactFlowStore))
+    const { result, unmount } = renderHookWithSystemFeatures(() => useCollaboration('app-1', reactFlowStore), {
+      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    })
 
     await waitFor(() => {
       expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
@@ -138,7 +136,9 @@ describe('useCollaboration', () => {
 
   it('does not connect or start cursor tracking when collaboration is disabled', async () => {
     isCollaborationEnabled = false
-    const { result } = renderHook(() => useCollaboration('app-1'))
+    const { result } = renderHookWithSystemFeatures(() => useCollaboration('app-1'), {
+      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    })
 
     await waitFor(() => {
       expect(mockConnect).not.toHaveBeenCalled()

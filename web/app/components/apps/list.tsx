@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { StudioPageType } from '.'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,11 +14,11 @@ import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import dynamic from '@/next/dynamic'
 import { fetchWorkflowOnlineUsers } from '@/service/apps'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetCard from '../snippets/components/snippet-card'
@@ -53,7 +54,7 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const isAppsPage = pageType === 'apps'
   const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
