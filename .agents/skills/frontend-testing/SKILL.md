@@ -200,7 +200,7 @@ When assigned to test a directory/path, test **ALL content** within that path:
 
 - ✅ **Import real project components** directly (including base components and siblings)
 - ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
-- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`) or dify-ui primitives (`@langgenius/dify-ui/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
 > See [Test Structure Template](#test-structure-template) for correct import/mock patterns.
