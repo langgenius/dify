@@ -326,7 +326,7 @@
   "variableConfig.file.supportFileTypes": "Support File Types",
   "variableConfig.file.video.name": "Video",
   "variableConfig.hidden": "Hidden",
-  "variableConfig.hiddenDescription": "Hidden fields are not shown in the Web App start form and can be filled through URL query parameters.",
+  "variableConfig.hiddenDescription": "Hidden fields are not shown in the Web App start form. They can be populated via URL query parameters. For more details, <docLink>view the documentation</docLink>.",
   "variableConfig.hide": "Hide",
   "variableConfig.inputPlaceholder": "Please input",
   "variableConfig.json": "JSON Code",

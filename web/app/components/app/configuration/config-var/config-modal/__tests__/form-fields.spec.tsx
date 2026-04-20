@@ -4,6 +4,29 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigModalFormFields from '../form-fields'
 
+vi.mock('react-i18next', async () => {
+  const React = await import('react')
+  return {
+    useTranslation: () => ({
+      t: (key: string, options?: Record<string, unknown>) => {
+        const ns = options?.ns as string | undefined
+        return ns ? `${ns}.${key}` : key
+      },
+      i18n: { language: 'en', changeLanguage: vi.fn() },
+    }),
+    Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
+      <span data-i18n-key={i18nKey}>
+        {i18nKey}
+        {components?.docLink}
+      </span>
+    ),
+  }
+})
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
+}))
+
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: Array<Record<string, unknown>>) => void }) => (
     <button
@@ -170,6 +193,9 @@ describe('ConfigModalFormFields', () => {
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
     expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input')
+    expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
 
     const singleFileProps = createBaseProps()

@@ -5,6 +5,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
+import { Trans } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
@@ -21,6 +22,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -69,6 +71,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 }) => {
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const docLink = useDocLink()
 
   return (
     <div className="space-y-2">
@@ -232,7 +235,20 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                {t('variableConfig.hiddenDescription', { ns: 'appDebug' })}
+                <Trans
+                  i18nKey="variableConfig.hiddenDescription"
+                  ns="appDebug"
+                  components={{
+                    docLink: (
+                      <a
+                        href={docLink('/use-dify/nodes/user-input')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-accent hover:underline"
+                      />
+                    ),
+                  }}
+                />
               </TooltipContent>
             </Tooltip>
           </div>

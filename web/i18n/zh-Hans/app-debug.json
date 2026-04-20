@@ -326,7 +326,7 @@
   "variableConfig.file.supportFileTypes": "支持的文件类型",
   "variableConfig.file.video.name": "视频",
   "variableConfig.hidden": "Hidden",
-  "variableConfig.hiddenDescription": "隐藏字段不会显示在 Web App 的开始表单中，可通过 URL 查询参数传值。",
+  "variableConfig.hiddenDescription": "隐藏字段不会显示在 Web App 的开始表单中，可通过 URL 查询参数传值。更多信息查看<docLink>文档</docLink>。",
   "variableConfig.hide": "隐藏",
   "variableConfig.inputPlaceholder": "请输入",
   "variableConfig.json": "JSON",
