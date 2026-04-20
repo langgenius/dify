@@ -6,6 +6,10 @@ import pytest
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
+from core.llm_generator.prompts import (
+    DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+    DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+)
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
@@ -97,6 +101,10 @@ class TestLLMGenerator:
         questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
+        assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+            "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+        }
 
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
         with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
@@ -130,7 +138,7 @@ class TestLLMGenerator:
             model_config={
                 "provider": "openai",
                 "name": "gpt-4o",
-                "completion_params": {"max_tokens": 1024, "temperature": 0.2},
+                "completion_params": {"temperature": 0.2},
             },
         )
 
@@ -143,8 +151,8 @@ class TestLLMGenerator:
         )
 
         invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
-        assert invoke_kwargs["model_parameters"]["max_tokens"] == 1024
-        assert invoke_kwargs["model_parameters"]["temperature"] == 0.2
+        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
+        assert invoke_kwargs["stop"] == []
         assert "custom prompt" in invoke_kwargs["prompt_messages"][0].content
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
@@ -163,6 +171,7 @@ class TestLLMGenerator:
             model_config={
                 "provider": "openai",
                 "name": "not-found-model",
+                "completion_params": {"temperature": 0.2},
             },
         )
 
@@ -171,6 +180,38 @@ class TestLLMGenerator:
             tenant_id="tenant_id",
             model_type=ModelType.LLM,
         )
+        assert default_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
+            "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+            "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+        }
+        assert default_model_instance.invoke_llm.call_args.kwargs["stop"] == []
+
+    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
+    def test_generate_suggested_questions_after_answer_drops_non_positive_max_tokens(self, mock_for_tenant):
+        custom_model_instance = MagicMock()
+        custom_response = MagicMock()
+        custom_response.message.get_text_content.return_value = '["Question 1?"]'
+        custom_model_instance.invoke_llm.return_value = custom_response
+        mock_for_tenant.return_value.get_model_instance.return_value = custom_model_instance
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer(
+            "tenant_id",
+            "histories",
+            model_config={
+                "provider": "openai",
+                "name": "gpt-4o",
+                "completion_params": {
+                    "temperature": 0.2,
+                    "max_tokens": 0,
+                    "stop": ["END"],
+                },
+            },
+        )
+
+        assert questions == ["Question 1?"]
+        invoke_kwargs = custom_model_instance.invoke_llm.call_args.kwargs
+        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
+        assert invoke_kwargs["stop"] == ["END"]
 
     def test_generate_rule_config_no_variable_success(self, mock_model_instance, model_config_entity):
         payload = RuleGeneratePayload(

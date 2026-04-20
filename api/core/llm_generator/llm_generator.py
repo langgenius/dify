@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import NotRequired, Protocol, TypedDict, cast
+from typing import Any, NotRequired, Protocol, TypedDict, cast
 
 import json_repair
 from sqlalchemy import select
@@ -45,6 +45,30 @@ class SuggestedQuestionsModelConfig(TypedDict):
     provider: str
     name: str
     completion_params: NotRequired[dict[str, object]]
+
+
+def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[dict[str, object], list[str]]:
+    """
+    Normalize raw completion params into invocation parameters and stop sequences.
+
+    This mirrors the app-model access path by separating ``stop`` from provider
+    parameters before invocation, then drops non-positive token limits because
+    some plugin-backed models reject ``0`` after mapping ``max_tokens`` to their
+    provider-specific output-token field.
+    """
+    normalized_parameters = dict(completion_params)
+    stop_value = normalized_parameters.pop("stop", [])
+    if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value):
+        stop = stop_value
+    else:
+        stop = []
+
+    for token_limit_key in ("max_tokens", "max_output_tokens"):
+        token_limit = normalized_parameters.get(token_limit_key)
+        if isinstance(token_limit, int | float) and token_limit <= 0:
+            normalized_parameters.pop(token_limit_key, None)
+
+    return normalized_parameters, stop
 
 
 class WorkflowServiceInterface(Protocol):
@@ -149,6 +173,7 @@ class LLMGenerator:
 
             provider = model_config.get("provider") if model_config else None
             model_name = model_config.get("name") if model_config else None
+            use_configured_model = False
 
             if provider and model_name:
                 try:
@@ -158,6 +183,7 @@ class LLMGenerator:
                         provider=provider,
                         model=model_name,
                     )
+                    use_configured_model = True
                 except Exception:
                     logger.warning(
                         "Failed to use configured suggested-questions model %s/%s, fallback to default model",
@@ -183,16 +209,23 @@ class LLMGenerator:
 
         try:
             configured_completion_params = model_config.get("completion_params") if model_config else None
-            model_parameters: dict[str, object] = {
-                "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-                "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
-            }
-            if isinstance(configured_completion_params, dict):
-                model_parameters.update(configured_completion_params)
+            if use_configured_model and isinstance(configured_completion_params, dict):
+                model_parameters, stop = _normalize_completion_params(configured_completion_params)
+            elif use_configured_model:
+                model_parameters = {}
+                stop = []
+            else:
+                # Default-model generation keeps the built-in suggested-questions tuning.
+                model_parameters = {
+                    "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+                    "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+                }
+                stop = []
 
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
                 model_parameters=model_parameters,
+                stop=stop,
                 stream=False,
             )
 

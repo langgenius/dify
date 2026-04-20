@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from typing import cast
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
