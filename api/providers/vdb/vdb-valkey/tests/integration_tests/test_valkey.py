@@ -10,6 +10,7 @@ on localhost:6379 (standard port). Start one with:
 
 from __future__ import annotations
 
+import os
 import uuid
 
 import pytest
@@ -26,7 +27,13 @@ EMBEDDING_DIM = 128
 
 
 def _cfg() -> ValkeyVectorConfig:
-    return ValkeyVectorConfig(host="localhost", port=6379, password="", db=0, use_ssl=False)
+    return ValkeyVectorConfig(
+        host=os.environ.get("VALKEY_HOST", "localhost"),
+        port=int(os.environ.get("VALKEY_PORT", "6379")),
+        password=os.environ.get("VALKEY_PASSWORD", ""),
+        db=int(os.environ.get("VALKEY_DB", "0")),
+        use_ssl=False,
+    )
 
 
 def _embedding(seed: float = 1.001) -> list[float]:

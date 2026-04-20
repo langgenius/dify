@@ -317,7 +317,7 @@ class ValkeyVector(BaseVector):
                 if not self._loop.is_closed():
                     self._loop.close()
             except Exception:
-                pass
+                logger.debug("Error closing event loop in __del__", exc_info=True)
 
     def get_type(self) -> str:
         return VectorType.VALKEY
