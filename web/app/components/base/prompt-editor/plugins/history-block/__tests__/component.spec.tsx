@@ -190,6 +190,29 @@ describe('HistoryBlockComponent', () => {
     expect(screen.getByText('kept-assistant')).toBeInTheDocument()
   })
 
+  it('should ignore string events from the event emitter', () => {
+    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
+
+    render(
+      <HistoryBlockComponent
+        nodeKey="history-node-6-string"
+        roleName={createRoleName({
+          user: 'kept-user',
+          assistant: 'kept-assistant',
+        })}
+        onEditRole={vi.fn()}
+      />,
+    )
+
+    expect(subscribedHandler).not.toBeNull()
+    act(() => {
+      subscribedHandler?.('ignore-me' as unknown as HistoryEventPayload)
+    })
+
+    expect(screen.getByText('kept-user')).toBeInTheDocument()
+    expect(screen.getByText('kept-assistant')).toBeInTheDocument()
+  })
+
   it('should render when event emitter is unavailable', () => {
     mockUseEventEmitterContextContext.mockReturnValue({
       eventEmitter: undefined,

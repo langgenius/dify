@@ -348,6 +348,29 @@ describe('ContextBlockComponent', () => {
       // Original datasets still there
       expect(screen.getByText('Dataset A')).toBeInTheDocument()
     })
+
+    it('should ignore string events from the event emitter', () => {
+      defaultSetup({ open: true })
+      let subscriptionCallback: (v: Record<string, unknown> | string) => void = () => { }
+      mockUseSubscription.mockImplementation((cb: (v: Record<string, unknown> | string) => void) => {
+        subscriptionCallback = cb
+      })
+
+      render(
+        <ContextBlockComponent
+          nodeKey="test-key"
+          datasets={mockDatasets}
+          onAddContext={vi.fn()}
+        />,
+      )
+
+      act(() => {
+        subscriptionCallback('ignore-me')
+      })
+
+      expect(screen.getByText('Dataset A')).toBeInTheDocument()
+      expect(screen.getByText('Dataset B')).toBeInTheDocument()
+    })
   })
 
   describe('Edge Cases', () => {

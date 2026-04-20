@@ -215,13 +215,16 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
   const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
+  const nativeButton = asChild
+    && React.isValidElement(triggerElement)
+    && (typeof triggerElement.type !== 'string' || triggerElement.type === 'button')
 
   return (
     <Popover
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <PopoverTrigger render={resolvedTriggerElement as React.ReactElement} />
+      <PopoverTrigger nativeButton={nativeButton} render={resolvedTriggerElement as React.ReactElement} />
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
