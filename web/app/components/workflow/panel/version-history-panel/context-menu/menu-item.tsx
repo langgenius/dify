@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { VersionHistoryContextMenuOptions } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { DropdownMenuItem } from '@/app/components/base/ui/dropdown-menu'
 
 type MenuItemProps = {
   item: {

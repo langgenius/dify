@@ -230,7 +230,7 @@ const List: FC<Props> = ({
   const emptyStateMessage = isAppsPage
     ? t('newApp.noAppsFound', { ns: 'app' })
     : t('tabs.noSnippetsFound', { ns: 'workflow' })
-  const pages = data?.pages ?? []
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const appIds = useMemo(() => {
     const ids = new Set<string>()
     pages.forEach((page) => {

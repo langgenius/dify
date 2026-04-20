@@ -10,7 +10,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: (props: {
     variant?: string
     children?: React.ReactNode

@@ -4,6 +4,9 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { EvaluationWorkflowAssociatedTarget } from '@/types/evaluation'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useKeyPress } from 'ahooks'
 import {
   memo,
@@ -17,8 +20,6 @@ import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { Button } from '@/app/components/base/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
@@ -32,11 +33,10 @@ import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
 import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
-import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
+import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { toast } from '../../base/ui/toast'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import EvaluationWorkflowSwitchConfirmDialog from './evaluation-workflow-switch-confirm-dialog'
@@ -446,7 +446,10 @@ const AppPublisher = ({
                   isAppAccessSet={isAppAccessSet}
                   isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
                   accessMode={appDetail?.access_mode}
-                  onClick={() => setShowAppAccessControl(true)}
+                  onClick={() => {
+                    setShowAppAccessControl(true)
+                    handleOpenChange(false)
+                  }}
                 />
                 <PublisherActionsSection
                   appDetail={appDetail}
@@ -455,9 +458,12 @@ const AppPublisher = ({
                   disabledFunctionTooltip={disabledFunctionTooltip}
                   handleEmbed={() => {
                     setEmbeddingModalOpen(true)
-                    handleTrigger()
+                    handleOpenChange(false)
                   }}
-                  handleOpenInExplore={handleOpenInExplore}
+                  handleOpenInExplore={() => {
+                    handleOpenChange(false)
+                    handleOpenInExplore()
+                  }}
                   handlePublish={handlePublish}
                   hasHumanInputNode={hasHumanInputNode}
                   hasTriggerNode={hasTriggerNode}

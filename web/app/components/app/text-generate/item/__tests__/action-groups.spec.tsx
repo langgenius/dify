@@ -20,7 +20,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockSuccess(...args),
   },

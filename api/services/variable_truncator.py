@@ -169,7 +169,7 @@ class VariableTruncator(BaseTruncator):
                 return TruncationResult(StringSegment(value=fallback_result.value), True)
 
             # Apply final fallback - convert to JSON string and truncate
-            json_str = dumps_with_segments(result.value, ensure_ascii=False)
+            json_str = dumps_with_segments(result.value)
             if len(json_str) > self._max_size_bytes:
                 json_str = json_str[: self._max_size_bytes] + "..."
             return TruncationResult(result=StringSegment(value=json_str), truncated=True)

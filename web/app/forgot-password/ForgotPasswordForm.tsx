@@ -1,15 +1,15 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+
 import { useStore } from '@tanstack/react-form'
 
 import * as React from 'react'
-
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
-import { Button } from '@/app/components/base/ui/button'
 import { useRouter } from '@/next/navigation'
 import {
   fetchInitValidateStatus,

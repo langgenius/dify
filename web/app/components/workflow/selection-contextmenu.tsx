@@ -2,6 +2,13 @@ import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import {
   memo,
@@ -12,13 +19,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
-import { toast } from '@/app/components/base/ui/toast'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'

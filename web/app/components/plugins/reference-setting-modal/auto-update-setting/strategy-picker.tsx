@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import { AUTO_UPDATE_STRATEGY } from './types'
 
 const i18nPrefix = 'autoUpdate.strategy'

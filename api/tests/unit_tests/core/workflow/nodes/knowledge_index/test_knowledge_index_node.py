@@ -93,6 +93,25 @@ def sample_chunks():
     }
 
 
+def _build_node(
+    *,
+    node_id: str,
+    node_data: KnowledgeIndexNodeData | dict[str, object],
+    graph_init_params,
+    graph_runtime_state,
+) -> KnowledgeIndexNode:
+    return KnowledgeIndexNode(
+        node_id=node_id,
+        config=(
+            node_data
+            if isinstance(node_data, KnowledgeIndexNodeData)
+            else KnowledgeIndexNodeData.model_validate(node_data)
+        ),
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+
 class TestKnowledgeIndexNode:
     """
     Test suite for KnowledgeIndexNode.
@@ -115,9 +134,9 @@ class TestKnowledgeIndexNode:
         }
 
         # Act
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -143,9 +162,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -176,9 +195,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -212,9 +231,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -269,9 +288,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -332,9 +351,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -383,9 +402,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -440,9 +459,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -498,9 +517,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -536,9 +555,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -583,9 +602,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -623,9 +642,9 @@ class TestInvokeKnowledgeIndex:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )

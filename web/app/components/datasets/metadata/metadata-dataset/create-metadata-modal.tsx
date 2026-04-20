@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Props as CreateContentProps } from './create-content'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '../../../base/ui/popover'
 import CreateContent from './create-content'
 
 type Props = {

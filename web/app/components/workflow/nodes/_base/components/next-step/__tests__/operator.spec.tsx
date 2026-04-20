@@ -18,7 +18,7 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
   const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
 
@@ -49,7 +49,7 @@ vi.mock('@/app/components/base/ui/dropdown-menu', async () => {
   }
 })
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, className }: { children: ReactNode, className?: string }) => (
     <button type="button" className={className}>
       {children}

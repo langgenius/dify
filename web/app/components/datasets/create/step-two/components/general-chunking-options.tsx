@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAlertFill,
   RiSearchEyeLine,
@@ -10,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'

@@ -2113,11 +2113,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/switch/index.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tab-slider/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
@@ -2454,9 +2449,6 @@
     }
   },
   "web/app/components/datasets/create/website/firecrawl/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2473,9 +2465,6 @@
     }
   },
   "web/app/components/datasets/create/website/jina-reader/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -2492,9 +2481,6 @@
     }
   },
   "web/app/components/datasets/create/website/watercrawl/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-console": {
       "count": 1
     },
@@ -3083,11 +3069,6 @@
   },
   "web/app/components/header/account-about/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-dropdown/compliance.tsx": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -6211,7 +6192,7 @@
   },
   "web/app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 9
+      "count": 10
     }
   },
   "web/app/components/workflow/utils/node-navigation.ts": {

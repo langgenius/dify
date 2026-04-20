@@ -27,7 +27,7 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: (props: {
     children?: ReactNode
     onClick?: () => void
@@ -38,7 +38,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   __esModule: true,
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),

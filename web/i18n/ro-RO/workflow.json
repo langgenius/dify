@@ -151,6 +151,7 @@
   "common.branch": "RAMURĂ",
   "common.chooseDSL": "Alegeți fișierul DSL(yml)",
   "common.chooseStartNodeToRun": "Alegeți nodul de start pentru a rula",
+  "common.clipboardVersionCompatibilityWarning": "Acest conținut a fost copiat dintr-o altă versiune a aplicației Dify. Unele părți pot fi incompatibile.",
   "common.commentMode": "Mod comentarii",
   "common.configure": "Configurează",
   "common.configureRequired": "Configurare necesară",

@@ -1,9 +1,9 @@
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 
 type OperationsProps = {
   showDelete: boolean

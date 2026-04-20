@@ -3,15 +3,15 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { appDefaultIconBackground } from '@/config'

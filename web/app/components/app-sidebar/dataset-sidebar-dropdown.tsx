@@ -2,16 +2,16 @@ import type { NavIcon } from './nav-link'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   RiMenuLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'

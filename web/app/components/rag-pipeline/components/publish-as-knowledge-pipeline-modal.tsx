@@ -1,6 +1,7 @@
 'use client'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
@@ -10,7 +11,6 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {

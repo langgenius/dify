@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { Button } from '@/app/components/base/ui/button'
 import useGetRequirements from './use-get-requirements'
 
 type Props = {

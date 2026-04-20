@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.workflow.human_input_compat import DeliveryMethodType
+from core.workflow.human_input_adapter import DeliveryMethodType
 from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.helper import generate_string
 
