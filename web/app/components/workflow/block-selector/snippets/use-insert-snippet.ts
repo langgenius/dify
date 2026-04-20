@@ -1,9 +1,9 @@
 import type { Edge, Node } from '../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { consoleQuery } from '@/service/client'
 import { useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks'
 
@@ -25,9 +25,9 @@ const remapSnippetGraph = (currentNodes: Node[], snippetNodes: Node[], snippetEd
   const minRootY = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.y)) : 0
   const currentMaxX = currentNodes.length
     ? Math.max(...currentNodes.map((node) => {
-      const nodeX = node.positionAbsolute?.x ?? node.position.x
-      return nodeX + (node.width ?? 0)
-    }))
+        const nodeX = node.positionAbsolute?.x ?? node.position.x
+        return nodeX + (node.width ?? 0)
+      }))
     : 0
   const currentMinY = currentNodes.length
     ? Math.min(...currentNodes.map(node => node.positionAbsolute?.y ?? node.position.y))
@@ -53,17 +53,17 @@ const remapSnippetGraph = (currentNodes: Node[], snippetNodes: Node[], snippetEd
       parentId: nextParentId,
       position: isRootNode
         ? {
-          x: node.position.x + offsetX,
-          y: node.position.y + offsetY,
-        }
+            x: node.position.x + offsetX,
+            y: node.position.y + offsetY,
+          }
         : node.position,
       positionAbsolute: node.positionAbsolute
         ? (isRootNode
-          ? {
-            x: node.positionAbsolute.x + offsetX,
-            y: node.positionAbsolute.y + offsetY,
-          }
-          : node.positionAbsolute)
+            ? {
+                x: node.positionAbsolute.x + offsetX,
+                y: node.positionAbsolute.y + offsetY,
+              }
+            : node.positionAbsolute)
         : undefined,
       selected: true,
       data: {
@@ -85,9 +85,9 @@ const remapSnippetGraph = (currentNodes: Node[], snippetNodes: Node[], snippetEd
     selected: false,
     data: edge.data
       ? {
-        ...edge.data,
-        _connectedNodeIsSelected: true,
-      }
+          ...edge.data,
+          _connectedNodeIsSelected: true,
+        }
       : edge.data,
   }))
 

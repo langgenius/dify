@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
@@ -293,14 +294,19 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
+// Render helper wrapping with shared nuqs testing helper plus a seeded
+// systemFeatures cache so List can resolve its useSuspenseQuery.
 const renderList = (props: React.ComponentProps<typeof List> = {}, searchParams = '') => {
-  return renderWithNuqs(<List {...props} />, { searchParams })
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { branding: { enabled: false } },
+  })
+  return renderWithNuqs(<SystemFeaturesWrapper><List {...props} /></SystemFeaturesWrapper>, { searchParams })
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    defaultSnippetData.pages[0].data = [
+    defaultSnippetData.pages[0]!.data = [
       {
         id: 'snippet-1',
         name: 'Tone Rewriter',
@@ -319,7 +325,7 @@ describe('List', () => {
         author: '',
       },
     ]
-    defaultSnippetData.pages[0].total = 1
+    defaultSnippetData.pages[0]!.total = 1
     useTagStore.setState({
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
       showTagManagementModal: false,
@@ -371,7 +377,7 @@ describe('List', () => {
       fireEvent.click(await screen.findByText('app.types.workflow'))
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
     })
 
@@ -465,7 +471,7 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { unmount } = renderWithNuqs(<List />)
+      const { unmount } = renderList()
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
 
       unmount()

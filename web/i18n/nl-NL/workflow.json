@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Stop by {{user}}",
   "triggerStatus.disabled": "TRIGGER • DISABLED",
   "triggerStatus.enabled": "TRIGGER",
-  "variableReference.assignedVarsDescription": "Assigned variables must be writable variables, such as ",
+  "variableReference.assignedVarsDescription": "Assigned variables must be writable variables, such as conversation variables.",
   "variableReference.conversationVars": "conversation variables",
   "variableReference.noAssignedVars": "No available assigned variables",
   "variableReference.noAvailableVars": "No available variables",

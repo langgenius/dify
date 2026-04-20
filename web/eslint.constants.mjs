@@ -26,7 +26,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/portal-to-follow-elem',
       '**/portal-to-follow-elem/index',
     ],
-    message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+    message: 'Deprecated: use semantic overlay primitives from @langgenius/dify-ui (popover / dropdown-menu / tooltip / context-menu) instead. See issue #32767.',
   },
   {
     group: [

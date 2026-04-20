@@ -158,7 +158,7 @@ const FeaturesTrigger = () => {
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
-        url: `/apps/${appID}/workflows/publish`,
+        url: publishParams?.url || `/apps/${appID}/workflows/publish`,
         title: publishParams?.title || '',
         releaseNotes: publishParams?.releaseNotes || '',
       })

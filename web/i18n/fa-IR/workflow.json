@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "متوقف‌شده توسط {{user}}",
   "triggerStatus.disabled": "تریگر • غیرفعال",
   "triggerStatus.enabled": "تریگر",
-  "variableReference.assignedVarsDescription": "متغیرهای تخصیص‌یافته باید قابل‌نوشتن باشند، مانند",
+  "variableReference.assignedVarsDescription": "متغیرهای تخصیص‌یافته باید قابل‌نوشتن باشند (مانند متغیرهای مکالمه).",
   "variableReference.conversationVars": "متغیرهای مکالمه",
   "variableReference.noAssignedVars": "هیچ متغیر تخصیص‌یافته‌ای موجود نیست",
   "variableReference.noAvailableVars": "هیچ متغیری موجود نیست",

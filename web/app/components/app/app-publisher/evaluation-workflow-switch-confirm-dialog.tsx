@@ -2,8 +2,6 @@
 
 import type { EvaluationWorkflowAssociatedTarget, EvaluationWorkflowAssociatedTargetType } from '@/types/evaluation'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,6 +11,8 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 type EvaluationWorkflowSwitchConfirmDialogProps = {
@@ -80,7 +80,7 @@ const DependentTargetItem = ({
         <span className={cn(meta.icon, 'size-5')} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1 py-px">
-        <span className="system-md-semibold truncate text-text-secondary">
+        <span className="truncate system-md-semibold text-text-secondary">
           {targetName}
         </span>
         <span className="system-2xs-medium-uppercase text-text-tertiary">
@@ -108,10 +108,10 @@ const EvaluationWorkflowSwitchConfirmDialog = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="w-[480px]">
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold w-full text-text-primary">
+          <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
             {t('common.switchToStandardWorkflowConfirm.title', { ns: 'workflow' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-md-regular w-full text-text-secondary">
+          <AlertDialogDescription className="w-full system-md-regular text-text-secondary">
             <span className="block">
               {t('common.switchToStandardWorkflowConfirm.activeIn', { ns: 'workflow', count: targets.length })}
             </span>
@@ -123,7 +123,7 @@ const EvaluationWorkflowSwitchConfirmDialog = ({
 
         <div className="flex flex-col gap-2 px-6 py-3">
           <div className="flex items-center gap-2">
-            <span className="system-xs-medium-uppercase shrink-0 text-text-quaternary">
+            <span className="shrink-0 system-xs-medium-uppercase text-text-quaternary">
               {t('common.switchToStandardWorkflowConfirm.dependentWorkflows', { ns: 'workflow' })}
             </span>
             <span className="h-px min-w-0 flex-1 bg-divider-subtle" />

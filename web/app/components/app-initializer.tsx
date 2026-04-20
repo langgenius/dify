@@ -8,6 +8,7 @@ import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
+import RootLoading from '@/app/loading'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
@@ -101,5 +102,5 @@ export const AppInitializer = ({
     })()
   }, [isSetupFinished, router, pathname, searchParams, oauthNewUser])
 
-  return init ? children : null
+  return init ? children : <RootLoading />
 }

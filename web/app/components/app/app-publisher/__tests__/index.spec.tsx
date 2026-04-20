@@ -1,10 +1,15 @@
 /* eslint-disable ts/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import AppPublisher from '../index'
+
+const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { webapp_auth: { enabled: true } },
+})
 
 const mockOnPublish = vi.fn()
 const mockOnToggle = vi.fn()
@@ -19,6 +24,7 @@ const mockConvertWorkflowType = vi.fn()
 const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
 const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
+let mockCanAccessSnippetsAndEvaluation = true
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -53,16 +59,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: { enabled: boolean } } }) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: () => 'moments ago',
@@ -71,6 +67,13 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
+}))
+
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: mockCanAccessSnippetsAndEvaluation,
+    isReady: true,
+  }),
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -125,11 +128,11 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
     ? (
-      <div data-testid="embedded-modal">
-        embedded modal
-        <button onClick={onClose}>close-embedded-modal</button>
-      </div>
-    )
+        <div data-testid="embedded-modal">
+          embedded modal
+          <button onClick={onClose}>close-embedded-modal</button>
+        </div>
+      )
     : null),
 }))
 
@@ -201,6 +204,7 @@ describe('AppPublisher', () => {
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
+    mockCanAccessSnippetsAndEvaluation = true
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
@@ -567,7 +571,7 @@ describe('AppPublisher', () => {
   it('should switch workflow type, refresh app detail, and close the popover for published apps', async () => {
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       id: 'app-1',
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     })
 
     render(
@@ -587,166 +591,24 @@ describe('AppPublisher', () => {
       expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
       expect(mockSetAppDetail).toHaveBeenCalledWith({
         id: 'app-1',
-        type: AppTypeEnum.EVALUATION,
+        workflow_kind: AppTypeEnum.EVALUATION,
       })
     })
-    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
-  })
-
-  it('should hide access and actions sections for evaluation workflow apps', () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
-    }
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-
-    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
-    expect(screen.queryByText('publisher-access-control')).not.toBeInTheDocument()
-    expect(screen.queryByText('publisher-embed')).not.toBeInTheDocument()
-    expect(sectionProps.summary?.workflowTypeSwitchConfig).toEqual({
-      targetType: AppTypeEnum.WORKFLOW,
-      publishLabelKey: 'common.publishAsStandardWorkflow',
-      switchLabelKey: 'common.switchToStandardWorkflow',
-      tipKey: 'common.switchToStandardWorkflowTip',
-    })
-  })
-
-  it('should confirm before switching an evaluation workflow with associated targets to a standard workflow', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
-    }
-    mockEvaluationWorkflowAssociatedTargets = {
-      items: [
-        {
-          target_type: 'app',
-          target_id: 'dependent-app-1',
-          target_name: 'Dependent App',
-        },
-        {
-          target_type: 'knowledge_base',
-          target_id: 'knowledge-1',
-          target_name: 'Knowledge Base',
-        },
-      ],
-    }
-    mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
-      data: mockEvaluationWorkflowAssociatedTargets,
-      isError: false,
-    })
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
-
     await waitFor(() => {
-      expect(mockRefetchEvaluationWorkflowAssociatedTargets).toHaveBeenCalledTimes(1)
-    })
-    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
-    expect(screen.getByText('Dependent App')).toBeInTheDocument()
-    expect(screen.getByText('Knowledge Base')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.switchToStandardWorkflowConfirm.switch' }))
-
-    await waitFor(() => {
-      expect(mockConvertWorkflowType).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
-        query: { target_type: AppTypeEnum.WORKFLOW },
-      })
+      expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
     })
   })
 
-  it('should switch an evaluation workflow directly when there are no associated targets', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
-    }
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
-
-    await waitFor(() => {
-      expect(mockRefetchEvaluationWorkflowAssociatedTargets).toHaveBeenCalledTimes(1)
-      expect(mockConvertWorkflowType).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
-        query: { target_type: AppTypeEnum.WORKFLOW },
-      })
-    })
-    expect(screen.queryByText('common.switchToStandardWorkflowConfirm.title')).not.toBeInTheDocument()
-  })
-
-  it('should block switching an evaluation workflow when associated targets fail to load', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
-    }
-    mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
-      data: undefined,
-      isError: true,
-    })
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('common.switchToStandardWorkflowConfirm.loadFailed')
-    })
-    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
-  })
-
-  it('should block switching to evaluation workflow when restricted nodes exist', async () => {
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-        hasHumanInputNode
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('common.switchToEvaluationWorkflowDisabledTip')
-    })
-
-    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
-    expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
-    expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('common.switchToEvaluationWorkflowDisabledTip')
-  })
-
-  it('should switch workflow type, refresh app detail, and close the popover for published apps', async () => {
+  it('should publish an unpublished workflow as evaluation workflow through the evaluation publish endpoint', async () => {
+    mockOnPublish.mockResolvedValue(undefined)
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       id: 'app-1',
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     })
 
     render(
       <AppPublisher
-        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
       />,
     )
 
@@ -754,23 +616,24 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
 
     await waitFor(() => {
-      expect(mockConvertWorkflowType).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
-        query: { target_type: AppTypeEnum.EVALUATION },
+      expect(mockOnPublish).toHaveBeenCalledWith({
+        url: '/apps/app-1/workflows/publish/evaluation',
+        title: '',
+        releaseNotes: '',
       })
+      expect(mockConvertWorkflowType).not.toHaveBeenCalled()
       expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
       expect(mockSetAppDetail).toHaveBeenCalledWith({
         id: 'app-1',
-        type: AppTypeEnum.EVALUATION,
+        workflow_kind: AppTypeEnum.EVALUATION,
       })
     })
-    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
   })
 
   it('should hide access and actions sections for evaluation workflow apps', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
 
     render(
@@ -795,7 +658,7 @@ describe('AppPublisher', () => {
   it('should confirm before switching an evaluation workflow with associated targets to a standard workflow', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockEvaluationWorkflowAssociatedTargets = {
       items: [
@@ -845,7 +708,7 @@ describe('AppPublisher', () => {
   it('should switch an evaluation workflow directly when there are no associated targets', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
 
     render(
@@ -870,7 +733,7 @@ describe('AppPublisher', () => {
   it('should block switching an evaluation workflow when associated targets fail to load', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      type: AppTypeEnum.EVALUATION,
+      workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
       data: undefined,
@@ -910,5 +773,26 @@ describe('AppPublisher', () => {
     expect(mockConvertWorkflowType).not.toHaveBeenCalled()
     expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
     expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('common.switchToEvaluationWorkflowDisabledTip')
+  })
+
+  it('should keep the evaluation workflow switch visible but disabled when the current plan cannot access it', () => {
+    mockCanAccessSnippetsAndEvaluation = false
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+
+    expect(sectionProps.summary?.workflowTypeSwitchConfig).toEqual({
+      targetType: AppTypeEnum.EVALUATION,
+      publishLabelKey: 'common.publishAsEvaluationWorkflow',
+      switchLabelKey: 'common.switchToEvaluationWorkflow',
+      tipKey: 'common.switchToEvaluationWorkflowTip',
+    })
+    expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
+    expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('compliance.sandboxUpgradeTooltip')
   })
 })

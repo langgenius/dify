@@ -1,8 +1,10 @@
+import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
 import type { SystemFeatures } from '@/types/feature'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures, InstallationScope } from '@/types/feature'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { InstallationScope } from '@/types/feature'
 
 // ==================== Imports (after mocks) ====================
 
@@ -10,7 +12,9 @@ import Empty from '../index'
 
 // ==================== Mock Setup ====================
 
-// Use vi.hoisted to define ALL mock state and functions
+// Use vi.hoisted to define ALL mock state and functions so the local render
+// helper below (and downstream `vi.mock` factories) can read from the same
+// shared object regardless of declaration order.
 const {
   mockSetActiveTab,
   mockUseInstalledPluginList,
@@ -38,6 +42,9 @@ const {
   }
 })
 
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: mockState.systemFeatures })
+
 // Mock plugin page context
 vi.mock('../../context', () => ({
   usePluginPageContext: (selector: (value: Record<string, unknown>) => unknown) => {
@@ -46,18 +53,6 @@ vi.mock('../../context', () => ({
       setActiveTab: mockSetActiveTab,
     }
     return selector(contextValue)
-  },
-}))
-
-// Mock global public store (Zustand store)
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        ...mockState.systemFeatures,
-      },
-    })
   },
 }))
 

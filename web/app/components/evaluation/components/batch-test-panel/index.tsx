@@ -1,10 +1,10 @@
 'use client'
 
 import type { BatchTestTab, EvaluationResourceProps } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useTranslation } from 'react-i18next'
 import { useSaveEvaluationConfigMutation } from '@/service/use-evaluation'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
 import { buildEvaluationConfigPayload } from '../../store-utils'
@@ -65,7 +65,7 @@ const BatchTestPanel = ({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="system-xl-semibold text-text-primary">{t('batch.title')}</div>
-            <div className="system-sm-regular mt-1 text-text-tertiary">{t('batch.description')}</div>
+            <div className="mt-1 system-sm-regular text-text-tertiary">{t('batch.description')}</div>
           </div>
           <Button
             className="shrink-0"

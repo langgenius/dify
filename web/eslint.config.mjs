@@ -170,13 +170,6 @@ export default antfu(
     },
   },
   {
-    name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
-    },
-  },
-  {
     name: 'dify/no-direct-next-imports',
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],

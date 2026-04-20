@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Gestoppt von {{user}}",
   "triggerStatus.disabled": "AUSLÖSER • DEAKTIVIERT",
   "triggerStatus.enabled": "AUSLÖSER",
-  "variableReference.assignedVarsDescription": "Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B.",
+  "variableReference.assignedVarsDescription": "Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B. Konversationsvariablen.",
   "variableReference.conversationVars": "Konversations-Variablen",
   "variableReference.noAssignedVars": "Keine verfügbaren zugewiesenen Variablen",
   "variableReference.noAvailableVars": "Keine verfügbaren Variablen",

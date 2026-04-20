@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "{{user}}에 의해 중지됨",
   "triggerStatus.disabled": "트리거 • 비활성화",
   "triggerStatus.enabled": "트리거",
-  "variableReference.assignedVarsDescription": "할당된 변수는 다음과 같이 쓰기 가능한 변수여야 합니다.",
+  "variableReference.assignedVarsDescription": "할당된 변수는 대화 변수와 같은 쓰기 가능한 변수여야 합니다.",
   "variableReference.conversationVars": "대화 변수",
   "variableReference.noAssignedVars": "사용 가능한 할당된 변수가 없습니다.",
   "variableReference.noAvailableVars": "사용 가능한 변수 없음",

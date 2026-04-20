@@ -21,7 +21,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectTrigger,
 }) => {
   const { t } = useTranslation()
-  const appType = useAppStore(s => s.appDetail?.type)
+  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
   const isEvaluationWorkflowType = isEvaluationWorkflow(appType)
 
@@ -62,7 +62,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
           trigger={() => (
             <StartNodeOption
               icon={(
-                <div className="flex h-9 w-9 items-center justify-center radius-lg border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
+                <div className="radius-lg flex h-9 w-9 items-center justify-center border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
                   <TriggerAll className="h-5 w-5 text-white" />
                 </div>
               )}

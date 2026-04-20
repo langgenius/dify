@@ -5,11 +5,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuGroup,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import {
   memo,
@@ -19,8 +18,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import { toast } from '@langgenius/dify-ui/toast'
+import { getNodesBounds, useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'
@@ -69,6 +67,7 @@ type ActionMenuItem = {
 }
 
 const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }
+const SNIPPET_VIEWPORT_PADDING = 100
 
 const alignMenuItems: AlignMenuItem[] = [
   { alignType: AlignType.Left, icon: 'i-ri-align-item-left-line', translationKey: 'operator.alignLeft' },
@@ -77,8 +76,8 @@ const alignMenuItems: AlignMenuItem[] = [
   { alignType: AlignType.Top, icon: 'i-ri-align-item-top-line', translationKey: 'operator.alignTop' },
   { alignType: AlignType.Middle, icon: 'i-ri-align-item-vertical-center-line', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
   { alignType: AlignType.Bottom, icon: 'i-ri-align-item-bottom-line', translationKey: 'operator.alignBottom' },
-  { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify-line', translationKey: 'operator.distributeHorizontal' },
-  { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify-line', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
+  { alignType: AlignType.DistributeHorizontal, icon: 'i-custom-vender-line-others-dhs', translationKey: 'operator.distributeHorizontal' },
+  { alignType: AlignType.DistributeVertical, icon: 'i-custom-vender-line-others-dvs', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
 ]
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
@@ -230,6 +229,10 @@ const getSelectedSnippetGraph = (
   nodes: Node[],
   edges: Edge[],
   selectedNodes: Node[],
+  canvasSize?: {
+    width?: number
+    height?: number
+  },
 ): SnippetCanvasData => {
   const includedNodeIds = new Set(selectedNodes.map(node => node.id))
 
@@ -259,41 +262,74 @@ const getSelectedSnippetGraph = (
   const minRootX = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.x)) : 0
   const minRootY = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.y)) : 0
 
-  return {
-    nodes: nodes
-      .filter(node => includedNodeIds.has(node.id))
-      .map((node) => {
-        const isRootNode = !node.parentId || !includedNodeIds.has(node.parentId)
-        const nextPosition = isRootNode
-          ? { x: node.position.x - minRootX, y: node.position.y - minRootY }
-          : node.position
+  const snippetNodes = nodes
+    .filter(node => includedNodeIds.has(node.id))
+    .map((node) => {
+      const isRootNode = !node.parentId || !includedNodeIds.has(node.parentId)
+      const nextPosition = isRootNode
+        ? { x: node.position.x - minRootX, y: node.position.y - minRootY }
+        : node.position
 
-        return {
-          ...node,
-          position: nextPosition,
-          positionAbsolute: node.positionAbsolute
-            ? (isRootNode
+      return {
+        ...node,
+        position: nextPosition,
+        positionAbsolute: node.positionAbsolute
+          ? (isRootNode
               ? {
-                x: node.positionAbsolute.x - minRootX,
-                y: node.positionAbsolute.y - minRootY,
-              }
+                  x: node.positionAbsolute.x - minRootX,
+                  y: node.positionAbsolute.y - minRootY,
+                }
               : node.positionAbsolute)
-            : undefined,
-          selected: false,
-          data: {
-            ...node.data,
-            selected: false,
-            _children: node.data._children?.filter(child => includedNodeIds.has(child.nodeId)),
-          },
-        }
-      }),
-    edges: edges
-      .filter(edge => includedNodeIds.has(edge.source) && includedNodeIds.has(edge.target))
-      .map(edge => ({
-        ...edge,
+          : undefined,
         selected: false,
-      })),
-    viewport: DEFAULT_SNIPPET_VIEWPORT,
+        data: {
+          ...node.data,
+          selected: false,
+          _children: node.data._children?.filter(child => includedNodeIds.has(child.nodeId)),
+        },
+      }
+    })
+  const snippetEdges = edges
+    .filter(edge => includedNodeIds.has(edge.source) && includedNodeIds.has(edge.target))
+    .map(edge => ({
+      ...edge,
+      selected: false,
+    }))
+
+  const viewportWidth = canvasSize?.width
+  const viewportHeight = canvasSize?.height
+  const hasCanvasSize = !!viewportWidth && !!viewportHeight
+
+  const viewport = (() => {
+    if (!hasCanvasSize || !snippetNodes.length)
+      return DEFAULT_SNIPPET_VIEWPORT
+
+    const bounds = getNodesBounds(snippetNodes)
+    const paddedWidth = bounds.width + SNIPPET_VIEWPORT_PADDING
+    const paddedHeight = bounds.height + SNIPPET_VIEWPORT_PADDING
+    const zoom = Math.min(
+      viewportWidth / paddedWidth,
+      viewportHeight / paddedHeight,
+      1,
+    )
+
+    if (!Number.isFinite(zoom) || zoom <= 0)
+      return DEFAULT_SNIPPET_VIEWPORT
+
+    const centerX = bounds.x + bounds.width / 2
+    const centerY = bounds.y + bounds.height / 2
+
+    return {
+      x: viewportWidth / 2 - centerX * zoom,
+      y: viewportHeight / 2 - centerY * zoom,
+      zoom,
+    }
+  })()
+
+  return {
+    nodes: snippetNodes,
+    edges: snippetEdges,
+    viewport,
   }
 }
 
@@ -337,6 +373,7 @@ const SelectionContextmenu = () => {
       }),
     }
   }, [selectionMenu])
+  const isMenuOpen = Boolean(selectionMenu && anchor)
 
   useEffect(() => {
     if (selectionMenu && selectedNodes.length <= 1)
@@ -357,11 +394,18 @@ const SelectionContextmenu = () => {
 
     const nodes = store.getState().getNodes()
     const { edges } = store.getState()
+    const {
+      workflowCanvasWidth,
+      workflowCanvasHeight,
+    } = workflowStore.getState()
 
-    setSelectedGraphSnapshot(getSelectedSnippetGraph(nodes, edges, selectedNodes))
+    setSelectedGraphSnapshot(getSelectedSnippetGraph(nodes, edges, selectedNodes, {
+      width: workflowCanvasWidth,
+      height: workflowCanvasHeight,
+    }))
     setIsCreateSnippetDialogOpen(true)
     handleSelectionContextmenuCancel()
-  }, [canAccessSnippetsAndEvaluation, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store])
+  }, [canAccessSnippetsAndEvaluation, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store, workflowStore])
 
   const handleCloseCreateSnippetDialog = useCallback(() => {
     setIsCreateSnippetDialogOpen(false)
@@ -563,57 +607,59 @@ const SelectionContextmenu = () => {
   return (
     <div data-testid="selection-contextmenu">
       <ContextMenu
-        open
+        open={isMenuOpen}
         onOpenChange={(open) => {
           if (!open)
             handleSelectionContextmenuCancel()
         }}
       >
-        <ContextMenuContent
-          positionerProps={anchor ? { anchor } : undefined}
-          popupClassName="w-[240px] py-0"
-        >
-          <div className="p-1">
-            {menuActions.map(item => (
-              <ContextMenuItem
-                key={item.action}
-                data-testid={`selection-contextmenu-item-${item.action}`}
-                disabled={item.disabled}
-                className={cn(
-                  'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
-                  item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-                )}
-                onClick={() => handleMenuAction(item.action)}
-              >
-                <span>{getActionLabel(item.translationKey)}</span>
-                {item.shortcutKeys && (
-                  <ShortcutsName
-                    keys={item.shortcutKeys}
-                    textColor="secondary"
-                  />
-                )}
-              </ContextMenuItem>
-            ))}
-          </div>
-          <ContextMenuSeparator className="my-0" />
-          <div className="p-1.5">
-            <div className="flex items-center">
-              {alignMenuItems.map((item) => {
-                return (
-                  <ContextMenuItem
-                    key={item.alignType}
-                    aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                    className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
-                    data-testid={`selection-contextmenu-item-${item.alignType}`}
-                    onClick={() => handleAlignNodes(item.alignType)}
-                  >
-                    <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                  </ContextMenuItem>
-                )
-              })}
+        {isMenuOpen && (
+          <ContextMenuContent
+            positionerProps={{ anchor }}
+            popupClassName="w-[240px] py-0"
+          >
+            <div className="p-1">
+              {menuActions.map(item => (
+                <ContextMenuItem
+                  key={item.action}
+                  data-testid={`selection-contextmenu-item-${item.action}`}
+                  disabled={item.disabled}
+                  className={cn(
+                    'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
+                    item.action === 'delete' && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+                  )}
+                  onClick={() => handleMenuAction(item.action)}
+                >
+                  <span>{getActionLabel(item.translationKey)}</span>
+                  {item.shortcutKeys && (
+                    <ShortcutsName
+                      keys={item.shortcutKeys}
+                      textColor="secondary"
+                    />
+                  )}
+                </ContextMenuItem>
+              ))}
             </div>
-          </div>
-        </ContextMenuContent>
+            <ContextMenuSeparator className="my-0" />
+            <div className="p-1.5">
+              <div className="flex items-center">
+                {alignMenuItems.map((item) => {
+                  return (
+                    <ContextMenuItem
+                      key={item.alignType}
+                      aria-label={t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                      className="mx-0 h-8 w-8 justify-center rounded-md px-0 text-text-tertiary data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+                      data-testid={`selection-contextmenu-item-${item.alignType}`}
+                      onClick={() => handleAlignNodes(item.alignType)}
+                    >
+                      <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                    </ContextMenuItem>
+                  )
+                })}
+              </div>
+            </div>
+          </ContextMenuContent>
+        )}
       </ContextMenu>
       {isCreateSnippetDialogOpen && (
         <CreateSnippetDialog

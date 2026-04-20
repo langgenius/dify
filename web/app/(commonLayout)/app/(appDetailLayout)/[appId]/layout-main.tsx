@@ -8,8 +8,6 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
-  RiFlaskFill,
-  RiFlaskLine,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -41,6 +39,10 @@ const TagManagementModal = dynamic(() => import('@/app/components/base/tag-manag
 type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
+}
+
+const EvaluationIcon = ({ className }: { className?: string }) => {
+  return <span aria-hidden className={cn('i-custom-vender-line-others-evaluation', className)} />
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -80,14 +82,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiTerminalWindowLine,
         selectedIcon: RiTerminalWindowFill,
       })
-      if (canAccessSnippetsAndEvaluation) {
-        navConfig.push({
-          name: t('appMenus.evaluation', { ns: 'common' }),
-          href: `/app/${appId}/evaluation`,
-          icon: RiFlaskLine,
-          selectedIcon: RiFlaskFill,
-        })
-      }
     }
 
     navConfig.push({
@@ -114,6 +108,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       icon: RiDashboard2Line,
       selectedIcon: RiDashboard2Fill,
     })
+
+    if (isCurrentWorkspaceEditor && canAccessSnippetsAndEvaluation) {
+      navConfig.push({
+        name: t('appMenus.evaluation', { ns: 'common' }),
+        href: `/app/${appId}/evaluation`,
+        icon: EvaluationIcon,
+        selectedIcon: EvaluationIcon,
+      })
+    }
+
     return navConfig
   }, [canAccessSnippetsAndEvaluation, t])
 

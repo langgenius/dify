@@ -4,12 +4,12 @@ import type { AppPublisherProps } from './index'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiSettings2Line } from '@remixicon/react'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
+import { RiSettings2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
@@ -156,117 +156,117 @@ export const PublisherSummarySection = ({
       </div>
       {publishedAt
         ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center system-sm-medium text-text-secondary">
-              {t('common.publishedAt', { ns: 'workflow' })}
-              {' '}
-              {formatTimeFromNow(publishedAt)}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center system-sm-medium text-text-secondary">
+                {t('common.publishedAt', { ns: 'workflow' })}
+                {' '}
+                {formatTimeFromNow(publishedAt)}
+              </div>
+              {isChatApp && (
+                <Button
+                  variant="secondary-accent"
+                  size="small"
+                  onClick={handleRestore}
+                  disabled={published}
+                >
+                  {t('common.restore', { ns: 'workflow' })}
+                </Button>
+              )}
             </div>
-            {isChatApp && (
-              <Button
-                variant="secondary-accent"
-                size="small"
-                onClick={handleRestore}
-                disabled={published}
-              >
-                {t('common.restore', { ns: 'workflow' })}
-              </Button>
-            )}
-          </div>
-        )
+          )
         : (
-          <div className="flex items-center system-sm-medium text-text-secondary">
-            {t('common.autoSaved', { ns: 'workflow' })}
-            {' '}
-            ·
-            {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
-          </div>
-        )}
+            <div className="flex items-center system-sm-medium text-text-secondary">
+              {t('common.autoSaved', { ns: 'workflow' })}
+              {' '}
+              ·
+              {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+            </div>
+          )}
       {debugWithMultipleModel
         ? (
-          <PublishWithMultipleModel
-            multipleModelConfigs={multipleModelConfigs}
-            onSelect={item => handlePublish(item)}
-          />
-        )
+            <PublishWithMultipleModel
+              multipleModelConfigs={multipleModelConfigs}
+              onSelect={item => handlePublish(item)}
+            />
+          )
         : (
-          <>
-            <Button
-              variant="primary"
-              className="mt-3 w-full"
-              onClick={() => handlePublish()}
-              disabled={publishDisabled || published}
-            >
-              {published
-                ? t('common.published', { ns: 'workflow' })
-                : (
-                  <div className="flex gap-1">
-                    <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                    <ShortcutsName keys={publishShortcut} bgColor="white" />
-                  </div>
-                )}
-            </Button>
-            {workflowTypeSwitchConfig && (
-              <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
-                <button
-                  type="button"
-                  className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() => void onWorkflowTypeSwitch()}
-                  disabled={workflowTypeSwitchDisabled}
-                >
-                  <span className="px-0.5">
-                    {t(
-                      publishedAt
-                        ? workflowTypeSwitchConfig.switchLabelKey
-                        : workflowTypeSwitchConfig.publishLabelKey,
-                      { ns: 'workflow' },
+            <>
+              <Button
+                variant="primary"
+                className="mt-3 w-full"
+                onClick={() => handlePublish()}
+                disabled={publishDisabled || published}
+              >
+                {published
+                  ? t('common.published', { ns: 'workflow' })
+                  : (
+                      <div className="flex gap-1">
+                        <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
+                        <ShortcutsName keys={publishShortcut} bgColor="white" />
+                      </div>
                     )}
-                  </span>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <span
-                          className="flex h-4 w-4 items-center justify-center text-text-quaternary hover:text-text-tertiary"
-                          aria-label={t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                          }}
-                        >
-                          <span className="i-ri-question-line h-3.5 w-3.5" />
-                        </span>
+              </Button>
+              {workflowTypeSwitchConfig && (
+                <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
+                  <button
+                    type="button"
+                    className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void onWorkflowTypeSwitch()}
+                    disabled={workflowTypeSwitchDisabled}
+                  >
+                    <span className="px-0.5">
+                      {t(
+                        publishedAt
+                          ? workflowTypeSwitchConfig.switchLabelKey
+                          : workflowTypeSwitchConfig.publishLabelKey,
+                        { ns: 'workflow' },
                       )}
-                    />
-                    <TooltipContent
-                      placement="top"
-                      className="w-[180px]"
-                    >
-                      {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
-                    </TooltipContent>
-                  </Tooltip>
-                </button>
-              </ActionTooltip>
-            )}
-            {startNodeLimitExceeded && (
-              <div className="mt-3 flex flex-col items-stretch">
-                <p
-                  className="text-sm leading-5 font-semibold text-transparent"
-                  style={upgradeHighlightStyle}
-                >
-                  <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
-                  <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
-                </p>
-                <p className="mt-1 text-xs leading-4 text-text-secondary">
-                  {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
-                </p>
-                <UpgradeBtn
-                  isShort
-                  className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
-                />
-              </div>
-            )}
-          </>
-        )}
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <span
+                            className="flex h-4 w-4 items-center justify-center text-text-quaternary hover:text-text-tertiary"
+                            aria-label={t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                          >
+                            <span className="i-ri-question-line h-3.5 w-3.5" />
+                          </span>
+                        )}
+                      />
+                      <TooltipContent
+                        placement="top"
+                        className="w-[180px]"
+                      >
+                        {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                      </TooltipContent>
+                    </Tooltip>
+                  </button>
+                </ActionTooltip>
+              )}
+              {startNodeLimitExceeded && (
+                <div className="mt-3 flex flex-col items-stretch">
+                  <p
+                    className="text-sm leading-5 font-semibold text-transparent"
+                    style={upgradeHighlightStyle}
+                  >
+                    <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
+                    <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
+                  </p>
+                  <p className="mt-1 text-xs leading-4 text-text-secondary">
+                    {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
+                  </p>
+                  <UpgradeBtn
+                    isShort
+                    className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
+                  />
+                </div>
+              )}
+            </>
+          )}
     </div>
   )
 }
@@ -350,10 +350,10 @@ export const PublisherActionsSection = ({
           icon={<span className="i-ri-play-circle-line h-4 w-4" />}
           actionButton={showRunConfig
             ? {
-              ariaLabel: t('operation.config', { ns: 'common' }),
-              icon: <RiSettings2Line className="h-4 w-4" />,
-              onClick: () => handleOpenRunConfig?.(appURL),
-            }
+                ariaLabel: t('operation.config', { ns: 'common' }),
+                icon: <RiSettings2Line className="h-4 w-4" />,
+                onClick: () => handleOpenRunConfig?.(appURL),
+              }
             : undefined}
         >
           {t('common.runApp', { ns: 'workflow' })}
@@ -361,34 +361,34 @@ export const PublisherActionsSection = ({
       </ActionTooltip>
       {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
         ? (
-          <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
-            <SuggestedAction
-              className="flex-1"
-              onClick={handleEmbed}
-              disabled={disabledFunctionButton || !publishedAt}
-              link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-              icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
-              actionButton={showBatchRunConfig
-                ? {
-                  ariaLabel: t('operation.config', { ns: 'common' }),
-                  icon: <RiSettings2Line className="h-4 w-4" />,
-                  onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
-                }
-                : undefined}
-            >
-              {t('common.batchRunApp', { ns: 'workflow' })}
-            </SuggestedAction>
-          </ActionTooltip>
-        )
+            <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
+              <SuggestedAction
+                className="flex-1"
+                onClick={handleEmbed}
+                disabled={disabledFunctionButton || !publishedAt}
+                link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+                icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
+                actionButton={showBatchRunConfig
+                  ? {
+                      ariaLabel: t('operation.config', { ns: 'common' }),
+                      icon: <RiSettings2Line className="h-4 w-4" />,
+                      onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
+                    }
+                  : undefined}
+              >
+                {t('common.batchRunApp', { ns: 'workflow' })}
+              </SuggestedAction>
+            </ActionTooltip>
+          )
         : (
-          <SuggestedAction
-            onClick={handleEmbed}
-            disabled={!publishedAt}
-            icon={<CodeBrowser className="h-4 w-4" />}
-          >
-            {t('common.embedIntoSite', { ns: 'workflow' })}
-          </SuggestedAction>
-        )}
+            <SuggestedAction
+              onClick={handleEmbed}
+              disabled={!publishedAt}
+              icon={<CodeBrowser className="h-4 w-4" />}
+            >
+              {t('common.embedIntoSite', { ns: 'workflow' })}
+            </SuggestedAction>
+          )}
       <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
         <SuggestedAction
           className="flex-1"

@@ -1,13 +1,13 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import Input from '@/app/components/base/input'
-import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -169,7 +169,7 @@ const SnippetImportDSLDialog = ({
             <DialogCloseButton className="top-6 right-5 h-8 w-8" />
           </div>
 
-          <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
+          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
             {[
               { key: SnippetImportDSLTab.FromFile, label: t('importFromDSLFile', { ns: 'app' }) },
               { key: SnippetImportDSLTab.FromURL, label: t('importFromDSLUrl', { ns: 'app' }) },
@@ -201,7 +201,7 @@ const SnippetImportDSLDialog = ({
             )}
             {currentTab === SnippetImportDSLTab.FromURL && (
               <div>
-                <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
+                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
                 <Input
                   placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
@@ -234,7 +234,7 @@ const SnippetImportDSLDialog = ({
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}
             </DialogTitle>
-            <div className="system-md-regular flex grow flex-col text-text-secondary">
+            <div className="flex grow flex-col system-md-regular text-text-secondary">
               <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
               <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
               <br />
