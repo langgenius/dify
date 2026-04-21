@@ -2218,11 +2218,6 @@
       "count": 3
     }
   },
-  "web/app/components/billing/usage-info/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/image-previewer/index.tsx": {
     "no-irregular-whitespace": {
       "count": 1
