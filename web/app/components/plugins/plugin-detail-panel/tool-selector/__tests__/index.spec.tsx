@@ -153,8 +153,8 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 // Portal components need mocking for controlled positioning in tests
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({
     children,
     open,
   }: {
@@ -165,18 +165,20 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
       {children}
     </div>
   ),
-  PortalToFollowElemTrigger: ({
+  PopoverTrigger: ({
     children,
+    render,
     onClick,
   }: {
     children: ReactNode
+    render?: ReactNode
     onClick?: () => void
   }) => (
     <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
+      {render ?? children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => (
+  PopoverContent: ({ children }: { children: ReactNode }) => (
     <div data-testid="portal-content">{children}</div>
   ),
 }))
