@@ -230,6 +230,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           description="Action ID user triggered"
         />
         <VarItem
+          name="__action_value"
+          type="string"
+          description="Selected action value"
+        />
+        <VarItem
           name="__rendered_content"
           type="string"
           description="Rendered content"

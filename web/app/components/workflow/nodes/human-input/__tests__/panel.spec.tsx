@@ -313,6 +313,7 @@ describe('human-input/panel', () => {
     expect(screen.getByText('approve:editable')).toBeInTheDocument()
     expect(screen.getByText('review_result:string:Form input value')).toBeInTheDocument()
     expect(screen.getByText('__action_id:string:Action ID user triggered')).toBeInTheDocument()
+    expect(screen.getByText('__action_value:string:Selected action value')).toBeInTheDocument()
     expect(screen.getByText('__rendered_content:string:Rendered content')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
