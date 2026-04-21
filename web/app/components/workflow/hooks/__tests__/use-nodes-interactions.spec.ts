@@ -324,7 +324,7 @@ describe('useNodesInteractions', () => {
         id: 'note-1',
         type: CUSTOM_NOTE_NODE,
         data: {
-          type: BlockEnum.Note,
+          type: '' as unknown as BlockEnum,
           title: 'Note',
           desc: '',
           selected: false,
