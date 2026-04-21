@@ -1931,11 +1931,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/variable-block.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -2221,11 +2216,6 @@
   "web/app/components/billing/upgrade-btn/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/billing/usage-info/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/common/image-previewer/index.tsx": {
@@ -4087,15 +4077,7 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/featured-tools.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -4104,9 +4086,6 @@
     }
   },
   "web/app/components/workflow/block-selector/featured-triggers.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -4139,22 +4118,12 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/start-blocks.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/tabs.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/app/components/workflow/block-selector/tool-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool/action-item.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4170,9 +4139,6 @@
     }
   },
   "web/app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4582,9 +4548,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     },

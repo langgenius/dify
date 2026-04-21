@@ -3,7 +3,8 @@ import { defaultPlan } from '../../config'
 import { Plan } from '../../type'
 import VectorSpaceInfo from '../vector-space-info'
 
-const queryPlaceholder = () => document.body.querySelector('[aria-hidden="true"]')
+const queryPlaceholder = () =>
+  document.body.querySelector('[aria-hidden="true"].bg-components-progress-bar-bg')
 
 // Mock provider context with configurable plan
 let mockPlanType = Plan.sandbox

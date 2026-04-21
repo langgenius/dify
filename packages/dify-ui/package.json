@@ -49,6 +49,10 @@
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
     },
+    "./preview-card": {
+      "types": "./src/preview-card/index.tsx",
+      "import": "./src/preview-card/index.tsx"
+    },
     "./scroll-area": {
       "types": "./src/scroll-area/index.tsx",
       "import": "./src/scroll-area/index.tsx"

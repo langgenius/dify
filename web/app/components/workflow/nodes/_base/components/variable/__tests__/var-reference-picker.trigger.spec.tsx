@@ -32,7 +32,7 @@ const createProps = (
   readonly: false,
   setControlFocus: vi.fn(),
   setOpen: vi.fn(),
-  tooltipPopup: null,
+  hoverPopup: null,
   triggerRef: { current: null },
   value: [],
   varKindType: VarKindType.constant,

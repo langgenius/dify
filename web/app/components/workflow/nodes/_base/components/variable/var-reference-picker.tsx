@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { HoverPopup } from './var-reference-picker.trigger'
 import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
@@ -286,20 +287,23 @@ const VarReferencePicker: FC<Props> = ({
     maxVarNameWidth,
   } = getWidthAllocations(triggerWidth, outputVarNode?.title || '', varName || '', type || '')
 
-  const tooltipPopup = useMemo(() => {
+  const hoverPopup = useMemo<HoverPopup | null>(() => {
     const tooltipType = getTooltipContent(hasValue, isShowAPart, isValidVar)
     if (tooltipType === 'full-path') {
-      return (
-        <VarFullPathPanel
-          nodeName={outputVarNode?.title}
-          path={(value as ValueSelector).slice(1)}
-          varType={varTypeToStructType(type)}
-          nodeType={outputVarNode?.type}
-        />
-      )
+      return {
+        kind: 'full-path',
+        panel: (
+          <VarFullPathPanel
+            nodeName={outputVarNode?.title}
+            path={(value as ValueSelector).slice(1)}
+            varType={varTypeToStructType(type)}
+            nodeType={outputVarNode?.type}
+          />
+        ),
+      }
     }
     if (tooltipType === 'invalid-variable')
-      return t('errorMsg.invalidVariable', { ns: 'workflow' })
+      return { kind: 'invalid-variable', message: t('errorMsg.invalidVariable', { ns: 'workflow' }) }
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -392,7 +396,7 @@ const VarReferencePicker: FC<Props> = ({
             setControlFocus={setControlFocus}
             setOpen={setOpen}
             showErrorIcon={showErrorIcon}
-            tooltipPopup={tooltipPopup}
+            hoverPopup={hoverPopup}
             triggerRef={triggerRef}
             type={type}
             typePlaceHolder={typePlaceHolder}
