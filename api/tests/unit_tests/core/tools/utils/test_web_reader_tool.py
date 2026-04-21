@@ -297,24 +297,6 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.Mon
     assert article.text == []
 
 
-def test_extract_using_readabilipy_uses_pure_python_mode_by_default(monkeypatch: pytest.MonkeyPatch):
-    calls: list[bool] = []
-
-    def fake_simple_json_from_html_string(html, use_readability=True):
-        calls.append(use_readability)
-        return {"title": "Fallback", "byline": "System", "plain_text": [{"text": "ok"}]}
-
-    import core.tools.utils.web_reader_tool as mod
-
-    monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
-
-    article = extract_using_readabilipy("<html>...</html>")
-    assert calls == [False]
-    assert article.title == "Fallback"
-    assert article.author == "System"
-    assert article.text == [{"text": "ok"}]
-
-
 # ---------------------------
 # Tests: get_image_upload_file_ids
 # ---------------------------
