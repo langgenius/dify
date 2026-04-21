@@ -3,9 +3,10 @@ import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
 type Props = {
@@ -159,11 +160,11 @@ const UsageInfo: FC<Props> = ({
   const wrapWithStorageTooltip = (children: ReactNode) => {
     if (storageMode && storageTooltip) {
       return (
-        <Tooltip
-          popupContent={<div className="w-[200px]">{storageTooltip}</div>}
-          asChild={false}
-        >
-          <div className="cursor-default">{children}</div>
+        <Tooltip>
+          <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
+          <TooltipContent className="w-[200px] max-w-[200px]">
+            {storageTooltip}
+          </TooltipContent>
         </Tooltip>
       )
     }
@@ -178,13 +179,9 @@ const UsageInfo: FC<Props> = ({
       <div className="flex items-center gap-1">
         <div className="system-xs-medium text-text-tertiary">{name}</div>
         {tooltip && (
-          <Tooltip
-            popupContent={(
-              <div className="w-[180px]">
-                {tooltip}
-              </div>
-            )}
-          />
+          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
+            {tooltip}
+          </Infotip>
         )}
       </div>
       <div className="flex items-center gap-1 system-md-semibold text-text-primary">
