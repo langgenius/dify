@@ -1,17 +1,17 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   memo,
   useState,
 } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { THEME_MAP } from '../../constants'
 import { NoteTheme } from '../../types'
 
-export const COLOR_LIST = [
+const COLOR_LIST = [
   {
     key: NoteTheme.blue,
     inner: THEME_MAP[NoteTheme.blue]!.title,
@@ -55,28 +55,35 @@ const ColorPicker = ({
   const [open, setOpen] = useState(false)
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="top"
-      offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-        <div className={cn(
-          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
-          open && 'bg-black/5',
-        )}
-        >
-          <div
+      <PopoverTrigger
+        nativeButton
+        render={(
+          <button
+            type="button"
             className={cn(
-              'h-4 w-4 rounded-full border border-black/5',
-              THEME_MAP[theme]!.title,
+              'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
+              open && 'bg-black/5',
             )}
           >
-          </div>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+            <div
+              className={cn(
+                'h-4 w-4 rounded-full border border-black/5',
+                THEME_MAP[theme]!.title,
+              )}
+            >
+            </div>
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="top"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg">
           {
             COLOR_LIST.map(color => (
@@ -107,8 +114,8 @@ const ColorPicker = ({
             ))
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

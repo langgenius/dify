@@ -1,13 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiFontSize } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useFontSize } from './hooks'
 
 const FontSizeSelector = () => {
@@ -34,23 +34,30 @@ const FontSizeSelector = () => {
   } = useFontSize()
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={fontSizeSelectorShow}
       onOpenChange={handleOpenFontSizeSelector}
-      placement="bottom-start"
-      offset={2}
     >
-      <PortalToFollowElemTrigger onClick={() => handleOpenFontSizeSelector(!fontSizeSelectorShow)}>
-        <div className={cn(
-          'flex h-8 cursor-pointer items-center rounded-md pr-1.5 pl-2 text-[13px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
+      <PopoverTrigger
+        nativeButton
+        render={(
+          <button
+            type="button"
+            className={cn(
+              'flex h-8 cursor-pointer items-center rounded-md pr-1.5 pl-2 text-[13px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+              fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
+            )}
+          >
+            <RiFontSize className="mr-1 h-4 w-4" />
+            {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
+          </button>
         )}
-        >
-          <RiFontSize className="mr-1 h-4 w-4" />
-          {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={2}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="w-[120px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 text-text-secondary shadow-xl">
           {
             FONT_SIZE_LIST.map(font => (
@@ -77,8 +84,8 @@ const FontSizeSelector = () => {
             ))
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

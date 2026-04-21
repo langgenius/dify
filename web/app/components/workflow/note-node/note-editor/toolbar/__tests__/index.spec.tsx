@@ -76,11 +76,14 @@ describe('NoteEditor Toolbar', () => {
 
     expect(screen.getByText('workflow.nodes.note.editor.medium')).toBeInTheDocument()
 
-    const triggers = container.querySelectorAll('[data-state="closed"]')
+    const buttons = container.querySelectorAll('button[type="button"]')
+    fireEvent.click(buttons[0] as HTMLElement)
 
-    fireEvent.click(triggers[0] as HTMLElement)
+    await waitFor(() => {
+      expect(document.body.querySelectorAll('.group.relative').length).toBeGreaterThan(0)
+    })
 
-    const colorOptions = document.body.querySelectorAll('[role="tooltip"] .group.relative')
+    const colorOptions = document.body.querySelectorAll('.group.relative')
 
     fireEvent.click(colorOptions[colorOptions.length - 1] as Element)
 

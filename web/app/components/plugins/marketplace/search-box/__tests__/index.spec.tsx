@@ -145,76 +145,38 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-let mockDropdownPlugins: Plugin[] = []
-vi.mock('../../query', () => ({
-  useMarketplaceUnifiedSearch: () => ({
-    data: {
-      plugins: { items: mockDropdownPlugins, total: mockDropdownPlugins.length },
-      templates: { items: [], total: 0 },
-      creators: { items: [], total: 0 },
-      organizations: { items: [], total: 0 },
-      page: 1,
-      page_size: 5,
-    },
-    isLoading: false,
-  }),
-}))
-
-const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
-  type: 'plugin',
-  org: 'dropbox',
-  author: 'dropbox',
-  name: 'dropbox-search',
-  plugin_id: 'plugin-1',
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_package_identifier: 'pkg-1',
-  icon: 'https://example.com/icon.png',
-  verified: false,
-  label: { en_US: 'Dropbox search' },
-  brief: { en_US: 'Interact with Dropbox files.' },
-  description: { en_US: 'Interact with Dropbox files.' },
-  introduction: '',
-  repository: '',
-  category: PluginCategoryEnum.tool,
-  install_count: 206,
-  endpoint: {
-    settings: [],
-  },
-  tags: [],
-  badges: [],
-  verification: {
-    authorized_category: 'community',
-  },
-  from: 'marketplace',
-  ...overrides,
-})
-
-// Mock portal-to-follow-elem with shared open state
+// Mock popover with shared open state
 let mockPortalOpenState = false
+let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: {
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open, onOpenChange }: {
     children: React.ReactNode
     open: boolean
+    onOpenChange?: (open: boolean) => void
   }) => {
     mockPortalOpenState = open
+    mockPopoverOnOpenChange = onOpenChange
     return (
       <div data-testid="portal-elem" data-open={open}>
         {children}
       </div>
     )
   },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: () => void
+  PopoverTrigger: ({ children, render, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
     className?: string
   }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
+    <div
+      data-testid="portal-trigger"
+      onClick={() => mockPopoverOnOpenChange?.(!mockPortalOpenState)}
+      className={className}
+    >
+      {render ?? children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children, className }: {
+  PopoverContent: ({ children, className }: {
     children: React.ReactNode
     className?: string
   }) => {
