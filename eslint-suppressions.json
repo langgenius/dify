@@ -6556,7 +6556,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "web/models/log.ts": {
