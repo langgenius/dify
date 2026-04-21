@@ -383,4 +383,33 @@ describe('human-input/panel', () => {
     expect(screen.getByRole('button', { name: 'timeout:readonly' })).toBeInTheDocument()
     expect(screen.queryByText('form-preview')).not.toBeInTheDocument()
   })
+
+  it('renders file outputs with file-aware types', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        inputs: [
+          {
+            type: InputVarType.singleFile,
+            output_variable_name: 'attachment',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+          },
+          {
+            type: InputVarType.multiFiles,
+            output_variable_name: 'attachments',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+            max_upload_count: 3,
+          },
+        ],
+      }),
+    }))
+
+    renderPanel()
+
+    expect(screen.getByText('attachment:file:Form input value')).toBeInTheDocument()
+    expect(screen.getByText('attachments:array[file]:Form input value')).toBeInTheDocument()
+  })
 })
