@@ -97,6 +97,74 @@ class TestLLMGenerator:
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
 
+    def test_generate_suggested_questions_after_answer_with_think_tags(self, mock_model_instance):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            "<think>\nThe user asked about Python.\nI should suggest related questions.\n</think>\n"
+            '["What are Python decorators?", "How does async work in Python?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "What are Python decorators?"
+        assert questions[1] == "How does async work in Python?"
+
+    def test_generate_suggested_questions_after_answer_with_large_think_block(self, mock_model_instance):
+        """Think block with >= 2000 tokens of reasoning content should be fully stripped."""
+        long_reasoning = "This is a detailed reasoning step. " * 200  # ~1400 words / ~2000+ tokens
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            f"<think>\n{long_reasoning}\n</think>\n"
+            '["What is dependency injection?", "How does garbage collection work?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "What is dependency injection?"
+        assert questions[1] == "How does garbage collection work?"
+
+    def test_generate_suggested_questions_after_answer_with_unclosed_think_tag(self, mock_model_instance):
+        """When the thinking process stops mid-stream (unclosed <think>), questions are still parsed."""
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            "<think>\nThe model was reasoning but output was truncated"
+            '["Can you explain closures?", "What are generators?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "Can you explain closures?"
+        assert questions[1] == "What are generators?"
+
+    def test_generate_suggested_questions_after_answer_with_empty_think_tags(self, mock_model_instance):
+        """Empty <think></think> block should be stripped cleanly."""
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            '<think></think>\n["What is recursion?", "How do hash maps work?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "What is recursion?"
+        assert questions[1] == "How do hash maps work?"
+
+    def test_generate_suggested_questions_after_answer_with_nested_think_tags(self, mock_model_instance):
+        """Nested <think> tags — non-greedy match strips the first complete block."""
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            '<think>outer <think>inner</think> leftover</think>\n["What is polymorphism?", "What are interfaces?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "What is polymorphism?"
+        assert questions[1] == "What are interfaces?"
+
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
         with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")

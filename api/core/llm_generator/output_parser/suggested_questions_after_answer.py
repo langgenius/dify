@@ -7,12 +7,16 @@ from core.llm_generator.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCT
 
 logger = logging.getLogger(__name__)
 
+_THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+
 
 class SuggestedQuestionsAfterAnswerOutputParser:
     def get_format_instructions(self) -> str:
         return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
     def parse(self, text: str) -> Sequence[str]:
+        # Strip reasoning model <think> blocks before parsing
+        text = _THINK_TAG_RE.sub("", text)
         action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)
         questions: list[str] = []
         if action_match is not None:
