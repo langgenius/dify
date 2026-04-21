@@ -1,7 +1,7 @@
 'use client'
 
 //   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
-//   All base/ui/* overlay primitives — z-1002
+//   All @langgenius/dify-ui/* overlay primitives — z-1002
 //   Toast stays one layer above overlays at z-1003.
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render

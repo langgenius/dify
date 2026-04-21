@@ -1,7 +1,7 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
 type UsagePrioritySectionProps = {
@@ -20,6 +20,7 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
   const selectedKey = value === 'credits'
     ? PreferredProviderTypeEnum.system
     : PreferredProviderTypeEnum.custom
+  const usagePriorityTip = t('modelProvider.card.usagePriorityTip', { ns: 'common' })
 
   return (
     <div className="p-1">
@@ -31,19 +32,9 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
           <span className="truncate system-sm-medium text-text-secondary">
             {t('modelProvider.card.usagePriority', { ns: 'common' })}
           </span>
-          <Tooltip>
-            <TooltipTrigger
-              aria-label={t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
-              render={(
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={usagePriorityTip}>
+            {usagePriorityTip}
+          </Infotip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map(option => (
