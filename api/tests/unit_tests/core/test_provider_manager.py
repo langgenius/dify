@@ -289,7 +289,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
 
         result = manager.get_default_model("tenant-id", ModelType.LLM)
 
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
@@ -316,7 +316,7 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mock
         result = manager.get_configurations("tenant-id")
 
     expected_alias = str(ModelProviderID("openai"))
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     assert result.tenant_id == "tenant-id"
     assert expected_alias in provider_records
     assert expected_alias in provider_model_records
@@ -402,7 +402,7 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
 
     assert first is second
     mock_get_all_providers.assert_called_once_with("tenant-id")
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     mock_provider_configuration.assert_called_once()
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 

@@ -102,7 +102,7 @@ def _build_graph(
     start_data = StartNodeData(title="start", variables=[])
     start_node = StartNode(
         node_id="start",
-        config=start_data,
+        data=start_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
@@ -117,7 +117,7 @@ def _build_graph(
     )
     human_node = HumanInputNode(
         node_id="human",
-        config=human_data,
+        data=human_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
@@ -131,7 +131,7 @@ def _build_graph(
     )
     end_node = EndNode(
         node_id="end",
-        config=end_data,
+        data=end_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )

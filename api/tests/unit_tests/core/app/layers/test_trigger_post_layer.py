@@ -21,7 +21,9 @@ class TestTriggerPostLayer:
         )
         runtime_state = SimpleNamespace(
             outputs={"answer": "ok"},
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
             total_tokens=12,
         )
 
@@ -60,7 +62,9 @@ class TestTriggerPostLayer:
     def test_on_event_handles_missing_trigger_log(self):
         runtime_state = SimpleNamespace(
             outputs={},
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
             total_tokens=0,
         )
 
@@ -91,7 +95,9 @@ class TestTriggerPostLayer:
     def test_on_event_ignores_non_status_events(self):
         runtime_state = SimpleNamespace(
             outputs={},
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
             total_tokens=0,
         )
 

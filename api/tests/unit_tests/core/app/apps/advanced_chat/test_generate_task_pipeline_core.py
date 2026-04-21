@@ -317,7 +317,9 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -528,7 +530,9 @@ class TestAdvancedChatGenerateTaskPipeline:
                 self.items = items
 
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
 
@@ -562,7 +566,9 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_handle_message_end_event_applies_output_moderation(self, monkeypatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer: "safe"
