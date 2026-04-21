@@ -36,8 +36,14 @@ class WorkflowEventsApi(Resource):
         params={
             "task_id": "Workflow run ID",
             "user": "End user identifier (query param)",
-            "include_state_snapshot": "Whether to replay from persisted state snapshot",
-            "continue_on_pause": "Whether to keep the stream open across workflow_paused events",
+            "include_state_snapshot": (
+                "Whether to replay from persisted state snapshot, "
+                'specify `"true"` to include a status snapshot of executed nodes'
+            ),
+            "continue_on_pause": (
+                "Whether to keep the stream open across workflow_paused events,"
+                'specify `"true"` to keep the stream open for `workflow_paused` events.'
+            ),
         }
     )
     @service_api_ns.doc(
