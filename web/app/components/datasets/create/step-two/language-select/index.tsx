@@ -1,10 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
 
 export type ILanguageSelectProps = {
   currentLanguage: string
@@ -17,48 +16,42 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
   onSelect,
   disabled,
 }) => {
+  const supportedLanguages = languages.filter(language => language.supported)
+
   return (
-    <Popover
-      manualClose
-      trigger="click"
+    <Select
+      value={currentLanguage}
+      onValueChange={(value) => {
+        if (value == null)
+          return
+        onSelect(value)
+      }}
       disabled={disabled}
-      popupClassName="z-20"
-      htmlContent={(
-        <div className="w-full p-1">
-          {languages.filter(language => language.supported).map(({ prompt_name }) => (
-            <div
-              key={prompt_name}
-              className="inline-flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-state-base-hover"
-              onClick={() => onSelect(prompt_name)}
-            >
-              <span className="system-sm-medium text-text-secondary">{prompt_name}</span>
-              {(currentLanguage === prompt_name) && <RiCheckLine className="size-4 text-text-accent" />}
-            </div>
-          ))}
-        </div>
-      )}
-      btnElement={(
-        <div className={cn('inline-flex items-center gap-x-px', disabled && 'cursor-not-allowed')}>
-          <span className={cn(
-            'system-xs-semibold px-[3px] text-components-button-tertiary-text',
-            disabled ? 'text-components-button-tertiary-text-disabled' : '',
-          )}
-          >
-            {currentLanguage}
-          </span>
-          <RiArrowDownSLine className={cn(
-            'size-3.5 text-components-button-tertiary-text',
-            disabled ? 'text-components-button-tertiary-text-disabled' : '',
-          )}
-          />
-        </div>
-      )}
-      btnClassName={() => cn(
-        '!hover:bg-components-button-tertiary-bg mx-1! rounded-md border-0! bg-components-button-tertiary-bg! px-1.5! py-1!',
-        disabled ? 'bg-components-button-tertiary-bg-disabled' : '',
-      )}
-      className="left-1! z-20! h-fit w-[140px]! translate-x-0!"
-    />
+    >
+      <SelectTrigger
+        size="small"
+        aria-label="language"
+        className={cn(
+          'mx-1 w-auto shrink-0 bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-tertiary-bg',
+          disabled && 'cursor-not-allowed bg-components-button-tertiary-bg-disabled text-components-button-tertiary-text-disabled hover:bg-components-button-tertiary-bg-disabled',
+        )}
+      >
+        {currentLanguage || <span>&nbsp;</span>}
+      </SelectTrigger>
+      <SelectContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="w-max"
+        listClassName="no-scrollbar"
+      >
+        {supportedLanguages.map(({ prompt_name }) => (
+          <SelectItem key={prompt_name} value={prompt_name}>
+            <SelectItemText>{prompt_name}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 export default React.memo(LanguageSelect)

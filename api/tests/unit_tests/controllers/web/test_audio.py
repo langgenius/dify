@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from graphon.model_runtime.errors.invoke import InvokeError
 
 from controllers.web.audio import AudioApi, TextApi
 from controllers.web.error import (
@@ -22,6 +21,7 @@ from controllers.web.error import (
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,

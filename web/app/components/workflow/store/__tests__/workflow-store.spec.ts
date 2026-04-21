@@ -1,6 +1,7 @@
 import type { Shape, SliceFromInjection } from '../workflow'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../__tests__/fixtures'
 import { createTestWorkflowStore, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { createWorkflowStore, useStore, useWorkflowStore } from '../workflow'
 
@@ -51,6 +52,7 @@ describe('createWorkflowStore', () => {
       ['listeningTriggerNodeIds', 'setListeningTriggerNodeIds', ['n1', 'n2']],
       ['listeningTriggerIsAll', 'setListeningTriggerIsAll', true],
       ['clipboardElements', 'setClipboardElements', []],
+      ['clipboardEdges', 'setClipboardEdges', []],
       ['selection', 'setSelection', { x1: 0, y1: 0, x2: 100, y2: 100 }],
       ['bundleNodeSize', 'setBundleNodeSize', { width: 200, height: 100 }],
       ['mousePosition', 'setMousePosition', { pageX: 10, pageY: 20, elementX: 5, elementY: 15 }],
@@ -67,6 +69,17 @@ describe('createWorkflowStore', () => {
       store.getState().setControlMode('pointer')
       expect(store.getState().controlMode).toBe('pointer')
       expect(localStorage.setItem).toHaveBeenCalledWith('workflow-operation-mode', 'pointer')
+    })
+
+    it('should update clipboard nodes and edges with setClipboardData', () => {
+      const store = createStore()
+      const nodes = [createNode({ id: 'n-1' })]
+      const edges = [createEdge({ id: 'e-1', source: 'n-1', target: 'n-2' })]
+
+      store.getState().setClipboardData({ nodes, edges })
+
+      expect(store.getState().clipboardElements).toEqual(nodes)
+      expect(store.getState().clipboardEdges).toEqual(edges)
     })
   })
 
@@ -173,9 +186,9 @@ describe('createWorkflowStore', () => {
       expect(store.getState().controlMode).toBe('pointer')
     })
 
-    it('should default controlMode to hand when localStorage has no value', () => {
+    it('should default controlMode to pointer when localStorage has no value', () => {
       const store = createStore()
-      expect(store.getState().controlMode).toBe('hand')
+      expect(store.getState().controlMode).toBe('pointer')
     })
 
     it('should read panelWidth from localStorage', () => {

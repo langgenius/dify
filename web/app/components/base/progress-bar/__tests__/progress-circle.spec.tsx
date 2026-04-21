@@ -5,7 +5,7 @@ const extractLargeArcFlag = (pathData: string): string => {
   const afterA = pathData.slice(pathData.indexOf('A') + 1)
   const tokens = afterA.replace(/,/g, ' ').trim().split(/\s+/)
   // Arc syntax: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
-  return tokens[3]
+  return tokens[3]!
 }
 
 describe('ProgressCircle', () => {
@@ -17,9 +17,9 @@ describe('ProgressCircle', () => {
       const circle = container.querySelector('circle')
       const path = container.querySelector('path')
 
-      expect(svg).toBeInTheDocument()
-      expect(circle).toBeInTheDocument()
-      expect(path).toBeInTheDocument()
+      expect(svg)!.toBeInTheDocument()
+      expect(circle)!.toBeInTheDocument()
+      expect(path)!.toBeInTheDocument()
     })
   })
 
@@ -34,9 +34,9 @@ describe('ProgressCircle', () => {
 
       const svg = container.querySelector('svg') as SVGElement
 
-      expect(svg).toHaveAttribute('width', String(size + strokeWidth))
-      expect(svg).toHaveAttribute('height', String(size + strokeWidth))
-      expect(svg).toHaveAttribute(
+      expect(svg)!.toHaveAttribute('width', String(size + strokeWidth))
+      expect(svg)!.toHaveAttribute('height', String(size + strokeWidth))
+      expect(svg)!.toHaveAttribute(
         'viewBox',
         `0 0 ${size + strokeWidth} ${size + strokeWidth}`,
       )
@@ -50,8 +50,8 @@ describe('ProgressCircle', () => {
         />,
       )
       const circle = container.querySelector('circle')!
-      expect(circle!).toHaveClass('stroke-red-500')
-      expect(circle!).toHaveClass('fill-red-100')
+      expect(circle!)!.toHaveClass('stroke-red-500')
+      expect(circle!)!.toHaveClass('fill-red-100')
     })
 
     it('applies custom sector fill color to the path', () => {
@@ -59,7 +59,7 @@ describe('ProgressCircle', () => {
         <ProgressCircle sectorFillColor="fill-blue-500" />,
       )
       const path = container.querySelector('path')!
-      expect(path!).toHaveClass('fill-blue-500')
+      expect(path!)!.toHaveClass('fill-blue-500')
     })
 
     it('uses large arc flag when percentage is greater than 50', () => {

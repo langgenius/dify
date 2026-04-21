@@ -153,8 +153,8 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 // Portal components need mocking for controlled positioning in tests
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({
     children,
     open,
   }: {
@@ -165,18 +165,20 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
       {children}
     </div>
   ),
-  PortalToFollowElemTrigger: ({
+  PopoverTrigger: ({
     children,
+    render,
     onClick,
   }: {
     children: ReactNode
+    render?: ReactNode
     onClick?: () => void
   }) => (
     <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
+      {render ?? children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => (
+  PopoverContent: ({ children }: { children: ReactNode }) => (
     <div data-testid="portal-content">{children}</div>
   ),
 }))
@@ -298,7 +300,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
 
 // Mock Toast - need to track notify calls for assertions
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),

@@ -23,7 +23,7 @@ const MetadataPanel = ({
           {t('nodes.knowledgeRetrieval.metadata.panel.title', { ns: 'workflow' })}
         </div>
         <div
-          className="absolute bottom-0 right-2.5 flex h-8 w-8 cursor-pointer items-center justify-center"
+          className="absolute right-2.5 bottom-0 flex h-8 w-8 cursor-pointer items-center justify-center"
           onClick={onCancel}
         >
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />

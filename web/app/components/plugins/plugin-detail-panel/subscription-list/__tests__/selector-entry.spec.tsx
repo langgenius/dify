@@ -4,6 +4,59 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorEntry } from '../selector-entry'
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
+
+    return (
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
+    )
+  }
+
+  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    return (
+      <div onClick={() => setOpen(!open)}>
+        {render}
+      </div>
+    )
+  }
+
+  const PopoverContent = ({ children }: { children: React.ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    return open ? <div data-testid="popover-content">{children}</div> : null
+  }
+
+  return {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+  }
+})
+
 let mockSubscriptions: TriggerSubscription[] = []
 const mockRefetch = vi.fn()
 
@@ -26,7 +79,7 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
@@ -92,6 +145,6 @@ describe('SubscriptionSelectorEntry', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }), expect.any(Function))
-    expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
 })

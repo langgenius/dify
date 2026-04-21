@@ -12,13 +12,13 @@ const isValidTimeFormat = (time: string): boolean => {
     return false
 
   const [timePart, period] = time.split(' ')
-  const [hour, minute] = timePart.split(':')
-  const hourNum = Number.parseInt(hour, 10)
-  const minuteNum = Number.parseInt(minute, 10)
+  const [hour, minute] = timePart!.split(':')
+  const hourNum = Number.parseInt(hour!, 10)
+  const minuteNum = Number.parseInt(minute!, 10)
 
   return hourNum >= 1 && hourNum <= 12
     && minuteNum >= 0 && minuteNum <= 59
-    && ['AM', 'PM'].includes(period)
+    && ['AM', 'PM'].includes(period!)
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {

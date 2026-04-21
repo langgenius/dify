@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
 
 type Props = {
@@ -102,7 +102,7 @@ const InputItem: FC<Props> = ({
           )}
       {hasRemove && !isFocus && (
         <RemoveButton
-          className="absolute right-1 top-0.5 hidden group-hover:block"
+          className="absolute top-0.5 right-1 hidden group-hover:block"
           onClick={handleRemove}
         />
       )}

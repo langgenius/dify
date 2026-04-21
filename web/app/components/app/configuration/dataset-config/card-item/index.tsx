@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -14,7 +15,6 @@ import Badge from '@/app/components/base/badge'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { cn } from '@/utils/classnames'
 import SettingsModal from '../settings-modal'
 
 type ItemProps = {
@@ -68,7 +68,7 @@ const Item: FC<ItemProps> = ({
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className="system-sm-medium w-0 grow truncate text-text-secondary" title={config.name}>{config.name}</div>
+        <div className="w-0 grow truncate system-sm-medium text-text-secondary" title={config.name}>{config.name}</div>
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {

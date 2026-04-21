@@ -5,22 +5,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.file.file_manager import file_manager
-from graphon.graph.graph import NodeFactory
-from graphon.model_runtime.memory import PromptMessageMemory
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from graphon.nodes.base.node import Node
-from graphon.nodes.code.code_node import WorkflowCodeExecutor
-from graphon.nodes.code.entities import CodeLanguage
-from graphon.nodes.code.limits import CodeNodeLimits
-from graphon.nodes.document_extractor import UnstructuredApiConfig
-from graphon.nodes.http_request import build_http_request_config
-from graphon.nodes.llm.entities import LLMNodeData
-from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,12 +15,12 @@ from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
 )
-from core.helper.ssrf_proxy import ssrf_proxy
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -56,6 +40,22 @@ from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.ext_database import db
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file.file_manager import file_manager
+from graphon.graph.graph import NodeFactory
+from graphon.model_runtime.memory import PromptMessageMemory
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.nodes.base.node import Node
+from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.nodes.document_extractor import UnstructuredApiConfig
+from graphon.nodes.http_request import build_http_request_config
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from models.model import Conversation
 
 if TYPE_CHECKING:
@@ -121,6 +121,7 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
 
 
 def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    """Resolve the production node class for the requested type/version."""
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
@@ -297,7 +298,7 @@ class DifyNodeFactory(NodeFactory):
         )
         self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
-        self._http_request_http_client = ssrf_proxy
+        self._http_request_http_client = graphon_ssrf_proxy
         self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
             self._dify_context,
             conversation_id_getter=self._conversation_id,
@@ -364,10 +365,14 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
-        typed_node_config = NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+        # Graph configs are initially validated against permissive shared node data.
+        # Re-validate using the resolved node class so workflow-local node schemas
+        # stay explicit and constructors receive the concrete typed payload.
+        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
@@ -391,7 +396,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
-                node_data=node_data,
+                node_data=resolved_node_data,
                 wrap_model_instance=True,
                 include_http_client=True,
                 include_llm_file_saver=True,
@@ -405,7 +410,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
-                node_data=node_data,
+                node_data=resolved_node_data,
                 wrap_model_instance=True,
                 include_http_client=True,
                 include_llm_file_saver=True,
@@ -415,7 +420,7 @@ class DifyNodeFactory(NodeFactory):
             ),
             BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
-                node_data=node_data,
+                node_data=resolved_node_data,
                 wrap_model_instance=True,
                 include_http_client=False,
                 include_llm_file_saver=False,
@@ -436,8 +441,8 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
-            id=node_id,
-            config=typed_node_config,
+            node_id=node_id,
+            config=resolved_node_data,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
@@ -448,7 +453,10 @@ class DifyNodeFactory(NodeFactory):
         """
         Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
         """
-        return node_class.validate_node_data(node_data)
+        validate_node_data = getattr(node_class, "validate_node_data", None)
+        if callable(validate_node_data):
+            return cast("BaseNodeData", validate_node_data(node_data))
+        return node_data
 
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:

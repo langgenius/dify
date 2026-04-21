@@ -50,7 +50,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
                 imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
                 className="shrink-0"
               />
-              <div className="system-xs-regular w-0 grow truncate text-text-secondary">
+              <div className="w-0 grow truncate system-xs-regular text-text-secondary">
                 {name}
               </div>
             </div>

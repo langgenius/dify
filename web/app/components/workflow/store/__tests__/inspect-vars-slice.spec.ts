@@ -64,8 +64,8 @@ describe('Inspect Vars Slice', () => {
       store.getState().setNodeInspectVars('n1', [v2])
 
       const node = store.getState().nodesWithInspectVars[0]
-      expect(node.vars).toEqual([v2])
-      expect(node.isValueFetched).toBe(true)
+      expect(node!.vars).toEqual([v2])
+      expect(node!.isValueFetched).toBe(true)
     })
 
     it('should not modify state when node is not found', () => {
@@ -74,7 +74,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().setNodeInspectVars('non-existent', [])
 
-      expect(store.getState().nodesWithInspectVars[0].vars).toHaveLength(1)
+      expect(store.getState().nodesWithInspectVars[0]!.vars).toHaveLength(1)
     })
   })
 
@@ -89,7 +89,7 @@ describe('Inspect Vars Slice', () => {
       store.getState().deleteNodeInspectVars('n1')
 
       expect(store.getState().nodesWithInspectVars).toHaveLength(1)
-      expect(store.getState().nodesWithInspectVars[0].nodeId).toBe('n2')
+      expect(store.getState().nodesWithInspectVars[0]!.nodeId).toBe('n2')
     })
   })
 
@@ -101,9 +101,9 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().setInspectVarValue('n1', 'v1', 'new')
 
-      const updated = store.getState().nodesWithInspectVars[0].vars[0]
-      expect(updated.value).toBe('new')
-      expect(updated.edited).toBe(true)
+      const updated = store.getState().nodesWithInspectVars[0]!.vars[0]
+      expect(updated!.value).toBe('new')
+      expect(updated!.edited).toBe(true)
     })
 
     it('should not change state when var is not found', () => {
@@ -113,7 +113,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().setInspectVarValue('n1', 'wrong-id', 'new')
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].value).toBe('old')
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.value).toBe('old')
     })
 
     it('should not change state when node is not found', () => {
@@ -123,7 +123,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().setInspectVarValue('wrong-node', 'v1', 'new')
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].value).toBe('old')
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.value).toBe('old')
     })
   })
 
@@ -135,9 +135,9 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().resetToLastRunVar('n1', 'v1', 'original')
 
-      const updated = store.getState().nodesWithInspectVars[0].vars[0]
-      expect(updated.value).toBe('original')
-      expect(updated.edited).toBe(false)
+      const updated = store.getState().nodesWithInspectVars[0]!.vars[0]
+      expect(updated!.value).toBe('original')
+      expect(updated!.edited).toBe(false)
     })
 
     it('should not change state when node is not found', () => {
@@ -146,7 +146,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().resetToLastRunVar('wrong-node', 'v1', 'val')
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].edited).toBe(false)
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.edited).toBe(false)
     })
 
     it('should not change state when var is not found', () => {
@@ -155,7 +155,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().resetToLastRunVar('n1', 'wrong-var', 'val')
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].edited).toBe(true)
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.edited).toBe(true)
     })
   })
 
@@ -167,9 +167,9 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().renameInspectVarName('n1', 'v1', ['n1', 'new_name'])
 
-      const updated = store.getState().nodesWithInspectVars[0].vars[0]
-      expect(updated.name).toBe('new_name')
-      expect(updated.selector).toEqual(['n1', 'new_name'])
+      const updated = store.getState().nodesWithInspectVars[0]!.vars[0]
+      expect(updated!.name).toBe('new_name')
+      expect(updated!.selector).toEqual(['n1', 'new_name'])
     })
 
     it('should not change state when node is not found', () => {
@@ -179,7 +179,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().renameInspectVarName('wrong-node', 'v1', ['x', 'y'])
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].name).toBe('old')
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.name).toBe('old')
     })
 
     it('should not change state when var is not found', () => {
@@ -189,7 +189,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().renameInspectVarName('n1', 'wrong-var', ['x', 'y'])
 
-      expect(store.getState().nodesWithInspectVars[0].vars[0].name).toBe('old')
+      expect(store.getState().nodesWithInspectVars[0]!.vars[0]!.name).toBe('old')
     })
   })
 
@@ -202,9 +202,9 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().deleteInspectVar('n1', 'v1')
 
-      const vars = store.getState().nodesWithInspectVars[0].vars
+      const vars = store.getState().nodesWithInspectVars[0]!.vars
       expect(vars).toHaveLength(1)
-      expect(vars[0].id).toBe('v2')
+      expect(vars[0]!.id).toBe('v2')
     })
 
     it('should not change state when var is not found', () => {
@@ -214,7 +214,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().deleteInspectVar('n1', 'wrong-id')
 
-      expect(store.getState().nodesWithInspectVars[0].vars).toHaveLength(1)
+      expect(store.getState().nodesWithInspectVars[0]!.vars).toHaveLength(1)
     })
 
     it('should not change state when node is not found', () => {
@@ -223,7 +223,7 @@ describe('Inspect Vars Slice', () => {
 
       store.getState().deleteInspectVar('wrong-node', 'v1')
 
-      expect(store.getState().nodesWithInspectVars[0].vars).toHaveLength(1)
+      expect(store.getState().nodesWithInspectVars[0]!.vars).toHaveLength(1)
     })
   })
 

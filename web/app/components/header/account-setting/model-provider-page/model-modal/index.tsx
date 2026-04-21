@@ -10,6 +10,20 @@ import type {
   FormSchema,
 } from '@/app/components/base/form/types'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from '@langgenius/dify-ui/dialog'
+import {
   memo,
   useCallback,
   useMemo,
@@ -18,24 +32,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Loading from '@/app/components/base/loading'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-} from '@/app/components/base/ui/dialog'
 import {
   useAuth,
   useCredentialData,
@@ -203,7 +203,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }
 
     return (
-      <div className="text-text-primary title-2xl-semi-bold">
+      <div className="title-2xl-semi-bold text-text-primary">
         {label}
       </div>
     )
@@ -212,7 +212,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <div className="mt-1 text-text-tertiary system-xs-regular">
+        <div className="mt-1 system-xs-regular text-text-tertiary">
           {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
         </div>
       )
@@ -229,7 +229,7 @@ const ModelModal: FC<ModelModalProps> = ({
             className="mr-2 h-4 w-4 shrink-0"
             provider={provider}
           />
-          <div className="mr-1 text-text-secondary system-md-regular">{renderI18nObject(provider.label)}</div>
+          <div className="mr-1 system-md-regular text-text-secondary">{renderI18nObject(provider.label)}</div>
         </div>
       )
     }
@@ -241,7 +241,7 @@ const ModelModal: FC<ModelModalProps> = ({
             provider={provider}
             modelName={model.model}
           />
-          <div className="mr-1 text-text-secondary system-md-regular">{model.model}</div>
+          <div className="mr-1 system-md-regular text-text-secondary">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -297,7 +297,7 @@ const ModelModal: FC<ModelModalProps> = ({
         backdropProps={{ forceRender: true }}
         className="w-[640px] max-w-[640px] overflow-hidden p-0"
       >
-        <DialogCloseButton className="right-5 top-5 h-8 w-8" />
+        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
         <div className="p-6 pb-3">
           {modalTitle}
           {modalDesc}
@@ -333,7 +333,7 @@ const ModelModal: FC<ModelModalProps> = ({
           }
           {
             showCredentialLabel && (
-              <div className="mb-3 mt-6 flex items-center text-text-tertiary system-xs-medium-uppercase">
+              <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
                 {t('modelProvider.auth.modelCredential', { ns: 'common' })}
                 <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
               </div>
@@ -373,11 +373,11 @@ const ModelModal: FC<ModelModalProps> = ({
                     href={provider.help?.url[language] || provider.help?.url.en_US}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-block align-middle text-text-accent system-xs-regular"
+                    className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
                     onClick={e => !provider.help.url && e.preventDefault()}
                   >
                     {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                    <LinkExternal02 className="ml-1 mt-[-2px] inline-block h-3 w-3" />
+                    <LinkExternal02 className="mt-[-2px] ml-1 inline-block h-3 w-3" />
                   </a>
                 )
               : <div />
@@ -386,7 +386,8 @@ const ModelModal: FC<ModelModalProps> = ({
             {
               isEditMode && (
                 <Button
-                  variant="warning"
+                  variant="primary"
+                  tone="destructive"
                   onClick={() => openConfirmDelete(credential, model)}
                 >
                   {t('operation.remove', { ns: 'common' })}
@@ -430,7 +431,7 @@ const ModelModal: FC<ModelModalProps> = ({
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('modelProvider.confirmDelete', { ns: 'common' })}
             </AlertDialogTitle>
           </div>

@@ -1,8 +1,8 @@
 import type { AppDetailResponse } from '@/models/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
-import { AppCardAccessControlSection, AppCardOperations, createAppCardOperations } from '../app-card-sections'
+import { AppCardAccessControlSection, AppCardOperations, AppCardUrlSection, createAppCardOperations } from '../app-card-sections'
 
 describe('app-card-sections', () => {
   const t = (key: string) => key
@@ -99,5 +99,32 @@ describe('app-card-sections', () => {
 
     expect(screen.getByText('overview.appInfo.customize.entry')).toBeInTheDocument()
     expect(AppModeEnum.CHAT).toBe('chat')
+  })
+
+  it('should invoke regenerate dialog callbacks from the url section', () => {
+    const onRegenerate = vi.fn()
+    const onHideRegenerateConfirm = vi.fn()
+
+    render(
+      <AppCardUrlSection
+        t={t as never}
+        isApp
+        accessibleUrl="https://example.com/apps/demo"
+        showConfirmDelete
+        isCurrentWorkspaceManager
+        genLoading={false}
+        onRegenerate={onRegenerate}
+        onShowRegenerateConfirm={vi.fn()}
+        onHideRegenerateConfirm={onHideRegenerateConfirm}
+      />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /operation\.cancel/i }))
+    expect(onHideRegenerateConfirm).toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /operation\.confirm/i }))
+    expect(onRegenerate).toHaveBeenCalledTimes(1)
   })
 })

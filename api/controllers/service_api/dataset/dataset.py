@@ -2,7 +2,6 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -19,6 +18,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum

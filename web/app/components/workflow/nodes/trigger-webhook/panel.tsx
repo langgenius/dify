@@ -1,14 +1,6 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import copy from 'copy-to-clipboard'
-
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import InputWithCopy from '@/app/components/base/input-with-copy'
-import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -16,8 +8,16 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/number-field'
+
+import { toast } from '@langgenius/dify-ui/toast'
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import InputWithCopy from '@/app/components/base/input-with-copy'
+import { SimpleSelect } from '@/app/components/base/select'
+import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -78,13 +78,14 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
   return (
     <div className="mt-2">
-      <div className="space-y-4 px-4 pb-3 pt-2">
+      <div className="space-y-4 px-4 pt-2 pb-3">
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`, { ns: 'workflow' })}>
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
                 <SimpleSelect
+                  key={`${id}-method-${inputs.method}`}
                   items={HTTP_METHODS}
                   defaultValue={inputs.method}
                   onSelect={item => handleMethodChange(item.value as HttpMethod)}
@@ -137,7 +138,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   </div>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="mt-1 px-0 py-[2px] text-text-warning system-xs-regular">
+                  <div className="mt-1 px-0 py-[2px] system-xs-regular text-text-warning">
                     {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
                   </div>
                 )}
@@ -150,6 +151,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
           <div className="w-full">
             <SimpleSelect
+              key={`${id}-content-type-${inputs.content_type}`}
               items={CONTENT_TYPES}
               defaultValue={inputs.content_type}
               onSelect={item => handleContentTypeChange(item.value as string)}
@@ -195,7 +197,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-text-tertiary system-sm-medium">
+              <label className="system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
               <NumberField
@@ -210,20 +212,19 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                     handleStatusCodeChange(normalizeStatusCode(value ?? DEFAULT_STATUS_CODE))
                 }}
               >
-                <NumberFieldGroup size="regular">
+                <NumberFieldGroup>
                   <NumberFieldInput
-                    size="regular"
                     className="h-8"
                   />
                   <NumberFieldControls>
-                    <NumberFieldIncrement size="regular" />
-                    <NumberFieldDecrement size="regular" />
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
                   </NumberFieldControls>
                 </NumberFieldGroup>
               </NumberField>
             </div>
             <div>
-              <label className="mb-2 block text-text-tertiary system-sm-medium">
+              <label className="mb-2 block system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
               </label>
               <ParagraphInput

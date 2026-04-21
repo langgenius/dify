@@ -23,7 +23,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
         </audio>
       </div>
       <div
-        className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
+        className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
         onClick={onCancel}
         data-testid="close-preview"
       >

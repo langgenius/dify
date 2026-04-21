@@ -1,12 +1,15 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from redis import RedisError
 from redis.retry import Retry
 
 from extensions.ext_redis import (
+    RedisClientWrapper,
     _get_base_redis_params,
     _get_cluster_connection_health_params,
     _get_connection_health_params,
+    _normalize_redis_key_prefix,
+    _serialize_redis_name,
     redis_fallback,
 )
 
@@ -123,3 +126,99 @@ class TestRedisFallback:
 
         assert test_func.__name__ == "test_func"
         assert test_func.__doc__ == "Test function docstring"
+
+
+class TestRedisKeyPrefixHelpers:
+    def test_normalize_redis_key_prefix_trims_whitespace(self):
+        assert _normalize_redis_key_prefix("  enterprise-a  ") == "enterprise-a"
+
+    def test_normalize_redis_key_prefix_treats_whitespace_only_as_empty(self):
+        assert _normalize_redis_key_prefix("   ") == ""
+
+    def test_serialize_redis_name_returns_original_when_prefix_empty(self):
+        assert _serialize_redis_name("model_lb_index:test", "") == "model_lb_index:test"
+
+    def test_serialize_redis_name_adds_single_colon_separator(self):
+        assert _serialize_redis_name("model_lb_index:test", "enterprise-a") == "enterprise-a:model_lb_index:test"
+
+
+class TestRedisClientWrapperKeyPrefix:
+    def test_wrapper_get_prefixes_string_keys(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.get("oauth_state:abc")
+
+        mock_client.get.assert_called_once_with("enterprise-a:oauth_state:abc")
+
+    def test_wrapper_delete_prefixes_multiple_keys(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.delete("key:a", "key:b")
+
+        mock_client.delete.assert_called_once_with("enterprise-a:key:a", "enterprise-a:key:b")
+
+    def test_wrapper_lock_prefixes_lock_name(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.lock("resource-lock", timeout=10)
+
+        mock_client.lock.assert_called_once()
+        args, kwargs = mock_client.lock.call_args
+        assert args == ("enterprise-a:resource-lock",)
+        assert kwargs["timeout"] == 10
+
+    def test_wrapper_hash_operations_prefix_key_name(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.hset("hash:key", "field", "value")
+            wrapper.hgetall("hash:key")
+
+        mock_client.hset.assert_called_once_with("enterprise-a:hash:key", "field", "value")
+        mock_client.hgetall.assert_called_once_with("enterprise-a:hash:key")
+
+    def test_wrapper_zadd_prefixes_sorted_set_name(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.zadd("zset:key", {"member": 1})
+
+        mock_client.zadd.assert_called_once()
+        args, kwargs = mock_client.zadd.call_args
+        assert args == ("enterprise-a:zset:key", {"member": 1})
+        assert kwargs["nx"] is False
+
+    def test_wrapper_preserves_keys_when_prefix_is_empty(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "   "
+
+            wrapper.get("plain:key")
+
+        mock_client.get.assert_called_once_with("plain:key")

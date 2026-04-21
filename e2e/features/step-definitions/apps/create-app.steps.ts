@@ -1,6 +1,6 @@
+import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
 
 When('I start creating a blank app', async function (this: DifyWorld) {
   const page = this.getPage()
@@ -11,7 +11,7 @@ When('I start creating a blank app', async function (this: DifyWorld) {
 
 When('I enter a unique E2E app name', async function (this: DifyWorld) {
   const appName = `E2E App ${Date.now()}`
-
+  this.lastCreatedAppName = appName
   await this.getPage().getByPlaceholder('Give your app a name').fill(appName)
 })
 
@@ -26,10 +26,15 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
 When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
   const dialog = this.getPage().getByRole('dialog')
-  const appTypeTitle = dialog.getByText(appType, { exact: true })
+  // The modal defaults to ADVANCED_CHAT, so the preview panel immediately renders
+  // <h4>Chatflow</h4> alongside the card's <div>Chatflow</div>.
+  // locator('div').getByText(...) would still match the <h4> because getByText
+  // searches inside each div for any descendant. Use :text-is() instead, which
+  // targets only <div> elements whose own normalised text equals appType exactly.
+  const appTypeCard = dialog.locator(`div:text-is("${appType}")`)
 
-  await expect(appTypeTitle).toBeVisible()
-  await appTypeTitle.click()
+  await expect(appTypeCard).toBeVisible()
+  await appTypeCard.click()
 })
 
 When('I expand the beginner app types', async function (this: DifyWorld) {

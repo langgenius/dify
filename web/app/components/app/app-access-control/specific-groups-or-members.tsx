@@ -1,9 +1,9 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -60,14 +60,14 @@ function RenderGroupsAndMembers() {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pb-1.5 pt-5"><p className="system-xs-regular text-center text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
+    return <div className="px-2 pt-5 pb-1.5"><p className="text-center system-xs-regular text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
   return (
     <>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
       </div>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
       </div>

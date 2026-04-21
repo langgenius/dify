@@ -16,6 +16,7 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import {
@@ -27,7 +28,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -187,18 +187,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       let moreDataForCheckValid
       let usedVars: ValueSelector[] = []
 
-      if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
+      if (node!.data.type === BlockEnum.Tool)
+        moreDataForCheckValid = getToolCheckParams(node!.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
 
-      if (node.data.type === BlockEnum.DataSource)
-        moreDataForCheckValid = getDataSourceCheckParams(node.data as DataSourceNodeType, dataSourceList || [], language)
+      if (node!.data.type === BlockEnum.DataSource)
+        moreDataForCheckValid = getDataSourceCheckParams(node!.data as DataSourceNodeType, dataSourceList || [], language)
 
-      if (node.data.type === BlockEnum.TriggerPlugin)
-        moreDataForCheckValid = getTriggerCheckParams(node.data as PluginTriggerNodeType, triggerPlugins, language)
+      if (node!.data.type === BlockEnum.TriggerPlugin)
+        moreDataForCheckValid = getTriggerCheckParams(node!.data as PluginTriggerNodeType, triggerPlugins, language)
 
-      const toolIcon = getToolIcon(node.data)
-      if (node.data.type === BlockEnum.Agent) {
-        const data = node.data as AgentNodeType
+      const toolIcon = getToolIcon(node!.data)
+      if (node!.data.type === BlockEnum.Agent) {
+        const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
         const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
@@ -210,13 +210,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         }
       }
       else {
-        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+        usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
       }
 
-      if (node.type === CUSTOM_NODE) {
-        const checkData = getCheckData(node.data)
-        const validator = nodesExtraData?.[node.data.type as BlockEnum]?.checkValid
-        const isPluginMissing = isNodePluginMissing(node.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
+      if (node!.type === CUSTOM_NODE) {
+        const checkData = getCheckData(node!.data)
+        const validator = nodesExtraData?.[node!.data.type as BlockEnum]?.checkValid
+        const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
 
@@ -224,8 +224,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           errorMessages.push(t('nodes.common.pluginNotInstalled', { ns: 'workflow' }))
         }
         else {
-          if (node.data.type === BlockEnum.LLM) {
-            const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
+          if (node!.data.type === BlockEnum.LLM) {
+            const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
             const modelIssue = getLLMModelIssue({
               modelProvider,
               isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
@@ -240,12 +240,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
               errorMessages.push(validationError)
           }
 
-          const availableVars = map[node.id].availableVars
+          const availableVars = map[node!.id]!.availableVars
           let hasInvalidVar = false
           for (const variable of usedVars) {
             if (hasInvalidVar)
               break
-            if (isSpecialVar(variable[0]))
+            if (isSpecialVar(variable[0]!))
               continue
             const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
             if (!usedNode || !usedNode.vars.some(v => v.variable === variable?.[1]))
@@ -255,17 +255,17 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             errorMessages.push(t('errorMsg.invalidVariable', { ns: 'workflow' }))
         }
 
-        const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
+        const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
         const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
 
-        const isUnconnected = !validNodes.some(n => n.id === node.id)
+        const isUnconnected = !validNodes.some(n => n.id === node!.id)
         const shouldShowError = errorMessages.length > 0 || (isUnconnected && !canSkipConnectionCheck)
 
         if (shouldShowError) {
           list.push({
-            id: node.id,
-            type: node.data.type,
-            title: node.data.title,
+            id: node!.id,
+            type: node!.data.type,
+            title: node!.data.title,
             toolIcon,
             unConnected: isUnconnected && !canSkipConnectionCheck,
             errorMessages,
@@ -273,7 +273,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             disableGoTo: isPluginMissing,
             isPluginMissing,
             pluginUniqueIdentifier: isPluginMissing
-              ? (node.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
+              ? (node!.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
               : undefined,
           })
         }
@@ -458,14 +458,14 @@ export const useChecklistBeforePublish = () => {
       const node = filteredNodes[i]
       let moreDataForCheckValid
       let usedVars: ValueSelector[] = []
-      if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
+      if (node!.data.type === BlockEnum.Tool)
+        moreDataForCheckValid = getToolCheckParams(node!.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
 
-      if (node.data.type === BlockEnum.DataSource)
-        moreDataForCheckValid = getDataSourceCheckParams(node.data as DataSourceNodeType, dataSourceList || [], language)
+      if (node!.data.type === BlockEnum.DataSource)
+        moreDataForCheckValid = getDataSourceCheckParams(node!.data as DataSourceNodeType, dataSourceList || [], language)
 
-      if (node.data.type === BlockEnum.Agent) {
-        const data = node.data as AgentNodeType
+      if (node!.data.type === BlockEnum.Agent) {
+        const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
         const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
@@ -477,55 +477,55 @@ export const useChecklistBeforePublish = () => {
         }
       }
       else {
-        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+        usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
       }
 
-      if (node.data.type === BlockEnum.LLM) {
-        const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
+      if (node!.data.type === BlockEnum.LLM) {
+        const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
         const modelIssue = getLLMModelIssue({
           modelProvider,
           isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
         })
         if (modelIssue === LLMModelIssueCode.providerPluginUnavailable) {
-          toast.error(`[${node.data.title}] ${t('errorMsg.configureModel', { ns: 'workflow' })}`)
+          toast.error(`[${node!.data.title}] ${t('errorMsg.configureModel', { ns: 'workflow' })}`)
           return false
         }
       }
 
-      const checkData = getCheckData(node.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
+      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
-        toast.error(`[${node.data.title}] ${errorMessage}`)
+        toast.error(`[${node!.data.title}] ${errorMessage}`)
         return false
       }
 
-      const availableVars = map[node.id].availableVars
+      const availableVars = map[node!.id]!.availableVars
 
       for (const variable of usedVars) {
-        const isSpecialVars = isSpecialVar(variable[0])
+        const isSpecialVars = isSpecialVar(variable[0]!)
         if (!isSpecialVars) {
           const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
           if (usedNode) {
             const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
             if (!usedVar) {
-              toast.error(`[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
+              toast.error(`[${node!.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
               return false
             }
           }
           else {
-            toast.error(`[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
+            toast.error(`[${node!.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
             return false
           }
         }
       }
 
-      const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
+      const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
       const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
-      const isUnconnected = !validNodes.some(n => n.id === node.id)
+      const isUnconnected = !validNodes.some(n => n.id === node!.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
-        toast.error(`[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}`)
+        toast.error(`[${node!.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}`)
         return false
       }
     }
