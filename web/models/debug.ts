@@ -9,7 +9,7 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type { AgentStrategy, Model, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
 
@@ -75,12 +75,7 @@ export type MoreLikeThisConfig = {
 }
 
 export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
-  model?: {
-    provider: string
-    name: string
-    mode: ModelModeType
-    completion_params: Record<string, any>
-  }
+  model?: Model
   prompt?: string
 }
 
