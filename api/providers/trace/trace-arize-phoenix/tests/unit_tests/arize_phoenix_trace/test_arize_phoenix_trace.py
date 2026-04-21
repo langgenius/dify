@@ -9,6 +9,8 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     safe_json_dumps,
     set_span_status,
     setup_tracer,
+    string_to_span_id64,
+    string_to_trace_id128,
     wrap_span_metadata,
 )
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
@@ -290,6 +292,50 @@ def test_workflow_trace_uses_parent_tool_span_context_for_child_workflow(trace_i
     assert current_parent.span_id == parent_span_context.span_id
 
 
+def test_workflow_trace_uses_deterministic_workflow_context_for_root_trace(trace_instance):
+    workflow_span = MagicMock()
+    trace_instance.tracer.start_span.return_value = workflow_span
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
+    trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[])
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
+
+    info = _make_workflow_info(workflow_run_id="root-run")
+    trace_instance.workflow_trace(info)
+
+    start_call = trace_instance.tracer.start_span.call_args
+    current_parent = trace.get_current_span(start_call.kwargs["context"]).get_span_context()
+    assert current_parent.trace_id == string_to_trace_id128("root-run")
+    assert current_parent.span_id == string_to_span_id64("root-run")
+
+
+def test_workflow_trace_uses_parent_trace_context_metadata_when_cached_parent_is_missing(trace_instance):
+    workflow_span = MagicMock()
+    trace_instance.tracer.start_span.return_value = workflow_span
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(
+        return_value={"app_id": "app1", "app_name": "Child App"}
+    )
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[])
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
+
+    info = _make_workflow_info(
+        workflow_run_id="child-run",
+        metadata={
+            "app_id": "app1",
+            "parent_trace_context": {
+                "parent_workflow_run_id": "parent-run",
+                "parent_node_execution_id": "parent-node-exec",
+            },
+        },
+    )
+    trace_instance.workflow_trace(info)
+
+    start_call = trace_instance.tracer.start_span.call_args
+    current_parent = trace.get_current_span(start_call.kwargs["context"]).get_span_context()
+    assert current_parent.trace_id == string_to_trace_id128("parent-run")
+    assert current_parent.span_id == string_to_span_id64("parent-node-exec")
+
+
 def test_get_parent_workflow_context_uses_cached_parent_span_context(trace_instance):
     parent_span_context = MagicMock(trace_id=321, span_id=654)
     trace_instance.child_workflow_parent_contexts["child-run"] = {
@@ -301,6 +347,25 @@ def test_get_parent_workflow_context_uses_cached_parent_span_context(trace_insta
     context = trace_instance._get_parent_workflow_context(_make_workflow_info(workflow_run_id="child-run"))
 
     assert context["parent_span_context"] is parent_span_context
+
+
+def test_get_parent_workflow_context_builds_synthetic_parent_context_from_metadata(trace_instance):
+    context = trace_instance._get_parent_workflow_context(
+        _make_workflow_info(
+            workflow_run_id="child-run",
+            metadata={
+                "app_id": "app1",
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "outer-run",
+                    "parent_node_execution_id": "outer-node",
+                },
+            },
+        )
+    )
+
+    parent_span_context = context["parent_span_context"]
+    assert parent_span_context.trace_id == string_to_trace_id128("outer-run")
+    assert parent_span_context.span_id == string_to_span_id64("outer-node")
 
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
@@ -462,6 +527,62 @@ def test_find_logical_parent_span_uses_matching_node_context_keys(trace_instance
     )
 
     assert logical_parent is parent_span
+
+
+def test_workflow_trace_keeps_same_workflow_nodes_as_flat_siblings(trace_instance):
+    workflow_span = MagicMock()
+    start_node_span = MagicMock()
+    tool_node_span = MagicMock()
+    trace_instance.tracer.start_span.side_effect = [workflow_span, start_node_span, tool_node_span]
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
+    trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
+    trace_instance._get_workflow_graph = MagicMock(
+        return_value={"nodes": [{"id": "start-node"}, {"id": "tool-node"}], "edges": [{"source": "start-node", "target": "tool-node"}]}
+    )
+
+    start_node = MagicMock()
+    start_node.node_type = "start"
+    start_node.status = "succeeded"
+    start_node.inputs = "{}"
+    start_node.outputs = "{}"
+    start_node.created_at = _dt()
+    start_node.elapsed_time = 0.1
+    start_node.process_data = "{}"
+    start_node.execution_metadata = "{}"
+    start_node.title = "Start"
+    start_node.id = "exec-start"
+    start_node.node_id = "start-node"
+    start_node.index = 1
+    start_node.predecessor_node_id = None
+    start_node.error = None
+    start_node.tenant_id = "t1"
+    start_node.app_id = "app1"
+
+    tool_node = MagicMock()
+    tool_node.node_type = "tool"
+    tool_node.status = "succeeded"
+    tool_node.inputs = "{}"
+    tool_node.outputs = "{}"
+    tool_node.created_at = _dt()
+    tool_node.elapsed_time = 0.2
+    tool_node.process_data = "{}"
+    tool_node.execution_metadata = "{}"
+    tool_node.title = "Tool"
+    tool_node.id = "exec-tool"
+    tool_node.node_id = "tool-node"
+    tool_node.index = 2
+    tool_node.predecessor_node_id = "start-node"
+    tool_node.error = None
+    tool_node.tenant_id = "t1"
+    tool_node.app_id = "app1"
+
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[start_node, tool_node])
+
+    trace_instance.workflow_trace(_make_workflow_info(workflow_run_id="root-run"))
+
+    start_call = trace_instance.tracer.start_span.call_args_list[1]
+    tool_call = trace_instance.tracer.start_span.call_args_list[2]
+    assert start_call.kwargs["context"] == tool_call.kwargs["context"]
 
 
 def test_find_parent_workflow_tool_rejects_timing_only_match(trace_instance):

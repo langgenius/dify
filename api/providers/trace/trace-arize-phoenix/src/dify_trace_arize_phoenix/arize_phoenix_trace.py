@@ -310,16 +310,23 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.SESSION_ID: trace_info.conversation_id or trace_info.workflow_id or "",
         }
 
-        # Set up proper parent context for nesting child workflows under parent tools
+        # Set up a deterministic trace context for workflow reconstruction.
+        #
+        # These traces are rebuilt after execution from persisted DB rows rather than
+        # emitted live at runtime. Using a stable synthetic parent context keeps all
+        # spans from the same workflow run in one Phoenix trace, and lets nested
+        # workflow traces fall back to the parent workflow's trace when the actual
+        # parent tool span has not been reconstructed yet.
         if parent_trace_context:
             assert parent_span_context is not None
             workflow_context_parent = trace.set_span_in_context(trace.NonRecordingSpan(parent_span_context))
-
             logger.info(
                 "[Arize/Phoenix] Child workflow will nest under parent tool span: %s", hex(parent_span_context.span_id)
             )
         else:
-            workflow_context_parent = None
+            workflow_context_parent = trace.set_span_in_context(
+                trace.NonRecordingSpan(self._build_workflow_trace_context(trace_info))
+            )
 
         # Use with statement to properly set span context hierarchy
         workflow_span = self.tracer.start_span(
@@ -489,71 +496,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         index_val,
                     )
 
-                    # Enhanced parent context determination with multi-pass processing
-                    parent_context = workflow_context  # Default to workflow as parent
-                    parent_node_id = hierarchy_map.get(node_id)
-
-                    # Special handling for different node types
-                    if node_execution.node_type == "start":
-                        # Start nodes are always direct children of workflow
-                        parent_context = workflow_context
-                        logger.info("[Arize/Phoenix] Node %s (start) is direct child of workflow", node_id)
-
-                    elif node_execution.node_type == "end":
-                        # End nodes should be children of the last executed non-end node or workflow
-                        last_non_end_span = None
-                        for existing_node_id, span in node_spans.items():
-                            if existing_node_id != node_id:  # Not self
-                                last_non_end_span = span
-
-                        if last_non_end_span:
-                            parent_context = trace.set_span_in_context(last_non_end_span)
-                            logger.info("[Arize/Phoenix] Node %s (end) parented to last executed node", node_id)
-                        else:
-                            parent_context = workflow_context
-                            logger.info("[Arize/Phoenix] Node %s (end) is direct child of workflow", node_id)
-
-                    elif parent_node_id and parent_node_id in node_spans:
-                        # This node has a parent in the workflow graph that's already processed
-                        parent_span = node_spans[parent_node_id]
-                        parent_context = trace.set_span_in_context(parent_span)
-                        logger.info(
-                            "[Arize/Phoenix] Node %s (%s) is child of %s (from graph)",
-                            node_id,
-                            node_type,
-                            parent_node_id,
-                        )
-
-                    elif node_execution.node_type in ["tool", "llm", "http-request"]:
-                        # For execution nodes, try to find logical parent from execution context
-                        logical_parent = self._find_logical_parent_span(node_execution, node_spans, execution_context)
-                        if logical_parent:
-                            parent_context = trace.set_span_in_context(logical_parent)
-                            logger.info("[Arize/Phoenix] Node %s (%s) found logical parent", node_id, node_type)
-                        else:
-                            parent_context = workflow_context
-                            logger.info(
-                                "[Arize/Phoenix] Node %s (%s) using workflow as parent (no logical parent)",
-                                node_id,
-                                node_type,
-                            )
-
-                    else:
-                        # Default: use workflow as parent
-                        parent_context = workflow_context
-                        if parent_node_id:
-                            logger.debug(
-                                "[Arize/Phoenix] Node %s (%s) parent %s not yet processed, using workflow",
-                                node_id,
-                                node_type,
-                                parent_node_id,
-                            )
-                        else:
-                            logger.debug(
-                                "[Arize/Phoenix] Node %s (%s) is direct child of workflow (no parent in graph)",
-                                node_id,
-                                node_type,
-                            )
+                    # Dify workflow nodes are exported as flat siblings under the workflow span.
+                    # Phoenix should only show hierarchy at workflow-call boundaries, where a
+                    # nested workflow run is parented under the calling tool span.
+                    parent_context = workflow_context
+                    logger.info("[Arize/Phoenix] Node %s (%s) is direct child of workflow", node_id, node_type)
 
                     # Create descriptive span name using node_type and human-readable title
                     node_title_clean = getattr(node_execution, "title", "").replace(" ", "_").replace("-", "_")[:20]
@@ -1372,13 +1319,30 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         Parentage is created only when an actual exported parent span context is
         available, either from explicit metadata or from a tool span captured
-        while processing the parent workflow in this process. If lineage cannot
-        be verified, the workflow is exported as a root span.
+        while processing the parent workflow in this process. When only the
+        workflow lineage metadata is available, fall back to a deterministic
+        synthetic context so the child workflow still lands in the same trace
+        as its parent workflow.
         """
         try:
             workflow_run_id = trace_info.workflow_run_id or ""
             if workflow_run_id in self.child_workflow_parent_contexts:
                 return self.child_workflow_parent_contexts[workflow_run_id]
+
+            parent_run_id, parent_node_execution_id = trace_info.resolved_parent_context
+            if parent_run_id and parent_node_execution_id:
+                return {
+                    "trace_id": string_to_trace_id128(parent_run_id),
+                    "parent_span_context": SpanContext(
+                        trace_id=string_to_trace_id128(parent_run_id),
+                        span_id=string_to_span_id64(parent_node_execution_id),
+                        is_remote=False,
+                        trace_flags=TraceFlags(TraceFlags.SAMPLED),
+                        trace_state=TraceState(),
+                    ),
+                    "parent_workflow_run_id": parent_run_id,
+                    "workflow_tool_name": "",
+                }
 
             if hasattr(trace_info, "metadata") and trace_info.metadata:
                 parent_trace_id = trace_info.metadata.get("parent_trace_id")
@@ -1405,6 +1369,18 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Could not determine parent workflow context: %s", str(e))
 
         return None
+
+    def _build_workflow_trace_context(self, trace_info: WorkflowTraceInfo) -> SpanContext:
+        """Build a deterministic synthetic parent context for workflow reconstruction."""
+        trace_correlation_id = trace_info.resolved_trace_id or trace_info.workflow_run_id or ""
+        span_correlation_id = trace_info.workflow_run_id or trace_correlation_id
+        return SpanContext(
+            trace_id=string_to_trace_id128(trace_correlation_id),
+            span_id=string_to_span_id64(span_correlation_id),
+            is_remote=False,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED),
+            trace_state=TraceState(),
+        )
 
     def _remember_child_workflow_parent_context(
         self,
