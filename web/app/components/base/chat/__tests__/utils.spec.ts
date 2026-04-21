@@ -418,11 +418,11 @@ describe('chat utils - url params and answer helpers', () => {
 
       const tree = buildChatItemTree(list)
       expect(tree.length).toBe(1)
-      expect(tree[0].id).toBe('q1')
-      expect(tree[0].children?.[0].id).toBe('a1')
-      expect(tree[0].children?.[0].children?.[0].id).toBe('q2')
-      expect(tree[0].children?.[0].children?.[0].children?.[0].id).toBe('a2')
-      expect(tree[0].children?.[0].children?.[0].children?.[0].siblingIndex).toBe(0)
+      expect(tree[0]!.id).toBe('q1')
+      expect(tree[0]!.children?.[0]!.id).toBe('a1')
+      expect(tree[0]!.children?.[0]!.children?.[0]!.id).toBe('q2')
+      expect(tree[0]!.children?.[0]!.children?.[0]!.children?.[0]!.id).toBe('a2')
+      expect(tree[0]!.children?.[0]!.children?.[0]!.children?.[0]!.siblingIndex).toBe(0)
     })
 
     it('buildChatItemTree builds nested tree based on parentMessageId', () => {
@@ -439,23 +439,23 @@ describe('chat utils - url params and answer helpers', () => {
 
       const tree = buildChatItemTree(list)
       expect(tree.length).toBe(2)
-      expect(tree[0].id).toBe('q1')
-      expect(tree[1].id).toBe('q4')
+      expect(tree[0]!.id).toBe('q1')
+      expect(tree[1]!.id).toBe('q4')
 
-      const a1 = tree[0].children![0]
-      expect(a1.id).toBe('a1')
-      expect(a1.children?.length).toBe(2)
-      expect(a1.children![0].id).toBe('q2')
-      expect(a1.children![1].id).toBe('q3')
-      expect(a1.children![0].children![0].siblingIndex).toBe(0)
-      expect(a1.children![1].children![0].siblingIndex).toBe(1)
+      const a1 = tree[0]!.children![0]
+      expect(a1!.id).toBe('a1')
+      expect(a1!.children?.length).toBe(2)
+      expect(a1!.children![0]!.id).toBe('q2')
+      expect(a1!.children![1]!.id).toBe('q3')
+      expect(a1!.children![0]!.children![0]!.siblingIndex).toBe(0)
+      expect(a1!.children![1]!.children![0]!.siblingIndex).toBe(1)
     })
 
     it('getThreadMessages node without children', () => {
       const tree = [{ id: 'q1', isAnswer: false }]
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'q1')
       expect(thread.length).toBe(1)
-      expect(thread[0].id).toBe('q1')
+      expect(thread[0]!.id).toBe('q1')
     })
 
     it('getThreadMessages target not found', () => {
@@ -494,8 +494,8 @@ describe('chat utils - url params and answer helpers', () => {
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[])
       expect(thread.length).toBe(4)
       expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q2', 'a2'])
-      expect(thread[1].siblingCount).toBe(1)
-      expect(thread[3].siblingCount).toBe(1)
+      expect(thread[1]!.siblingCount).toBe(1)
+      expect(thread[3]!.siblingCount).toBe(1)
     })
 
     it('getThreadMessages to specific target', () => {
@@ -531,8 +531,8 @@ describe('chat utils - url params and answer helpers', () => {
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'a3')
       expect(thread.length).toBe(4)
       expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
-      expect(thread[3].prevSibling).toBe('a2')
-      expect(thread[3].nextSibling).toBeUndefined()
+      expect(thread[3]!.prevSibling).toBe('a2')
+      expect(thread[3]!.nextSibling).toBeUndefined()
     })
 
     it('getThreadMessages targetNode has descendants', () => {
@@ -568,7 +568,7 @@ describe('chat utils - url params and answer helpers', () => {
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'a1')
       expect(thread.length).toBe(4)
       expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
-      expect(thread[3].prevSibling).toBe('a2')
+      expect(thread[3]!.prevSibling).toBe('a2')
     })
   })
 })

@@ -2,6 +2,8 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -13,7 +15,6 @@ import {
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Tooltip from '@/app/components/base/tooltip'
@@ -28,7 +29,6 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { cn } from '@/utils/classnames'
 import RuleDetail from './rule-detail'
 
 type EmbeddingProcessProps = {
@@ -81,7 +81,7 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument.id)
+  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {
@@ -134,7 +134,7 @@ const EmbeddingProcess = ({
   return (
     <>
       <div className="flex flex-col gap-y-3">
-        <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
+        <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
           {(isEmbeddingWaiting || isEmbedding) && (
             <>
               <RiLoader2Fill className="size-4 animate-spin" />
@@ -151,7 +151,7 @@ const EmbeddingProcess = ({
               <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
                 <RiAedFill className="size-4 text-text-primary-on-surface" />
               </div>
-              <div className="system-md-medium grow text-text-primary">
+              <div className="grow system-md-medium text-text-primary">
                 {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
               </div>
               <UpgradeBtn loc="knowledge-speed-up" />
@@ -169,11 +169,11 @@ const EmbeddingProcess = ({
             >
               {isSourceEmbedding(indexingStatusDetail) && (
                 <div
-                  className="absolute left-0 top-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+                  className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className="z-1 flex h-full items-center gap-1 pl-[6px] pr-2">
+              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
                     size="sm"
@@ -190,7 +190,7 @@ const EmbeddingProcess = ({
                   />
                 )}
                 <div className="flex w-0 grow items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
-                  <div className="system-xs-medium truncate text-text-secondary">
+                  <div className="truncate system-xs-medium text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
                   {

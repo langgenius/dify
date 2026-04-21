@@ -2,15 +2,16 @@
 import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { Description as DialogDescription, DialogTitle } from '@headlessui/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '../../../../context/access-control-store'
-import Button from '../../base/button'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
@@ -24,7 +25,7 @@ type AccessControlProps = {
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore(s => s.setAppId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
@@ -67,9 +68,9 @@ export default function AccessControl(props: AccessControlProps) {
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
-        <div className="pb-3 pl-6 pr-14 pt-6">
+        <div className="pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">{t('accessControlDialog.title', { ns: 'app' })}</DialogTitle>
-          <DialogDescription className="system-xs-regular mt-1 text-text-tertiary">{t('accessControlDialog.description', { ns: 'app' })}</DialogDescription>
+          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">{t('accessControlDialog.description', { ns: 'app' })}</DialogDescription>
         </div>
         <div className="flex flex-col gap-y-1 px-6 pb-3">
           <div className="leading-6">

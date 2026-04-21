@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "دانلود کامل شد.",
   "operation.duplicate": "تکرار",
   "operation.edit": "ویرایش",
+  "operation.exporting": "در حال خروجی گرفتن",
   "operation.format": "قالب",
   "operation.getForFree": "دریافت رایگان",
   "operation.imageCopied": "تصویر کپی شده",

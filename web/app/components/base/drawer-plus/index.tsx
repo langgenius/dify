@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useRef } from 'react'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   isShow: boolean
@@ -62,7 +62,7 @@ const DrawerPlus: FC<Props> = ({
       positionCenter={positionCenter}
       dialogClassName={dialogClassName}
       dialogBackdropClassName={dialogBackdropClassName}
-      panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl p-0! sm:mr-2', panelClassName, maxWidthClassName)}
+      panelClassName={cn('mx-2 mt-16 mb-3 rounded-xl p-0! sm:mr-2', panelClassName, maxWidthClassName)}
     >
       <div
         className={cn(contentClassName, 'flex w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl')}
@@ -72,7 +72,7 @@ const DrawerPlus: FC<Props> = ({
         ref={ref}
       >
         <div className={cn(headerClassName, 'shrink-0 border-b border-divider-subtle py-4')}>
-          <div className="flex h-6 items-center justify-between pl-6 pr-5">
+          <div className="flex h-6 items-center justify-between pr-5 pl-6">
             <div className="system-xl-semibold text-text-primary">
               {title}
             </div>
@@ -86,7 +86,7 @@ const DrawerPlus: FC<Props> = ({
             </div>
           </div>
           {titleDescription && (
-            <div className="system-xs-regular pl-6 pr-10 text-text-tertiary">
+            <div className="pr-10 pl-6 system-xs-regular text-text-tertiary">
               {titleDescription}
             </div>
           )}

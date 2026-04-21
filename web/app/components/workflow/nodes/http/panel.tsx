@@ -1,15 +1,15 @@
 import type { FC } from 'react'
 import type { HttpNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { cn } from '@/utils/classnames'
 import ApiInput from './components/api-input'
 import AuthorizationModal from './components/authorization'
 import CurlPanel from './components/curl-panel'
@@ -64,7 +64,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             <div className="flex">
               <div
                 onClick={showAuthorization}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
                 {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
@@ -74,7 +74,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               </div>
               <div
                 onClick={showCurlPanel}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
                 {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
@@ -131,8 +131,8 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={!!inputs.ssl_verify}
-              onChange={handleSSLVerifyChange}
+              checked={!!inputs.ssl_verify}
+              onCheckedChange={handleSSLVerifyChange}
               size="md"
               disabled={readOnly}
             />

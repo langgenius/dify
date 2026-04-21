@@ -2,18 +2,27 @@
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import {
   RiCloseLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -26,8 +35,8 @@ import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 
+import { useProviderContext } from '@/context/provider-context'
 import { getLanguage } from '@/i18n-config/language'
 import {
   deleteWorkflowTool,
@@ -43,7 +52,6 @@ import {
   updateCustomCollection,
 } from '@/service/tools'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -236,7 +244,7 @@ const ProviderDetail = ({
             <Icon src={collection.icon} />
             <div className="ml-3 w-0 grow">
               <div className="flex h-5 items-center">
-                <Title title={collection.label[language]} />
+                <Title title={collection.label[language]!} />
               </div>
               <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                 <OrgInfo
@@ -401,15 +409,24 @@ const ProviderDetail = ({
             onSave={updateWorkflowToolProvider}
           />
         )}
-        {showConfirmDelete && (
-          <Confirm
-            title={t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
-            content={t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
-            isShow={showConfirmDelete}
-            onConfirm={handleConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
+        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Drawer>
   )

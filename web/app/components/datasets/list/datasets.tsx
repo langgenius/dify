@@ -45,7 +45,7 @@ const Datasets = ({
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetching)
+        if (entries[0]!.isIntersecting && hasNextPage && !isFetching)
           fetchNextPage()
       }, {
         rootMargin: '100px',

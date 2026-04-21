@@ -1,10 +1,10 @@
 import type { StartNodeType } from './types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -63,8 +63,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setInputs(newInputs)
     if (moreInfo?.payload?.type === ChangeType.changeVarName) {
       const changedVar = newList[moreInfo.index]
-      handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
-      renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
+      handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index]!.variable], [id, changedVar!.variable])
+      renameInspectVarName(id, inputs.variables[moreInfo.index]!.variable, changedVar!.variable)
     }
     else if (moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
       deleteNodeInspectorVars(id)

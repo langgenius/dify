@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential } from '@/app/components/tools/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio/ui'
 import Tooltip from '@/app/components/base/tooltip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   positionCenter?: boolean

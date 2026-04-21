@@ -10,6 +10,7 @@ from flask import Flask
 
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AppUnavailableError
+from models.account import TenantStatus
 from models.model import App, AppMode
 from tests.unit_tests.conftest import setup_mock_tenant_account_query
 
@@ -62,7 +63,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock DB queries for app and tenant
         mock_db.session.get.side_effect = [
@@ -110,7 +111,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -151,7 +152,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -190,7 +191,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -253,7 +254,7 @@ class TestAppMetaApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -321,7 +322,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -378,7 +379,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -424,7 +425,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -476,7 +477,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,

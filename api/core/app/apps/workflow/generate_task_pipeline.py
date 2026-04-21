@@ -4,9 +4,6 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -61,6 +58,9 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -682,15 +682,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
+        match invoke_from:
+            case InvokeFrom.SERVICE_API:
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.EXPLORE:
+                created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+            case InvokeFrom.WEB_APP:
+                created_from = WorkflowAppLogCreatedFrom.WEB_APP
+            case InvokeFrom.DEBUGGER | InvokeFrom.TRIGGER | InvokeFrom.PUBLISHED_PIPELINE | InvokeFrom.VALIDATION:
+                # not save log for debugging
+                return
 
         if not workflow_run_id:
             return

@@ -1,14 +1,22 @@
+import type { ReactElement } from 'react'
 import type { PluginPageProps } from '../index'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useQueryState } from 'nuqs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 // Import mocked modules for assertions
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import PluginPageWithContext from '../index'
 
 let mockEnableMarketplace = true
+
+const render = (ui: ReactElement, options: Parameters<typeof renderWithSystemFeatures>[1] = {}) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+    ...options,
+  })
 
 // Mock external dependencies
 vi.mock('@/service/plugins', () => ({
@@ -27,17 +35,6 @@ vi.mock('@/hooks/use-document-title', () => ({
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn((selector) => {
-    const state = {
-      systemFeatures: {
-        enable_marketplace: mockEnableMarketplace,
-      },
-    }
-    return selector(state)
-  }),
 }))
 
 vi.mock('@/context/app-context', () => ({

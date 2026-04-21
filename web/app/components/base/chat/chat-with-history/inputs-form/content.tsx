@@ -86,7 +86,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.select && (
             <PortalSelect
-              popupClassName="w-[200px]"
+              popupClassName="z-[60] w-[200px]"
               value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
               items={form.options.map((option: string) => ({ value: option, name: option }))}
               onSelect={item => handleFormChange(form.variable, item.value as string)}
@@ -125,7 +125,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={v => handleFormChange(form.variable, v)}
               noWrapper
-              className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+              className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
               placeholder={
                 <div className="whitespace-pre">{form.json_schema}</div>
               }

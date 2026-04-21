@@ -758,7 +758,7 @@ describe('hooks', () => {
 
       expect(result.current.textGenerationModelList).toEqual(modelList)
       expect(result.current.activeTextGenerationModelList).toHaveLength(1)
-      expect(result.current.activeTextGenerationModelList[0].provider).toBe('openai')
+      expect(result.current.activeTextGenerationModelList[0]!.provider).toBe('openai')
     })
 
     it('should filter active models correctly', () => {
@@ -770,7 +770,7 @@ describe('hooks', () => {
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
 
       expect(result.current.activeTextGenerationModelList).toHaveLength(1)
-      expect(result.current.activeTextGenerationModelList[0].status).toBe(ModelStatusEnum.active)
+      expect(result.current.activeTextGenerationModelList[0]!.status).toBe(ModelStatusEnum.active)
     })
 
     it('should find current provider and model', () => {
@@ -1145,7 +1145,7 @@ describe('hooks', () => {
       const { result } = renderHook(() => useMarketplaceAllPlugins(providers, ''))
 
       expect(result.current.plugins!).toHaveLength(1)
-      expect(result.current.plugins![0].plugin_id).toBe('other')
+      expect(result.current.plugins![0]!.plugin_id).toBe('other')
     })
 
     it('should use search when searchText is provided', () => {
@@ -1186,7 +1186,7 @@ describe('hooks', () => {
       const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
 
       expect(result.current.plugins!).toHaveLength(1)
-      expect(result.current.plugins![0].plugin_id).toBe('plugin1')
+      expect(result.current.plugins![0]!.plugin_id).toBe('plugin1')
     })
 
     it('should deduplicate plugins that exist in both collections and regular plugins', () => {
@@ -1613,7 +1613,7 @@ describe('hooks', () => {
         )
       })
 
-      const callArgs = setShowModelModal.mock.calls[0][0]
+      const callArgs = setShowModelModal.mock.calls[0]![0]
       const newPayload = { test: 'data' }
       const formValues = { field: 'value' }
 
@@ -1636,7 +1636,7 @@ describe('hooks', () => {
         result.current(provider, ConfigurationMethodEnum.predefinedModel)
       })
 
-      const callArgs = setShowModelModal.mock.calls[0][0]
+      const callArgs = setShowModelModal.mock.calls[0]![0]
 
       // Should not throw when onUpdate is not provided
       expect(() => {

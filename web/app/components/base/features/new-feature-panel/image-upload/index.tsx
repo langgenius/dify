@@ -1,11 +1,11 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line, RiImage2Fill } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
@@ -72,19 +72,19 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>
               </div>

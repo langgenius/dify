@@ -49,7 +49,7 @@ class OpenSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values.get("host"):
             raise ValueError("config OPENSEARCH_HOST is required")
         if not values.get("port"):
@@ -252,7 +252,10 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
+        self,
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]] | None = None,
+        index_params: dict[str, Any] | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name.lower()}"
         with redis_client.lock(lock_name, timeout=20):

@@ -1,4 +1,6 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { access, copyFile, readFile, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
@@ -38,12 +40,17 @@ export const middlewareEnvExampleFile = path.join(dockerDir, 'middleware.env.exa
 export const webEnvLocalFile = path.join(webDir, '.env.local')
 export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
+export const e2eWebEnvOverrides = {
+  NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
+} satisfies Record<string, string>
 
 const formatCommand = (command: string, args: string[]) => [command, ...args].join(' ')
 
 export const isMainModule = (metaUrl: string) => {
   const entrypoint = process.argv[1]
-  if (!entrypoint) return false
+  if (!entrypoint)
+    return false
 
   return pathToFileURL(entrypoint).href === metaUrl
 }
@@ -102,7 +109,8 @@ export const runCommandOrThrow = async (options: RunCommandOptions) => {
 
 const forwardSignalsToChild = (childProcess: ChildProcess) => {
   const handleSignal = (signal: NodeJS.Signals) => {
-    if (childProcess.exitCode === null) childProcess.kill(signal)
+    if (childProcess.exitCode === null)
+      childProcess.kill(signal)
   }
 
   const onSigint = () => handleSignal('SIGINT')
@@ -147,7 +155,8 @@ export const runForegroundProcess = async ({
 export const ensureFileExists = async (filePath: string, exampleFilePath: string) => {
   try {
     await access(filePath)
-  } catch {
+  }
+  catch {
     await copyFile(exampleFilePath, filePath)
   }
 }
@@ -157,38 +166,42 @@ export const ensureLineInFile = async (filePath: string, line: string) => {
   const lines = fileContent.split(/\r?\n/)
   const assignmentPrefix = line.includes('=') ? `${line.slice(0, line.indexOf('='))}=` : null
 
-  if (lines.includes(line)) return
+  if (lines.includes(line))
+    return
 
-  if (assignmentPrefix && lines.some((existingLine) => existingLine.startsWith(assignmentPrefix)))
+  if (assignmentPrefix && lines.some(existingLine => existingLine.startsWith(assignmentPrefix)))
     return
 
   const normalizedContent = fileContent.endsWith('\n') ? fileContent : `${fileContent}\n`
   await writeFile(filePath, `${normalizedContent}${line}\n`, 'utf8')
 }
 
-export const ensureWebEnvLocal = async () => {
-  await ensureFileExists(webEnvLocalFile, webEnvExampleFile)
-
-  const fileContent = await readFile(webEnvLocalFile, 'utf8')
-  const nextContent = fileContent.replaceAll('http://localhost:5001', 'http://127.0.0.1:5001')
-
-  if (nextContent !== fileContent) await writeFile(webEnvLocalFile, nextContent, 'utf8')
+export const getWebEnvLocalHash = async () => {
+  const fileContent = await readFile(webEnvLocalFile, 'utf8').catch(() => '')
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        envLocal: fileContent,
+        overrides: e2eWebEnvOverrides,
+      }),
+    )
+    .digest('hex')
 }
 
 export const readSimpleDotenv = async (filePath: string) => {
   const fileContent = await readFile(filePath, 'utf8')
   const entries = fileContent
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'))
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('#'))
     .map<[string, string]>((line) => {
       const separatorIndex = line.indexOf('=')
       const key = separatorIndex === -1 ? line : line.slice(0, separatorIndex).trim()
       const rawValue = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1).trim()
 
       if (
-        (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
-        (rawValue.startsWith("'") && rawValue.endsWith("'"))
+        (rawValue.startsWith('"') && rawValue.endsWith('"'))
+        || (rawValue.startsWith('\'') && rawValue.endsWith('\''))
       ) {
         return [key, rawValue.slice(1, -1)]
       }
@@ -213,7 +226,8 @@ export const waitForCondition = async ({
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    if (await check()) return
+    if (await check())
+      return
 
     await sleep(intervalMs)
   }

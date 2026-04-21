@@ -1,5 +1,5 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import Result from '../result'
 import { GeneratorType } from '../types'
 
@@ -19,7 +19,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },
@@ -81,11 +81,11 @@ describe('Result', () => {
       />,
     )
 
-    expect(screen.getByTestId('prompt-toast')).toHaveTextContent('optimization note')
-    expect(screen.getByTestId('prompt-res')).toHaveTextContent('generated output')
+    expect(screen.getByTestId('prompt-toast'))!.toHaveTextContent('optimization note')
+    expect(screen.getByTestId('prompt-res'))!.toHaveTextContent('generated output')
 
     fireEvent.click(screen.getByTestId('version-selector'))
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button')[1]!)
     fireEvent.click(screen.getByText('generate.apply'))
 
     expect(mockSetCurrentVersionIndex).toHaveBeenCalledWith(1)
@@ -106,7 +106,7 @@ describe('Result', () => {
       />,
     )
 
-    expect(screen.getByTestId('prompt-res-in-workflow')).toHaveTextContent('generated output')
+    expect(screen.getByTestId('prompt-res-in-workflow'))!.toHaveTextContent('generated output')
     expect(mockPromptResInWorkflow).toHaveBeenCalledWith(expect.objectContaining({
       nodeId: 'node-1',
       value: 'generated output',
@@ -121,6 +121,6 @@ describe('Result', () => {
       />,
     )
 
-    expect(screen.getByTestId('code-editor')).toHaveTextContent('generated output')
+    expect(screen.getByTestId('code-editor'))!.toHaveTextContent('generated output')
   })
 })

@@ -50,7 +50,7 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
+        builtin_data: dict[str, dict[str, dict[str, Any]]] = cls._get_builtin_data()
         return builtin_data.get("pipeline_templates", {}).get(language, {})
 
     @classmethod
@@ -60,5 +60,5 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param template_id: Template ID
         :return:
         """
-        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
+        builtin_data: dict[str, dict[str, dict[str, Any]]] = cls._get_builtin_data()
         return builtin_data.get("pipeline_templates", {}).get(template_id)

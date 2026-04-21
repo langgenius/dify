@@ -1,7 +1,17 @@
+import json
 import uuid
 from collections import defaultdict
 
 import pytest
+
+from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
+from factories.variable_factory import build_segment, segment_to_variable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import FileSegment, StringSegment
@@ -26,15 +36,7 @@ from graphon.variables.variables import (
     StringVariable,
     Variable,
 )
-
-from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from core.workflow.variable_pool_initializer import add_variables_to_pool
-from core.workflow.variable_prefixes import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID,
-)
-from factories.variable_factory import build_segment, segment_to_variable
+from models.utils.file_input_compat import rebuild_serialized_graph_files_without_lookup
 
 
 @pytest.fixture
@@ -54,7 +56,7 @@ def pool():
 @pytest.fixture
 def file():
     return File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_related_id",
         remote_url="test_url",
@@ -265,7 +267,7 @@ class TestVariablePoolSerialization:
 
     def _add_node_data_to_pool(self, pool: VariablePool, with_file=False):
         test_file = File(
-            type=FileType.DOCUMENT,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="test_related_id",
             remote_url="test_url",
@@ -357,17 +359,19 @@ class TestVariablePoolSerialization:
         self._assert_pools_equal(original_pool, reconstructed_pool)
 
     def test_complex_data_serialization(self):
-        """Test serialization of complex data structures including ArrayFileVariable"""
+        """Test file-aware VariablePool round-trips through Dify's model boundary."""
         original_pool = self._create_pool_without_file()
         self._add_node_data_to_pool(original_pool, with_file=True)
 
         # Test dictionary round-trip
         dict_data = original_pool.model_dump()
-        reconstructed_dict = VariablePool.model_validate(dict_data)
+        reconstructed_dict = VariablePool.model_validate(rebuild_serialized_graph_files_without_lookup(dict_data))
 
         # Test JSON round-trip
         json_data = original_pool.model_dump_json()
-        reconstructed_json = VariablePool.model_validate_json(json_data)
+        reconstructed_json = VariablePool.model_validate(
+            rebuild_serialized_graph_files_without_lookup(json.loads(json_data))
+        )
 
         # Verify both reconstructed pools are equivalent
         self._assert_pools_equal(reconstructed_dict, reconstructed_json)

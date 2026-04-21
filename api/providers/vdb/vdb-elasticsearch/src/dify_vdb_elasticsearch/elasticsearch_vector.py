@@ -43,7 +43,7 @@ class ElasticSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         use_cloud = values.get("use_cloud", False)
         cloud_url = values.get("cloud_url")
 
@@ -258,7 +258,7 @@ class ElasticSearchVector(BaseVector):
         self,
         embeddings: list[list[float]],
         metadatas: list[dict[Any, Any]] | None = None,
-        index_params: dict | None = None,
+        index_params: dict[str, Any] | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

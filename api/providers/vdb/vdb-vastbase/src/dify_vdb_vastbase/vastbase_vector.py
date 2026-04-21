@@ -28,7 +28,7 @@ class VastbaseVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["host"]:
             raise ValueError("config VASTBASE_HOST is required")
         if not values["port"]:

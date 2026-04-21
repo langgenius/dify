@@ -22,11 +22,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.graph_events import GraphRunFailedEvent
 
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from graphon.graph_events import GraphRunFailedEvent
 
 
 def _build_app_generate_entity() -> SimpleNamespace:
