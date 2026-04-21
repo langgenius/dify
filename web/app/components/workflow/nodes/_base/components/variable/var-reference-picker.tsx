@@ -5,6 +5,11 @@ import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -15,11 +20,6 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useIsChatMode,
@@ -140,10 +140,10 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const node = nodes.find(n => n.id === nodeId)
-  const isInIteration = !!(node?.data as any)?.isInIteration
+  const isInIteration = !!node?.data.isInIteration
   const iterationNode = isInIteration ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
 
-  const isInLoop = !!(node?.data as any)?.isInLoop
+  const isInLoop = !!node?.data.isInLoop
   const loopNode = isInLoop ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -209,13 +209,11 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange])
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isFocus, setIsFocus] = useState(false)
   const [controlFocus, setControlFocus] = useState(0)
+  const isFocus = controlFocus > 0
   useEffect(() => {
-    if (controlFocus && inputRef.current) {
+    if (controlFocus && inputRef.current)
       inputRef.current.focus()
-      setIsFocus(true)
-    }
   }, [controlFocus])
 
   const handleVarReferenceChange = useCallback((value: ValueSelector, varInfo: Var) => {
@@ -263,7 +261,7 @@ const VarReferencePicker: FC<Props> = ({
   }, [availableNodes, reactflow, store])
 
   const type = getCurrentVariableType({
-    parentNode: (isInIteration ? iterationNode : loopNode) as any,
+    parentNode: isInIteration ? iterationNode : loopNode,
     valueSelector: value as ValueSelector,
     availableNodes,
     isChatMode,
@@ -287,9 +285,6 @@ const VarReferencePicker: FC<Props> = ({
     maxTypeWidth,
     maxVarNameWidth,
   } = getWidthAllocations(triggerWidth, outputVarNode?.title || '', varName || '', type || '')
-
-  const WrapElem = isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
-  const VarPickerWrap = !isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
 
   const tooltipPopup = useMemo(() => {
     const tooltipType = getTooltipContent(hasValue, isShowAPart, isValidVar)
@@ -345,15 +340,23 @@ const VarReferencePicker: FC<Props> = ({
   )
 
   const triggerPlaceholder = placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+  const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
 
   return (
     <div className={cn(className)}>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
-        {!!trigger && <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>{trigger}</PortalToFollowElemTrigger>}
+        {!!trigger && (
+          <PopoverTrigger
+            render={resolvedTrigger}
+            onClick={(e) => {
+              if (readonly)
+                e.preventDefault()
+            }}
+          />
+        )}
         {!trigger && (
           <VarReferencePickerTrigger
             className={className}
@@ -399,15 +402,18 @@ const VarReferencePicker: FC<Props> = ({
             varKindTypes={varKindTypes}
             varName={varName}
             variableCategory={variableCategory}
-            VarPickerWrap={VarPickerWrap}
-            WrapElem={WrapElem}
           />
         )}
-        <PortalToFollowElemContent
-          style={{
-            zIndex: zIndex || 100,
-          }}
+        <PopoverContent
+          placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
+          sideOffset={0}
           className="mt-1"
+          popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+          positionerProps={{
+            style: {
+              zIndex: zIndex || 100,
+            },
+          }}
         >
           {!isConstant && (
             <VarReferencePopup
@@ -420,8 +426,8 @@ const VarReferencePicker: FC<Props> = ({
               preferSchemaType={preferSchemaType}
             />
           )}
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

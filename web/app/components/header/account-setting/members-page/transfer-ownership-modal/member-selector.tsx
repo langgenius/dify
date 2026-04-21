@@ -2,16 +2,20 @@
 import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { useMembers } from '@/service/use-common'
 
 type Props = {
-  value?: any
-  onSelect: (value: any) => void
+  value?: string
+  onSelect: (value: string) => void
   exclude?: string[]
 }
 
@@ -27,12 +31,9 @@ const MemberSelector: FC<Props> = ({
   const { data } = useMembers()
 
   const currentValue = useMemo(() => {
-    if (!data?.accounts)
+    if (!data?.accounts || !value)
       return null
-    const accounts = data.accounts || []
-    if (!value)
-      return null
-    return accounts.find(account => account.id === value)
+    return data.accounts.find(account => account.id === value) ?? null
   }, [data, value])
 
   const filteredList = useMemo(() => {
@@ -47,37 +48,36 @@ const MemberSelector: FC<Props> = ({
       return name.toLowerCase().includes(searchValue.toLowerCase())
         || email.toLowerCase().includes(searchValue.toLowerCase())
     }).filter(account => !exclude.includes(account.id))
-  }, [data, searchValue, exclude])
+  }, [data, exclude, searchValue])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom"
-      offset={4}
-    >
-      <PortalToFollowElemTrigger
-        className="w-full"
-        onClick={() => setOpen(v => !v)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <div
+            data-testid="member-selector-trigger"
+            className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
+          >
+            {!currentValue && (
+              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+            )}
+            {currentValue && (
+              <>
+                <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
+                <div className="grow truncate system-sm-medium text-text-secondary">{currentValue.name}</div>
+                <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
+              </>
+            )}
+            <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{ style: { zIndex: 1002 } }}
       >
-        <div
-          data-testid="member-selector-trigger"
-          className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
-        >
-          {!currentValue && (
-            <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
-          )}
-          {currentValue && (
-            <>
-              <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-              <div className="grow truncate system-sm-medium text-text-secondary">{currentValue.name}</div>
-              <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
-            </>
-          )}
-          <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1002">
         <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
@@ -105,8 +105,9 @@ const MemberSelector: FC<Props> = ({
             ))}
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
+
 export default MemberSelector
