@@ -258,9 +258,8 @@ export const useChat = (
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
     // Re-subscribe to workflow events for the specific message.
-    // replay=true tells the backend to read from the beginning of the Redis Stream
     // so all retained events are replayed on reconnection (e.g. page refresh).
-    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&replay=true`
+    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
     const otherOptions: IOtherOptions = {
       isPublicAPI,
@@ -608,7 +607,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
-    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&replay=true`
+    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
     const otherOptions: IOtherOptions = {
       isPublicAPI,

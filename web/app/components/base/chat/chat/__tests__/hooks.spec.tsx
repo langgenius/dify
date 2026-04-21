@@ -932,7 +932,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true&replay=true',
+        '/workflow/wr-1/events?include_state_snapshot=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1292,7 +1292,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-reconnect/events?include_state_snapshot=true&replay=true',
+        '/workflow/wr-reconnect/events?include_state_snapshot=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1427,7 +1427,7 @@ describe('useChat', () => {
       })
 
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-tts-app/events?include_state_snapshot=true&replay=true',
+        '/workflow/wr-tts-app/events?include_state_snapshot=true',
         expect.any(Object),
         expect.any(Object),
       )
@@ -1672,7 +1672,7 @@ describe('useChat', () => {
 
       // Should automatically call handleResume -> sseGet for human input
       expect(sseGet).toHaveBeenCalledWith(
-        '/workflow/wr-1/events?include_state_snapshot=true&replay=true',
+        '/workflow/wr-1/events?include_state_snapshot=true',
         expect.any(Object),
         expect.any(Object),
       )
