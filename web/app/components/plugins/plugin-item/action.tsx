@@ -2,17 +2,24 @@
 import type { FC } from 'react'
 import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ActionButton from '../../base/action-button'
-import Confirm from '../../base/confirm'
 import Tooltip from '../../base/tooltip'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
@@ -151,24 +158,27 @@ const Action: FC<Props> = ({
           onHide={hidePluginInfo}
         />
       )}
-      <Confirm
-        isShow={isShowDeleteConfirm}
-        title={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
-        content={(
-          <div>
-            {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
-            <span className="system-md-semibold">{pluginName}</span>
-            {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
-            <br />
-            {/* // todo: add usedInApps */}
-            {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+            </AlertDialogTitle>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
+              <span className="system-md-semibold">{pluginName}</span>
+              {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
+              <br />
+            </div>
           </div>
-        )}
-        onCancel={hideDeleteConfirm}
-        onConfirm={handleDelete}
-        isLoading={deleting}
-        isDisabled={deleting}
-      />
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

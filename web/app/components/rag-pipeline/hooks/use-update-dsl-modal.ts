@@ -1,7 +1,7 @@
 import type { MouseEventHandler } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'

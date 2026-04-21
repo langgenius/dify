@@ -1,18 +1,13 @@
 import threading
 from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelFeature
-from sqlalchemy import column
 
-from core.app.app_config.entities import (
-    Condition as AppCondition,
-)
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -29,6 +24,7 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
@@ -37,6 +33,8 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 
@@ -48,7 +46,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -2024,7 +2022,7 @@ def create_mock_document_methods(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -4041,21 +4039,9 @@ class TestDatasetRetrievalAdditionalHelpers:
 
     def test_get_available_datasets(self, retrieval: DatasetRetrieval) -> None:
         session = Mock()
-        subquery_query = Mock()
-        subquery_query.where.return_value = subquery_query
-        subquery_query.group_by.return_value = subquery_query
-        subquery_query.having.return_value = subquery_query
-        subquery_query.subquery.return_value = SimpleNamespace(
-            c=SimpleNamespace(
-                dataset_id=column("dataset_id"), available_document_count=column("available_document_count")
-            )
-        )
-
-        dataset_query = Mock()
-        dataset_query.outerjoin.return_value = dataset_query
-        dataset_query.where.return_value = dataset_query
-        dataset_query.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
-        session.query.side_effect = [subquery_query, dataset_query]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
+        session.scalars.return_value = scalars_result
 
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
@@ -4106,7 +4092,7 @@ def _doc(
     dataset_id: str = "dataset-1",
     document_id: str = "document-1",
     doc_id: str = "node-1",
-    extra: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> Document:
     metadata = {
         "score": score,
@@ -4904,22 +4890,21 @@ class TestInternalHooksCoverage:
             _scalars(segments),
             _scalars(bindings),
         ]
-        query = Mock()
-        query.where.return_value = query
-        session.query.return_value = query
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False
 
+        sessionmaker_ctx = MagicMock()
+        sessionmaker_ctx.begin.return_value = session_ctx
+
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.retrieval.dataset_retrieval.Session", return_value=session_ctx),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=sessionmaker_ctx),
             patch.object(retrieval, "_send_trace_task") as mock_trace,
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
 
-        query.update.assert_called_once()
-        session.commit.assert_called_once()
+        session.execute.assert_called_once()
         mock_trace.assert_called_once()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:

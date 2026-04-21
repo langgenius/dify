@@ -27,8 +27,8 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
-import { toast } from '@/app/components/base/ui/toast'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
@@ -360,7 +360,7 @@ export const handleStream = (
             }
           }
         })
-        buffer = lines[lines.length - 1]
+        buffer = lines[lines.length - 1]!
       }
       catch (e) {
         onData('', false, {
@@ -403,7 +403,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
     },
   }
@@ -417,7 +417,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     const xhr = mergedOptions.xhr
     xhr.open(mergedOptions.method, mergedOptions.url)
     for (const key in mergedOptions.headers)
-      xhr.setRequestHeader(key, mergedOptions.headers[key])
+      xhr.setRequestHeader(key, mergedOptions.headers[key]!)
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
@@ -481,14 +481,14 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
     headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
 
@@ -633,13 +633,13 @@ export const sseGet = async (
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
   const options = Object.assign({}, baseOptions, {
     signal: abortController.signal,
     headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
 

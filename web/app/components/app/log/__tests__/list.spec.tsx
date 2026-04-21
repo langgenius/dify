@@ -1,14 +1,13 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
 
 const mockFetchChatMessages = vi.fn()
 const mockUpdateLogMessageFeedbacks = vi.fn()
 const mockUpdateLogMessageAnnotations = vi.fn()
-const mockPush = vi.fn()
-const mockReplace = vi.fn()
 const mockOnRefresh = vi.fn()
 const mockSetCurrentLogItem = vi.fn()
 const mockSetShowPromptLogModal = vi.fn()
@@ -17,7 +16,6 @@ const mockSetShowMessageLogModal = vi.fn()
 const mockCompletionRefetch = vi.fn()
 const mockDelAnnotation = vi.fn()
 
-let mockSearchParams = new URLSearchParams()
 let mockChatConversationDetail: Record<string, unknown> | undefined
 let mockCompletionConversationDetail: Record<string, unknown> | undefined
 let mockShowMessageLogModal = false
@@ -51,18 +49,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: {
     mobile: 'mobile',
   },
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-  }),
-  usePathname: () => '/apps/app-1/logs',
-  useSearchParams: () => ({
-    get: (key: string) => mockSearchParams.get(key),
-    toString: () => mockSearchParams.toString(),
-  }),
 }))
 
 vi.mock('@/service/use-log', () => ({
@@ -256,10 +242,28 @@ const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) 
   ...overrides,
 })
 
+const renderConversationList = ({
+  appDetail = { id: 'app-1', mode: AppModeEnum.CHAT } as any,
+  logs = createLogs() as any,
+  searchParams = '?page=2',
+}: {
+  appDetail?: any
+  logs?: any
+  searchParams?: string
+} = {}) => {
+  return renderWithNuqs(
+    <ConversationList
+      appDetail={appDetail}
+      logs={logs}
+      onRefresh={mockOnRefresh}
+    />,
+    { searchParams },
+  )
+}
+
 describe('ConversationList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSearchParams = new URLSearchParams('page=2')
     mockChatConversationDetail = undefined
     mockCompletionConversationDetail = undefined
     mockShowMessageLogModal = false
@@ -273,34 +277,29 @@ describe('ConversationList', () => {
     })
   })
 
-  it('should render chat rows and push the conversation id into the url when a row is clicked', () => {
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.CHAT } as any}
-        logs={createLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+  it('should render chat rows and push the conversation id into the url when a row is clicked', async () => {
+    const { onUrlUpdate } = renderConversationList()
 
     expect(screen.getByText('hello world')).toBeInTheDocument()
     expect(screen.getAllByText('formatted-1710000000')).toHaveLength(2)
 
     fireEvent.click(screen.getByText('hello world'))
 
-    expect(mockPush).toHaveBeenCalledWith('/apps/app-1/logs?page=2&conversation_id=conversation-1', { scroll: false })
-    expect(screen.getByTestId('drawer')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(onUrlUpdate).toHaveBeenCalled()
+      expect(screen.getByTestId('drawer')).toBeInTheDocument()
+    })
+
+    const update = onUrlUpdate.mock.calls.at(-1)![0]
+    expect(update.searchParams.get('page')).toBe('2')
+    expect(update.searchParams.get('conversation_id')).toBe('conversation-1')
+    expect(update.options.history).toBe('push')
   })
 
-  it('should close the drawer, refresh, and clear modal flags', () => {
-    mockSearchParams = new URLSearchParams('page=2&conversation_id=conversation-1')
-
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.CHAT } as any}
-        logs={createLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+  it('should close the drawer, refresh, and clear modal flags', async () => {
+    const { onUrlUpdate } = renderConversationList({
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
 
     fireEvent.click(screen.getByText('close-drawer'))
 
@@ -308,11 +307,18 @@ describe('ConversationList', () => {
     expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
     expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(false)
     expect(mockSetShowMessageLogModal).toHaveBeenCalledWith(false)
-    expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
+
+    await waitFor(() => {
+      expect(onUrlUpdate).toHaveBeenCalled()
+    })
+
+    const update = onUrlUpdate.mock.calls.at(-1)![0]
+    expect(update.searchParams.get('page')).toBe('2')
+    expect(update.searchParams.has('conversation_id')).toBe(false)
+    expect(update.options.history).toBe('replace')
   })
 
   it('should render chat conversation details and submit feedback from the chat panel', async () => {
-    mockSearchParams = new URLSearchParams('page=2&conversation_id=conversation-1')
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -355,13 +361,9 @@ describe('ConversationList', () => {
     mockShowMessageLogModal = true
     mockCurrentLogItem = { id: 'log-1' }
 
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.CHAT } as any}
-        logs={createLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+    renderConversationList({
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
 
     await waitFor(() => {
       expect(mockFetchChatMessages).toHaveBeenCalledWith({
@@ -396,7 +398,6 @@ describe('ConversationList', () => {
   })
 
   it('should render completion details and refetch after feedback updates', async () => {
-    mockSearchParams = new URLSearchParams('page=2&conversation_id=conversation-1')
     mockCompletionConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -423,13 +424,11 @@ describe('ConversationList', () => {
     mockShowPromptLogModal = true
     mockCurrentLogItem = { id: 'log-2' }
 
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.COMPLETION } as any}
-        logs={createCompletionLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+    renderConversationList({
+      appDetail: { id: 'app-1', mode: AppModeEnum.COMPLETION } as any,
+      logs: createCompletionLogs() as any,
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
 
     await waitFor(() => {
       expect(screen.getByTestId('text-generation')).toBeInTheDocument()
@@ -454,64 +453,61 @@ describe('ConversationList', () => {
   })
 
   it('should render chatflow status cells and feedback counters for advanced chat logs', () => {
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT } as any}
-        logs={{
-          data: [
-            {
-              id: 'conversation-pending',
-              name: 'Pending row',
-              from_account_name: 'user-a',
-              read_at: 1710000001,
-              message_count: 3,
-              status_count: { paused: 1, success: 0, failed: 0, partial_success: 0 },
-              user_feedback_stats: { like: 2, dislike: 0 },
-              admin_feedback_stats: { like: 0, dislike: 1 },
-              updated_at: 1710000000,
-              created_at: 1710000000,
-            },
-            {
-              id: 'conversation-success',
-              name: 'Success row',
-              from_account_name: 'user-b',
-              read_at: 1710000001,
-              message_count: 4,
-              status_count: { paused: 0, success: 4, failed: 0, partial_success: 0 },
-              user_feedback_stats: { like: 0, dislike: 0 },
-              admin_feedback_stats: { like: 0, dislike: 0 },
-              updated_at: 1710000000,
-              created_at: 1710000000,
-            },
-            {
-              id: 'conversation-partial',
-              name: 'Partial row',
-              from_account_name: 'user-c',
-              read_at: 1710000001,
-              message_count: 5,
-              status_count: { paused: 0, success: 3, failed: 0, partial_success: 1 },
-              user_feedback_stats: { like: 0, dislike: 0 },
-              admin_feedback_stats: { like: 0, dislike: 0 },
-              updated_at: 1710000000,
-              created_at: 1710000000,
-            },
-            {
-              id: 'conversation-failure',
-              name: 'Failure row',
-              from_account_name: 'user-d',
-              read_at: 1710000001,
-              message_count: 1,
-              status_count: { paused: 0, success: 0, failed: 2, partial_success: 0 },
-              user_feedback_stats: { like: 0, dislike: 0 },
-              admin_feedback_stats: { like: 0, dislike: 0 },
-              updated_at: 1710000000,
-              created_at: 1710000000,
-            },
-          ],
-        } as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+    renderConversationList({
+      appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT } as any,
+      logs: {
+        data: [
+          {
+            id: 'conversation-pending',
+            name: 'Pending row',
+            from_account_name: 'user-a',
+            read_at: 1710000001,
+            message_count: 3,
+            status_count: { paused: 1, success: 0, failed: 0, partial_success: 0 },
+            user_feedback_stats: { like: 2, dislike: 0 },
+            admin_feedback_stats: { like: 0, dislike: 1 },
+            updated_at: 1710000000,
+            created_at: 1710000000,
+          },
+          {
+            id: 'conversation-success',
+            name: 'Success row',
+            from_account_name: 'user-b',
+            read_at: 1710000001,
+            message_count: 4,
+            status_count: { paused: 0, success: 4, failed: 0, partial_success: 0 },
+            user_feedback_stats: { like: 0, dislike: 0 },
+            admin_feedback_stats: { like: 0, dislike: 0 },
+            updated_at: 1710000000,
+            created_at: 1710000000,
+          },
+          {
+            id: 'conversation-partial',
+            name: 'Partial row',
+            from_account_name: 'user-c',
+            read_at: 1710000001,
+            message_count: 5,
+            status_count: { paused: 0, success: 3, failed: 0, partial_success: 1 },
+            user_feedback_stats: { like: 0, dislike: 0 },
+            admin_feedback_stats: { like: 0, dislike: 0 },
+            updated_at: 1710000000,
+            created_at: 1710000000,
+          },
+          {
+            id: 'conversation-failure',
+            name: 'Failure row',
+            from_account_name: 'user-d',
+            read_at: 1710000001,
+            message_count: 1,
+            status_count: { paused: 0, success: 0, failed: 2, partial_success: 0 },
+            user_feedback_stats: { like: 0, dislike: 0 },
+            admin_feedback_stats: { like: 0, dislike: 0 },
+            updated_at: 1710000000,
+            created_at: 1710000000,
+          },
+        ],
+      } as any,
+    })
 
     expect(screen.getByText('Pending')).toBeInTheDocument()
     expect(screen.getByText('Success')).toBeInTheDocument()
@@ -522,7 +518,6 @@ describe('ConversationList', () => {
   })
 
   it('should support annotation changes, modal closing, and paginated scroll loading in the detail drawer', async () => {
-    mockSearchParams = new URLSearchParams('page=2&conversation_id=conversation-1')
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -568,13 +563,9 @@ describe('ConversationList', () => {
         has_more: false,
       })
 
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.CHAT } as any}
-        logs={createLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+    renderConversationList({
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
 
     await waitFor(() => {
       expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
@@ -609,7 +600,6 @@ describe('ConversationList', () => {
   })
 
   it('should close the prompt log modal from completion detail drawers', async () => {
-    mockSearchParams = new URLSearchParams('page=2&conversation_id=conversation-1')
     mockCompletionConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -636,13 +626,11 @@ describe('ConversationList', () => {
     mockShowPromptLogModal = true
     mockCurrentLogItem = { id: 'log-2' }
 
-    render(
-      <ConversationList
-        appDetail={{ id: 'app-1', mode: AppModeEnum.COMPLETION } as any}
-        logs={createCompletionLogs() as any}
-        onRefresh={mockOnRefresh}
-      />,
-    )
+    renderConversationList({
+      appDetail: { id: 'app-1', mode: AppModeEnum.COMPLETION } as any,
+      logs: createCompletionLogs() as any,
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
 
     expect(await screen.findByTestId('prompt-log-modal')).toBeInTheDocument()
 

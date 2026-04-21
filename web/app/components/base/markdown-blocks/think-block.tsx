@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
@@ -90,7 +90,7 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
       className={cn('group', className)}
       open={isComplete ? open : true}
     >
-      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
+      <summary className="flex cursor-pointer list-none items-center pl-2 font-bold whitespace-nowrap text-text-secondary select-none">
         <div className="flex shrink-0 items-center">
           <svg
             className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"

@@ -1,13 +1,13 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   isChatMode?: boolean
@@ -39,7 +39,7 @@ const FeatureBar = ({
   }, [features, isChatMode, showFileUpload])
 
   return (
-    <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-b border-l border-r border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+    <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
           <RiApps2AddLine className="h-3.5 w-3.5 text-text-accent" />
@@ -134,7 +134,7 @@ const FeatureBar = ({
               </Tooltip>
             )}
           </div>
-          <div className="body-xs-regular grow text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
+          <div className="grow body-xs-regular text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
           {
             !hideEditEntrance && (
               <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>

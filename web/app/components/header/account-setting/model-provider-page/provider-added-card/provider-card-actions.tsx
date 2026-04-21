@@ -1,10 +1,11 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -12,7 +13,6 @@ import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
@@ -94,7 +94,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               text={(
                 <>
                   <span>{version}</span>
-                  {isFromMarketplace && <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
+                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}

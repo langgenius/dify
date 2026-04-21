@@ -1,5 +1,5 @@
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import type { TextNode } from 'lexical'
+import type { LexicalEditor, TextNode } from 'lexical'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -89,10 +89,16 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
-  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
+  const triggerMatchRef = useRef<string | null>(null)
+  const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
-    maxLength: 0,
+    maxLength: 75,
   })
+  const checkForTriggerMatch = useCallback((text: string, editor: LexicalEditor) => {
+    const match = baseCheckForTriggerMatch(text, editor)
+    triggerMatchRef.current = match?.matchingString ?? null
+    return match
+  }, [baseCheckForTriggerMatch])
 
   const [queryString, setQueryString] = useState<string | null>(null)
   const [blurHidden, setBlurHidden] = useState(false)
@@ -155,6 +161,7 @@ const ComponentPicker = ({
     currentBlock,
     errorMessageBlock,
     lastRunBlock,
+    queryString || undefined,
   )
 
   const onSelectOption = useCallback(
@@ -207,6 +214,8 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    const effectiveQueryString = triggerMatchRef.current ?? queryString
+
     if (blurHidden)
       return null
     if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
@@ -237,6 +246,8 @@ const ComponentPicker = ({
                   workflowVariableBlock?.show && (
                     <div className="p-1">
                       <VarReferenceVars
+                        hideSearch={triggerString === '/'}
+                        searchText={triggerString === '/' ? (effectiveQueryString || '') : undefined}
                         searchBoxClassName="mt-1"
                         vars={workflowVariableOptions}
                         onChange={(variables: string[]) => {
@@ -270,8 +281,8 @@ const ComponentPicker = ({
                           )
                         }
                         {option.renderMenuOption({
-                          queryString,
-                          isSelected: selectedIndex === index,
+                          queryString: effectiveQueryString,
+                          isSelected: workflowVariableBlock?.show ? false : selectedIndex === index,
                           onSelect: () => {
                             selectOptionAndCleanUp(option)
                           },

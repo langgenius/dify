@@ -49,7 +49,7 @@ describe('SegmentedControl', () => {
     render(<SegmentedControl options={options} value="option2" onChange={onSelectMock} />)
 
     const selectedOption = screen.getByText('Option 2').closest('button')
-    expect(selectedOption).toHaveClass('active')
+    expect(selectedOption).toHaveClass('sc-active')
   })
 
   it('calls onChange when an option is clicked', () => {
@@ -74,7 +74,7 @@ describe('SegmentedControl', () => {
 
     const optionElement = screen.getByText('Option 2').closest('button')
     expect(optionElement).toHaveAttribute('disabled')
-    expect(optionElement).toHaveClass('disabled')
+    expect(optionElement).toHaveClass('sc-disabled')
 
     fireEvent.click(screen.getByText('Option 3'))
     expect(onSelectMock).toHaveBeenCalledWith('option3')

@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask_restx import marshal
-from graphon.variables.types import SegmentType
 
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,
@@ -16,6 +15,7 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
@@ -314,8 +314,8 @@ def test_workflow_file_variable_with_signed_url():
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
-        id="test_file_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_upload_file_id",
         filename="test.jpg",
@@ -370,8 +370,8 @@ def test_workflow_file_variable_remote_url():
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(
-        id="test_file_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/test.jpg",
         filename="test.jpg",

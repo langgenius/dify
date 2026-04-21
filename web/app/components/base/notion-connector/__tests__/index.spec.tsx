@@ -22,7 +22,6 @@ describe('NotionConnector', () => {
     })
 
     expect(button).toBeInTheDocument()
-    expect(button).toHaveClass('btn', 'btn-primary')
   })
 
   it('should trigger the onSetting callback when the real button is clicked', async () => {

@@ -1,8 +1,31 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
+from configs import dify_config
+from context import capture_current_context
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.file_access import DatabaseFileAccessController
+from core.app.workflow.layers.llm_quota import LLMQuotaLayer
+from core.app.workflow.layers.observability import ObservabilityLayer
+from core.workflow.node_factory import (
+    DifyGraphInitContext,
+    DifyNodeFactory,
+    is_start_node_type,
+    resolve_workflow_node_class,
+)
+from core.workflow.system_variables import (
+    default_system_variables,
+    get_node_creation_preload_selectors,
+    inject_default_system_variable_mappings,
+    preload_node_creation_variables,
+)
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
+from extensions.otel.runtime import is_instrument_flag_enabled
+from factories import file_factory
 from graphon.entities import GraphInitParams
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
@@ -16,25 +39,6 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-
-from configs import dify_config
-from context import capture_current_context
-from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.layers.llm_quota import LLMQuotaLayer
-from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.node_factory import DifyNodeFactory, is_start_node_type, resolve_workflow_node_class
-from core.workflow.system_variables import (
-    default_system_variables,
-    get_node_creation_preload_selectors,
-    inject_default_system_variable_mappings,
-    preload_node_creation_variables,
-)
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
-from extensions.otel.runtime import is_instrument_flag_enabled
-from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -105,6 +109,26 @@ class _WorkflowChildEngineBuilder:
         )
         child_engine.layer(LLMQuotaLayer())
         return child_engine
+
+
+class _NodeConfigDict(TypedDict):
+    id: str
+    width: int
+    height: int
+    type: str
+    data: dict[str, Any]
+
+
+class _EdgeConfigDict(TypedDict):
+    source: str
+    target: str
+    sourceHandle: str
+    targetHandle: str
+
+
+class SingleNodeGraphDict(TypedDict):
+    nodes: list[_NodeConfigDict]
+    edges: list[_EdgeConfigDict]
 
 
 class WorkflowEntry:
@@ -231,17 +255,18 @@ class WorkflowEntry:
         node_version = str(node_config_data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
-        # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
+        # init graph context and runtime state
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -293,8 +318,8 @@ class WorkflowEntry:
             )
 
         # init workflow run state
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)
@@ -318,7 +343,7 @@ class WorkflowEntry:
         node_data: dict[str, Any],
         node_width: int = 114,
         node_height: int = 514,
-    ) -> dict[str, Any]:
+    ) -> SingleNodeGraphDict:
         """
         Create a minimal graph structure for testing a single node in isolation.
 
@@ -328,14 +353,14 @@ class WorkflowEntry:
         :param node_height: height for UI layout (default: 100)
         :return: graph dictionary with start node and target node
         """
-        node_config = {
+        node_config: _NodeConfigDict = {
             "id": node_id,
             "width": node_width,
             "height": node_height,
             "type": "custom",
             "data": node_data,
         }
-        start_node_config = {
+        start_node_config: _NodeConfigDict = {
             "id": "start",
             "width": node_width,
             "height": node_height,
@@ -346,9 +371,9 @@ class WorkflowEntry:
                 "desc": "Start",
             },
         }
-        return {
-            "nodes": [start_node_config, node_config],
-            "edges": [
+        return SingleNodeGraphDict(
+            nodes=[start_node_config, node_config],
+            edges=[
                 {
                     "source": "start",
                     "target": node_id,
@@ -356,7 +381,7 @@ class WorkflowEntry:
                     "targetHandle": "target",
                 }
             ],
-        }
+        )
 
     @classmethod
     def run_free_node(
@@ -389,17 +414,18 @@ class WorkflowEntry:
         variable_pool = VariablePool()
         add_variables_to_pool(variable_pool, default_system_variables())
 
-        # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
+        # init graph context and runtime state
+        run_context = build_dify_run_context(
+            tenant_id=tenant_id,
+            app_id="",
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id="",
             graph_config=graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id,
-                app_id="",
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -410,8 +436,8 @@ class WorkflowEntry:
 
         # init workflow run state
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)

@@ -2,17 +2,15 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base.node import Node
-from graphon.nodes.base.template import Template
-
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.template import Template
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -33,12 +31,18 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: KnowledgeIndexNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
-        super().__init__(id, config, graph_init_params, graph_runtime_state)
+        super().__init__(
+            node_id=node_id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
 

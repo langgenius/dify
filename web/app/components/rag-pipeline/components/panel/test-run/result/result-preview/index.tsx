@@ -1,8 +1,8 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
 import { ChunkCardList } from '../../../../chunk-card-list'
 import { formatPreviewChunks } from './utils'
@@ -45,7 +45,7 @@ const ResultPreview = ({
       {outputs && previewChunks && (
         <div className="flex grow flex-col bg-background-body p-1">
           <ChunkCardList chunkType={outputs.chunk_structure} chunkInfo={previewChunks} />
-          <div className="system-xs-regular mt-1 flex items-center gap-x-2 text-text-tertiary">
+          <div className="mt-1 flex items-center gap-x-2 system-xs-regular text-text-tertiary">
             <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular" />
             <span className="shrink-0truncate" title={t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>
               {t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}

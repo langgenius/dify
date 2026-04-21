@@ -1,11 +1,11 @@
 import type { currentVarType } from './panel'
 
 import type { VarInInspect } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useStore } from '../store'
@@ -51,8 +51,8 @@ const Left = ({
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
-      <div className="flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2">
-        <div className="system-sm-semibold-uppercase truncate text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+      <div className="flex shrink-0 items-center justify-between gap-1 pt-2 pr-1 pl-4">
+        <div className="truncate system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
         <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
       </div>
       {/* content */}

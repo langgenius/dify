@@ -17,8 +17,7 @@ class TestClearFreePlanTenantExpiredLogs:
     def mock_session(self):
         """Create a mock database session."""
         session = Mock(spec=Session)
-        session.query.return_value.filter.return_value.all.return_value = []
-        session.query.return_value.filter.return_value.delete.return_value = 0
+        session.scalars.return_value.all.return_value = []
         return session
 
     @pytest.fixture
@@ -54,18 +53,18 @@ class TestClearFreePlanTenantExpiredLogs:
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", [])
 
             # Should not call any database operations
-            mock_session.query.assert_not_called()
+            mock_session.scalars.assert_not_called()
             mock_storage.save.assert_not_called()
 
     def test_clear_message_related_tables_no_records_found(self, mock_session, sample_message_ids):
         """Test when no related records are found."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.where.return_value.all.return_value = []
+            mock_session.scalars.return_value.all.return_value = []
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
-            # Should call query for each related table but find no records
-            assert mock_session.query.call_count > 0
+            # Should call scalars for each related table but find no records
+            assert mock_session.scalars.call_count > 0
             mock_storage.save.assert_not_called()
 
     def test_clear_message_related_tables_with_records_and_to_dict(
@@ -73,7 +72,7 @@ class TestClearFreePlanTenantExpiredLogs:
     ):
         """Test when records are found and have to_dict method."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.where.return_value.all.return_value = sample_records
+            mock_session.scalars.return_value.all.return_value = sample_records
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
@@ -104,7 +103,7 @@ class TestClearFreePlanTenantExpiredLogs:
                 records.append(record)
 
             # Mock records for first table only, empty for others
-            mock_session.query.return_value.where.return_value.all.side_effect = [
+            mock_session.scalars.return_value.all.side_effect = [
                 records,
                 [],
                 [],
@@ -126,13 +125,13 @@ class TestClearFreePlanTenantExpiredLogs:
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             mock_storage.save.side_effect = Exception("Storage error")
 
-            mock_session.query.return_value.where.return_value.all.return_value = sample_records
+            mock_session.scalars.return_value.all.return_value = sample_records
 
             # Should not raise exception
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             # Should still delete records even if backup fails
-            assert mock_session.query.return_value.where.return_value.delete.called
+            assert mock_session.execute.called
 
     def test_clear_message_related_tables_serialization_error_continues(self, mock_session, sample_message_ids):
         """Test that method continues even when record serialization fails."""
@@ -141,23 +140,23 @@ class TestClearFreePlanTenantExpiredLogs:
             record.id = "record-1"
             record.to_dict.side_effect = Exception("Serialization error")
 
-            mock_session.query.return_value.where.return_value.all.return_value = [record]
+            mock_session.scalars.return_value.all.return_value = [record]
 
             # Should not raise exception
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             # Should still delete records even if serialization fails
-            assert mock_session.query.return_value.where.return_value.delete.called
+            assert mock_session.execute.called
 
     def test_clear_message_related_tables_deletion_called(self, mock_session, sample_message_ids, sample_records):
         """Test that deletion is called for found records."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.where.return_value.all.return_value = sample_records
+            mock_session.scalars.return_value.all.return_value = sample_records
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
-            # Should call delete for each table that has records
-            assert mock_session.query.return_value.where.return_value.delete.called
+            # Should call execute(delete(...)) for each table that has records
+            assert mock_session.execute.called
 
     def test_clear_message_related_tables_all_serialization_fails_skips_backup_but_deletes(
         self, mock_session, sample_message_ids
@@ -167,12 +166,12 @@ class TestClearFreePlanTenantExpiredLogs:
         record.to_dict.side_effect = Exception("Serialization error")
 
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
-            mock_session.query.return_value.where.return_value.all.return_value = [record]
+            mock_session.scalars.return_value.all.return_value = [record]
 
             ClearFreePlanTenantExpiredLogs._clear_message_related_tables(mock_session, "tenant-123", sample_message_ids)
 
             mock_storage.save.assert_not_called()
-            assert mock_session.query.return_value.where.return_value.delete.called
+            assert mock_session.execute.called
 
 
 class _ImmediateFuture:
@@ -209,8 +208,22 @@ def _session_wrapper_for_no_autoflush(session: Mock) -> Mock:
     return wrapper
 
 
+def _sessionmaker_wrapper_for_begin(session: Mock) -> Mock:
+    """
+    ClearFreePlanTenantExpiredLogs.process uses: with sessionmaker(db.engine).begin() as session:
+    so sessionmaker(db.engine) must return an object with a begin() method that returns a context manager.
+    """
+    begin_cm = MagicMock()
+    begin_cm.__enter__.return_value = session
+    begin_cm.__exit__.return_value = None
+
+    sessionmaker_result = MagicMock()
+    sessionmaker_result.begin.return_value = begin_cm
+    return sessionmaker_result
+
+
 def _session_wrapper_for_direct(session: Mock) -> Mock:
-    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session:"""
+    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session: (for old code paths)"""
     wrapper = MagicMock()
     wrapper.__enter__.return_value = session
     wrapper.__exit__.return_value = None
@@ -249,60 +262,39 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     conv1 = SimpleNamespace(id="c1", to_dict=lambda: {"id": "c1"})
     log1 = SimpleNamespace(id="l1", to_dict=lambda: {"id": "l1"})
 
-    def make_query_with_batches(batches: list[list[object]]):
-        q = MagicMock()
-        q.where.return_value = q
-        q.limit.return_value = q
-        q.all.side_effect = batches
-        q.delete.return_value = 1
-        return q
-
     msg_session_1 = MagicMock()
-    msg_session_1.query.side_effect = lambda model: (
-        make_query_with_batches([[msg1], []]) if model == service_module.Message else MagicMock()
-    )
-    msg_session_1.commit.return_value = None
+    msg_session_1.scalars.return_value.all.return_value = [msg1]
 
     msg_session_2 = MagicMock()
-    msg_session_2.query.side_effect = lambda model: (
-        make_query_with_batches([[]]) if model == service_module.Message else MagicMock()
-    )
-    msg_session_2.commit.return_value = None
+    msg_session_2.scalars.return_value.all.return_value = []
 
     conv_session_1 = MagicMock()
-    conv_session_1.query.side_effect = lambda model: (
-        make_query_with_batches([[conv1], []]) if model == service_module.Conversation else MagicMock()
-    )
-    conv_session_1.commit.return_value = None
+    conv_session_1.scalars.return_value.all.return_value = [conv1]
 
     conv_session_2 = MagicMock()
-    conv_session_2.query.side_effect = lambda model: (
-        make_query_with_batches([[]]) if model == service_module.Conversation else MagicMock()
-    )
-    conv_session_2.commit.return_value = None
+    conv_session_2.scalars.return_value.all.return_value = []
 
     wal_session_1 = MagicMock()
-    wal_session_1.query.side_effect = lambda model: (
-        make_query_with_batches([[log1], []]) if model == service_module.WorkflowAppLog else MagicMock()
-    )
-    wal_session_1.commit.return_value = None
+    wal_session_1.scalars.return_value.all.return_value = [log1]
 
     wal_session_2 = MagicMock()
-    wal_session_2.query.side_effect = lambda model: (
-        make_query_with_batches([[]]) if model == service_module.WorkflowAppLog else MagicMock()
-    )
-    wal_session_2.commit.return_value = None
+    wal_session_2.scalars.return_value.all.return_value = []
 
     session_wrappers = [
-        _session_wrapper_for_no_autoflush(msg_session_1),
-        _session_wrapper_for_no_autoflush(msg_session_2),
-        _session_wrapper_for_no_autoflush(conv_session_1),
-        _session_wrapper_for_no_autoflush(conv_session_2),
-        _session_wrapper_for_no_autoflush(wal_session_1),
-        _session_wrapper_for_no_autoflush(wal_session_2),
+        _sessionmaker_wrapper_for_begin(msg_session_1),
+        _sessionmaker_wrapper_for_begin(msg_session_2),
+        _sessionmaker_wrapper_for_begin(conv_session_1),
+        _sessionmaker_wrapper_for_begin(conv_session_2),
+        _sessionmaker_wrapper_for_begin(wal_session_1),
+        _sessionmaker_wrapper_for_begin(wal_session_2),
     ]
 
-    monkeypatch.setattr(service_module, "Session", lambda _engine: session_wrappers.pop(0))
+    def fake_sessionmaker(*args, **kwargs):
+        if kwargs.get("autoflush") is False:
+            return session_wrappers.pop(0)
+        return object()
+
+    monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
     def fake_select(*_args, **_kwargs):
         stmt = MagicMock()
@@ -319,8 +311,6 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [[SimpleNamespace(id="wr-1", to_dict=lambda: {"id": "wr-1"})], []]
     run_repo.delete_runs_by_ids.return_value = 1
-
-    monkeypatch.setattr(service_module, "sessionmaker", lambda **_kwargs: object())
     monkeypatch.setattr(
         service_module.DifyAPIRepositoryFactory,
         "create_api_workflow_node_execution_repository",
@@ -344,11 +334,9 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: py
 
     # Total tenant count query
     count_session = MagicMock()
-    count_query = MagicMock()
-    count_query.count.return_value = 2
-    count_session.query.return_value = count_query
+    count_session.scalar.return_value = 2
 
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     # Avoid LocalProxy usage
     flask_app = service_module.Flask("test-app")
@@ -411,35 +399,18 @@ def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pyt
 
     # Sessions used:
     # 1) total tenant count
-    # 2) per-batch tenant scan (count + tenant list)
+    # 2) per-batch tenant scan (interval counts + tenant list)
     total_session = MagicMock()
-    total_query = MagicMock()
-    total_query.count.return_value = 250
-    total_session.query.return_value = total_query
-
-    batch_session = MagicMock()
-    q1 = MagicMock()
-    q1.where.return_value = q1
-    q1.count.return_value = 200
-    q2 = MagicMock()
-    q2.where.return_value = q2
-    q2.count.return_value = 200
-    q3 = MagicMock()
-    q3.where.return_value = q3
-    q3.count.return_value = 200
-    q4 = MagicMock()
-    q4.where.return_value = q4
-    q4.count.return_value = 50  # choose this interval, then scale it
+    total_session.scalar.return_value = 250
 
     rows = [SimpleNamespace(id="tenant-a"), SimpleNamespace(id="tenant-b")]
-    q_rs = MagicMock()
-    q_rs.where.return_value = q_rs
-    q_rs.order_by.return_value = rows
+    batch_session = MagicMock()
+    # 4 test intervals queried: 200, 200, 200, 50 — breaks on 50 <= 100 (4th interval = 3h)
+    batch_session.scalar.side_effect = [200, 200, 200, 50]
+    batch_session.execute.return_value = rows
 
-    batch_session.query.side_effect = [q1, q2, q3, q4, q_rs]
-
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
@@ -454,10 +425,8 @@ def test_process_with_tenant_ids_emits_progress_every_100(monkeypatch: pytest.Mo
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=object()))
 
     count_session = MagicMock()
-    count_query = MagicMock()
-    count_query.count.return_value = 100
-    count_session.query.return_value = count_query
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    count_session.scalar.return_value = 100
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     flask_app = service_module.Flask("test-app")
     monkeypatch.setattr(service_module, "current_app", SimpleNamespace(_get_current_object=lambda: flask_app))
@@ -503,28 +472,16 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
     monkeypatch.setattr(service_module.click, "echo", lambda *_args, **_kwargs: None)
 
     total_session = MagicMock()
-    total_query = MagicMock()
-    total_query.count.return_value = 250
-    total_session.query.return_value = total_query
-
-    batch_session = MagicMock()
-    # Count results for all 5 intervals, all > 100 => take the for-else path.
-    count_queries = []
-    for _ in range(5):
-        q = MagicMock()
-        q.where.return_value = q
-        q.count.return_value = 200
-        count_queries.append(q)
+    total_session.scalar.return_value = 250
 
     rows = [SimpleNamespace(id="tenant-a")]
-    q_rs = MagicMock()
-    q_rs.where.return_value = q_rs
-    q_rs.order_by.return_value = rows
+    batch_session = MagicMock()
+    # All 5 intervals have > 100 tenants => for-else falls through to min interval (1h)
+    batch_session.scalar.side_effect = [200, 200, 200, 200, 200]
+    batch_session.execute.return_value = rows
 
-    batch_session.query.side_effect = [*count_queries, q_rs]
-
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
@@ -532,8 +489,7 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
     ClearFreePlanTenantExpiredLogs.process(days=7, batch=10, tenant_ids=[])
 
     assert process_tenant_mock.call_count == 1
-    assert len(count_queries) == 5
-    assert batch_session.query.call_count >= 6
+    assert batch_session.scalar.call_count == 5
 
 
 def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -555,18 +511,19 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
 
     # Make message/conversation/workflow_app_log loops no-op (empty immediately)
     empty_session = MagicMock()
-    q_empty = MagicMock()
-    q_empty.where.return_value = q_empty
-    q_empty.limit.return_value = q_empty
-    q_empty.all.return_value = []
-    empty_session.query.return_value = q_empty
-    empty_session.commit.return_value = None
+    empty_session.scalars.return_value.all.return_value = []
     session_wrappers = [
-        _session_wrapper_for_no_autoflush(empty_session),
-        _session_wrapper_for_no_autoflush(empty_session),
-        _session_wrapper_for_no_autoflush(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
     ]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: session_wrappers.pop(0))
+
+    def fake_sessionmaker(*args, **kwargs):
+        if kwargs.get("autoflush") is False:
+            return session_wrappers.pop(0)
+        return object()
+
+    monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
     def fake_select(*_args, **_kwargs):
         stmt = MagicMock()
@@ -592,8 +549,6 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
         [],
     ]
     run_repo.delete_runs_by_ids.return_value = 2
-
-    monkeypatch.setattr(service_module, "sessionmaker", lambda **_kwargs: object())
     monkeypatch.setattr(
         service_module.DifyAPIRepositoryFactory,
         "create_api_workflow_node_execution_repository",

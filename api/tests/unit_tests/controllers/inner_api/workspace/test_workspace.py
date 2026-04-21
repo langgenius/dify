@@ -20,6 +20,7 @@ from controllers.inner_api.workspace.workspace import (
     WorkspaceCreatePayload,
     WorkspaceOwnerlessPayload,
 )
+from models.account import TenantStatus
 
 
 class TestWorkspaceCreatePayload:
@@ -98,7 +99,7 @@ class TestEnterpriseWorkspace:
         mock_tenant.id = "tenant-id"
         mock_tenant.name = "My Workspace"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.created_at = now
         mock_tenant.updated_at = now
         mock_tenant_svc.create_tenant.return_value = mock_tenant
@@ -162,7 +163,7 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         mock_tenant.name = "My Workspace"
         mock_tenant.encrypt_public_key = "pub-key"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.custom_config = None
         mock_tenant.created_at = now
         mock_tenant.updated_at = now

@@ -1,17 +1,17 @@
 import type { FileUpload } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { FILE_URL_REGEX } from '../constants'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'
@@ -54,16 +54,16 @@ const FileFromLinkOrLocal = ({
   }
 
   return (
-    <PortalToFollowElem
-      placement="top"
-      offset={4}
+    <Popover
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} asChild>
-        {trigger(open)}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1001">
+      <PopoverTrigger render={trigger(open) as React.ReactElement} />
+      <PopoverContent
+        placement="top"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {
             showFromLink && (
@@ -74,7 +74,7 @@ const FileFromLinkOrLocal = ({
                 )}
                 >
                   <input
-                    className="mr-0.5 block grow appearance-none bg-transparent px-1 outline-hidden system-sm-regular"
+                    className="mr-0.5 block grow appearance-none bg-transparent px-1 system-sm-regular outline-hidden"
                     placeholder={fileLinkPlaceholderText}
                     value={url}
                     onChange={(e) => {
@@ -95,7 +95,7 @@ const FileFromLinkOrLocal = ({
                 </div>
                 {
                   showError && (
-                    <div className="mt-0.5 text-text-destructive body-xs-regular">
+                    <div className="mt-0.5 body-xs-regular text-text-destructive">
                       {t('fileUploader.pasteFileLinkInvalid', { ns: 'common' })}
                     </div>
                   )
@@ -105,7 +105,7 @@ const FileFromLinkOrLocal = ({
           }
           {
             showFromLink && showFromLocal && (
-              <div className="flex h-7 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
+              <div className="flex h-7 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
                 <div className="mr-2 h-px w-[93px] bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
                 OR
                 <div className="ml-2 h-px w-[93px] bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
@@ -126,8 +126,8 @@ const FileFromLinkOrLocal = ({
             )
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

@@ -1,10 +1,15 @@
 /* eslint-disable ts/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import AppPublisher from '../index'
+
+const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { webapp_auth: { enabled: true } },
+})
 
 const mockOnPublish = vi.fn()
 const mockOnToggle = vi.fn()
@@ -15,6 +20,7 @@ const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -48,16 +54,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: { enabled: boolean } } }) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: () => 'moments ago',
@@ -88,7 +84,11 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/service/use-workflow', () => ({
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -202,7 +202,7 @@ describe('AppPublisher', () => {
 
     fireEvent.click(screen.getByText('common.publish'))
 
-    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+    expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
     expect(mockOnToggle).toHaveBeenCalledWith(true)
 
     await waitFor(() => {
@@ -243,7 +243,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-embed'))
 
-    expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
   })
 
   it('should close embedded and access control panels through child callbacks', async () => {
@@ -260,7 +260,7 @@ describe('AppPublisher', () => {
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
     fireEvent.click(screen.getByText('close-access-control'))
     expect(screen.queryByTestId('access-control')).not.toBeInTheDocument()
   })
@@ -275,7 +275,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
 
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('confirm-access-control'))
 
@@ -333,7 +333,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -362,7 +362,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -376,7 +376,7 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(onRestore).toHaveBeenCalledTimes(1)
     })
-    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+    expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
   })
 
   it('should report missing explore installations', async () => {
@@ -450,6 +450,6 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
     })
-    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })
 })
