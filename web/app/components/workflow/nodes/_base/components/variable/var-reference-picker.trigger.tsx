@@ -7,6 +7,7 @@ import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiCloseLine, RiErrorWarningFill, RiLoader4Line, RiMoreLine } from '@remixicon/react'
@@ -68,8 +69,6 @@ type Props = {
   varKindTypes: Array<{ label: string, value: VarKindType }>
   varName: string
   variableCategory: string
-  WrapElem: React.ElementType
-  VarPickerWrap: React.ElementType
 }
 
 const VarReferencePickerTrigger: FC<Props> = ({
@@ -114,9 +113,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
   varKindTypes,
   varName,
   variableCategory,
-  VarPickerWrap,
-  WrapElem,
 }) => {
+  const handleTriggerReadonlyClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (!readonly)
+      return
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
   const pill = (
     <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-components-badge-white-to-dark' : 'flex')}>
       {hasValue
@@ -212,18 +216,36 @@ const VarReferencePickerTrigger: FC<Props> = ({
         )
       : pill
 
-  return (
-    <WrapElem
-      onClick={() => {
-        if (readonly)
-          return
-        if (!isConstant)
-          setOpen(!open)
-        else
-          setControlFocus(Date.now())
-      }}
+  const variablePicker = (
+    <div className="h-full grow">
+      <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1')}>
+        {hoveredPill}
+      </div>
+    </div>
+  )
+
+  const resolvedVariablePicker = isSupportConstantValue
+    ? (
+        readonly
+          ? variablePicker
+          : (
+              <PopoverTrigger
+                render={variablePicker}
+                onClick={handleTriggerReadonlyClick}
+              />
+            )
+      )
+    : variablePicker
+
+  const triggerContent = (
+    <div
       className={cn(className, 'group/picker-trigger-wrap relative flex!', !readonly && 'cursor-pointer')}
       data-testid="var-reference-picker-trigger"
+      onClick={() => {
+        if (!isConstant || readonly)
+          return
+        setControlFocus(Date.now())
+      }}
     >
       <>
         {isAddBtnTrigger
@@ -278,24 +300,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                         isLoading={isLoading}
                       />
                     )
-                  : (
-                      <VarPickerWrap
-                        onClick={() => {
-                          if (readonly)
-                            return
-                          if (!isConstant)
-                            setOpen(!open)
-                          else
-                            setControlFocus(Date.now())
-                        }}
-                        className="h-full grow"
-                      >
-                        <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1')}>
-                          {hoveredPill}
-                        </div>
-
-                      </VarPickerWrap>
-                    )}
+                  : resolvedVariablePicker}
                 {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
                   <div
                     className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 group-hover/wrap:visible hover:bg-state-base-hover"
@@ -330,8 +335,22 @@ const VarReferencePickerTrigger: FC<Props> = ({
         )}
       </>
       <input ref={inputRef} className="sr-only" value={controlFocus} readOnly />
-    </WrapElem>
+    </div>
   )
+
+  if (!isSupportConstantValue) {
+    if (readonly)
+      return triggerContent
+
+    return (
+      <PopoverTrigger
+        render={triggerContent}
+        onClick={handleTriggerReadonlyClick}
+      />
+    )
+  }
+
+  return triggerContent
 }
 
 export default VarReferencePickerTrigger

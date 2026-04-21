@@ -63,6 +63,7 @@ const CustomEdge = ({
     _sourceRunningStatus,
     _targetRunningStatus,
   } = data
+  const isTriggerVisible = !!(data?._hovering || isTriggerHovered || open)
 
   const linearGradientId = useMemo(() => {
     if (
@@ -144,16 +145,15 @@ const CustomEdge = ({
         <div
           className={cn(
             'nopan nodrag',
-            (data?._hovering || isTriggerHovered) ? 'block' : 'hidden',
-            open && 'block!',
+            'transition-opacity duration-150',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
             data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
           )}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',
-            opacity: data._waitingRun ? 0.7 : 1,
+            pointerEvents: isTriggerVisible ? 'all' : 'none',
+            opacity: isTriggerVisible ? (data._waitingRun ? 0.7 : 1) : 0,
           }}
           onMouseEnter={() => setIsTriggerHovered(true)}
           onMouseLeave={() => setIsTriggerHovered(false)}
