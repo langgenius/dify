@@ -537,7 +537,10 @@ def test_workflow_trace_keeps_same_workflow_nodes_as_flat_siblings(trace_instanc
     trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
     trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
     trace_instance._get_workflow_graph = MagicMock(
-        return_value={"nodes": [{"id": "start-node"}, {"id": "tool-node"}], "edges": [{"source": "start-node", "target": "tool-node"}]}
+        return_value={
+            "nodes": [{"id": "start-node"}, {"id": "tool-node"}],
+            "edges": [{"source": "start-node", "target": "tool-node"}],
+        }
     )
 
     start_node = MagicMock()
