@@ -1,6 +1,5 @@
-import { mkdir, rm } from 'node:fs/promises'
+import { access, mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { waitForUrl } from '../support/process'
 import {
   apiDir,
@@ -113,8 +112,6 @@ const waitForDependency = async ({
 export const ensureWebBuild = async () => {
   await ensureWebEnvLocal()
 
-  await import(pathToFileURL(path.join(webDir, 'scripts', 'ensure-claude-md.mjs')).href)
-
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
     await runCommandOrThrow({
       command: 'pnpm',
@@ -127,15 +124,13 @@ export const ensureWebBuild = async () => {
   try {
     await access(buildIdPath)
     console.log('Reusing existing web build artifact.')
-    return
   } catch {
-    console.log('Web build artifact is missing required files. Running fresh build.')
+    await runCommandOrThrow({
+      command: 'pnpm',
+      args: ['run', 'build'],
+      cwd: webDir,
+    })
   }
-  await runCommandOrThrow({
-    command: 'pnpm',
-    args: ['run', 'build'],
-    cwd: webDir,
-  })
 }
 
 export const startWeb = async () => {

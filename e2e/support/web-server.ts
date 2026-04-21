@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises'
 import type { ManagedProcess } from './process'
 import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process'
 
@@ -13,16 +12,6 @@ type WebServerStartOptions = {
 }
 
 let activeProcess: ManagedProcess | undefined
-
-const readLogTail = async (logFilePath: string, maxLines = 120) => {
-  try {
-    const content = await readFile(logFilePath, 'utf8')
-    const lines = content.split(/\r?\n/)
-    return lines.slice(-maxLines).join('\n').trim()
-  } catch {
-    return ''
-  }
-}
 
 const getUrlHostAndPort = (url: string) => {
   const parsedUrl = new URL(url)
@@ -70,10 +59,8 @@ export const startWebServer = async ({
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     if (startupError) {
-      const logTail = await readLogTail(logFilePath)
       await stopManagedProcess(activeProcess)
       activeProcess = undefined
-      if (logTail) startupError.message = `${startupError.message}\n--- web log tail ---\n${logTail}`
       throw startupError
     }
 
@@ -87,10 +74,7 @@ export const startWebServer = async ({
 
   await stopManagedProcess(activeProcess)
   activeProcess = undefined
-  const logTail = await readLogTail(logFilePath)
-  throw new Error(
-    `Timed out waiting for web server readiness at ${baseURL} after ${timeoutMs}ms.${logTail ? `\n--- web log tail ---\n${logTail}` : ''}`,
-  )
+  throw new Error(`Timed out waiting for web server readiness at ${baseURL} after ${timeoutMs}ms.`)
 }
 
 export const stopWebServer = async () => {

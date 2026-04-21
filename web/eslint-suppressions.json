@@ -7663,6 +7663,9 @@
   "app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 6
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
@@ -7671,11 +7674,23 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "app/components/tools/edit-custom-collection-modal/index.tsx": {
     "react/set-state-in-effect": {
       "count": 4
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 9
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
     }
   },
   "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
@@ -7683,6 +7698,9 @@
       "count": 6
     },
     "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -7829,6 +7847,9 @@
   "app/components/tools/provider/detail.tsx": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
     }
   },
   "app/components/tools/provider/empty.tsx": {
@@ -7850,6 +7871,14 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "app/components/tools/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 4
     }
   },
   "app/components/tools/workflow-tool/configure-button.tsx": {
