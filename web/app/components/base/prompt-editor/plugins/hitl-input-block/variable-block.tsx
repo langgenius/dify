@@ -1,6 +1,7 @@
 import type { UpdateWorkflowNodesMapPayload } from '../workflow-variable-block'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -13,7 +14,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   isConversationVar,
   isENV,
@@ -119,13 +119,13 @@ const HITLInputVariableBlockComponent = ({
     />
   )
 
-  if (!node)
+  if (!node || !isShowAPart)
     return Item
 
   return (
-    <Tooltip
-      noDecoration
-      popupContent={(
+    <PreviewCard>
+      <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
+      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
@@ -137,11 +137,8 @@ const HITLInputVariableBlockComponent = ({
             : Type.string}
           nodeType={node?.type}
         />
-      )}
-      disabled={!isShowAPart}
-    >
-      <div>{Item}</div>
-    </Tooltip>
+      </PreviewCardContent>
+    </PreviewCard>
   )
 }
 
