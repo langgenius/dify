@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises'
 import type { ManagedProcess } from './process'
+import { readFile } from 'node:fs/promises'
 import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process'
 
 type WebServerStartOptions = {
@@ -34,13 +34,15 @@ export const startWebServer = async ({
   timeoutMs,
 }: WebServerStartOptions) => {
   const readWebServerLog = async () => {
-    if (!activeProcess) return ''
+    if (!activeProcess)
+      return ''
 
     try {
       const rawLog = await readFile(activeProcess.logFilePath, 'utf8')
       const logLines = rawLog.trim().split(/\r?\n/)
       return logLines.slice(-80).join('\n')
-    } catch {
+    }
+    catch {
       return ''
     }
   }

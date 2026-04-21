@@ -59,7 +59,8 @@ const applyDockerEnvToApiEnv = (
   const next = { ...base }
 
   const dbPassword = dockerEnv.DB_PASSWORD?.trim()
-  if (dbPassword) next.DB_PASSWORD = dbPassword
+  if (dbPassword)
+    next.DB_PASSWORD = dbPassword
 
   const redisPassword = dockerEnv.REDIS_PASSWORD?.trim()
   if (redisPassword) {
@@ -75,7 +76,8 @@ const applyDockerEnvToApiEnv = (
   }
 
   const pluginInnerKey = dockerEnv.PLUGIN_DIFY_INNER_API_KEY?.trim()
-  if (pluginInnerKey) next.INNER_API_KEY_FOR_PLUGIN = pluginInnerKey
+  if (pluginInnerKey)
+    next.INNER_API_KEY_FOR_PLUGIN = pluginInnerKey
 
   return next
 }
@@ -91,7 +93,8 @@ const getApiEnvironment = async () => {
     await access(dockerEnvFile)
     const dockerEnv = await readSimpleDotenv(dockerEnvFile)
     merged = applyDockerEnvToApiEnv(merged, dockerEnv)
-  } catch {
+  }
+  catch {
     // Local runs may have no docker/.env; integration example values match middleware.env defaults.
   }
 
