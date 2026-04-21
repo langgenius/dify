@@ -1,4 +1,5 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -9,7 +10,6 @@ import {
 import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { Button } from '@/app/components/base/ui/button'
 import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {

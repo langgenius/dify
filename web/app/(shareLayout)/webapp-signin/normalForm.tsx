@@ -1,14 +1,15 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { LicenseStatus } from '@/types/feature'
-import { cn } from '@/utils/classnames'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
@@ -17,7 +18,7 @@ const NormalForm = () => {
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -58,10 +59,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -74,10 +75,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -90,10 +91,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -105,7 +106,7 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
           <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-          <p className="body-md-regular mt-2 text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
+          <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
@@ -122,7 +123,7 @@ const NormalForm = () => {
                 <div className="h-px w-full bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="system-xs-medium-uppercase px-2 text-text-tertiary">{t('or', { ns: 'login' })}</span>
+                <span className="px-2 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
               </div>
             </div>
           )}
@@ -159,7 +160,7 @@ const NormalForm = () => {
                   <RiDoorLockLine className="h-5 w-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="system-xs-regular mt-1 text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -170,7 +171,7 @@ const NormalForm = () => {
           )}
           {!systemFeatures.branding.enabled && (
             <>
-              <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+              <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                 {t('tosDesc', { ns: 'login' })}
               &nbsp;
                 <Link
@@ -192,7 +193,7 @@ const NormalForm = () => {
                 </Link>
               </div>
               {IS_CE_EDITION && (
-                <div className="w-hull system-xs-regular mt-2 block text-text-tertiary">
+                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
                   {t('goToInit', { ns: 'login' })}
               &nbsp;
                   <Link

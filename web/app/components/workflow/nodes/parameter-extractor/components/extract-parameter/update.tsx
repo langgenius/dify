@@ -2,6 +2,9 @@
 import type { FC } from 'react'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -11,10 +14,7 @@ import ConfigSelect from '@/app/components/app/configuration/config-var/config-s
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Select from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
@@ -169,7 +169,7 @@ const AddExtractParameter: FC<Props> = ({
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}>
                 <>
                   <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
-                  <Switch size="lg" value={param.required ?? false} onChange={handleParamChange('required')} />
+                  <Switch size="lg" checked={param.required ?? false} onCheckedChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>

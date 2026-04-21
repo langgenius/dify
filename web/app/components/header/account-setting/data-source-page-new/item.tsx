@@ -1,13 +1,13 @@
 import type {
   DataSourceCredential,
 } from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
 
@@ -30,7 +30,7 @@ const Item = ({
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName="grow radius-sm"
+              wrapperClassName="grow rounded-md"
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}

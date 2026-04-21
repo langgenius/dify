@@ -1,4 +1,7 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -6,10 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 type ModalPropsType = {
@@ -101,7 +101,7 @@ const VariableModal = ({
           <div className="flex gap-2">
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center radius-md border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 type === 'string' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => setType('string')}
@@ -110,7 +110,7 @@ const VariableModal = ({
             </div>
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center radius-md border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 type === 'number' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => {
@@ -123,7 +123,7 @@ const VariableModal = ({
             </div>
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center radius-md border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 type === 'secret' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => setType('secret')}

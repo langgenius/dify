@@ -112,7 +112,7 @@ vi.mock('@/service/datasets', () => ({
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
 }))
 
@@ -137,14 +137,6 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 describe('Dropdown callback coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -159,7 +151,7 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
     expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
@@ -175,7 +167,7 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
     expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
@@ -190,7 +182,7 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {
@@ -210,7 +202,7 @@ describe('Dropdown callback coverage', () => {
 
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {
@@ -224,12 +216,33 @@ describe('Dropdown callback coverage', () => {
 
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith('app.exportFailed', { type: 'error' })
     })
+  })
+
+  it('should not attempt export when the dataset has no pipeline id', async () => {
+    const user = userEvent.setup()
+    mockDataset = createDataset({ pipeline_id: '' })
+
+    render(<Dropdown expand={false} />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
+
+    expect(mockExportPipeline).not.toHaveBeenCalled()
+  })
+
+  it('should render and open correctly when collapsed', async () => {
+    const user = userEvent.setup()
+    render(<Dropdown expand={false} />)
+
+    await user.click(screen.getByRole('button'))
+
+    expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
   })
 
   it('should surface the backend message when checking app usage fails', async () => {
@@ -240,7 +253,7 @@ describe('Dropdown callback coverage', () => {
 
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {

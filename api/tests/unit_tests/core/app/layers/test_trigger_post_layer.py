@@ -2,11 +2,10 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from graphon.graph_events import GraphRunFailedEvent, GraphRunSucceededEvent
-from graphon.runtime import VariablePool
-
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.workflow.system_variables import build_system_variables
+from graphon.graph_events import GraphRunFailedEvent, GraphRunSucceededEvent
+from graphon.runtime import VariablePool
 from models.enums import WorkflowTriggerStatus
 
 

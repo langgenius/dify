@@ -1,5 +1,5 @@
 import contextvars
-from collections.abc import Iterator
+from collections.abc import Generator  # Changed from Iterator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def preserve_flask_contexts(
     flask_app: Flask,
     context_vars: contextvars.Context,
-) -> Iterator[None]:
+) -> Generator[None, None, None]:  # Changed from Iterator[None]
     """
     A context manager that handles:
     1. flask-login's UserProxy copy

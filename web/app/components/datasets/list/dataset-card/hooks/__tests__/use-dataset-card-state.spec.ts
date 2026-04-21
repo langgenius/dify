@@ -10,7 +10,7 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -157,7 +157,7 @@ describe('useDatasetCardState', () => {
       expect(result.current.modalState.showRenameModal).toBe(false)
     })
 
-    it('should close confirm delete modal when closeConfirmDelete is called', () => {
+    it('should close confirm delete modal when closeConfirmDelete is called', async () => {
       const dataset = createMockDataset()
       const { result } = renderHook(() =>
         useDatasetCardState({ dataset, onSuccess: vi.fn() }),
@@ -168,7 +168,7 @@ describe('useDatasetCardState', () => {
         result.current.detectIsUsedByApp()
       })
 
-      waitFor(() => {
+      await waitFor(() => {
         expect(result.current.modalState.showConfirmDelete).toBe(true)
       })
 
@@ -305,7 +305,7 @@ describe('useDatasetCardState', () => {
 
   describe('Error Handling', () => {
     it('should show error toast when export pipeline fails', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockExportPipeline.mockRejectedValue(new Error('Export failed'))
 
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
@@ -321,7 +321,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle Response error in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const mockResponse = new Response(JSON.stringify({ message: 'API Error' }), {
         status: 400,
       })
@@ -340,7 +340,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle generic Error in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockCheckUsage.mockRejectedValue(new Error('Network error'))
 
       const dataset = createMockDataset()
@@ -356,7 +356,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle error without message in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockCheckUsage.mockRejectedValue({})
 
       const dataset = createMockDataset()

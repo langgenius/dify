@@ -1,13 +1,5 @@
 import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
-import { useBoolean, useKeyPress } from 'ahooks'
-import { memo, useCallback, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
-import Divider from '@/app/components/base/divider'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -16,9 +8,18 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
+import { useBoolean, useKeyPress } from 'ahooks'
+import { memo, useCallback, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Divider from '@/app/components/base/divider'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -35,11 +36,14 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix, useInvalidCustomizedTemplateList, usePublishAsCustomizedPipeline } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
-const Popup = () => {
+type PopupProps = {
+  onRequestClose?: () => void
+}
+
+const Popup = ({ onRequestClose }: PopupProps) => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
@@ -70,6 +74,7 @@ const Popup = () => {
       const checked = await handleCheckBeforePublish()
       if (checked) {
         if (!publishedAt && !confirmVisible) {
+          onRequestClose?.()
           showConfirm()
           return
         }
@@ -114,7 +119,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm, onRequestClose])
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
     if (published)
@@ -155,13 +160,14 @@ const Popup = () => {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal, docLink])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
+    onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
       setShowPricingModal()
     else
       setShowPublishAsKnowledgePipelineModal()
-  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
+  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, onRequestClose, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">

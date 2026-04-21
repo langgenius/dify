@@ -1,9 +1,11 @@
 /**
- * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * @deprecated Use `@langgenius/dify-ui/dialog` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +13,6 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type ModalProps = {
   onClose?: () => void

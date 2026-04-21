@@ -3,15 +3,15 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import HumanInputNodeData
 
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
 )
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType

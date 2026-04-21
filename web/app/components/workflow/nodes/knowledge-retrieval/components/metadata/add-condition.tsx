@@ -1,5 +1,6 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataInDoc } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -15,7 +16,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({

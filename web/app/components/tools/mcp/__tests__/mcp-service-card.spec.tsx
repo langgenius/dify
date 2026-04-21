@@ -26,6 +26,23 @@ const mockHandleGenCode = vi.fn()
 const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockOpenServerModal = vi.fn()
+const mockOnMcpServerUpdate = vi.hoisted(() => vi.fn())
+const mockUnsubscribeMcpServerUpdate = vi.hoisted(() => vi.fn())
+const invalidateMCPServerDetailFns = vi.hoisted(() => [] as Array<ReturnType<typeof vi.fn>>)
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onMcpServerUpdate: mockOnMcpServerUpdate,
+  },
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useInvalidateMCPServerDetail: () => {
+    const invalidateFn = vi.fn()
+    invalidateMCPServerDetailFns.push(invalidateFn)
+    return invalidateFn
+  },
+}))
 
 type MockHookState = {
   genLoading: boolean
@@ -106,12 +123,15 @@ describe('MCPServiceCard', () => {
 
   beforeEach(() => {
     mockHookState = createDefaultHookState()
+    invalidateMCPServerDetailFns.length = 0
     mockHandleStatusChange.mockClear().mockResolvedValue({ activated: true })
     mockHandleServerModalHide.mockClear().mockReturnValue({ shouldDeactivate: false })
     mockHandleGenCode.mockClear()
     mockOpenConfirmDelete.mockClear()
     mockCloseConfirmDelete.mockClear()
     mockOpenServerModal.mockClear()
+    mockUnsubscribeMcpServerUpdate.mockClear()
+    mockOnMcpServerUpdate.mockReset().mockReturnValue(mockUnsubscribeMcpServerUpdate)
   })
 
   describe('Rendering', () => {
@@ -429,6 +449,29 @@ describe('MCPServiceCard', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       expect(screen.getByRole('switch')).toBeInTheDocument()
+    })
+  })
+
+  describe('Collaboration Sync', () => {
+    it('should keep a stable MCP update subscription across rerenders and invalidate with the latest callback', async () => {
+      let mcpUpdateHandler: ((payload: unknown) => void) | undefined
+      mockOnMcpServerUpdate.mockImplementation((handler: (payload: unknown) => void) => {
+        mcpUpdateHandler = handler
+        return mockUnsubscribeMcpServerUpdate
+      })
+
+      const wrapper = createWrapper()
+      const { rerender } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper })
+
+      rerender(<MCPServiceCard appInfo={createMockAppInfo()} />)
+
+      expect(mockOnMcpServerUpdate).toHaveBeenCalledTimes(1)
+      expect(invalidateMCPServerDetailFns).toHaveLength(2)
+
+      mcpUpdateHandler?.({ type: 'mcp_server_update' })
+
+      expect(invalidateMCPServerDetailFns[0]).not.toHaveBeenCalled()
+      expect(invalidateMCPServerDetailFns[1]).toHaveBeenCalledWith('app-123')
     })
   })
 })

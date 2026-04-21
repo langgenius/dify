@@ -4,6 +4,7 @@ import type {
   VarType,
 } from '../../../types'
 import type { VariableAssignerNodeType } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -15,7 +16,6 @@ import {
   VariableLabelInNode,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
 import {
@@ -64,7 +64,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId !== item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId !== item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId !== item.targetHandleId
     }
 
     return false
@@ -74,7 +74,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId === item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId === item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId === item.targetHandleId
     }
 
     return false
@@ -83,7 +83,7 @@ const NodeGroupItem = ({
   return (
     <div
       className={cn(
-        'relative rounded-lg border-[1.5px] border-transparent px-1.5 pb-1.5 pt-1',
+        'relative rounded-lg border-[1.5px] border-transparent px-1.5 pt-1 pb-1.5',
         showSelectionBorder && 'border-dashed! border-divider-subtle! bg-state-base-hover',
         showSelectedBorder && 'border-text-accent! bg-util-colors-blue-blue-50!',
       )}
@@ -102,7 +102,7 @@ const NodeGroupItem = ({
         </span>
         <div className="flex items-center">
           <span className="ml-2 shrink-0">{item.type}</span>
-          <div className="ml-2 mr-1 h-2.5 w-px bg-divider-regular"></div>
+          <div className="mr-1 ml-2 h-2.5 w-px bg-divider-regular"></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -115,7 +115,7 @@ const NodeGroupItem = ({
         !item.variables.length && (
           <div
             className={cn(
-              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal uppercase text-text-tertiary',
+              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal text-text-tertiary uppercase',
               (showSelectedBorder || showSelectionBorder) && 'bg-black/[0.02]!',
             )}
           >

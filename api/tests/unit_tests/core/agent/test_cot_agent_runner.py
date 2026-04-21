@@ -2,11 +2,11 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 
 class DummyRunner(CotAgentRunner):

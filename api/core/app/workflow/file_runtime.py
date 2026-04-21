@@ -9,17 +9,17 @@ import urllib.parse
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Literal
 
-from graphon.file import FileTransferMethod
-from graphon.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
-from graphon.file.runtime import set_workflow_file_runtime
-
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
-from core.helper.ssrf_proxy import ssrf_proxy
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.tools.signature import sign_tool_file
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
+from graphon.file import FileTransferMethod
+from graphon.file.protocols import WorkflowFileRuntimeProtocol
+from graphon.file.runtime import set_workflow_file_runtime
+from graphon.http.protocols import HttpResponseProtocol
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -44,7 +44,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         return dify_config.MULTIMODAL_SEND_FORMAT
 
     def http_get(self, url: str, *, follow_redirects: bool = True) -> HttpResponseProtocol:
-        return ssrf_proxy.get(url, follow_redirects=follow_redirects)
+        return graphon_ssrf_proxy.get(url, follow_redirects=follow_redirects)
 
     def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:
         return storage.load(path, stream=stream)

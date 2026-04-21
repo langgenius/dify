@@ -2,6 +2,8 @@
 import type { FC } from 'react'
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -18,11 +20,9 @@ import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 export type IPromptValuePanelProps = {
   appType: AppModeEnum

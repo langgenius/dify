@@ -5,6 +5,13 @@ import type { ModelAndParameter } from './types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import {
   RiAddLine,
   RiEqualizer2Line,
@@ -28,13 +35,6 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -511,8 +511,8 @@ const Debug: FC<IDebug> = ({
             {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
               <div className="flex grow flex-col items-center justify-center pb-[120px]">
                 <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
-                  <div className="flex h-10 w-10 items-center justify-center radius-lg">
-                    <div className="flex h-full w-full items-center justify-center overflow-hidden radius-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
+                    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
                       <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
                     </div>
                   </div>

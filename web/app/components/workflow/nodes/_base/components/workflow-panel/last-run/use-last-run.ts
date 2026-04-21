@@ -2,8 +2,8 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -209,7 +209,7 @@ const useLastRun = <T>({
     const formattedData: Record<string, any> = {}
     Object.keys(allVarObject).forEach((key) => {
       const [varSectorStr, nodeId] = key.split(DELIMITER)
-      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
+      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr!]
     })
     if (isIterationNode) {
       const iteratorInputKey = `${id}.input_selector`
@@ -291,7 +291,7 @@ const useLastRun = <T>({
       return true
     return vars.every((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
-      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
       return inspectVarValue
     })
   }
@@ -301,7 +301,7 @@ const useLastRun = <T>({
       return true
     return vars.some((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
-      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
       return inspectVarValue
     })
   }
@@ -315,7 +315,7 @@ const useLastRun = <T>({
       const existVarValuesInForm = existVarValuesInForms[i]
       const newForm = { ...form }
       const inputs = form.inputs.filter((input) => {
-        return !(input.variable in existVarValuesInForm)
+        return !(input.variable in existVarValuesInForm!)
       })
       newForm.inputs = inputs
       return newForm

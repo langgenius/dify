@@ -1,0 +1,69 @@
+[data-dify-scrollbar]::before,
+[data-dify-scrollbar]::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+[data-dify-scrollbar][data-orientation='vertical']::before {
+  left: 50%;
+  top: 4px;
+  width: 4px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scrollbar][data-orientation='vertical']::after {
+  left: 50%;
+  bottom: 4px;
+  width: 4px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(to top, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scrollbar][data-orientation='horizontal']::before {
+  top: 50%;
+  left: 4px;
+  width: 12px;
+  height: 4px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scrollbar][data-orientation='horizontal']::after {
+  top: 50%;
+  right: 4px;
+  width: 12px;
+  height: 4px;
+  transform: translateY(-50%);
+  background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scrollbar][data-orientation='vertical']:not([data-overflow-y-start])::before {
+  opacity: 1;
+}
+
+[data-dify-scrollbar][data-orientation='vertical']:not([data-overflow-y-end])::after {
+  opacity: 1;
+}
+
+[data-dify-scrollbar][data-orientation='horizontal']:not([data-overflow-x-start])::before {
+  opacity: 1;
+}
+
+[data-dify-scrollbar][data-orientation='horizontal']:not([data-overflow-x-end])::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dify-scrollbar]::before,
+  [data-dify-scrollbar]::after {
+    transition: none;
+  }
+}

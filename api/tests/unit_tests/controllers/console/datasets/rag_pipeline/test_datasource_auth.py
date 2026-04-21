@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import console_ns
@@ -18,6 +17,7 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourceUpdateProviderNameApi,
 )
 from core.plugin.impl.oauth import OAuthHandler
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
