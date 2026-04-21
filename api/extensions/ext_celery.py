@@ -104,7 +104,11 @@ def _reject_cluster_broker_url(broker_url: str | None, backend_url: str | None) 
     for label, url in (("CELERY_BROKER_URL", broker_url), ("CELERY_RESULT_BACKEND", backend_url)):
         if not url:
             continue
-        lowered = url.lower()
+        # Strip before lowering so a leading-whitespace misconfiguration
+        # (e.g. a YAML quoting slip that leaves " redis+cluster://...") still
+        # gets caught here with a precise error, rather than falling through
+        # to Kombu's URL parser for a less actionable failure.
+        lowered = url.strip().lower()
         for scheme in _CLUSTER_SCHEMES:
             if lowered.startswith(scheme):
                 raise ValueError(

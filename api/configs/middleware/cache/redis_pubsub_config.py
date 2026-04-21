@@ -148,14 +148,21 @@ class RedisPubSubConfig(BaseSettings):
     def _first_cluster_node(clusters: str | None) -> tuple[str, int]:
         if not clusters:
             raise ValueError("REDIS_USE_CLUSTERS is true but REDIS_CLUSTERS is unset")
-        for raw in clusters.split(","):
+        # IPv6 addresses must use bracketed form (e.g. "[fe80::1]:7001"); the
+        # rpartition(":") below is ambiguous for bare-colon IPv6 literals.
+        for index, raw in enumerate(clusters.split(","), start=1):
             node = raw.strip()
             if not node:
                 continue
             host, sep, port_str = node.rpartition(":")
             if not sep or not host or not port_str.isdigit():
+                # Deliberately do not echo the raw entry — an operator who
+                # misused REDIS_CLUSTERS by pasting a full DSN like
+                # "pw@host" would leak the password into startup logs. The
+                # 1-based position is enough to locate the offending entry.
                 raise ValueError(
-                    f"REDIS_CLUSTERS entry {node!r} is malformed; expected host:port"
+                    f"REDIS_CLUSTERS entry at position {index} is malformed; "
+                    "expected 'host:port' format"
                 )
             return host, int(port_str)
         # REDIS_CLUSTERS was set but contained only whitespace / empty segments

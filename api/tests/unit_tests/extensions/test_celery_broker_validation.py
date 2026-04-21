@@ -58,6 +58,17 @@ class TestRejectClusterBrokerURL:
                 backend_url="redis+cluster://:pw@n1:7001",
             )
 
+    def test_whitespace_wrapped_cluster_broker_is_rejected(self) -> None:
+        # A YAML quoting slip may leave leading / trailing whitespace on the
+        # URL. The validator must strip before scheme-matching so the
+        # operator still gets the precise Kombu-limitation error instead of
+        # a later opaque failure from Kombu's own URL parser.
+        with pytest.raises(ValueError, match="CELERY_BROKER_URL"):
+            _reject_cluster_broker_url(
+                broker_url="  redis+cluster://:pw@n1:7001  ",
+                backend_url=None,
+            )
+
     def test_rejection_message_names_kombu_and_recommends_standalone_or_sentinel(self) -> None:
         with pytest.raises(ValueError) as exc_info:
             _reject_cluster_broker_url(

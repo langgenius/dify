@@ -80,6 +80,20 @@ class TestStandaloneURL:
         with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
             cfg._build_default_pubsub_url()
 
+    def test_db_zero_still_included_in_path_component(self) -> None:
+        # REDIS_DB=0 is the common default; verify the URL path is "/0" and
+        # not an empty path or bare host:port. urlunparse has path-vs-empty
+        # quirks; this guards against an accidental regression there.
+        cfg = _make_config(
+            REDIS_HOST="r.example",
+            REDIS_PORT=6379,
+            REDIS_DB=0,
+        )
+
+        url = cfg._build_default_pubsub_url()
+
+        assert url == "redis://r.example:6379/0"
+
 
 class TestClusterURL:
     def test_builds_seed_url_from_first_cluster_node(self) -> None:
@@ -161,8 +175,43 @@ class TestClusterURL:
             REDIS_CLUSTERS="host-without-port",
         )
 
-        with pytest.raises(ValueError, match="malformed"):
+        with pytest.raises(ValueError, match="position 1.*malformed"):
             cfg._build_default_pubsub_url()
+
+    def test_cluster_malformed_entry_reports_position_not_raw_value(self) -> None:
+        # A misuser pasting a DSN with credentials into REDIS_CLUSTERS would
+        # leak the password if the error echoed the raw entry. The error must
+        # reference the position instead so startup logs stay clean. The
+        # malformed entry must be the first non-empty one — the parser
+        # returns on the first valid host:port, so only leading malformed
+        # entries reach the error path.
+        cfg = _make_config(
+            REDIS_USE_CLUSTERS=True,
+            REDIS_CLUSTERS="super-secret-password@lonely-host,good-node:7001",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            cfg._build_default_pubsub_url()
+
+        message = str(exc_info.value)
+        assert "position 1" in message
+        assert "super-secret-password" not in message
+
+    def test_cluster_malformed_entry_skips_blank_leading_segments(self) -> None:
+        # The 1-based position counts every comma-separated segment, including
+        # blank ones. "  ,bad@entry,good:7001" reports position 2 because the
+        # blank leading segment is position 1 (skipped, not errored on).
+        cfg = _make_config(
+            REDIS_USE_CLUSTERS=True,
+            REDIS_CLUSTERS="  ,password-leak@host,good:7001",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            cfg._build_default_pubsub_url()
+
+        message = str(exc_info.value)
+        assert "position 2" in message
+        assert "password-leak" not in message
 
     def test_cluster_ignores_legacy_redis_host(self) -> None:
         # Operator migrating from standalone to cluster forgot to clear
@@ -245,3 +294,15 @@ class TestNormalizedPubSubURL:
         object.__setattr__(cfg, "PUBSUB_REDIS_URL", "   ")
 
         assert cast(str, cfg.normalized_pubsub_redis_url) == "redis://node1:7001"
+
+    def test_whitespace_wrapped_explicit_pubsub_url_is_stripped(self) -> None:
+        # A valid URL that happens to carry incidental leading / trailing
+        # whitespace (YAML quoting slip, etc.) must be returned as the
+        # cleaned URL, not cause a fallback to the default builder.
+        cfg = _make_config(
+            REDIS_USE_CLUSTERS=True,
+            REDIS_CLUSTERS="cluster-seed:7001",  # would "win" if stripping failed
+        )
+        object.__setattr__(cfg, "PUBSUB_REDIS_URL", "  redis://override.example:6379/0  ")
+
+        assert cfg.normalized_pubsub_redis_url == "redis://override.example:6379/0"
