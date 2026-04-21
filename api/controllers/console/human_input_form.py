@@ -8,10 +8,10 @@ from collections.abc import Generator
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -30,7 +30,6 @@ from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
-from controllers.common.human_input import HumanInputFormSubmitPayload
 
 logger = logging.getLogger(__name__)
 

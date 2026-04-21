@@ -101,7 +101,7 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
                 yield "ping"
                 continue
 
-            response_chunk: dict[str, JsonValue]  = {
+            response_chunk: dict[str, JsonValue] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,

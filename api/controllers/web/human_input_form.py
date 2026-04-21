@@ -9,11 +9,11 @@ from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource
-from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.web import web_ns
 from controllers.web.error import NotFoundError, WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
@@ -22,7 +22,6 @@ from libs.helper import RateLimiter, extract_remote_ip
 from models.account import TenantStatus
 from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
-from controllers.common.human_input import HumanInputFormSubmitPayload
 
 logger = logging.getLogger(__name__)
 

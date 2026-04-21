@@ -8,13 +8,12 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from datetime import datetime
-from typing import Any
 
 from flask import Response
 from flask_restx import Resource
-from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -22,8 +21,6 @@ from core.workflow.human_input_policy import HumanInputSurface, is_recipient_typ
 from extensions.ext_database import db
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
-from controllers.common.human_input import HumanInputFormSubmitPayload
-
 
 logger = logging.getLogger(__name__)
 
