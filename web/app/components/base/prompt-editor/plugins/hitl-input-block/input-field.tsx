@@ -10,10 +10,12 @@ import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
+import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import {
   createDefaultFormInputByType,
   createDefaultParagraphFormInput,
+  isFileFormInput,
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
@@ -148,6 +150,23 @@ const InputField: React.FC<InputFieldProps> = ({
       }
     })
   }, [])
+  const handleFilePayloadChange = useCallback((payload: {
+    allowed_file_extensions: string[]
+    allowed_file_types: string[]
+    allowed_file_upload_methods: string[]
+  }) => {
+    setTempPayload((prev) => {
+      if (!isFileFormInput(prev))
+        return prev
+
+      return {
+        ...prev,
+        allowed_file_extensions: payload.allowed_file_extensions,
+        allowed_file_types: payload.allowed_file_types,
+        allowed_file_upload_methods: payload.allowed_file_upload_methods,
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -252,6 +271,15 @@ const InputField: React.FC<InputFieldProps> = ({
                   />
                 </div>
               )}
+        </div>
+      )}
+      {isFileFormInput(tempPayload) && (
+        <div className="mt-4">
+          <FileUploadSetting
+            payload={tempPayload}
+            isMultiple={false}
+            onChange={handleFilePayloadChange}
+          />
         </div>
       )}
       <div className="mt-4 flex justify-end space-x-2">

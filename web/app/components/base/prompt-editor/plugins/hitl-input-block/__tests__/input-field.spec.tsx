@@ -51,6 +51,26 @@ vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
   ),
 }))
 
+vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', () => ({
+  __esModule: true,
+  default: ({ onChange }: { onChange: (payload: {
+    allowed_file_extensions: string[]
+    allowed_file_types: string[]
+    allowed_file_upload_methods: string[]
+  }) => void }) => (
+    <button
+      type="button"
+      onClick={() => onChange({
+        allowed_file_extensions: ['.pdf'],
+        allowed_file_types: ['document'],
+        allowed_file_upload_methods: ['local_file'],
+      })}
+    >
+      file-upload-setting
+    </button>
+  ),
+}))
+
 const createPayload = (overrides?: Partial<FormInputItem>): FormInputItem => ({
   type: InputVarType.paragraph,
   output_variable_name: 'valid_name',
@@ -470,5 +490,33 @@ describe('InputField', () => {
 
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
+  })
+
+  it('should save single file upload settings', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-13"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file' }))
+    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.singleFile,
+      output_variable_name: 'valid_name',
+      allowed_file_extensions: ['.pdf'],
+      allowed_file_types: ['document'],
+      allowed_file_upload_methods: ['local_file'],
+    })
   })
 })
