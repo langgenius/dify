@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
+from pydantic import JsonValue
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -108,13 +110,13 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, JsonValue]:
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        error_responses: dict[type[Exception], dict[str, Any]] = {
+        error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
@@ -128,7 +130,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         }
 
         # Determine the response based on the type of exception
-        data: dict[str, Any] | None = None
+        data: dict[str, JsonValue] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v

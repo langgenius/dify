@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from typing import Any, cast
 
+from pydantic import JsonValue
+
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -68,7 +70,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, JsonValue] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -99,7 +101,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, JsonValue] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,

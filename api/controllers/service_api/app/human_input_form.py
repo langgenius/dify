@@ -13,7 +13,7 @@ from typing import Any
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import NotFound,BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns

@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
@@ -355,7 +355,7 @@ class NodeStartStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
-    def to_ignore_detail_dict(self):
+    def to_ignore_detail_dict(self) -> dict[str, JsonValue]:
         return {
             "event": self.event.value,
             "task_id": self.task_id,
@@ -412,7 +412,7 @@ class NodeFinishStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
-    def to_ignore_detail_dict(self):
+    def to_ignore_detail_dict(self) -> dict[str, JsonValue]:
         return {
             "event": self.event.value,
             "task_id": self.task_id,
@@ -793,7 +793,7 @@ class ChatbotAppPausedBlockingResponse(AppBlockingResponse):
         metadata: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         paused_nodes: Sequence[str] = Field(default_factory=list)
-        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list[Mapping[str, Any]])
         status: WorkflowExecutionStatus
         elapsed_time: float
         total_tokens: int
