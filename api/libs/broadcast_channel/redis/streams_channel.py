@@ -89,7 +89,7 @@ class _StreamsSubscription(Subscription):
         # deadlock.
 
         # Setting initial last id to `$` to signal redis that we only want new messages.
-        #        
+        #
         # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
         last_id = "$"
         try:
