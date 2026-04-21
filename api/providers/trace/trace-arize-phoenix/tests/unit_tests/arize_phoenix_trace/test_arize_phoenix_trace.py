@@ -396,3 +396,26 @@ def test_api_check_success(trace_instance):
 def test_ensure_root_span_basic(trace_instance):
     trace_instance.ensure_root_span("tid")
     assert "tid" in trace_instance.dify_trace_ids
+
+
+def test_find_logical_parent_span_uses_matching_node_context_keys(trace_instance):
+    parent_span = MagicMock()
+    child_execution = MagicMock()
+    child_execution.id = "exec-child"
+    child_execution.node_id = "child-node"
+    child_execution.index = 3
+
+    logical_parent = trace_instance._find_logical_parent_span(
+        child_execution,
+        node_spans={"parent-node": parent_span},
+        execution_context={
+            "parent-node": {
+                "index": 1,
+                "node_type": "tool",
+                "status": "succeeded",
+                "created_at": _dt(),
+            }
+        },
+    )
+
+    assert logical_parent is parent_span
