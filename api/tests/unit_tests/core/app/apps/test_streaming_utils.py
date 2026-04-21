@@ -88,6 +88,10 @@ def test_normalize_terminal_events_defaults():
     }
 
 
+def test_normalize_terminal_events_empty_values():
+    assert _normalize_terminal_events([]) == set({})
+
+
 def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch):
     topic = FakeTopic()
     times = [1000.0, 1000.0, 1001.0, 1001.0, 1002.0]
