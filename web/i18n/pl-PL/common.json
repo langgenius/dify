@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "Pobieranie zakończone.",
   "operation.duplicate": "Duplikuj",
   "operation.edit": "Edytuj",
+  "operation.exporting": "Eksportowanie",
   "operation.format": "Format",
   "operation.getForFree": "Zdobądź za darmo",
   "operation.imageCopied": "Skopiowany obraz",

@@ -9,6 +9,7 @@ import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/type
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import {
 
@@ -33,7 +34,6 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
@@ -41,6 +41,7 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
 import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
@@ -150,8 +151,8 @@ const AppPublisher = ({
   const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const { mutateAsync: convertWorkflowType, isPending: isConvertingWorkflowType } = useConvertWorkflowTypeMutation()
@@ -159,15 +160,15 @@ const AppPublisher = ({
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
   const workflowTypeSwitchConfig = useMemo(() => {
-    if (!isWorkflowTypeConversionTarget(appDetail?.type))
+    if (!appDetail?.workflow_kind)
+      return WORKFLOW_TYPE_SWITCH_CONFIG.workflow
+
+    if (!isWorkflowTypeConversionTarget(appDetail?.workflow_kind))
       return undefined
 
-    if (appDetail.type !== AppTypeEnum.EVALUATION && !canAccessSnippetsAndEvaluation)
-      return undefined
-
-    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
-  }, [appDetail?.type, canAccessSnippetsAndEvaluation])
-  const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
+    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.workflow_kind]
+  }, [appDetail?.workflow_kind])
+  const isEvaluationWorkflowType = appDetail?.workflow_kind === AppTypeEnum.EVALUATION
   const {
     refetch: refetchEvaluationWorkflowAssociatedTargets,
     isFetching: isFetchingEvaluationWorkflowAssociatedTargets,
@@ -176,11 +177,14 @@ const AppPublisher = ({
     if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
       return undefined
 
+    if (!canAccessSnippetsAndEvaluation)
+      return t('compliance.sandboxUpgradeTooltip', { ns: 'common' })
+
     if (!hasHumanInputNode && !hasTriggerNode)
       return undefined
 
     return t('common.switchToEvaluationWorkflowDisabledTip', { ns: 'workflow' })
-  }, [hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
+  }, [canAccessSnippetsAndEvaluation, hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
   const hiddenLaunchVariables = useMemo<WorkflowHiddenStartVariable[]>(
     () => (inputs ?? []).filter(input => input.hide === true),
     [inputs],
@@ -306,11 +310,42 @@ const AppPublisher = ({
     }
   }, [appDetail, setAppDetail])
 
+  const getWorkflowTypeSwitchPublishUrl = useCallback(() => {
+    if (!appDetail?.id || !workflowTypeSwitchConfig)
+      return undefined
+
+    if (workflowTypeSwitchConfig.targetType === AppTypeEnum.EVALUATION)
+      return `/apps/${appDetail.id}/workflows/publish/evaluation`
+
+    return `/apps/${appDetail.id}/workflows/publish`
+  }, [appDetail?.id, workflowTypeSwitchConfig])
+
   const performWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
       return false
 
     try {
+      if (!publishedAt) {
+        const publishUrl = getWorkflowTypeSwitchPublishUrl()
+        if (!publishUrl)
+          return false
+
+        await handlePublish({
+          url: publishUrl,
+          title: '',
+          releaseNotes: '',
+        })
+
+        const latestAppDetail = await fetchAppDetailDirect({
+          url: '/apps',
+          id: appDetail.id,
+        })
+        setAppDetail(latestAppDetail)
+        setShowEvaluationWorkflowSwitchConfirm(false)
+        setEvaluationWorkflowSwitchTargets([])
+        return true
+      }
+
       await convertWorkflowType({
         params: {
           appId: appDetail.id,
@@ -319,9 +354,6 @@ const AppPublisher = ({
           target_type: workflowTypeSwitchConfig.targetType,
         },
       })
-
-      if (!publishedAt)
-        await handlePublish()
 
       const latestAppDetail = await fetchAppDetailDirect({
         url: '/apps',
@@ -339,7 +371,7 @@ const AppPublisher = ({
     catch {
       return false
     }
-  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
+  }, [appDetail?.id, convertWorkflowType, getWorkflowTypeSwitchPublishUrl, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
 
   const handleWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
@@ -349,7 +381,7 @@ const AppPublisher = ({
       return
     }
 
-    if (appDetail.type === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
+    if (appDetail.workflow_kind === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
       const associatedTargetsResult = await refetchEvaluationWorkflowAssociatedTargets()
 
       if (associatedTargetsResult.isError) {
@@ -368,7 +400,7 @@ const AppPublisher = ({
     await performWorkflowTypeSwitch()
   }, [
     appDetail?.id,
-    appDetail?.type,
+    appDetail?.workflow_kind,
     performWorkflowTypeSwitch,
     refetchEvaluationWorkflowAssociatedTargets,
     t,
@@ -494,80 +526,80 @@ const AppPublisher = ({
               workflowTypeSwitchDisabledReason={workflowTypeSwitchDisabledReason}
               onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />
-  {
-    !isEvaluationWorkflowType && (
-      <>
-        <PublisherAccessSection
-          enabled={systemFeatures.webapp_auth.enabled}
-          isAppAccessSet={isAppAccessSet}
-          isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
-          accessMode={appDetail?.access_mode}
-          onClick={() => {
-            handleOpenChange(false)
-            setShowAppAccessControl(true)
-          }}
+            {
+              !isEvaluationWorkflowType && (
+                <>
+                  <PublisherAccessSection
+                    enabled={systemFeatures.webapp_auth.enabled}
+                    isAppAccessSet={isAppAccessSet}
+                    isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
+                    accessMode={appDetail?.access_mode}
+                    onClick={() => {
+                      handleOpenChange(false)
+                      setShowAppAccessControl(true)
+                    }}
+                  />
+                  <PublisherActionsSection
+                    appDetail={appDetail}
+                    appURL={appURL}
+                    disabledFunctionButton={disabledFunctionButton}
+                    disabledFunctionTooltip={disabledFunctionTooltip}
+                    handleEmbed={() => {
+                      setEmbeddingModalOpen(true)
+                      handleOpenChange(false)
+                    }}
+                    handleOpenInExplore={() => {
+                      handleOpenChange(false)
+                      handleOpenInExplore()
+                    }}
+                    handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
+                    handlePublish={handlePublish}
+                    hasHumanInputNode={hasHumanInputNode}
+                    hasTriggerNode={hasTriggerNode}
+                    inputs={inputs}
+                    missingStartNode={missingStartNode}
+                    onRefreshData={onRefreshData}
+                    outputs={outputs}
+                    published={published}
+                    publishedAt={publishedAt}
+                    showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
+                    showRunConfig={hiddenLaunchVariables.length > 0}
+                    toolPublished={toolPublished}
+                    workflowToolAvailable={workflowToolAvailable}
+                    workflowToolMessage={workflowToolMessage}
+                  />
+                </>
+              )
+            }
+          </div>
+        </PopoverContent>
+        <EmbeddedModal
+          siteInfo={appDetail?.site}
+          isShow={embeddingModalOpen}
+          onClose={() => setEmbeddingModalOpen(false)}
+          appBaseUrl={appBaseURL}
+          accessToken={accessToken}
+          hiddenInputs={hiddenLaunchVariables}
         />
-        <PublisherActionsSection
-          appDetail={appDetail}
-          appURL={appURL}
-          disabledFunctionButton={disabledFunctionButton}
-          disabledFunctionTooltip={disabledFunctionTooltip}
-          handleEmbed={() => {
-            setEmbeddingModalOpen(true)
-            handleOpenChange(false)
-          }}
-          handleOpenInExplore={() => {
-            handleOpenChange(false)
-            handleOpenInExplore()
-          }}
-          handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
-          handlePublish={handlePublish}
-          hasHumanInputNode={hasHumanInputNode}
-          hasTriggerNode={hasTriggerNode}
-          inputs={inputs}
-          missingStartNode={missingStartNode}
-          onRefreshData={onRefreshData}
-          outputs={outputs}
-          published={published}
-          publishedAt={publishedAt}
-          showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
-          showRunConfig={hiddenLaunchVariables.length > 0}
-          toolPublished={toolPublished}
-          workflowToolAvailable={workflowToolAvailable}
-          workflowToolMessage={workflowToolMessage}
+        {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} /> }
+        <WorkflowLaunchDialog
+          t={t}
+          open={workflowLaunchDialogOpen}
+          hiddenVariables={supportedWorkflowLaunchVariables}
+          unsupportedVariables={unsupportedWorkflowLaunchVariables}
+          values={workflowLaunchValues}
+          onOpenChange={setWorkflowLaunchDialogOpen}
+          onValueChange={handleWorkflowLaunchValueChange}
+          onSubmit={handleWorkflowLaunchConfirm}
         />
-      </>
-    )
-  }
-          </div >
-        </PopoverContent >
-  <EmbeddedModal
-    siteInfo={appDetail?.site}
-    isShow={embeddingModalOpen}
-    onClose={() => setEmbeddingModalOpen(false)}
-    appBaseUrl={appBaseURL}
-    accessToken={accessToken}
-    hiddenInputs={hiddenLaunchVariables}
-  />
-{ showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} /> }
-<WorkflowLaunchDialog
-  t={t}
-  open={workflowLaunchDialogOpen}
-  hiddenVariables={supportedWorkflowLaunchVariables}
-  unsupportedVariables={unsupportedWorkflowLaunchVariables}
-  values={workflowLaunchValues}
-  onOpenChange={setWorkflowLaunchDialogOpen}
-  onValueChange={handleWorkflowLaunchValueChange}
-  onSubmit={handleWorkflowLaunchConfirm}
-/>
-      </Popover >
-  <EvaluationWorkflowSwitchConfirmDialog
-    open={showEvaluationWorkflowSwitchConfirm}
-    targets={evaluationWorkflowSwitchTargets}
-    loading={isConvertingWorkflowType}
-    onOpenChange={handleEvaluationWorkflowSwitchConfirmOpenChange}
-    onConfirm={() => void performWorkflowTypeSwitch()}
-  />
+      </Popover>
+      <EvaluationWorkflowSwitchConfirmDialog
+        open={showEvaluationWorkflowSwitchConfirm}
+        targets={evaluationWorkflowSwitchTargets}
+        loading={isConvertingWorkflowType}
+        onOpenChange={handleEvaluationWorkflowSwitchConfirmOpenChange}
+        onConfirm={() => void performWorkflowTypeSwitch()}
+      />
     </>
   )
 }

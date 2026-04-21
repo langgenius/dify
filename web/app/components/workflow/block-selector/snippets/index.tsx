@@ -1,13 +1,4 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteScroll } from 'ahooks'
-import {
-  memo,
-  useDeferredValue,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import Loading from '@/app/components/base/loading'
 import {
   ScrollAreaContent,
   ScrollAreaRoot,
@@ -20,6 +11,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
+import { useInfiniteScroll } from 'ahooks'
+import {
+  memo,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import Loading from '@/app/components/base/loading'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreateSnippetDialog from '../../create-snippet-dialog'
 import SnippetDetailCard from './snippet-detail-card'
@@ -118,54 +118,54 @@ const Snippets = ({
     <>
       {!snippets.length
         ? (
-          <SnippetEmptyState onCreate={handleOpenCreateSnippetDialog} />
-        )
+            <SnippetEmptyState onCreate={handleOpenCreateSnippetDialog} />
+          )
         : (
-          <ScrollAreaRoot className="relative max-h-[480px] max-w-[500px] overflow-hidden">
-            <ScrollAreaViewport ref={viewportRef}>
-              <ScrollAreaContent className="p-1">
-                {snippets.map((item) => {
-                  const row = (
-                    <SnippetListItem
-                      snippet={item}
-                      isHovered={hoveredSnippetId === item.id}
-                      onClick={() => handleInsertSnippet(item.id)}
-                      onMouseEnter={() => setHoveredSnippetId(item.id)}
-                      onMouseLeave={() => setHoveredSnippetId(current => current === item.id ? null : current)}
-                    />
-                  )
-
-                  if (!item.description)
-                    return <div key={item.id}>{row}</div>
-
-                  return (
-                    <Tooltip key={item.id}>
-                      <TooltipTrigger
-                        delay={0}
-                        render={row}
+            <ScrollAreaRoot className="relative max-h-[480px] max-w-[500px] overflow-hidden">
+              <ScrollAreaViewport ref={viewportRef}>
+                <ScrollAreaContent className="p-1">
+                  {snippets.map((item) => {
+                    const row = (
+                      <SnippetListItem
+                        snippet={item}
+                        isHovered={hoveredSnippetId === item.id}
+                        onClick={() => handleInsertSnippet(item.id)}
+                        onMouseEnter={() => setHoveredSnippetId(item.id)}
+                        onMouseLeave={() => setHoveredSnippetId(current => current === item.id ? null : current)}
                       />
-                      <TooltipContent
-                        placement="left-start"
-                        variant="plain"
-                        className="bg-transparent! p-0!"
-                      >
-                        <SnippetDetailCard snippet={item} />
-                      </TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-                {isFetchingNextPage && (
-                  <div className="flex justify-center px-3 py-2">
-                    <Loading />
-                  </div>
-                )}
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar orientation="vertical">
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
-        )}
+                    )
+
+                    if (!item.description)
+                      return <div key={item.id}>{row}</div>
+
+                    return (
+                      <Tooltip key={item.id}>
+                        <TooltipTrigger
+                          delay={0}
+                          render={row}
+                        />
+                        <TooltipContent
+                          placement="left-start"
+                          variant="plain"
+                          className="bg-transparent! p-0!"
+                        >
+                          <SnippetDetailCard snippet={item} />
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                  {isFetchingNextPage && (
+                    <div className="flex justify-center px-3 py-2">
+                      <Loading />
+                    </div>
+                  )}
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar orientation="vertical">
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
+            </ScrollAreaRoot>
+          )}
       <CreateSnippetDialog
         isOpen={isCreateSnippetDialogOpen}
         isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}

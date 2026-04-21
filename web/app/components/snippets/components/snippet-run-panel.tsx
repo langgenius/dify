@@ -3,6 +3,8 @@
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { InputVar as WorkflowInputVar } from '@/app/components/workflow/types'
 import type { SnippetInputField } from '@/models/snippet'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -12,11 +14,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@langgenius/dify-ui/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   useWorkflowInteractions,
   useWorkflowRun,
@@ -157,7 +157,7 @@ const SnippetRunPanel = ({
       style={{ width: `${panelWidth}px` }}
     >
       <div
-        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -170,26 +170,26 @@ const SnippetRunPanel = ({
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {hasInputTab && (
             <div
-              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] font-semibold leading-[18px] ${currentTab === 'INPUT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'}`}
+              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'INPUT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'}`}
               onClick={() => setSelectedTab('INPUT')}
             >
               {t('input', { ns: 'runLog' })}
             </div>
           )}
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] font-semibold leading-[18px] ${currentTab === 'RESULT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'RESULT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('RESULT')}
           >
             {t('result', { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] font-semibold leading-[18px] ${currentTab === 'DETAIL' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'DETAIL' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('DETAIL')}
           >
             {t('detail', { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] font-semibold leading-[18px] ${currentTab === 'TRACING' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'TRACING' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('TRACING')}
           >
             {t('tracing', { ns: 'runLog' })}
@@ -198,7 +198,7 @@ const SnippetRunPanel = ({
         <div className={`h-0 grow overflow-y-auto rounded-b-2xl ${(currentTab === 'RESULT' || currentTab === 'TRACING') ? '!bg-background-section-burn' : 'bg-components-panel-bg'}`}>
           {currentTab === 'INPUT' && hasInputTab && (
             <>
-              <div className="px-4 pb-2 pt-3">
+              <div className="px-4 pt-3 pb-2">
                 {previewFields.map((field, index) => (
                   <div
                     key={field.variable}

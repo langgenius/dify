@@ -1,10 +1,10 @@
 'use client'
 
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Button } from '@langgenius/dify-ui/button'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import CustomMetricEditorCard from '../custom-metric-editor'
 import { getToneClasses } from '../metric-selector/utils'
@@ -30,7 +30,7 @@ const CustomMetricCard = ({
           <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px]', metricToneClasses.soft)}>
             <span aria-hidden="true" className="i-ri-equalizer-2-line h-3.5 w-3.5" />
           </div>
-          <div className="system-md-medium truncate text-text-secondary">{metric.label}</div>
+          <div className="truncate system-md-medium text-text-secondary">{metric.label}</div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

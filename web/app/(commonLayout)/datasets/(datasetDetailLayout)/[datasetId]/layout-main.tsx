@@ -7,8 +7,6 @@ import {
   RiEqualizer2Line,
   RiFileTextFill,
   RiFileTextLine,
-  RiFlaskFill,
-  RiFlaskLine,
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
@@ -32,6 +30,10 @@ import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use
 type IAppDetailLayoutProps = {
   children: React.ReactNode
   datasetId: string
+}
+
+const EvaluationIcon = ({ className }: { className?: string }) => {
+  return <span aria-hidden className={cn('i-custom-vender-line-others-evaluation', className)} />
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -106,16 +108,16 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           selectedIcon: PipelineFill as RemixiconComponentType,
           disabled: false,
         },
+        ...baseNavigation,
         ...(isRagPipelineDataset && canAccessSnippetsAndEvaluation
           ? [{
               name: t('datasetMenus.evaluation', { ns: 'common' }),
               href: `/datasets/${datasetId}/evaluation`,
-              icon: RiFlaskLine,
-              selectedIcon: RiFlaskFill,
+              icon: EvaluationIcon,
+              selectedIcon: EvaluationIcon,
               disabled: isButtonDisabledWithPipeline,
             }]
           : []),
-        ...baseNavigation,
       ]
     }
 

@@ -1,6 +1,6 @@
 import type { SnippetInputField } from '@/models/snippet'
-import { act, renderHook } from '@testing-library/react'
 import { toast } from '@langgenius/dify-ui/toast'
+import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetInputFieldActions } from '../use-snippet-input-field-actions'
 

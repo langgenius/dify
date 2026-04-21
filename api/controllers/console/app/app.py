@@ -130,6 +130,7 @@ class AppNamePayload(BaseModel):
 
 class AppIconPayload(BaseModel):
     icon: str | None = Field(default=None, description="Icon data")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
@@ -765,7 +766,12 @@ class AppIconApi(Resource):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
+        app_model = app_service.update_app_icon(
+            app_model,
+            args.icon or "",
+            args.icon_background or "",
+            args.icon_type,
+        )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 

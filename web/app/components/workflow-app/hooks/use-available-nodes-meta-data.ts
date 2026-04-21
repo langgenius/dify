@@ -18,7 +18,7 @@ import { useIsChatMode } from './use-is-chat-mode'
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const appType = useAppStore(s => s.appDetail?.type)
+  const appType = useAppStore(s => s.appDetail?.workflow_kind)
   const docLink = useDocLink()
   const isEvaluationWorkflowType = isEvaluationWorkflow(appType)
 

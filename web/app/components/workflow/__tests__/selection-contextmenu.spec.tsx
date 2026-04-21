@@ -39,13 +39,19 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    snippets: {
-      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: {
+      ...actual.consoleClient,
+      snippets: {
+        ...actual.consoleClient.snippets,
+        syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+      },
     },
-  },
-}))
+  }
+})
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
@@ -294,13 +300,22 @@ describe('SelectionContextmenu', () => {
       createEdge({ id: 'e2', source: 'n2', target: 'n3' }),
     ]
 
-    const { store } = renderSelectionMenu({ nodes, edges })
+    const { store } = renderSelectionMenu({
+      nodes,
+      edges,
+      initialStoreState: {
+        workflowCanvasWidth: 800,
+        workflowCanvasHeight: 600,
+      },
+    })
 
     act(() => {
       store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-createSnippet'))
+    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(screen.queryByTestId('selection-contextmenu-item-createSnippet')).not.toBeInTheDocument()
     fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
       target: { value: 'My snippet' },
     })
@@ -340,7 +355,7 @@ describe('SelectionContextmenu', () => {
               selected: false,
             }),
           ],
-          viewport: { x: 0, y: 0, zoom: 1 },
+          viewport: { x: 300, y: 255, zoom: 1 },
         },
       },
     })

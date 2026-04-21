@@ -54,7 +54,7 @@ describe('EditWorkspaceModal', () => {
     expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
   })
 
-  it('should render on the base/ui overlay layer', async () => {
+  it('should render on the dify-ui overlay layer', async () => {
     renderModal()
 
     expect(await screen.findByRole('dialog')).toHaveClass('z-1002')

@@ -1,5 +1,8 @@
+import type { ReactElement } from 'react'
 import type { Model, ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { SystemFeatures } from '@/types/feature'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -59,11 +62,12 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: { trial_models: mockTrialModels.current },
-  }),
-}))
+const renderPopup = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  // The Popup component never inspects trial_models beyond passing them
+  // through, so an opaque string[] is enough; cast to satisfy the
+  // ModelProviderQuotaGetPaid[] declared on SystemFeatures.
+  systemFeatures: { trial_models: mockTrialModels.current as unknown as SystemFeatures['trial_models'] },
+})
 
 const mockTrialCredits = vi.hoisted(() => ({
   credits: 200,
@@ -183,7 +187,7 @@ describe('Popup', () => {
   })
 
   it('should filter models by search and allow clearing search', () => {
-    const { container } = render(
+    const { container } = renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -204,7 +208,7 @@ describe('Popup', () => {
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -216,7 +220,7 @@ describe('Popup', () => {
   })
 
   it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = render(
+    const { container } = renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -236,7 +240,7 @@ describe('Popup', () => {
     ]
 
     mockSupportFunctionCall.mockReturnValue(false)
-    const { unmount } = render(
+    const { unmount } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -248,7 +252,7 @@ describe('Popup', () => {
 
     unmount()
     mockSupportFunctionCall.mockReturnValue(true)
-    const { unmount: unmount2 } = render(
+    const { unmount: unmount2 } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -259,7 +263,7 @@ describe('Popup', () => {
     expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     unmount2()
-    const { unmount: unmount3 } = render(
+    const { unmount: unmount3 } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -270,7 +274,7 @@ describe('Popup', () => {
     expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     unmount3()
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel({ models: [makeModelItem({ features: undefined })] })]}
         onSelect={vi.fn()}
@@ -284,7 +288,7 @@ describe('Popup', () => {
   it('should match model labels from fallback languages when current language key is missing', () => {
     mockLanguage = 'fr_FR'
 
-    render(
+    renderPopup(
       <Popup
         modelList={[
           makeModel({
@@ -323,7 +327,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -350,7 +354,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -380,7 +384,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -393,7 +397,7 @@ describe('Popup', () => {
 
   it('should open provider settings when clicking footer link', () => {
     const onHide = vi.fn()
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -411,7 +415,7 @@ describe('Popup', () => {
 
   it('should show empty state when no providers are configured', () => {
     const onHide = vi.fn()
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -432,7 +436,7 @@ describe('Popup', () => {
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -454,7 +458,7 @@ describe('Popup', () => {
       } as MockContextProvider['system_configuration'],
     })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -479,7 +483,7 @@ describe('Popup', () => {
       } as MockContextProvider['system_configuration'],
     })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -493,7 +497,7 @@ describe('Popup', () => {
   })
 
   it('should toggle marketplace section collapse', () => {
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -518,7 +522,7 @@ describe('Popup', () => {
     ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -541,7 +545,7 @@ describe('Popup', () => {
     ]
     mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -567,7 +571,7 @@ describe('Popup', () => {
     mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
     mockCheck.mockResolvedValue(undefined)
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -593,7 +597,7 @@ describe('Popup', () => {
     ]
     mockMarketplacePlugins.isLoading = true
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -611,7 +615,7 @@ describe('Popup', () => {
   it('should skip install requests when the marketplace plugin cannot be found', async () => {
     mockMarketplacePlugins.current = []
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -627,7 +631,7 @@ describe('Popup', () => {
   })
 
   it('should sort the selected provider to the top when a default model is provided', () => {
-    render(
+    renderPopup(
       <Popup
         defaultModel={{ provider: 'anthropic', model: 'claude-3' }}
         modelList={[

@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// Import mocks
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 
 import { PluginPageContext, usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'
@@ -12,10 +12,6 @@ vi.mock('nuqs', () => ({
     withDefault: vi.fn(() => ({})),
   })),
   useQueryState: vi.fn(() => ['plugins', vi.fn()]),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('../../hooks', () => ({
@@ -29,13 +25,10 @@ vi.mock('../../hooks', () => ({
   ],
 }))
 
-// Helper function to mock useGlobalPublicStore with marketplace setting
-const mockGlobalPublicStore = (enableMarketplace: boolean) => {
-  vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-    const state = { systemFeatures: { enable_marketplace: enableMarketplace } }
-    return selector(state as Parameters<typeof selector>[0])
+const renderWithMarketplace = (ui: ReactElement, enableMarketplace: boolean) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: enableMarketplace },
   })
-}
 
 // Test component that uses the context
 const TestConsumer = () => {
@@ -62,12 +55,11 @@ describe('PluginPageContext', () => {
 
   describe('PluginPageContextProvider', () => {
     it('should provide context values to children', () => {
-      mockGlobalPublicStore(true)
-
-      render(
+      renderWithMarketplace(
         <PluginPageContextProvider>
           <TestConsumer />
         </PluginPageContextProvider>,
+        true,
       )
 
       expect(screen.getByTestId('has-container-ref')).toHaveTextContent('true')
@@ -75,12 +67,11 @@ describe('PluginPageContext', () => {
     })
 
     it('should include marketplace tab when enable_marketplace is true', () => {
-      mockGlobalPublicStore(true)
-
-      render(
+      renderWithMarketplace(
         <PluginPageContextProvider>
           <TestConsumer />
         </PluginPageContextProvider>,
+        true,
       )
 
       expect(screen.getByTestId('option-plugins')).toBeInTheDocument()
@@ -88,12 +79,11 @@ describe('PluginPageContext', () => {
     })
 
     it('should filter out marketplace tab when enable_marketplace is false', () => {
-      mockGlobalPublicStore(false)
-
-      render(
+      renderWithMarketplace(
         <PluginPageContextProvider>
           <TestConsumer />
         </PluginPageContextProvider>,
+        false,
       )
 
       expect(screen.getByTestId('option-plugins')).toBeInTheDocument()
@@ -104,12 +94,11 @@ describe('PluginPageContext', () => {
 
   describe('usePluginPageContext', () => {
     it('should select specific context values', () => {
-      mockGlobalPublicStore(true)
-
-      render(
+      renderWithMarketplace(
         <PluginPageContextProvider>
           <TestConsumer />
         </PluginPageContextProvider>,
+        true,
       )
 
       // activeTab should be 'plugins' from the mock

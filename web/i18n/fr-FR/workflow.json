@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Arrêté par {{user}}",
   "triggerStatus.disabled": "DÉCLENCHEUR • DÉSACTIVÉ",
   "triggerStatus.enabled": "DÉCLENCHEUR",
-  "variableReference.assignedVarsDescription": "Les variables affectées doivent être des variables accessibles en écriture, telles que",
+  "variableReference.assignedVarsDescription": "Les variables affectées doivent être accessibles en écriture, telles que des variables de conversation.",
   "variableReference.conversationVars": "Variables de conversation",
   "variableReference.noAssignedVars": "Aucune variable affectée disponible",
   "variableReference.noAvailableVars": "Aucune variable disponible",

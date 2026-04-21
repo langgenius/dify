@@ -40,13 +40,21 @@ vi.mock('@/app/components/app-sidebar', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name, href, active }: { name: string, href: string, active: boolean }) => (
-    <a
-      aria-current={active ? 'page' : undefined}
-      href={href}
-    >
-      {name}
-    </a>
+  default: ({ name, href, active, disabled }: { name: string, href: string, active: boolean, disabled?: boolean }) => (
+    disabled
+      ? (
+          <button type="button" disabled>
+            {name}
+          </button>
+        )
+      : (
+          <a
+            aria-current={active ? 'page' : undefined}
+            href={href}
+          >
+            {name}
+          </a>
+        )
   ),
 }))
 
@@ -63,6 +71,7 @@ const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail =>
   usage: '42',
   icon: 'emoji',
   iconBackground: '#ffffff',
+  is_published: true,
   ...overrides,
 })
 
@@ -103,6 +112,21 @@ describe('SnippetLayout', () => {
       expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
       expect(screen.getByRole('link', { name: 'snippet.sectionEvaluation' })).toHaveAttribute('href', '/snippets/snippet-1/evaluation')
       expect(screen.getByRole('link', { name: 'snippet.sectionEvaluation' })).toHaveAttribute('aria-current', 'page')
+    })
+
+    it('should disable the evaluation menu when the snippet is unpublished', () => {
+      render(
+        <SnippetLayout
+          snippetId="snippet-1"
+          snippet={createSnippet({ is_published: false })}
+          section="orchestrate"
+        >
+          <div>content</div>
+        </SnippetLayout>,
+      )
+
+      expect(screen.getByRole('button', { name: 'snippet.sectionEvaluation' })).toBeDisabled()
+      expect(screen.queryByRole('link', { name: 'snippet.sectionEvaluation' })).not.toBeInTheDocument()
     })
   })
 })

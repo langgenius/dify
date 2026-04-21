@@ -1,14 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import type { SnippetDetail, SnippetSection } from '@/models/snippet'
-import {
-  RiFlaskFill,
-  RiFlaskLine,
-  RiTerminalWindowFill,
-  RiTerminalWindowLine,
-} from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -25,14 +20,34 @@ type SnippetLayoutProps = {
   snippetId: string
 }
 
+const SidebarCssIcon: FC<{ iconClassName: string, className?: string }> = ({ iconClassName, className }) => {
+  return <span aria-hidden className={cn(iconClassName, className)} />
+}
+
+const OrchestrateIcon = ({ className }: { className?: string }) => {
+  return <SidebarCssIcon iconClassName="i-ri-terminal-window-line" className={className} />
+}
+
+const OrchestrateSelectedIcon = ({ className }: { className?: string }) => {
+  return <SidebarCssIcon iconClassName="i-ri-terminal-window-fill" className={className} />
+}
+
+const EvaluationIcon = ({ className }: { className?: string }) => {
+  return <SidebarCssIcon iconClassName="i-custom-vender-line-others-evaluation" className={className} />
+}
+
+const EvaluationSelectedIcon = ({ className }: { className?: string }) => {
+  return <SidebarCssIcon iconClassName="i-custom-vender-line-others-evaluation" className={className} />
+}
+
 const ORCHESTRATE_ICONS: { normal: NavIcon, selected: NavIcon } = {
-  normal: RiTerminalWindowLine,
-  selected: RiTerminalWindowFill,
+  normal: OrchestrateIcon,
+  selected: OrchestrateSelectedIcon,
 }
 
 const EVALUATION_ICONS: { normal: NavIcon, selected: NavIcon } = {
-  normal: RiFlaskLine,
-  selected: RiFlaskFill,
+  normal: EvaluationIcon,
+  selected: EvaluationSelectedIcon,
 }
 
 const SnippetLayout = ({
@@ -74,6 +89,7 @@ const SnippetLayout = ({
               iconMap={EVALUATION_ICONS}
               href={`/snippets/${snippetId}/evaluation`}
               active={section === 'evaluation'}
+              disabled={!snippet.is_published}
             />
           </>
         )}

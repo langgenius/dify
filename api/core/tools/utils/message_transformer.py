@@ -41,6 +41,10 @@ def safe_json_value(v):
             return v.hex()
     elif isinstance(v, memoryview):
         return v.tobytes().hex()
+    elif isinstance(v, np.integer):
+        return int(v)
+    elif isinstance(v, np.floating):
+        return float(v)
     elif isinstance(v, np.ndarray):
         return v.tolist()
     elif isinstance(v, dict):

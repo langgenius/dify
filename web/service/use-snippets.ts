@@ -29,7 +29,7 @@ type SnippetListParams = {
   is_published?: boolean
 }
 
-type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'icon_info' | 'updated_at'>
+type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'icon_info' | 'updated_at' | 'is_published'>
 
 const DEFAULT_SNIPPET_LIST_PARAMS = {
   page: 1,
@@ -75,6 +75,7 @@ const toSnippetListItem = (snippet: SnippetSummary): SnippetListItemUIModel => {
     usage: String(snippet.use_count ?? 0),
     icon: getSnippetIcon(snippet.icon_info),
     iconBackground: getSnippetIconBackground(snippet.icon_info),
+    is_published: snippet.is_published,
     status: undefined,
   }
 }
