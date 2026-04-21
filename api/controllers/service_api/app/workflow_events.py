@@ -106,7 +106,7 @@ class WorkflowEventsApi(Resource):
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
-            terminal_events = ["workflow_finished"] if continue_on_pause else None
+            terminal_events = [] if continue_on_pause else None
 
             def _generate_stream_events():
                 if include_state_snapshot:
