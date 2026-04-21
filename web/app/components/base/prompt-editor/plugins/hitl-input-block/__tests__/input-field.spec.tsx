@@ -385,4 +385,37 @@ describe('InputField', () => {
       },
     })
   })
+
+  it('should preserve constant and variable select sources when toggling', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-10"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-select' }))
+    await user.click(screen.getByRole('button', { name: 'config-select' }))
+    await user.click(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i))
+    await user.click(screen.getByText('pick-variable'))
+    await user.click(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.select,
+      output_variable_name: 'valid_name',
+      option_source: {
+        type: 'constant',
+        selector: ['node-a', 'var-a'],
+        value: ['alpha', 'beta'],
+      },
+    })
+  })
 })

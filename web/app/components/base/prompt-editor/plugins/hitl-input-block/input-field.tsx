@@ -2,6 +2,7 @@ import type { Item as TypeSelectItem } from '@/app/components/app/configuration/
 import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -9,15 +10,17 @@ import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import {
   createDefaultFormInputByType,
   createDefaultParagraphFormInput,
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import PrePopulate from './pre-populate'
+import TypeSwitch from './type-switch'
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
@@ -116,6 +119,35 @@ const InputField: React.FC<InputFieldProps> = ({
       }
     })
   }, [])
+  const handleSelectOptionSourceTypeChange = useCallback((isVariable: boolean) => {
+    setTempPayload((prev) => {
+      if (!isSelectFormInput(prev))
+        return prev
+
+      return {
+        ...prev,
+        option_source: {
+          ...prev.option_source,
+          type: isVariable ? 'variable' : 'constant',
+        },
+      }
+    })
+  }, [])
+  const handleSelectOptionSourceSelectorChange = useCallback((selector: ValueSelector | string) => {
+    setTempPayload((prev) => {
+      if (!isSelectFormInput(prev))
+        return prev
+
+      return {
+        ...prev,
+        option_source: {
+          ...prev.option_source,
+          type: 'variable',
+          selector: selector as ValueSelector,
+        },
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -188,10 +220,38 @@ const InputField: React.FC<InputFieldProps> = ({
           <div className="mb-1.5 system-xs-medium text-text-secondary">
             {t('variableConfig.options', { ns: 'appDebug' })}
           </div>
-          <ConfigSelect
-            options={tempPayload.option_source.value}
-            onChange={handleSelectOptionsChange}
-          />
+          {tempPayload.option_source.type === 'variable'
+            ? (
+                <div className="relative rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
+                  <VarReferencePicker
+                    nodeId={nodeId}
+                    value={tempPayload.option_source.selector}
+                    onChange={handleSelectOptionSourceSelectorChange}
+                    readonly={false}
+                    isJustShowValue
+                    zIndex={1000000}
+                    filterVar={varPayload => varPayload.type === VarType.arrayString}
+                  />
+                  <TypeSwitch
+                    className="absolute bottom-1 left-1.5"
+                    isVariable
+                    onIsVariableChange={handleSelectOptionSourceTypeChange}
+                  />
+                </div>
+              )
+            : (
+                <div className={cn('rounded-lg border border-transparent bg-components-input-bg-normal p-2')}>
+                  <ConfigSelect
+                    options={tempPayload.option_source.value}
+                    onChange={handleSelectOptionsChange}
+                  />
+                  <TypeSwitch
+                    className="mt-2"
+                    isVariable={false}
+                    onIsVariableChange={handleSelectOptionSourceTypeChange}
+                  />
+                </div>
+              )}
         </div>
       )}
       <div className="mt-4 flex justify-end space-x-2">
