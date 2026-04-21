@@ -7,11 +7,13 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
+import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
 import {
   createDefaultFormInputByType,
   createDefaultParagraphFormInput,
   isParagraphFormInput,
+  isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
@@ -99,6 +101,21 @@ const InputField: React.FC<InputFieldProps> = ({
       setTempPayload(nextValue)
     }
   }, [paragraphPayload])
+  const handleSelectOptionsChange = useCallback((options: string[]) => {
+    setTempPayload((prev) => {
+      if (!isSelectFormInput(prev))
+        return prev
+
+      return {
+        ...prev,
+        option_source: {
+          ...prev.option_source,
+          type: 'constant',
+          value: options,
+        },
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -163,6 +180,17 @@ const InputField: React.FC<InputFieldProps> = ({
             onValueSelectorChange={handleDefaultValueChange('selector')}
             value={paragraphPayload.default.value}
             onValueChange={handleDefaultValueChange('value')}
+          />
+        </div>
+      )}
+      {isSelectFormInput(tempPayload) && (
+        <div className="mt-4">
+          <div className="mb-1.5 system-xs-medium text-text-secondary">
+            {t('variableConfig.options', { ns: 'appDebug' })}
+          </div>
+          <ConfigSelect
+            options={tempPayload.option_source.value}
+            onChange={handleSelectOptionsChange}
           />
         </div>
       )}

@@ -38,6 +38,15 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal/type-select'
   ),
 }))
 
+vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
+  __esModule: true,
+  default: ({ onChange }: { onChange: (options: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['alpha', 'beta'])}>
+      config-select
+    </button>
+  ),
+}))
+
 const createPayload = (overrides?: Partial<FormInputItem>): FormInputItem => ({
   type: InputVarType.paragraph,
   output_variable_name: 'valid_name',
@@ -345,5 +354,35 @@ describe('InputField', () => {
 
     await user.click(screen.getByRole('button', { name: 'select-paragraph' }))
     expect(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).toBeInTheDocument()
+  })
+
+  it('should save constant select options', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-9"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-select' }))
+    await user.click(screen.getByRole('button', { name: 'config-select' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.select,
+      output_variable_name: 'valid_name',
+      option_source: {
+        type: 'constant',
+        selector: [],
+        value: ['alpha', 'beta'],
+      },
+    })
   })
 })
