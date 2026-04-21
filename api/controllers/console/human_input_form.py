@@ -30,13 +30,9 @@ from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from controllers.common.human_input import HumanInputFormSubmitPayload
 
 logger = logging.getLogger(__name__)
-
-
-class HumanInputFormSubmitPayload(BaseModel):
-    inputs: dict
-    action: str
 
 
 def _jsonify_form_definition(form: Form) -> Response:

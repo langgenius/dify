@@ -22,13 +22,10 @@ from core.workflow.human_input_policy import HumanInputSurface, is_recipient_typ
 from extensions.ext_database import db
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from controllers.common.human_input import HumanInputFormSubmitPayload
+
 
 logger = logging.getLogger(__name__)
-
-
-class HumanInputFormSubmitPayload(BaseModel):
-    inputs: dict[str, Any]
-    action: str
 
 
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)

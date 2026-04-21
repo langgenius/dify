@@ -22,13 +22,9 @@ from libs.helper import RateLimiter, extract_remote_ip
 from models.account import TenantStatus
 from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from controllers.common.human_input import HumanInputFormSubmitPayload
 
 logger = logging.getLogger(__name__)
-
-
-class HumanInputFormSubmitPayload(BaseModel):
-    inputs: dict
-    action: str
 
 
 _FORM_SUBMIT_RATE_LIMITER = RateLimiter(
