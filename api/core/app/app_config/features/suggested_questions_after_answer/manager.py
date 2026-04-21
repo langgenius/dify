@@ -45,14 +45,10 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         if not isinstance(config["suggested_questions_after_answer"]["enabled"], bool):
             raise ValueError("enabled in suggested_questions_after_answer must be of boolean type")
 
-        if "prompt" in config["suggested_questions_after_answer"] and not isinstance(
-            config["suggested_questions_after_answer"]["prompt"], str
-        ):
+        prompt = config["suggested_questions_after_answer"].get("prompt")
+        if prompt is not None and not isinstance(prompt, str):
             raise ValueError("prompt in suggested_questions_after_answer must be of string type")
-        if (
-            "prompt" in config["suggested_questions_after_answer"]
-            and len(config["suggested_questions_after_answer"]["prompt"]) > CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH
-        ):
+        if isinstance(prompt, str) and len(prompt) > CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH:
             raise ValueError(
                 f"prompt in suggested_questions_after_answer must be less than or equal to "
                 f"{CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH} characters"
