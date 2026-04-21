@@ -1,4 +1,7 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useMemo } from 'react'
@@ -7,11 +10,8 @@ import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { CrawlStep } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 
 const I18N_PREFIX = 'stepOne.website'
 
@@ -43,7 +43,7 @@ const Options = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

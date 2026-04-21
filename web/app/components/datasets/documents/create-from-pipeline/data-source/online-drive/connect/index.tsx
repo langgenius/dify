@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-import { Button } from '@/app/components/base/ui/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -20,7 +20,7 @@ const Connect = ({
 
   return (
     <div className="flex flex-col items-start gap-y-2 rounded-xl bg-workflow-process-bg p-6">
-      <div className="flex size-12 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg shadow-shadow-shadow-5">
+      <div className="flex size-12 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg shadow-shadow-shadow-5">
         <BlockIcon
           type={BlockEnum.DataSource}
           toolIcon={toolIcon}

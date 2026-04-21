@@ -1,8 +1,8 @@
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 
 
 class _VarSeg:
@@ -78,19 +78,16 @@ def test_datasource_node_delegates_to_manager_stream(mocker):
     mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
 
     node = DatasourceNode(
-        id="n",
-        config={
-            "id": "n",
-            "data": {
-                "type": "datasource",
-                "version": "1",
-                "title": "Datasource",
-                "provider_type": "plugin",
-                "provider_name": "p",
-                "plugin_id": "plug",
-                "datasource_name": "ds",
-            },
-        },
+        node_id="n",
+        config=DatasourceNodeData(
+            type="datasource",
+            version="1",
+            title="Datasource",
+            provider_type="plugin",
+            provider_name="p",
+            plugin_id="plug",
+            datasource_name="ds",
+        ),
         graph_init_params=gp,
         graph_runtime_state=gs,
     )

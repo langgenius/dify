@@ -68,7 +68,7 @@ describe('PortalToFollowElem', () => {
           <PortalToFollowElemTrigger>Trigger Text</PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
-      expect(getByText('Trigger Text')).toBeInTheDocument()
+      expect(getByText('Trigger Text'))!.toBeInTheDocument()
     })
 
     it('should handle asChild prop correctly', () => {
@@ -80,7 +80,7 @@ describe('PortalToFollowElem', () => {
         </PortalToFollowElem>,
       )
 
-      expect(getByRole('button')).toHaveTextContent('Button Trigger')
+      expect(getByRole('button'))!.toHaveTextContent('Button Trigger')
     })
   })
 
@@ -104,7 +104,7 @@ describe('PortalToFollowElem', () => {
         </PortalToFollowElem>,
       )
 
-      expect(getByText('Popup Content')).toBeInTheDocument()
+      expect(getByText('Popup Content'))!.toBeInTheDocument()
     })
   })
 
@@ -161,7 +161,7 @@ describe('PortalToFollowElem', () => {
         }]
       }
 
-      const sizeMiddleware = useFloatingMock.mock.calls[0][0].middleware.find(
+      const sizeMiddleware = useFloatingMock.mock.calls[0]![0].middleware.find(
         (m: { name: string }) => m.name === 'size',
       ) as SizeMiddleware
       expect(sizeMiddleware).toBeDefined()
@@ -193,7 +193,7 @@ describe('PortalToFollowElem', () => {
           </PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
-      expect(getByRole('button')).toHaveAttribute('data-state', 'open')
+      expect(getByRole('button'))!.toHaveAttribute('data-state', 'open')
     })
 
     it('should handle missing ref on child', () => {
@@ -204,7 +204,7 @@ describe('PortalToFollowElem', () => {
           </PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
-      expect(getByRole('button')).toBeInTheDocument()
+      expect(getByRole('button'))!.toBeInTheDocument()
     })
   })
 
@@ -223,7 +223,7 @@ describe('PortalToFollowElem', () => {
         </PortalToFollowElem>,
       )
 
-      expect(getByTestId('content')).toHaveStyle('visibility: hidden')
+      expect(getByTestId('content'))!.toHaveStyle('visibility: hidden')
       mockFloatingData = {}
     })
   })

@@ -1,3 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -7,10 +10,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { submitHumanInputForm } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 import {
   useWorkflowInteractions,
 } from '../hooks'

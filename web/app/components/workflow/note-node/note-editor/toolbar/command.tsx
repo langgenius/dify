@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiBold,
   RiItalic,
@@ -11,7 +12,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
 

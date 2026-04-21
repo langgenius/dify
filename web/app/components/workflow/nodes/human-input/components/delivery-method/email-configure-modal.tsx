@@ -3,6 +3,9 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine, RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { memo, useCallback, useState } from 'react'
@@ -10,9 +13,6 @@ import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -123,8 +123,8 @@ const EmailConfigureModal = ({
           />
         </div>
         <Divider className="my-0! mt-5! h-px!" />
-        <div className="flex items-start justify-between gap-2 radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
-          <div className="radius-xs border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
+        <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
             <RiBugLine className="h-3.5 w-3.5 text-text-primary-on-surface" />
           </div>
           <div className="grow space-y-1">
@@ -140,8 +140,8 @@ const EmailConfigureModal = ({
             </div>
           </div>
           <Switch
-            value={debugMode}
-            onChange={checked => setDebugMode(checked)}
+            checked={debugMode}
+            onCheckedChange={checked => setDebugMode(checked)}
           />
         </div>
       </div>

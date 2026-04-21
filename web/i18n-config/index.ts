@@ -10,7 +10,7 @@ export const i18n = {
   locales: LanguagesSupported,
 } as const
 
-export { Locale }
+export type { Locale }
 
 export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
   Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365 })
@@ -26,5 +26,5 @@ export const renderI18nObject = (obj: Record<string, string>, language: string) 
     return obj[language]
   if (obj?.en_US)
     return obj.en_US
-  return Object.values(obj)[0]
+  return Object.values(obj)[0]!
 }

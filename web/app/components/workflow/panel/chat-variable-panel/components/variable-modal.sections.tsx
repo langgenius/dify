@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ObjectValueItem } from './variable-modal.helpers'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiDraftLine, RiInputField } from '@remixicon/react'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '../type'
@@ -178,7 +178,7 @@ export const ValueSection = ({
         />
       )}
       {editInJSON && (
-        <div className="w-full radius-lg bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
+        <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
           <CodeEditor
             isExpand
             noWrapper

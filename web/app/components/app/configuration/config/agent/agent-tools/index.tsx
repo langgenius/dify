@@ -4,6 +4,9 @@ import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -20,9 +23,7 @@ import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { CollectionType } from '@/app/components/tools/types'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -32,7 +33,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 
@@ -298,10 +298,10 @@ const AgentTools: FC = () => {
                 <div className={cn(item.isDeleted && 'opacity-50')}>
                   {!item.notAuthor && (
                     <Switch
-                      value={item.isDeleted ? false : item.enabled}
+                      checked={item.isDeleted ? false : item.enabled}
                       disabled={item.isDeleted || readonly}
                       size="md"
-                      onChange={(enabled) => {
+                      onCheckedChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           (draft.agentConfig.tools[index] as any).enabled = enabled
                         })

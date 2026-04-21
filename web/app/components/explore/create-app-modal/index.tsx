@@ -1,5 +1,8 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -9,10 +12,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -166,8 +166,8 @@ const CreateAppModal = ({
               <div className="flex items-center justify-between">
                 <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  value={useIconAsAnswerIcon}
-                  onChange={v => setUseIconAsAnswerIcon(v)}
+                  checked={useIconAsAnswerIcon}
+                  onCheckedChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
               <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>

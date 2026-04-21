@@ -2,6 +2,8 @@
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -13,7 +15,6 @@ import ActionButton from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-import { Button } from '@/app/components/base/ui/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -28,7 +29,6 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   showBackButton?: boolean

@@ -1,13 +1,13 @@
 import type { NodeProps } from 'reactflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { cn } from '@/utils/classnames'
 import { useReplaceDataSourceNode } from './hooks'
 
 const DataSourceEmptyNode = ({ id, data }: NodeProps) => {

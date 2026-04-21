@@ -1,7 +1,5 @@
 from typing import Any
 
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
-
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
     AdvancedChatPromptTemplateEntity,
@@ -9,6 +7,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.simple_prompt_transform import ModelMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode, AppModelConfigDict
 
 

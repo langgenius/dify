@@ -35,7 +35,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
       const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
       if (currentIndex > -1) {
         draft.tracing![currentIndex] = {
-          ...draft.tracing![currentIndex],
+          ...draft.tracing![currentIndex]!,
           status: NodeRunningStatus.Paused,
         }
       }
@@ -49,7 +49,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
     const newNodes = produce(nodes, (draft) => {
-      draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Paused
+      draft[currentNodeIndex]!.data._runningStatus = NodeRunningStatus.Paused
     })
     setNodes(newNodes)
   }, [store, workflowStore])

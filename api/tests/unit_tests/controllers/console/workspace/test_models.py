@@ -2,8 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 from controllers.console.workspace.models import (
     DefaultModelApi,
@@ -16,6 +14,8 @@ from controllers.console.workspace.models import (
     ModelProviderModelParameterRuleApi,
     ModelProviderModelValidateApi,
 )
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
 def unwrap(func):

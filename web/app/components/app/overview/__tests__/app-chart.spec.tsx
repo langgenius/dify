@@ -58,10 +58,10 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('Cost title')).toBeInTheDocument()
-      expect(screen.getByText('300')).toBeInTheDocument()
-      expect(screen.getByText(/\$3\.7500/)).toBeInTheDocument()
-      expect(screen.getByTestId('echarts')).toBeInTheDocument()
+      expect(screen.getByText('Cost title'))!.toBeInTheDocument()
+      expect(screen.getByText('300'))!.toBeInTheDocument()
+      expect(screen.getByText(/\$3\.7500/))!.toBeInTheDocument()
+      expect(screen.getByTestId('echarts'))!.toBeInTheDocument()
     })
   })
 
@@ -85,10 +85,10 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('analysis.totalMessages.title')).toBeInTheDocument()
-      expect(screen.getByTestId('echarts')).toBeInTheDocument()
+      expect(screen.getByText('analysis.totalMessages.title'))!.toBeInTheDocument()
+      expect(screen.getByTestId('echarts'))!.toBeInTheDocument()
 
-      const options = reactEChartsMock.mock.calls[0][0] as {
+      const options = reactEChartsMock.mock.calls[0]![0] as {
         dataset: { source: Array<Record<string, unknown>> }
         yAxis: { max: number }
       }

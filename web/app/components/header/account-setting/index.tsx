@@ -1,10 +1,11 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
-import { Button } from '@/app/components/base/ui/button'
-import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -15,7 +16,6 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
@@ -130,7 +130,7 @@ export default function AccountSetting({
       ],
     },
   ]
-  const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
+  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 

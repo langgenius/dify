@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDetail } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -8,6 +9,7 @@ import {
   RiHardDrive3Line,
   RiLoginCircleLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,10 +17,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
@@ -85,7 +86,10 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
@@ -105,7 +109,7 @@ const PluginItem: FC<Props> = ({
       }}
     >
       <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
-        <CornerMark text={categoriesMap[category].label} />
+        <CornerMark text={categoriesMap[category]!.label} />
         {/* Header */}
         <div className="flex">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
@@ -154,7 +158,7 @@ const PluginItem: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className="mb-1 mt-1.5 flex h-4 items-center gap-x-2 px-4">
+      <div className="mt-1.5 mb-1 flex h-4 items-center gap-x-2 px-4">
         {/* Organization & Name */}
         <div className="flex grow items-center overflow-hidden">
           <OrgInfo
@@ -164,8 +168,8 @@ const PluginItem: FC<Props> = ({
           />
           {category === PluginCategoryEnum.extension && (
             <>
-              <div className="mx-2 text-text-quaternary system-xs-regular">·</div>
-              <div className="flex items-center gap-x-1 overflow-hidden text-text-tertiary system-xs-regular">
+              <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
+              <div className="flex items-center gap-x-1 overflow-hidden system-xs-regular text-text-tertiary">
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
@@ -183,7 +187,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="text-text-tertiary system-2xs-medium-uppercase">{t('from', { ns: 'plugin' })}</div>
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="h-3 w-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
@@ -196,7 +200,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
-                  <div className="text-text-tertiary system-2xs-medium-uppercase">
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">
                     {t('from', { ns: 'plugin' })}
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
@@ -210,7 +214,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <div className="flex items-center gap-1">
                   <RiHardDrive3Line className="h-3 w-3 text-text-tertiary" />
-                  <div className="text-text-tertiary system-2xs-medium-uppercase">Local Plugin</div>
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
                 </div>
               </>
             )}
@@ -219,7 +223,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <div className="flex items-center gap-1">
                   <RiBugLine className="h-3 w-3 text-text-warning" />
-                  <div className="text-text-warning system-2xs-medium-uppercase">Debugging Plugin</div>
+                  <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
                 </div>
               </>
             )}
@@ -236,7 +240,7 @@ const PluginItem: FC<Props> = ({
       </div>
       {/* BG Effect for Deprecated Plugin */}
       {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-        <div className="absolute bottom-[-71px] right-[-45px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
+        <div className="absolute right-[-45px] bottom-[-71px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
   )
