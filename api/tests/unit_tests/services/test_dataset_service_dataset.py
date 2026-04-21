@@ -1222,7 +1222,6 @@ class TestDatasetCollectionBindingService:
 class TestDatasetPermissionService:
     """Unit tests for dataset partial-member management helpers."""
 
-<<<<<<< olive-34392
     def test_get_dataset_partial_member_list_returns_scalar_results(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalars.return_value.all.return_value = ["user-1", "user-2"]
@@ -1254,9 +1253,6 @@ class TestDatasetPermissionService:
         mock_db.session.add_all.assert_called_once()
         inserted_permissions = mock_db.session.add_all.call_args.args[0]
         assert [permission.account_id for permission in inserted_permissions] == ["user-1", "user-2"]
-
-=======
->>>>>>> main
     def test_update_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.add_all.side_effect = RuntimeError("boom")
