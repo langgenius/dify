@@ -5,7 +5,8 @@
     ".venv",
     "migrations/",
     "core/rag",
-    "providers/"
+    "providers/vdb/",
+    "providers/trace/*/tests",
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [

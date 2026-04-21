@@ -1,12 +1,14 @@
 """Primarily used for testing merged cell scenarios"""
 
+import gc
 import io
 import os
 import tempfile
+import warnings
 from collections import UserDict
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from docx import Document
@@ -354,13 +356,44 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_del_closes_temp_file():
+def test_close_closes_temp_file():
     extractor = object.__new__(WordExtractor)
+    extractor._closed = False
     extractor.temp_file = MagicMock()
 
-    WordExtractor.__del__(extractor)
+    extractor.close()
 
     extractor.temp_file.close.assert_called_once()
+
+
+def test_close_is_idempotent():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+
+    extractor.close()
+    extractor.close()
+
+    extractor.temp_file.close.assert_called_once()
+
+
+def test_close_handles_async_close_mock():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+    extractor.temp_file.close = AsyncMock()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        extractor.close()
+        gc.collect()
+
+    extractor.temp_file.close.assert_called_once()
+    assert not [
+        warning
+        for warning in caught
+        if issubclass(warning.category, RuntimeWarning) and "AsyncMockMixin._execute_mock_call" in str(warning.message)
+    ]
 
 
 def test_extract_images_handles_invalid_external_cases(monkeypatch):

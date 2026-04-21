@@ -7,10 +7,9 @@ import re
 from collections.abc import Set as AbstractSet
 from typing import Any, Literal
 
-from graphon.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
-
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
+from graphon.model_runtime.model_providers.base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
@@ -41,7 +40,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
             return [len(text) for text in texts]
 
-        _ = _token_encoder  # not yet wired as length_function, kept for future use
+        _ = _token_encoder  # kept for future token-length wiring
         return cls(length_function=_character_encoder, **kwargs)
 
 

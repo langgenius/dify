@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { Memory } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
-import { Slider } from '@/app/components/base/ui/slider'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { cn } from '@/utils/classnames'
 import { MemoryRole } from '../../../types'
 
 const i18nPrefix = 'nodes.common.memory'
@@ -136,8 +136,8 @@ const MemoryConfig: FC<Props> = ({
         tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
         operations={(
           <Switch
-            value={!!payload}
-            onChange={handleMemoryEnabledChange}
+            checked={!!payload}
+            onCheckedChange={handleMemoryEnabledChange}
             size="md"
             disabled={readonly}
           />
@@ -149,12 +149,12 @@ const MemoryConfig: FC<Props> = ({
             <div className="flex justify-between">
               <div className="flex h-8 items-center space-x-2">
                 <Switch
-                  value={payload?.window?.enabled}
-                  onChange={handleWindowEnabledChange}
+                  checked={payload?.window?.enabled}
+                  onCheckedChange={handleWindowEnabledChange}
                   size="md"
                   disabled={readonly}
                 />
-                <div className="text-text-tertiary system-xs-medium-uppercase">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
+                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
               </div>
               <div className="flex h-8 items-center space-x-2">
                 <Slider
@@ -183,7 +183,7 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className="mt-4">
-                <div className="text-xs font-medium uppercase leading-6 text-text-tertiary">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
+                <div className="text-xs leading-6 font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
                 <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}

@@ -76,7 +76,7 @@ export const useChatLayout = ({ chatList, sidebarCollapseState }: UseChatLayoutO
     if (chatFooterRef.current && chatContainerRef.current) {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { blockSize } = entry.borderBoxSize[0]
+          const { blockSize } = entry.borderBoxSize[0]!
           chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
           handleScrollToBottom()
         }
@@ -85,7 +85,7 @@ export const useChatLayout = ({ chatList, sidebarCollapseState }: UseChatLayoutO
 
       const resizeFooterObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
+          const { inlineSize } = entry.borderBoxSize[0]!
           chatFooterRef.current!.style.width = `${inlineSize}px`
         }
       })

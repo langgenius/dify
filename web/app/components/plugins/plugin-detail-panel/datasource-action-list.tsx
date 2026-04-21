@@ -1,5 +1,5 @@
 // import { useAppContext } from '@/context/app-context'
-// import Button from '@/app/components/base/button'
+// import { Button } from '@langgenius/dify-ui/button'
 // import Indicator from '@/app/components/header/indicator'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
 // import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
@@ -49,9 +49,9 @@ const ActionList = ({
     return null
 
   return (
-    <div className="px-4 pb-4 pt-2">
+    <div className="px-4 pt-2 pb-4">
       <div className="mb-1 py-1">
-        <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+        <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
           {t('detailPanel.actionNum', { ns: 'plugin', num: data.length, action: data.length > 1 ? 'actions' : 'action' })}
           {/* {provider.is_team_authorization && provider.allow_delete && (
             <Button

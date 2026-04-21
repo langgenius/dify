@@ -2,16 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
 
 import pytest
-from graphon.file import FileTransferMethod, FileType
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.nodes.human_input.entities import HumanInputNodeData
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -30,6 +26,10 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from tests.workflow_test_utils import build_test_run_context
 
 

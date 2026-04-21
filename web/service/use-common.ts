@@ -21,9 +21,19 @@ import type {
   UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
+
+/**
+ * True iff `err` is a 401 Response thrown by `service/base.ts`.
+ *
+ * Narrow on purpose: oRPC throws `ORPCError`, not `Response`, so this predicate
+ * returns `false` for oRPC 401s. Naming makes that scope visible. If you need
+ * 401 detection for an oRPC path, add a separate `isOrpc401` helper.
+ */
+export const isLegacyBase401 = (err: unknown): boolean =>
+  err instanceof Response && err.status === 401
 
 const NAME_SPACE = 'common'
 
@@ -35,7 +45,6 @@ export const commonQueryKeys = {
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
-  isLogin: [NAME_SPACE, 'is-login'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
@@ -74,11 +83,25 @@ type UserProfileWithMeta = {
   }
 }
 
-export const useUserProfile = () => {
-  return useQuery<UserProfileWithMeta>({
+/**
+ * Session probe for `/account/profile`. Helper (not hook) because oRPC can't
+ * express the `x-version` / `x-env` response headers we post-process.
+ *
+ * Bindings:
+ *   commonLayout -> `useSuspenseQuery(userProfileQueryOptions())`
+ *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !isLegacyBase401(err) })`
+ *
+ * `silent: true` + `retry: !isLegacyBase401` makes 401 a synchronous *state* (no toast,
+ * no ~7s retry storm). Transient errors still get the default 3 retries.
+ */
+export const userProfileQueryOptions = () =>
+  queryOptions<UserProfileWithMeta>({
     queryKey: commonQueryKeys.userProfile,
     queryFn: async () => {
-      const response = await get<Response>('/account/profile', {}, { needAllResponseContent: true }) as Response
+      const response = await get<Response>('/account/profile', {}, {
+        needAllResponseContent: true,
+        silent: true,
+      }) as Response
       const profile = await response.clone().json() as UserProfileResponse
       return {
         profile,
@@ -92,8 +115,8 @@ export const useUserProfile = () => {
     },
     staleTime: 0,
     gcTime: 0,
+    retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
   })
-}
 
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
   return useQuery<LangGeniusVersionResponse>({
@@ -205,34 +228,21 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
-type isLogin = {
-  logged_in: boolean
-}
-
-export const useIsLogin = () => {
-  return useQuery<isLogin>({
-    queryKey: commonQueryKeys.isLogin,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async (): Promise<isLogin> => {
-      try {
-        await get('/account/profile', {}, {
-          silent: true,
-        })
-        return { logged_in: true }
-      }
-      catch {
-        // Any error (401, 500, network error, etc.) means not logged in
-        return { logged_in: false }
-      }
-    },
-  })
-}
-
 export const useLogout = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+    onSuccess: () => {
+      // Drop all cached queries so the post-logout /signin probe doesn't read
+      // the previous user's profile (the userProfile queryKey is shared with
+      // the (commonLayout) tree, which keeps observing it during React's
+      // concurrent transition — gcTime: 0 is not enough on its own).
+      // Nuclear over targeted: every new user-scoped query would otherwise
+      // need to be remembered here. systemFeatures (user-agnostic) just
+      // refetches once on the way to /signin, which is cheap.
+      queryClient.clear()
+    },
   })
 }
 

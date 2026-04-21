@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -59,7 +59,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
   }
   return (
     <Modal isShow={isShow} onClose={onHide} className="!mt-14 !w-[640px] !max-w-none !p-6">
-      <div className="mb-2 text-text-primary title-2xl-semi-bold">
+      <div className="mb-2 title-2xl-semi-bold text-text-primary">
         {t(`initSetup.${isInit ? 'title' : 'configTitle'}`, { ns: 'appAnnotation' })}
       </div>
 

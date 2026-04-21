@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiPlayList2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import HumanInputFilledFormList from '@/app/components/base/chat/chat/answer/human-input-filled-form-list'
 import HumanInputFormList from '@/app/components/base/chat/chat/answer/human-input-form-list'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
-import { cn } from '@/utils/classnames'
 import ResultTab from './result-tab'
 import { getGenerationTaskLabel } from './utils'
 

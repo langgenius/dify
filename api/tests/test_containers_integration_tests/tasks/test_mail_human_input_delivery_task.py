@@ -3,9 +3,6 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
-from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import HumanInputNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
 from sqlalchemy import delete
 
 from configs import dify_config
@@ -13,7 +10,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -21,6 +18,9 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
 )
 from extensions.ext_storage import storage
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient

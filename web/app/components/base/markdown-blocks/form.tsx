@@ -1,8 +1,9 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
-import type { ButtonProps } from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import Button from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
@@ -10,7 +11,6 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -240,7 +240,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={str(child.properties.htmlFor || child.properties.name)}
-              className="my-2 text-text-secondary system-md-semibold"
+              className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
               {getTextContent(child)}
@@ -316,7 +316,10 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 </SelectTrigger>
                 <SelectContent>
                   {options.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -7,7 +7,6 @@ from enum import IntEnum, auto
 from typing import Any
 
 from cachetools import TTLCache, cachedmethod
-from graphon.runtime import GraphRuntimeState
 from redis.exceptions import RedisError
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -22,6 +21,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import redis_client
+from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 

@@ -22,7 +22,7 @@ export function CssTransform(cssString: string): object {
   for (const pair of propertyValuePairs) {
     if (pair.trim().length > 0) {
       const [property, value] = pair.split(':')
-      Object.assign(style, { [property.trim()]: value.trim() })
+      Object.assign(style, { [property!.trim()]: value!.trim() })
     }
   }
   return style

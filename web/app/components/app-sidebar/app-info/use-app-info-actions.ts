@@ -1,14 +1,14 @@
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { useCallback, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -47,6 +47,56 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     setActiveModal(null)
   }, [])
 
+  const emitAppMetaUpdate = useCallback(() => {
+    if (!appDetail?.id)
+      return
+
+    void import('@/app/components/workflow/collaboration/core/websocket-manager')
+      .then(({ webSocketClient }) => {
+        const socket = webSocketClient.getSocket(appDetail.id)
+        if (!socket)
+          return
+        socket.emit('collaboration_event', {
+          type: 'app_meta_update',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now(),
+        })
+      })
+      .catch(() => { })
+  }, [appDetail?.id])
+
+  useEffect(() => {
+    if (!appDetail?.id)
+      return
+
+    let unsubscribe: (() => void) | null = null
+    let disposed = false
+
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        if (disposed)
+          return
+
+        unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+          try {
+            const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+            if (disposed)
+              return
+            setAppDetail({ ...res })
+          }
+          catch (error) {
+            console.error('failed to refresh app detail from collaboration update:', error)
+          }
+        })
+      })
+      .catch(() => { })
+
+    return () => {
+      disposed = true
+      unsubscribe?.()
+    }
+  }, [appDetail?.id, setAppDetail])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -72,11 +122,12 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       closeModal()
       toast(t('editDone', { ns: 'app' }), { type: 'success' })
       setAppDetail(app)
+      emitAppMetaUpdate()
     }
     catch {
       toast(t('editFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, setAppDetail, t])
+  }, [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -132,7 +183,6 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const handleConfirmExport = useCallback(async () => {
     if (!appDetail)
       return
-    closeModal()
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -144,6 +194,9 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     }
     catch {
       toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+    }
+    finally {
+      closeModal()
     }
   }, [appDetail, closeModal, onExport, t])
 

@@ -1,15 +1,15 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 
 type CardProps = {
   apiEnabled: boolean
@@ -60,8 +60,8 @@ const Card = ({
               </div>
             </div>
             <Switch
-              value={apiEnabled}
-              onChange={onToggle}
+              checked={apiEnabled}
+              onCheckedChange={onToggle}
               disabled={!isCurrentWorkspaceManager}
             />
           </div>
@@ -79,7 +79,7 @@ const Card = ({
           className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
           <RiBookOpenLine className="size-3.5 shrink-0" />
-          <div className="system-sm-regular grow truncate">
+          <div className="grow truncate system-sm-regular">
             {t('overview.apiInfo.doc', { ns: 'appOverview' })}
           </div>
           <RiArrowRightUpLine className="size-3.5 shrink-0" />
