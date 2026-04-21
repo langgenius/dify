@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 from collections import defaultdict
 from collections.abc import Sequence
+from contextvars import ContextVar
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from contexts.wrapper import RecyclableContextVar
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -59,6 +61,28 @@ if TYPE_CHECKING:
     from graphon.model_runtime.runtime import ModelRuntime
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
+# Request/task-scoped memoization of `get_configurations`.
+#
+# Assembling a `ProviderConfigurations` runs six separate DB queries plus a
+# provider-factory load, costing ~1s per call in production. A single workflow
+# step (e.g. a Retrieval node inside an Iteration) can invoke this path dozens
+# of times through independently-created `ProviderManager` instances, so
+# per-instance caching is not enough — the cache must live on the execution
+# context instead.
+#
+# `RecyclableContextVar` is Dify's existing pattern for per-request/per-task
+# state. It is reset by `RecyclableContextVar.increment_thread_recycles()`,
+# which is already called in Flask `before_request` and is called per Celery
+# task in `FlaskTask.__call__` (see `extensions/ext_celery.py`).
+#
+# Skipping `_init_trial_provider_records` on a cache hit is safe because it is
+# idempotent — it checks for existing records before inserting. Callers that
+# mutate a `ProviderConfiguration` in-place within the same scope will observe
+# their own writes on subsequent reads, which matches the pre-cache behavior.
+_provider_configurations_cache: RecyclableContextVar[dict[str, ProviderConfigurations]] = RecyclableContextVar(
+    ContextVar("provider_configurations_cache")
+)
 
 
 class ProviderManager:
@@ -114,6 +138,16 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        try:
+            scope_cache = _provider_configurations_cache.get()
+        except LookupError:
+            scope_cache = {}
+            _provider_configurations_cache.set(scope_cache)
+
+        cached = scope_cache.get(tenant_id)
+        if cached is not None:
+            return cached
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
@@ -272,6 +306,8 @@ class ProviderManager:
             provider_configuration.bind_model_runtime(self._model_runtime)
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
+
+        scope_cache[tenant_id] = provider_configurations
 
         # Return the encapsulated object
         return provider_configurations

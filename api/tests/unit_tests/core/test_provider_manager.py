@@ -4,12 +4,20 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 import pytest
 from pytest_mock import MockerFixture
 
+from contexts.wrapper import RecyclableContextVar
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
 from models.provider_ids import ModelProviderID
+
+
+@pytest.fixture(autouse=True)
+def _reset_provider_configurations_cache() -> None:
+    # Advance the recycle counter so the per-scope memoization inside
+    # ProviderManager.get_configurations starts fresh for every test.
+    RecyclableContextVar.increment_thread_recycles()
 
 
 def _build_provider_manager(mocker: MockerFixture) -> ProviderManager:
@@ -561,6 +569,70 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
     assert result == {}
     mock_get_features.assert_not_called()
     mock_session_cls.assert_not_called()
+
+
+def _stub_get_configurations_helpers(manager: ProviderManager, mocker: MockerFixture) -> Mock:
+    """Replace every DB-touching helper on ``manager`` with no-op stubs and return the
+    ``_get_all_providers`` mock so tests can assert how many times the assembly ran."""
+    all_providers = mocker.patch.object(manager, "_get_all_providers", return_value={})
+    mocker.patch.object(manager, "_init_trial_provider_records", return_value={})
+    mocker.patch.object(manager, "_get_all_provider_models", return_value={})
+    mocker.patch.object(manager, "_get_all_preferred_model_providers", return_value={})
+    mocker.patch.object(manager, "_get_all_provider_model_settings", return_value={})
+    mocker.patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={})
+    mocker.patch.object(manager, "_get_all_provider_model_credentials", return_value={})
+    mocker.patch("core.provider_manager.ModelProviderFactory")
+    return all_providers
+
+
+def test_get_configurations_memoizes_result_within_scope(mocker: MockerFixture) -> None:
+    manager = _build_provider_manager(mocker)
+    all_providers = _stub_get_configurations_helpers(manager, mocker)
+
+    first = manager.get_configurations("tenant-id")
+    second = manager.get_configurations("tenant-id")
+
+    assert first is second
+    all_providers.assert_called_once_with("tenant-id")
+
+
+def test_get_configurations_memoization_is_per_tenant(mocker: MockerFixture) -> None:
+    manager = _build_provider_manager(mocker)
+    all_providers = _stub_get_configurations_helpers(manager, mocker)
+
+    first = manager.get_configurations("tenant-a")
+    second = manager.get_configurations("tenant-b")
+    first_again = manager.get_configurations("tenant-a")
+
+    assert first is not second
+    assert first is first_again
+    assert all_providers.call_count == 2
+
+
+def test_get_configurations_memoization_shared_across_manager_instances(mocker: MockerFixture) -> None:
+    manager_one = _build_provider_manager(mocker)
+    manager_two = _build_provider_manager(mocker)
+    one_calls = _stub_get_configurations_helpers(manager_one, mocker)
+    two_calls = _stub_get_configurations_helpers(manager_two, mocker)
+
+    first = manager_one.get_configurations("tenant-id")
+    second = manager_two.get_configurations("tenant-id")
+
+    assert first is second
+    one_calls.assert_called_once_with("tenant-id")
+    two_calls.assert_not_called()
+
+
+def test_get_configurations_memoization_reset_on_new_scope(mocker: MockerFixture) -> None:
+    manager = _build_provider_manager(mocker)
+    all_providers = _stub_get_configurations_helpers(manager, mocker)
+
+    first = manager.get_configurations("tenant-id")
+    RecyclableContextVar.increment_thread_recycles()
+    second = manager.get_configurations("tenant-id")
+
+    assert first is not second
+    assert all_providers.call_count == 2
 
 
 def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs() -> None:
