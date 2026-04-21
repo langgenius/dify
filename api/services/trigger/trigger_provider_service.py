@@ -66,21 +66,39 @@ class TriggerProviderService:
 
     @classmethod
     def list_trigger_provider_subscriptions(
-        cls, tenant_id: str, provider_id: TriggerProviderID
+        cls,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        user_id: str = "",
+        is_admin: bool = False,
     ) -> list[TriggerProviderSubscriptionApiEntity]:
-        """List all trigger subscriptions for the current tenant"""
+        """List all trigger subscriptions for the current tenant, filtered by visibility."""
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
         workflows_in_use_map: dict[str, int] = {}
         with Session(db.engine, expire_on_commit=False) as session:
-            # Get all subscriptions
-            subscriptions_db = session.scalars(
+            # Get all subscriptions with visibility filtering
+            query = (
                 select(TriggerSubscription)
                 .where(
                     TriggerSubscription.tenant_id == tenant_id,
                     TriggerSubscription.provider_id == str(provider_id),
                 )
                 .order_by(desc(TriggerSubscription.created_at))
-            ).all()
+            )
+            if user_id:
+                query = CredentialPermissionService.apply_visibility_filter(
+                    query,
+                    model_id_column=TriggerSubscription.id,
+                    model_user_id_column=TriggerSubscription.user_id,
+                    model_visibility_column=TriggerSubscription.visibility,
+                    credential_type=CredPermType.TRIGGER_SUBSCRIPTION,
+                    user_id=user_id,
+                    is_admin=is_admin,
+                )
+            subscriptions_db = session.scalars(query).all()
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
             if not subscriptions:
                 return []

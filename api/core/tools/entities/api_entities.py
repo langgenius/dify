@@ -129,6 +129,15 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
+    visibility: str = Field(
+        default="all_team_members",
+        description="Credential visibility: only_me, all_team_members, or partial_members",
+    )
+    created_by: str = Field(default="", description="User ID of the credential creator")
+    partial_member_list: list[str] = Field(
+        default_factory=list,
+        description="List of user IDs allowed when visibility is partial_members",
+    )
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):

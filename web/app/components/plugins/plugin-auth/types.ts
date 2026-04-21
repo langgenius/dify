@@ -29,8 +29,11 @@ export type Credential = {
   provider: string
   credential_type?: CredentialTypeEnum
   is_default: boolean
-  credentials?: Record<string, any>
+  credentials?: Record<string, unknown>
   isWorkspaceDefault?: boolean
   from_enterprise?: boolean
   not_allowed_to_use?: boolean
+  visibility?: string
+  created_by?: string
+  partial_member_list?: string[]
 }

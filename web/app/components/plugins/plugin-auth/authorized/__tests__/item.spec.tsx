@@ -346,6 +346,9 @@ describe('Item Component', () => {
         api_key: 'secret',
         __name__: 'Edit Test',
         __credential_id__: 'edit-test-id',
+        __visibility__: 'all_team_members',
+        __created_by__: '',
+        __partial_member_list__: [],
       })
     })
 
@@ -539,6 +542,7 @@ describe('Item Component', () => {
           disableEdit={true}
           disableDelete={true}
           disableSetDefault={true}
+          disableEditPermissions={true}
         />,
       )
 

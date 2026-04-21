@@ -570,14 +570,24 @@ class ProviderManager:
         return provider_names
 
     @staticmethod
-    def get_provider_available_credentials(tenant_id: str, provider_name: str) -> list[CredentialConfiguration]:
+    def get_provider_available_credentials(
+        tenant_id: str,
+        provider_name: str,
+        user_id: str = "",
+        is_admin: bool = False,
+    ) -> list[CredentialConfiguration]:
         """
-        Get provider all credentials.
+        Get provider all credentials, filtered by visibility.
 
         :param tenant_id: workspace id
         :param provider_name: provider name
+        :param user_id: current user id for visibility filtering
+        :param is_admin: whether user is admin/owner (bypasses visibility)
         :return:
         """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = (
                 select(ProviderCredential)
@@ -587,6 +597,17 @@ class ProviderManager:
                 )
                 .order_by(ProviderCredential.created_at.desc())
             )
+
+            if user_id:
+                stmt = CredentialPermissionService.apply_visibility_filter(
+                    stmt,
+                    model_id_column=ProviderCredential.id,
+                    model_user_id_column=ProviderCredential.user_id,
+                    model_visibility_column=ProviderCredential.visibility,
+                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
+                    user_id=user_id,
+                    is_admin=is_admin,
+                )
 
             available_credentials = session.scalars(stmt).all()
 

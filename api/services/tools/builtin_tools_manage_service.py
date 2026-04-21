@@ -149,6 +149,8 @@ class BuiltinToolManageService:
         credential_id: str,
         credentials: dict[str, Any] | None = None,
         name: str | None = None,
+        visibility: str | None = None,
+        partial_member_list: list[dict] | None = None,
     ):
         """
         update builtin tool provider
@@ -206,6 +208,31 @@ class BuiltinToolManageService:
 
                     db_provider.name = name
 
+                # update visibility — only the credential creator can change it
+                if visibility is not None:
+                    from models.credential_permission import CredentialType as CredPermType
+                    from models.enums import PermissionEnum
+                    from services.credential_permission_service import CredentialPermissionService
+
+                    if db_provider.user_id != user_id:
+                        raise ValueError("Only the credential creator can change visibility settings.")
+
+                    visibility_enum = PermissionEnum(visibility)
+                    db_provider.visibility = visibility_enum
+
+                    if visibility_enum == PermissionEnum.PARTIAL_TEAM and partial_member_list:
+                        CredentialPermissionService.update_partial_member_list(
+                            tenant_id=tenant_id,
+                            credential_id=credential_id,
+                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
+                            user_list=partial_member_list,
+                        )
+                    elif visibility_enum != PermissionEnum.PARTIAL_TEAM:
+                        CredentialPermissionService.clear_partial_member_list(
+                            credential_id=credential_id,
+                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
+                        )
+
             except Exception as e:
                 raise ValueError(str(e))
         return {"result": "success"}
@@ -219,6 +246,8 @@ class BuiltinToolManageService:
         credentials: dict[str, Any],
         expires_at: int = -1,
         name: str | None = None,
+        visibility: str | None = None,
+        partial_member_list: list[dict] | None = None,
     ):
         """
         add builtin tool provider
@@ -277,6 +306,12 @@ class BuiltinToolManageService:
                         cache=NoOpProviderCredentialCache(),
                     )
 
+                    from models.credential_permission import CredentialType as CredPermType
+                    from models.enums import PermissionEnum
+                    from services.credential_permission_service import CredentialPermissionService
+
+                    visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
+
                     db_provider = BuiltinToolProvider(
                         tenant_id=tenant_id,
                         user_id=user_id,
@@ -285,9 +320,20 @@ class BuiltinToolManageService:
                         credential_type=api_type,
                         name=name,
                         expires_at=expires_at if expires_at is not None else -1,
+                        visibility=visibility_enum,
                     )
 
                     session.add(db_provider)
+                    session.flush()
+
+                    # Handle partial member list
+                    if visibility_enum == PermissionEnum.PARTIAL_TEAM and partial_member_list:
+                        CredentialPermissionService.update_partial_member_list(
+                            tenant_id=tenant_id,
+                            credential_id=db_provider.id,
+                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
+                            user_list=partial_member_list,
+                        )
             except Exception as e:
                 raise ValueError(str(e))
 
@@ -330,17 +376,34 @@ class BuiltinToolManageService:
 
     @staticmethod
     def get_builtin_tool_provider_credentials(
-        tenant_id: str, provider_name: str
+        tenant_id: str,
+        provider_name: str,
+        user_id: str = "",
+        is_admin: bool = False,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
-        get builtin tool provider credentials
+        get builtin tool provider credentials, filtered by visibility
         """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         with db.session.no_autoflush:
-            providers = db.session.scalars(
+            query = (
                 select(BuiltinToolProvider)
                 .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-            ).all()
+            )
+            if user_id:
+                query = CredentialPermissionService.apply_visibility_filter(
+                    query,
+                    model_id_column=BuiltinToolProvider.id,
+                    model_user_id_column=BuiltinToolProvider.user_id,
+                    model_visibility_column=BuiltinToolProvider.visibility,
+                    credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
+                    user_id=user_id,
+                    is_admin=is_admin,
+                )
+            providers = db.session.scalars(query).all()
 
             if len(providers) == 0:
                 return []
@@ -359,17 +422,35 @@ class BuiltinToolManageService:
                     provider=provider,
                     credentials=dict(decrypt_credential),
                 )
+                # Attach visibility, creator, and partial member list to the response entity
+                from models.credential_permission import CredentialType as CredPermType
+                from services.credential_permission_service import CredentialPermissionService
+
+                vis = getattr(provider, "visibility", "all_team_members")
+                vis_str = vis.value if hasattr(vis, "value") else str(vis)
+                credential_entity.visibility = vis_str
+                credential_entity.created_by = getattr(provider, "user_id", "") or ""
+                if vis_str == "partial_members":
+                    credential_entity.partial_member_list = list(
+                        CredentialPermissionService.get_partial_member_list(
+                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
+                        )
+                    )
                 credentials.append(credential_entity)
             return credentials
 
     @staticmethod
-    def get_builtin_tool_provider_credential_info(tenant_id: str, provider: str) -> ToolProviderCredentialInfoApiEntity:
+    def get_builtin_tool_provider_credential_info(
+        tenant_id: str, provider: str, user_id: str = "", is_admin: bool = False
+    ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
         """
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
         supported_credential_types = provider_controller.get_supported_credential_types()
-        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(tenant_id, provider)
+        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
+            tenant_id, provider, user_id=user_id, is_admin=is_admin
+        )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,
             is_oauth_custom_client_enabled=BuiltinToolManageService.is_oauth_custom_client_enabled(tenant_id, provider),
