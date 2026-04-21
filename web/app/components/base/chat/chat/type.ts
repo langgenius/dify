@@ -66,18 +66,20 @@ export type CitationItem = {
   word_count: number
 }
 
-export type ExtraContent
-  = {
-    type: 'human_input'
-    submitted: false
-    form_definition: HumanInputFormData
-    workflow_run_id: string
-  }
-  | {
-    type: 'human_input'
-    submitted: true
-    form_submission_data: HumanInputFilledFormData
-  }
+export type PendingHumanInputExtraContent = {
+  type: 'human_input'
+  submitted: false
+  form_definition: HumanInputFormData
+  workflow_run_id: string
+}
+
+export type SubmittedHumanInputExtraContent = {
+  type: 'human_input'
+  submitted: true
+  form_submission_data: HumanInputFilledFormData
+}
+
+export type ExtraContent = PendingHumanInputExtraContent | SubmittedHumanInputExtraContent
 
 export type IChatItem = {
   id: string
