@@ -6,6 +6,7 @@ deprecated in generated API docs so clients migrate toward the canonical paths.
 """
 
 import json
+from collections.abc import Mapping
 from contextlib import ExitStack
 from typing import Self
 from uuid import UUID
@@ -124,7 +125,7 @@ register_schema_models(
 )
 
 
-def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[dict[str, object], int]:
+def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
     """Create a document from text for both canonical and legacy routes."""
     payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
     args = payload.model_dump(exclude_none=True)
@@ -192,7 +193,9 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[dict[str
     return documents_and_batch_fields, 200
 
 
-def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, object], int]:
+def _update_document_by_text(
+    tenant_id: str, dataset_id: UUID, document_id: UUID
+) -> tuple[Mapping[str, object], int]:
     """Update a document from text for both canonical and legacy routes."""
     payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
     dataset = db.session.scalar(
