@@ -497,7 +497,9 @@ def _build_pause_event(
                 session=session,
                 surface=human_input_surface,
             )
-            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(HumanInputForm.id.in_(human_input_form_ids))
+            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
+                HumanInputForm.id.in_(human_input_form_ids)
+            )
             for row in session.execute(stmt):
                 form_id, expiration_time, *_rest = row
                 expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())

@@ -46,7 +46,9 @@ def _load_form_tokens_by_form_id(
     for recipient in session.scalars(stmt):
         if not recipient.access_token:
             continue
-        recipients_by_form_id.setdefault(recipient.form_id, []).append((recipient.recipient_type, recipient.access_token))
+        recipients_by_form_id.setdefault(recipient.form_id, []).append(
+            (recipient.recipient_type, recipient.access_token)
+        )
 
     tokens_by_form_id: dict[str, str] = {}
     for form_id, recipients in recipients_by_form_id.items():

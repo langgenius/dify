@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.common.pause_reason_serializer import pause_reason_to_public_dict
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
-from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
@@ -54,6 +53,7 @@ from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db

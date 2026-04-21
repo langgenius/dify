@@ -26,8 +26,8 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.system_variables import build_system_variables
 from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus

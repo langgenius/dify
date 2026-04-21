@@ -839,6 +839,4 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     pause_event = cast(Mapping[str, Any], events[-1])
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED.value
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
-    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(
-        datetime(2024, 1, 1, tzinfo=UTC).timestamp()
-    )
+    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
