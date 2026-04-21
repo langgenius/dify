@@ -91,7 +91,7 @@ function buildDirectiveRehypePlugins(): PluggableList {
   ])
 
   const attributes: Record<string, AttributeDefinition[]> = {
-    ...(defaultSanitizeSchema.attributes ?? {}),
+    ...defaultSanitizeSchema.attributes,
   }
 
   for (const [tagName, allowedAttributes] of Object.entries(DIRECTIVE_ALLOWED_TAGS))
