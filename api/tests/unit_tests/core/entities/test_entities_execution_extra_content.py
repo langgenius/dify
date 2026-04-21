@@ -1,12 +1,11 @@
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType
-
 from core.entities.execution_extra_content import (
     ExecutionExtraContentDomainModel,
     HumanInputContent,
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
+from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 from models.execution_extra_content import ExecutionContentType
 
 

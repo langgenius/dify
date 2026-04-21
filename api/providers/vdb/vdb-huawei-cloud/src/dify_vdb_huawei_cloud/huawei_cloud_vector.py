@@ -44,7 +44,7 @@ class HuaweiCloudVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["hosts"]:
             raise ValueError("config HOSTS is required")
         return values
@@ -169,7 +169,7 @@ class HuaweiCloudVector(BaseVector):
         self,
         embeddings: list[list[float]],
         metadatas: list[dict[Any, Any]] | None = None,
-        index_params: dict | None = None,
+        index_params: dict[str, Any] | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

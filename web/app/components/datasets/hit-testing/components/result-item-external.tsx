@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Modal from '@/app/components/base/modal'
-import { cn } from '@/utils/classnames'
 import ResultItemFooter from './result-item-footer'
 import ResultItemMeta from './result-item-meta'
 
@@ -31,7 +31,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {/* Main */}
       <div className="mt-1 px-3">
-        <div className="body-md-regular line-clamp-2 break-all text-text-primary">{content}</div>
+        <div className="line-clamp-2 body-md-regular break-all text-text-primary">{content}</div>
       </div>
 
       {/* Foot */}
@@ -47,7 +47,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
         >
           <div className="mt-4 flex-1">
             <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
-            <div className={cn('body-md-regular mt-2 break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
+            <div className={cn('mt-2 body-md-regular break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
               {content}
             </div>
           </div>

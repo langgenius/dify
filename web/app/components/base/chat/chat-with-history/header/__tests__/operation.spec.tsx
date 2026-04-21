@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,12 +74,18 @@ describe('Operation Component', () => {
     expect(defaultProps.togglePin).toHaveBeenCalledTimes(1)
 
     // Rename
+    await user.click(screen.getByText('Chat Title'))
     await user.click(screen.getByText('explore.sidebar.action.rename'))
-    expect(defaultProps.onRenameConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.onRenameConversation).toHaveBeenCalledTimes(1)
+    })
 
     // Delete
+    await user.click(screen.getByText('Chat Title'))
     await user.click(screen.getByText('explore.sidebar.action.delete'))
-    expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('applies hover background when open', async () => {

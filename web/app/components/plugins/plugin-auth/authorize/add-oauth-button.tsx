@@ -1,6 +1,8 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
-import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -15,11 +17,9 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { cn } from '@/utils/classnames'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
@@ -94,12 +94,12 @@ const AddOAuthButton = ({
             <RiInformation2Fill className="h-5 w-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
-            <div className="system-sm-regular mb-1.5">
+            <div className="mb-1.5 system-sm-regular">
               {t('auth.clientInfo', { ns: 'plugin' })}
             </div>
             {
               redirect_uri && (
-                <div className="system-sm-medium flex w-full py-0.5">
+                <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
                   <ActionButton
                     className="shrink-0"
@@ -114,7 +114,7 @@ const AddOAuthButton = ({
             }
           </div>
         </div>
-        <div className="system-sm-medium flex h-6 items-center text-text-secondary">
+        <div className="flex h-6 items-center system-sm-medium text-text-secondary">
           {renderI18nObject(item.label as Record<string, string>)}
           {
             item.required && (
@@ -209,7 +209,7 @@ const AddOAuthButton = ({
                 is_oauth_custom_client_enabled && (
                   <Badge
                     className={cn(
-                      'ml-1 mr-0.5',
+                      'mr-0.5 ml-1',
                       buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                     )}
                   >

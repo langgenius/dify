@@ -4,6 +4,9 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -17,10 +20,7 @@ import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
-import Button from '../../button'
-import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -164,7 +164,7 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
+            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
@@ -207,10 +207,10 @@ const Question: FC<QuestionProps> = ({
             ? <Markdown content={content} />
             : (
                 <div className="flex flex-col gap-4">
-                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
+                  <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
                     <Textarea
                       className={cn(
-                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-hidden body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
                       )}
                       autoFocus
                       minRows={1}

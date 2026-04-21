@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -10,7 +11,6 @@ import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
@@ -160,7 +160,7 @@ const Panel: FC = () => {
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
+        <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="h-4 w-4" />
@@ -178,7 +178,7 @@ const Panel: FC = () => {
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
+        <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="h-4 w-4" />
@@ -194,13 +194,13 @@ const Panel: FC = () => {
   return (
     <div className={cn('relative flex h-full')}>
       {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute left-0 top-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
+      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute top-0 left-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
-              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
+              ? 'absolute top-0 left-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
               : 'hidden'
             : 'block',
         )}

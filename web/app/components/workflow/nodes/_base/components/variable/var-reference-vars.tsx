@@ -3,6 +3,12 @@ import type { FC } from 'react'
 import type { StructuredOutput } from '../../../llm/types'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -12,15 +18,9 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { Type } from '../../../llm/types'
 import ManageInputField from './manage-input-field'
 import { varTypeToStructType } from './utils'
@@ -143,7 +143,7 @@ const Item: FC<ItemProps> = ({
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
     onHovering?.(isHovering)
-  }, [isHovering])
+  }, [isHovering, onHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
@@ -167,62 +167,70 @@ const Item: FC<ItemProps> = ({
     () => getVariableCategory({ isEnv, isChatVar, isLoopVar, isRagVariable }),
     [isEnv, isChatVar, isLoopVar, isRagVariable],
   )
+
+  const itemTrigger = (
+    <div
+      ref={itemRef}
+      className={cn(
+        (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
+        isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
+        className,
+      )}
+      onClick={handleChosen}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+      }}
+    >
+      <div className="flex w-0 grow items-center">
+        {!isFlat && (
+          <VariableIconWithColor
+            variables={itemData.variable.split('.')}
+            variableCategory={variableCategory}
+            isExceptionVariable={isException}
+          />
+        )}
+        {isFlat && flatVarIcon}
+
+        {!isEnv && !isChatVar && !isRagVariable && (
+          <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{varName}</div>
+        )}
+        {isEnv && (
+          <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('env.', '')}</div>
+        )}
+        {isChatVar && (
+          <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
+        )}
+        {isRagVariable && (
+          <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
+        )}
+      </div>
+      <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
+      {
+        (isObj || isStructureOutput) && (
+          <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+        )
+      }
+    </div>
+  )
+
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={noop}
-      placement="left-start"
     >
-      <PortalToFollowElemTrigger className="w-full">
-        <div
-          ref={itemRef}
-          className={cn(
-            (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
-            isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-            'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
-            className,
-          )}
-          onClick={handleChosen}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            e.nativeEvent.stopImmediatePropagation()
-          }}
-        >
-          <div className="flex w-0 grow items-center">
-            {!isFlat && (
-              <VariableIconWithColor
-                variables={itemData.variable.split('.')}
-                variableCategory={variableCategory}
-                isExceptionVariable={isException}
-              />
-            )}
-            {isFlat && flatVarIcon}
-
-            {!isEnv && !isChatVar && !isRagVariable && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{varName}</div>
-            )}
-            {isEnv && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('env.', '')}</div>
-            )}
-            {isChatVar && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
-            )}
-            {isRagVariable && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
-            )}
-          </div>
-          <div className="ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
-          {
-            (isObj || isStructureOutput) && (
-              <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
-            )
-          }
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{
-        zIndex: zIndex || 100,
-      }}
+      <PopoverTrigger render={itemTrigger} />
+      <PopoverContent
+        placement="left-start"
+        sideOffset={0}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{
+          style: {
+            zIndex: zIndex || 100,
+          },
+        }}
       >
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
@@ -234,13 +242,14 @@ const Item: FC<ItemProps> = ({
             }}
           />
         )}
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
 type Props = {
   hideSearch?: boolean
+  searchText?: string
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
   isSupportFileVar?: boolean
@@ -258,6 +267,7 @@ type Props = {
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
+  searchText,
   searchBoxClassName,
   vars,
   isSupportFileVar,
@@ -274,7 +284,8 @@ const VarReferenceVars: FC<Props> = ({
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
-  const [searchText, setSearchText] = useState('')
+  const [internalSearchValue, setInternalSearchValue] = useState('')
+  const searchValue = searchText ?? internalSearchValue
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -283,23 +294,23 @@ const VarReferenceVars: FC<Props> = ({
     }
   }
 
-  const filteredVars = useMemo(() => filterReferenceVars(vars, searchText), [vars, searchText])
+  const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
 
   return (
     <>
       {
         !hideSearch && (
           <>
-            <div className={cn('var-search-input-wrapper mx-2 mb-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('var-search-input-wrapper mx-2 mt-2 mb-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 className="var-search-input"
                 showLeftIcon
                 showClearIcon
-                value={searchText}
+                value={searchValue}
                 placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
-                onChange={e => setSearchText(e.target.value)}
+                onChange={e => setInternalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onClear={() => setSearchText('')}
+                onClear={() => setInternalSearchValue('')}
                 onBlur={onBlur}
                 autoFocus={autoFocus}
               />
@@ -324,7 +335,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
                     {!item.isFlat && (
                       <div
-                        className="system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary"
+                        className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
                         title={item.title}
                       >
                         {item.title}
@@ -349,10 +360,10 @@ const VarReferenceVars: FC<Props> = ({
                       />
                     ))}
                     {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
-                      <div className="relative mt-[14px] flex  items-center space-x-1">
+                      <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                         <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
-                        <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
+                        <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
                   </div>
@@ -360,7 +371,7 @@ const VarReferenceVars: FC<Props> = ({
               }
             </div>
           )
-        : <div className="mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500">{t('common.noVar', { ns: 'workflow' })}</div>}
+        : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t('common.noVar', { ns: 'workflow' })}</div>}
       {
         showManageInputField && (
           <ManageInputField

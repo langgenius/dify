@@ -49,7 +49,7 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
@@ -81,7 +81,7 @@ describe('MCPModal', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.title')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
     })
 
     it('should not render when show is false', () => {
@@ -91,7 +91,7 @@ describe('MCPModal', () => {
 
     it('should render create title when no data is provided', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.title')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
     })
 
     it('should render edit title when data is provided', () => {
@@ -104,31 +104,31 @@ describe('MCPModal', () => {
       } as unknown as ToolWithProvider
 
       render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.editTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.editTitle'))!.toBeInTheDocument()
     })
   })
 
   describe('Form Fields', () => {
     it('should render server URL input', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.serverUrl')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.serverUrl'))!.toBeInTheDocument()
     })
 
     it('should render name input', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.name')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.name'))!.toBeInTheDocument()
     })
 
     it('should render server identifier input', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.serverIdentifier')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.serverIdentifier'))!.toBeInTheDocument()
     })
 
     it('should render auth method tabs', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.authentication')).toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.headers')).toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.configurations')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.authentication'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.configurations'))!.toBeInTheDocument()
     })
   })
 
@@ -139,7 +139,7 @@ describe('MCPModal', () => {
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       fireEvent.change(urlInput, { target: { value: 'https://test.com/mcp' } })
 
-      expect(urlInput).toHaveValue('https://test.com/mcp')
+      expect(urlInput)!.toHaveValue('https://test.com/mcp')
     })
 
     it('should update name input value', () => {
@@ -148,7 +148,7 @@ describe('MCPModal', () => {
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'My Server' } })
 
-      expect(nameInput).toHaveValue('My Server')
+      expect(nameInput)!.toHaveValue('My Server')
     })
 
     it('should update server identifier input value', () => {
@@ -157,14 +157,14 @@ describe('MCPModal', () => {
       const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
       fireEvent.change(identifierInput, { target: { value: 'my-server' } })
 
-      expect(identifierInput).toHaveValue('my-server')
+      expect(identifierInput)!.toHaveValue('my-server')
     })
   })
 
   describe('Tab Navigation', () => {
     it('should show authentication section by default', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration'))!.toBeInTheDocument()
     })
 
     it('should switch to headers section when clicked', async () => {
@@ -174,7 +174,7 @@ describe('MCPModal', () => {
       fireEvent.click(headersTab)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.headersTip')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
       })
     })
 
@@ -185,8 +185,8 @@ describe('MCPModal', () => {
       fireEvent.click(configTab)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.timeout')).toBeInTheDocument()
-        expect(screen.getByText('tools.mcp.modal.sseReadTimeout')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.timeout'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.sseReadTimeout'))!.toBeInTheDocument()
       })
     })
   })
@@ -194,7 +194,7 @@ describe('MCPModal', () => {
   describe('Action Buttons', () => {
     it('should render confirm button', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.confirm')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.confirm'))!.toBeInTheDocument()
     })
 
     it('should render save button in edit mode', () => {
@@ -205,12 +205,12 @@ describe('MCPModal', () => {
       } as unknown as ToolWithProvider
 
       render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.save')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.save'))!.toBeInTheDocument()
     })
 
     it('should render cancel button', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.cancel')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
     })
 
     it('should call onHide when cancel is clicked', () => {
@@ -243,7 +243,7 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      expect(confirmButton).toBeDisabled()
+      expect(confirmButton)!.toBeDisabled()
     })
 
     it('should enable confirm button when required fields are filled', () => {
@@ -360,9 +360,9 @@ describe('MCPModal', () => {
     it('should populate form with existing data', () => {
       render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
-      expect(screen.getByDisplayValue('https://existing.com/mcp')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Existing Server')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('existing-server')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('https://existing.com/mcp'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Existing Server'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('existing-server'))!.toBeInTheDocument()
     })
 
     it('should show warning when URL is changed', () => {
@@ -371,7 +371,7 @@ describe('MCPModal', () => {
       const urlInput = screen.getByDisplayValue('https://existing.com/mcp')
       fireEvent.change(urlInput, { target: { value: 'https://new.com/mcp' } })
 
-      expect(screen.getByText('tools.mcp.modal.serverUrlWarning')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.serverUrlWarning'))!.toBeInTheDocument()
     })
 
     it('should show warning when server identifier is changed', () => {
@@ -380,7 +380,7 @@ describe('MCPModal', () => {
       const identifierInput = screen.getByDisplayValue('existing-server')
       fireEvent.change(identifierInput, { target: { value: 'new-server' } })
 
-      expect(screen.getByText('tools.mcp.modal.serverIdentifierWarning')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.serverIdentifierWarning'))!.toBeInTheDocument()
     })
   })
 
@@ -402,7 +402,8 @@ describe('MCPModal', () => {
       rerender(<MCPModal {...defaultProps} data={mockData} />)
 
       // Should show edit mode data
-      expect(screen.getByDisplayValue('Edit Server')).toBeInTheDocument()
+      // Should show edit mode data
+      expect(screen.getByDisplayValue('Edit Server'))!.toBeInTheDocument()
     })
   })
 
@@ -415,7 +416,8 @@ describe('MCPModal', () => {
       fireEvent.blur(urlInput)
 
       // The blur handler trims the value
-      expect(urlInput).toHaveValue('  https://test.com/mcp  ')
+      // The blur handler trims the value
+      expect(urlInput)!.toHaveValue('  https://test.com/mcp  ')
     })
 
     it('should handle URL blur-sm with empty value', () => {
@@ -425,7 +427,7 @@ describe('MCPModal', () => {
       fireEvent.change(urlInput, { target: { value: '' } })
       fireEvent.blur(urlInput)
 
-      expect(urlInput).toHaveValue('')
+      expect(urlInput)!.toHaveValue('')
     })
   })
 
@@ -474,7 +476,7 @@ describe('MCPModal', () => {
       fireEvent.click(headersTab)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.headersTip')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
@@ -541,7 +543,7 @@ describe('MCPModal', () => {
       fireEvent.click(headersTab)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.headersTip')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
       })
 
       // Submit form
@@ -662,7 +664,7 @@ describe('MCPModal', () => {
       fireEvent.click(configTab)
 
       await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.timeout')).toBeInTheDocument()
+        expect(screen.getByText('tools.mcp.modal.timeout'))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
@@ -683,10 +685,11 @@ describe('MCPModal', () => {
       expect(switchElements.length).toBeGreaterThan(0)
 
       // Click the first switch (dynamic registration)
-      fireEvent.click(switchElements[0])
+      fireEvent.click(switchElements[0]!)
 
       // The switch should toggle
-      expect(switchElements[0]).toBeInTheDocument()
+      // The switch should toggle
+      expect(switchElements[0])!.toBeInTheDocument()
     })
   })
 
@@ -702,7 +705,7 @@ describe('MCPModal', () => {
 
         // The mocked AppIconPicker should now be visible
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
         })
       }
     })
@@ -717,7 +720,7 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
         })
 
         // Click the select emoji button
@@ -741,7 +744,7 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
         })
 
         // Click the close button

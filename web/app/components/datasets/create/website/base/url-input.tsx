@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 import Input from './input'
 
@@ -41,7 +41,6 @@ const UrlInput: FC<Props> = ({
         variant="primary"
         onClick={handleOnRun}
         loading={isRunning}
-        spinnerClassName="ml-0!"
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>

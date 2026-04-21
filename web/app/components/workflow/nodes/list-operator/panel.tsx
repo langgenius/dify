@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ListFilterNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ExtractInput from '@/app/components/workflow/nodes/list-operator/components/extract-input'
 import OptionCard from '../_base/components/option-card'
@@ -65,8 +65,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.filterCondition`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.filter_by?.enabled}
-              onChange={handleFilterEnabledChange}
+              checked={inputs.filter_by?.enabled}
+              onCheckedChange={handleFilterEnabledChange}
               size="md"
               disabled={readOnly}
             />
@@ -75,7 +75,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.filter_by?.enabled
             ? (
                 <FilterCondition
-                  condition={inputs.filter_by.conditions[0]}
+                  condition={inputs.filter_by.conditions[0]!}
                   onChange={handleFilterChange}
                   varType={itemVarType}
                   hasSubVariable={hasSubVariable}
@@ -90,8 +90,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.extractsCondition`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.extract_by?.enabled}
-              onChange={handleExtractsEnabledChange}
+              checked={inputs.extract_by?.enabled}
+              onCheckedChange={handleExtractsEnabledChange}
               size="md"
               disabled={readOnly}
             />
@@ -123,8 +123,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.orderBy`, { ns: 'workflow' })}
           operations={(
             <Switch
-              value={inputs.order_by?.enabled}
-              onChange={handleOrderByEnabledChange}
+              checked={inputs.order_by?.enabled}
+              onCheckedChange={handleOrderByEnabledChange}
               size="md"
               disabled={readOnly}
             />

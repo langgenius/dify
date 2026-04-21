@@ -44,7 +44,7 @@ class LindormVectorStoreConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["hosts"]:
             raise ValueError("config URL is required")
         if not values["username"]:
@@ -336,7 +336,10 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
+        self,
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]] | None = None,
+        index_params: dict[str, Any] | None = None,
     ):
         if not embeddings:
             raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")

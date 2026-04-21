@@ -36,7 +36,7 @@ class OracleVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["user"]:
             raise ValueError("config ORACLE_USER is required")
         if not values["password"]:

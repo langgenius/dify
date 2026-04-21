@@ -1,11 +1,7 @@
+from typing import Any
 from unittest.mock import patch
 
 import pytest
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import FileVariable, StringVariable
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
@@ -18,16 +14,16 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import FileVariable, StringVariable
 from tests.workflow_test_utils import build_test_variable_pool
 
 
 def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    node_config = {
-        "id": "1",
-        "data": webhook_data.model_dump(),
-    }
-
     graph_init_params = GraphInitParams(
         workflow_id="1",
         graph_config={},
@@ -47,8 +43,8 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
         start_at=0,
     )
     node = TriggerWebhookNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        config=webhook_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -56,13 +52,10 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     # Provide tenant_id for conversion path
     runtime_state.app_config = type("_AppCfg", (), {"tenant_id": "1"})()
 
-    # Compatibility alias for some nodes referencing `self.node_id`
-    node.node_id = node.id
-
     return node
 
 
-def build_webhook_variable_pool(inputs: dict) -> VariablePool:
+def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
     return build_test_variable_pool(
         variables=default_system_variables(),
         node_id="1",
@@ -224,7 +217,7 @@ def test_webhook_node_run_with_file_params():
     """Test webhook node execution with file parameter extraction."""
     # Create mock file objects
     file1 = File(
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="file1",
         filename="image.jpg",
@@ -233,7 +226,7 @@ def test_webhook_node_run_with_file_params():
     )
 
     file2 = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="file2",
         filename="document.pdf",
@@ -268,8 +261,19 @@ def test_webhook_node_run_with_file_params():
     # Mock the node's file reference boundary to avoid DB-dependent validation on upload_file_id
     with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
 
-        def _to_file(*, mapping):
-            return File.model_validate(mapping)
+        def _to_file(*, mapping: dict[str, Any]) -> File:
+            return File(
+                file_id=mapping.get("id"),
+                file_type=FileType(mapping["type"]),
+                transfer_method=FileTransferMethod(mapping["transfer_method"]),
+                related_id=mapping.get("related_id"),
+                filename=mapping.get("filename"),
+                extension=mapping.get("extension"),
+                mime_type=mapping.get("mime_type"),
+                size=mapping.get("size", -1),
+                storage_key=mapping.get("storage_key", ""),
+                remote_url=mapping.get("url"),
+            )
 
         mock_file_factory.side_effect = _to_file
         result = node._run()
@@ -283,7 +287,7 @@ def test_webhook_node_run_with_file_params():
 def test_webhook_node_run_mixed_parameters():
     """Test webhook node execution with mixed parameter types."""
     file_obj = File(
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="file1",
         filename="test.jpg",
@@ -316,8 +320,19 @@ def test_webhook_node_run_mixed_parameters():
     # Mock the node's file reference boundary to avoid DB-dependent validation on upload_file_id
     with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
 
-        def _to_file(*, mapping):
-            return File.model_validate(mapping)
+        def _to_file(*, mapping: dict[str, Any]) -> File:
+            return File(
+                file_id=mapping.get("id"),
+                file_type=FileType(mapping["type"]),
+                transfer_method=FileTransferMethod(mapping["transfer_method"]),
+                related_id=mapping.get("related_id"),
+                filename=mapping.get("filename"),
+                extension=mapping.get("extension"),
+                mime_type=mapping.get("mime_type"),
+                size=mapping.get("size", -1),
+                storage_key=mapping.get("storage_key", ""),
+                remote_url=mapping.get("url"),
+            )
 
         mock_file_factory.side_effect = _to_file
         result = node._run()

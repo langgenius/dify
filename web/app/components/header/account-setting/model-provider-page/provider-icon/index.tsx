@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
@@ -48,7 +48,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
         )}
         className="h-6 w-6"
       />
-      <div className="text-text-primary system-md-semibold">
+      <div className="system-md-semibold text-text-primary">
         {renderI18nObject(provider.label, language)}
       </div>
     </div>

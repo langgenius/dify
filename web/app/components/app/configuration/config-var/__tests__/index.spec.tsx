@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 
@@ -118,7 +118,7 @@ describe('ConfigVar', () => {
     it('should show empty state when no variables exist', () => {
       renderConfigVar({ promptVariables: [] })
 
-      expect(screen.getByText('appDebug.notSetVar')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.notSetVar'))!.toBeInTheDocument()
     })
 
     it('should render variable items and allow reordering via sortable list', () => {
@@ -131,8 +131,8 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      expect(screen.getByText('first')).toBeInTheDocument()
-      expect(screen.getByText('second')).toBeInTheDocument()
+      expect(screen.getByText('first'))!.toBeInTheDocument()
+      expect(screen.getByText('second'))!.toBeInTheDocument()
 
       act(() => {
         latestSortableProps?.setList([
@@ -163,7 +163,7 @@ describe('ConfigVar', () => {
       fireEvent.click(await screen.findByText('appDebug.variableConfig.string'))
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-      const [nextVariables] = onPromptVariablesChange.mock.calls[0]
+      const [nextVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
       expect(nextVariables).toHaveLength(1)
       expect(nextVariables[0].type).toBe('string')
     })
@@ -178,7 +178,7 @@ describe('ConfigVar', () => {
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
       expect(setShowExternalDataToolModal).toHaveBeenCalledTimes(1)
 
-      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      const modalState = setShowExternalDataToolModal.mock.calls[0]![0]
       expect(modalState.payload.type).toBe('api')
 
       act(() => {
@@ -197,13 +197,13 @@ describe('ConfigVar', () => {
       fireEvent.click(screen.getByText('common.operation.add'))
       fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
 
-      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      const modalState = setShowExternalDataToolModal.mock.calls[0]![0]
       act(() => {
         modalState.onCancelCallback?.()
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(2)
-      const [addedVariables] = onPromptVariablesChange.mock.calls[0]
+      const [addedVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
       expect(addedVariables).toHaveLength(2)
       expect(addedVariables[0]).toBe(existingVar)
       expect(addedVariables[1].type).toBe('api')
@@ -235,7 +235,7 @@ describe('ConfigVar', () => {
       expect(itemContainer).not.toBeNull()
       const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
       expect(actionButtons).toHaveLength(2)
-      fireEvent.click(actionButtons[0])
+      fireEvent.click(actionButtons[0]!)
 
       const editDialog = await screen.findByRole('dialog')
       const saveButton = within(editDialog).getByRole('button', { name: 'common.operation.save' })
@@ -261,10 +261,10 @@ describe('ConfigVar', () => {
       expect(itemContainer).not.toBeNull()
       const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
       expect(actionButtons).toHaveLength(2)
-      fireEvent.click(actionButtons[0])
+      fireEvent.click(actionButtons[0]!)
 
       const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
-      fireEvent.change(inputs[0], { target: { value: 'second' } })
+      fireEvent.change(inputs[0]!, { target: { value: 'second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -287,10 +287,10 @@ describe('ConfigVar', () => {
       expect(itemContainer).not.toBeNull()
       const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
       expect(actionButtons).toHaveLength(2)
-      fireEvent.click(actionButtons[0])
+      fireEvent.click(actionButtons[0]!)
 
       const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
-      fireEvent.change(inputs[1], { target: { value: 'Second' } })
+      fireEvent.change(inputs[1]!, { target: { value: 'Second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -412,7 +412,7 @@ describe('ConfigVar', () => {
       expect(itemContainer).not.toBeNull()
 
       const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
-      fireEvent.click(actionButtons[0])
+      fireEvent.click(actionButtons[0]!)
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 
@@ -461,7 +461,7 @@ describe('ConfigVar', () => {
       expect(itemContainer).not.toBeNull()
 
       const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
-      fireEvent.click(actionButtons[0])
+      fireEvent.click(actionButtons[0]!)
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 

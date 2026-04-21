@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Lệnh",
   "gotoAnything.groups.knowledgeBases": "Cơ sở kiến thức",
   "gotoAnything.groups.plugins": "Plugin",
+  "gotoAnything.groups.recent": "Gần đây",
   "gotoAnything.groups.workflowNodes": "Nút quy trình làm việc",
   "gotoAnything.inScope": "trong {{scope}}s",
   "gotoAnything.noMatchingCommands": "Không tìm thấy lệnh phù hợp",

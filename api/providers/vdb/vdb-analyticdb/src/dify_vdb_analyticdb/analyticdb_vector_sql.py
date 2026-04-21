@@ -1,6 +1,6 @@
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator  # Added Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -24,7 +24,7 @@ class AnalyticdbVectorBySqlConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["host"]:
             raise ValueError("config ANALYTICDB_HOST is required")
         if not values["port"]:
@@ -75,7 +75,7 @@ class AnalyticdbVectorBySql:
         )
 
     @contextmanager
-    def _get_cursor(self) -> Iterator[Any]:
+    def _get_cursor(self) -> Generator[Any, None, None]:  # Changed from Iterator[Any]
         assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()

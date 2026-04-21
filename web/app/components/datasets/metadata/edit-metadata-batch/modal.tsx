@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiQuestionLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import Button from '../../../base/button'
 import Checkbox from '../../../base/checkbox'
 import Modal from '../../../base/modal'
 import Tooltip from '../../../base/tooltip'
@@ -47,8 +47,8 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index].isUpdated = true
-        draft[index].updateType = UpdateType.delete
+        draft[index]!.isUpdated = true
+        draft[index]!.updateType = UpdateType.delete
       }
     })
     setTempleList(newTempleList)
@@ -57,9 +57,9 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index] = { ...list[index] }
-        draft[index].isUpdated = false
-        delete draft[index].updateType
+        draft[index] = { ...list[index]! }
+        draft[index]!.isUpdated = false
+        delete draft[index]!.updateType
       }
     })
     setTempleList(newTempleList)
@@ -92,14 +92,14 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Modal title={t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })} isShow closable onClose={onHide} className="!max-w-[640px]">
-      <div className="mt-1 text-text-accent system-xs-medium">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
-      <div className="max-h-[305px] overflow-y-auto overflow-x-hidden">
+      <div className="mt-1 system-xs-medium text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
+      <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
         <div className="mt-4 space-y-2">
           {templeList.map(item => (<EditMetadataBatchItem key={item.id} payload={item} onChange={handleTemplesChange} onRemove={handleTempleItemRemove} onReset={handleItemReset} />))}
         </div>
         <div className="mt-4 pl-[18px]">
           <div className="flex items-center">
-            <div className="mr-2 shrink-0 text-text-tertiary system-xs-medium-uppercase">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
+            <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
             <Divider bgStyle="gradient" />
           </div>
           <div className="mt-2 space-y-2">
@@ -112,9 +112,9 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <div className="flex select-none items-center">
+        <div className="flex items-center select-none">
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
-          <div className="ml-2 mr-1 text-text-secondary system-xs-medium">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
+          <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>}>
             <div className="cursor-pointer p-px">
               <RiQuestionLine className="size-3.5 text-text-tertiary" />

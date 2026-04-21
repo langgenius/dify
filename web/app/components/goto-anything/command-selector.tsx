@@ -64,7 +64,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
     if (allItems.length > 0 && onCommandValueChange) {
       const currentValueExists = allItems.some(item => item.shortcut === commandValue)
       if (!currentValueExists)
-        onCommandValueChange(allItems[0].shortcut)
+        onCommandValueChange(allItems[0]!.shortcut)
     }
   }, [searchFilter, allItems.length])
 

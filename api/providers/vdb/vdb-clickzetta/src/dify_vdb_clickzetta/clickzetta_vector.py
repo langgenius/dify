@@ -51,7 +51,7 @@ class ClickzettaConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         """
         Validate the configuration values.
         """

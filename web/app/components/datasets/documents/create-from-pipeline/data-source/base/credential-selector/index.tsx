@@ -29,7 +29,7 @@ const CredentialSelector = ({
 
   useEffect(() => {
     if (!currentCredential && credentials.length)
-      onCredentialChange(credentials[0].id)
+      onCredentialChange(credentials[0]!.id)
   }, [currentCredential, credentials])
 
   const handleCredentialChange = useCallback((credentialId: string) => {

@@ -38,7 +38,7 @@ class RelytConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["host"]:
             raise ValueError("config RELYT_HOST is required")
         if not values["port"]:
@@ -239,7 +239,7 @@ class RelytVector(BaseVector):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict | None = None,
+        filter: dict[str, Any] | None = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
 

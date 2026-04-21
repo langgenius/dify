@@ -86,7 +86,7 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
