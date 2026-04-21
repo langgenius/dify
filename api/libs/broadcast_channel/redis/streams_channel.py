@@ -88,7 +88,8 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        # `"0"` replays all retained entries; `"$"` tails only new messages.
+        # Setting initial last id to `$` to signal redis that we only want new messages.
+        #        
         # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
         last_id = "$"
         try:

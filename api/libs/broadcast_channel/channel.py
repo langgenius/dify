@@ -93,7 +93,6 @@ class Subscriber(Protocol):
 
     @abstractmethod
     def subscribe(self) -> Subscription:
-        """Create a new subscription."""
         pass
 
 
