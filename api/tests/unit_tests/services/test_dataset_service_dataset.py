@@ -1253,6 +1253,7 @@ class TestDatasetPermissionService:
         mock_db.session.add_all.assert_called_once()
         inserted_permissions = mock_db.session.add_all.call_args.args[0]
         assert [permission.account_id for permission in inserted_permissions] == ["user-1", "user-2"]
+
     def test_update_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.add_all.side_effect = RuntimeError("boom")
