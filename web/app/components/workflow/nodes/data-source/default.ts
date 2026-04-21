@@ -73,6 +73,8 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       const properties = output_schema.properties
       Object.keys(properties).forEach((outputKey) => {
         const output = properties[outputKey]
+        if (!output)
+          return
         const dataType = output.type || 'string'
         const itemType = output.items?.type || 'string'
         let type = dataType === 'array'

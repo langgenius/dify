@@ -99,6 +99,8 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       const properties = output_schema.properties
       Object.keys(properties).forEach((outputKey) => {
         const output = properties[outputKey]
+        if (!output)
+          return
         const { type, schemaType } = resolveVarType(output, schemaTypeDefinitions)
 
         outputSchema.push({
