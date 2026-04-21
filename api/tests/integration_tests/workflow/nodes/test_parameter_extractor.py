@@ -56,7 +56,7 @@ def init_parameter_extractor_node(config: dict, memory=None):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
         ),

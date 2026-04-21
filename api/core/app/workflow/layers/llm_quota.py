@@ -5,7 +5,7 @@ This layer centralizes model-quota deduction outside node implementations.
 """
 
 import logging
-from typing import TYPE_CHECKING, cast, final, override
+from typing import final, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
@@ -16,11 +16,6 @@ from graphon.graph_engine.entities.commands import AbortCommand, CommandType
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, NodeRunSucceededEvent
 from graphon.nodes.base.node import Node
-
-if TYPE_CHECKING:
-    from graphon.nodes.llm.node import LLMNode
-    from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-    from graphon.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 
 logger = logging.getLogger(__name__)
 
@@ -109,16 +104,14 @@ class LLMQuotaLayer(GraphEngineLayer):
 
     @staticmethod
     def _extract_model_instance(node: Node) -> ModelInstance | None:
+        match node.node_type:
+            case BuiltinNodeTypes.LLM | BuiltinNodeTypes.PARAMETER_EXTRACTOR | BuiltinNodeTypes.QUESTION_CLASSIFIER:
+                pass
+            case _:
+                return None
+
         try:
-            match node.node_type:
-                case BuiltinNodeTypes.LLM:
-                    model_instance = cast("LLMNode", node).model_instance
-                case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-                    model_instance = cast("ParameterExtractorNode", node).model_instance
-                case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    model_instance = cast("QuestionClassifierNode", node).model_instance
-                case _:
-                    return None
+            model_instance = getattr(node, "model_instance", None)
         except AttributeError:
             logger.warning(
                 "LLMQuotaLayer skipped quota deduction because node does not expose a model instance, node_id=%s",
@@ -132,5 +125,13 @@ class LLMQuotaLayer(GraphEngineLayer):
         raw_model_instance = getattr(model_instance, "_model_instance", None)
         if isinstance(raw_model_instance, ModelInstance):
             return raw_model_instance
+
+        private_model_instance = getattr(node, "_model_instance", None)
+        if isinstance(private_model_instance, ModelInstance):
+            return private_model_instance
+
+        wrapped_private_model_instance = getattr(private_model_instance, "_model_instance", None)
+        if isinstance(wrapped_private_model_instance, ModelInstance):
+            return wrapped_private_model_instance
 
         return None

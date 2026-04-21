@@ -4,22 +4,31 @@ import hashlib
 import logging
 from collections.abc import Generator, Iterable, Sequence
 from threading import Lock
-from typing import IO, Any, Union
+from typing import IO, Any, Literal, cast, overload
 
 from pydantic import ValidationError
 from redis import RedisError
 
 from configs import dify_config
+from core.llm_generator.output_parser.structured_output import (
+    invoke_llm_with_structured_output as invoke_llm_with_structured_output_helper,
+)
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
+from graphon.model_runtime.model_providers.base.large_language_model import normalize_non_stream_runtime_result
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.provider_ids import ModelProviderID
 
@@ -27,6 +36,57 @@ logger = logging.getLogger(__name__)
 
 # `TS` means tenant scope
 TENANT_SCOPE_SCHEMA_CACHE_USER_ID = "__DIFY_TS__"
+
+
+class _PluginStructuredOutputModelInstance:
+    """Reuse the shared structured-output helper without depending on `ModelInstance`."""
+
+    def __init__(
+        self,
+        *,
+        runtime: PluginModelRuntime,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+    ) -> None:
+        self._runtime = runtime
+        self._provider = provider
+        self._model = model
+        self._credentials = credentials
+
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: bool = True,
+        callbacks: object | None = None,
+    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+        del callbacks
+        if stream:
+            return self._runtime.invoke_llm(
+                provider=self._provider,
+                model=self._model,
+                credentials=self._credentials,
+                model_parameters=model_parameters or {},
+                prompt_messages=prompt_messages,
+                tools=list(tools) if tools else None,
+                stop=stop,
+                stream=True,
+            )
+
+        return self._runtime.invoke_llm(
+            provider=self._provider,
+            model=self._model,
+            credentials=self._credentials,
+            model_parameters=model_parameters or {},
+            prompt_messages=prompt_messages,
+            tools=list(tools) if tools else None,
+            stop=stop,
+            stream=False,
+        )
 
 
 class PluginModelRuntime(ModelRuntime):
@@ -195,6 +255,34 @@ class PluginModelRuntime(ModelRuntime):
 
         return schema
 
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: list[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: list[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunk, None, None]: ...
+
     def invoke_llm(
         self,
         *,
@@ -206,9 +294,9 @@ class PluginModelRuntime(ModelRuntime):
         tools: list[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
+    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         plugin_id, provider_name = self._split_provider(provider)
-        return self.client.invoke_llm(
+        result = self.client.invoke_llm(
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
@@ -218,6 +306,81 @@ class PluginModelRuntime(ModelRuntime):
             model_parameters=model_parameters,
             prompt_messages=list(prompt_messages),
             tools=tools,
+            stop=list(stop) if stop else None,
+            stream=stream,
+        )
+        if stream:
+            return result
+
+        return normalize_non_stream_runtime_result(
+            model=model,
+            prompt_messages=prompt_messages,
+            result=result,
+        )
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResultWithStructuredOutput: ...
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: bool,
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        model_schema = self.get_model_schema(
+            provider=provider,
+            model_type=ModelType.LLM,
+            model=model,
+            credentials=credentials,
+        )
+        if model_schema is None:
+            raise ValueError(f"Model schema not found for {model}")
+
+        adapter = _PluginStructuredOutputModelInstance(
+            runtime=self,
+            provider=provider,
+            model=model,
+            credentials=credentials,
+        )
+        return invoke_llm_with_structured_output_helper(
+            provider=provider,
+            model_schema=model_schema,
+            model_instance=cast(Any, adapter),
+            prompt_messages=prompt_messages,
+            json_schema=json_schema,
+            model_parameters=model_parameters,
+            tools=None,
             stop=list(stop) if stop else None,
             stream=stream,
         )
