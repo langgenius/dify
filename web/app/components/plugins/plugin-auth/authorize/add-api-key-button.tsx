@@ -15,6 +15,7 @@ export type AddApiKeyButtonProps = {
   disabled?: boolean
   onUpdate?: () => void
   formSchemas?: FormSchema[]
+  onOpenModal?: () => void
 }
 const AddApiKeyButton = ({
   pluginPayload,
@@ -23,6 +24,7 @@ const AddApiKeyButton = ({
   disabled,
   onUpdate,
   formSchemas = [],
+  onOpenModal,
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
 
@@ -31,13 +33,20 @@ const AddApiKeyButton = ({
       <Button
         className="w-full"
         variant={buttonVariant}
-        onClick={() => setIsApiKeyModalOpen(true)}
+        onClick={() => {
+          if (onOpenModal) {
+            onOpenModal()
+            return
+          }
+
+          setIsApiKeyModalOpen(true)
+        }}
         disabled={disabled}
       >
         {buttonText}
       </Button>
       {
-        isApiKeyModalOpen && (
+        !onOpenModal && isApiKeyModalOpen && (
           <ApiKeyModal
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}

@@ -133,10 +133,15 @@ const Authorized = ({
     }
   }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, unknown> | null>(null)
+  const [isAddApiKeyModalOpen, setIsAddApiKeyModalOpen] = useState(false)
   const handleEdit = useCallback((id: string, values: Record<string, unknown>) => {
     setMergedIsOpen(false)
     pendingOperationCredentialId.current = id
     setEditValues(values)
+  }, [setMergedIsOpen])
+  const handleOpenAddApiKeyModal = useCallback(() => {
+    setMergedIsOpen(false)
+    setIsAddApiKeyModalOpen(true)
   }, [setMergedIsOpen])
   const handleRemove = useCallback(() => {
     setDeleteCredentialId(pendingOperationCredentialId.current)
@@ -330,6 +335,7 @@ const Authorized = ({
                       canApiKey={canApiKey}
                       disabled={disabled}
                       onUpdate={onUpdate}
+                      onOpenApiKeyModal={handleOpenAddApiKeyModal}
                     />
                   </div>
                 </>
@@ -353,6 +359,16 @@ const Authorized = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
+      {
+        isAddApiKeyModalOpen && (
+          <ApiKeyModal
+            pluginPayload={pluginPayload}
+            onClose={() => setIsAddApiKeyModalOpen(false)}
+            disabled={disabled || doingAction}
+            onUpdate={onUpdate}
+          />
+        )
+      }
       {
         !!editValues && (
           <ApiKeyModal

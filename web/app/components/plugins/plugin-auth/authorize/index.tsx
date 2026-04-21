@@ -20,6 +20,7 @@ type AuthorizeProps = {
   disabled?: boolean
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
+  onOpenApiKeyModal?: () => void
 }
 const Authorize = ({
   pluginPayload,
@@ -30,6 +31,7 @@ const Authorize = ({
   disabled,
   onUpdate,
   notAllowCustomCredential,
+  onOpenApiKeyModal,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
@@ -94,6 +96,7 @@ const Authorize = ({
           {...apiKeyButtonProps}
           disabled={disabled || notAllowCustomCredential}
           onUpdate={onUpdate}
+          onOpenModal={onOpenApiKeyModal}
         />
       </div>
     )
@@ -106,7 +109,7 @@ const Authorize = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, apiKeyButtonProps, disabled, onUpdate, t])
+  }, [notAllowCustomCredential, apiKeyButtonProps, disabled, onUpdate, onOpenApiKeyModal, t])
 
   return (
     <>
