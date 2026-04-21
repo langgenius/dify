@@ -1,15 +1,19 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import InputField from '../input-field'
 
 type VarReferencePickerProps = {
   onChange: (value: string[]) => void
+  filterVar?: (payload: { type: VarType }) => boolean
 }
+
+let lastVarReferencePickerProps: VarReferencePickerProps | undefined
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: (props: VarReferencePickerProps) => {
+    lastVarReferencePickerProps = props
     return (
       <button type="button" onClick={() => props.onChange(['node-a', 'var-a'])}>
         pick-variable
@@ -61,6 +65,7 @@ const createPayload = (overrides?: Partial<FormInputItem>): FormInputItem => ({
 describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    lastVarReferencePickerProps = undefined
   })
 
   it('should disable save and show validation error when variable name is invalid', async () => {
@@ -417,5 +422,26 @@ describe('InputField', () => {
         value: ['alpha', 'beta'],
       },
     })
+  })
+
+  it('should only allow array[string] variables for select option source', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <InputField
+        nodeId="node-11"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-select' }))
+    await user.click(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i))
+
+    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayString })).toBe(true)
+    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.string })).toBe(false)
+    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayFile })).toBe(false)
   })
 })
