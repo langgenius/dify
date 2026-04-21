@@ -1,11 +1,10 @@
 'use client'
 
 import { Playground } from '@/app/components/base/icons/src/vender/plugin'
-import { useActiveTemplateCategory, useFilterTemplateLanguages } from '../atoms'
+import { useActiveTemplateCategory } from '../atoms'
 import { CATEGORY_ALL, TEMPLATE_CATEGORY_MAP } from '../constants'
 import { useTemplateCategoryText } from './category-text'
 import { CommonCategorySwitch } from './common'
-import HeroLanguagesFilter from './hero-languages-filter'
 
 type TemplateCategorySwitchProps = {
   className?: string
@@ -28,7 +27,7 @@ export const TemplateCategorySwitch = ({
   variant = 'default',
 }: TemplateCategorySwitchProps) => {
   const [activeTemplateCategory, handleActiveTemplateCategoryChange] = useActiveTemplateCategory()
-  const [filterTemplateLanguages, setFilterTemplateLanguages] = useFilterTemplateLanguages()
+  // const [filterTemplateLanguages, setFilterTemplateLanguages] = useFilterTemplateLanguages()
   const getTemplateCategoryText = useTemplateCategoryText()
 
   const isHeroVariant = variant === 'hero'
@@ -53,13 +52,13 @@ export const TemplateCategorySwitch = ({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <HeroLanguagesFilter
+      {/* <HeroLanguagesFilter
         languages={filterTemplateLanguages}
         onLanguagesChange={languages => setFilterTemplateLanguages(languages.length ? languages : null)}
       />
       <div className="text-text-primary-on-surface">
         ·
-      </div>
+      </div> */}
       <CommonCategorySwitch
         className={className}
         variant={variant}
