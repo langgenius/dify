@@ -36,7 +36,7 @@ describe('QueryBlockComponent', () => {
       const { container } = render(<QueryBlockComponent nodeKey="query-node-2" />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).toHaveClass('!border-[#FD853A]')
+      expect(wrapper).toHaveClass('border-[#FD853A]!')
     })
 
     it('should not apply selected border class when the block is not selected', () => {
@@ -45,7 +45,7 @@ describe('QueryBlockComponent', () => {
       const { container } = render(<QueryBlockComponent nodeKey="query-node-3" />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).not.toHaveClass('!border-[#FD853A]')
+      expect(wrapper).not.toHaveClass('border-[#FD853A]!')
     })
   })
 })

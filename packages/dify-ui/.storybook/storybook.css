@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@config '../tailwind.config.ts';
+
+@import '../src/styles/styles.css';
+
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-components-panel-bg);
+  color: var(--color-text-primary, #101828);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Condition } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import Input from '@/app/components/workflow/nodes/_base/components/input-suppor
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { getConditionValueAsString } from '@/app/components/workflow/nodes/utils'
-import { cn } from '@/utils/classnames'
 import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 import { VarType } from '../../../types'
 import ConditionOperator from '../../if-else/components/condition-list/condition-operator'
@@ -131,7 +131,7 @@ const ValueInput = ({
         items={selectOptions}
         defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
         onSelect={item => onChange(item.value)}
-        className="!text-[13px]"
+        className="text-[13px]!"
         wrapperClassName="grow h-8"
         placeholder="Select value"
       />
@@ -164,7 +164,7 @@ const ValueInput = ({
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
         placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
-        placeholderClassName="!leading-[21px]"
+        placeholderClassName="leading-[21px]!"
       />
     )
   }
@@ -217,7 +217,7 @@ const FilterCondition: FC<Props> = ({
 
   const handleSubVariableChange = useCallback((value: string) => {
     const operators = getOperators(expectedVarType ?? VarType.string, { key: value })
-    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal
+    const newOperator = operators.length > 0 ? operators[0]! : ComparisonOperator.equal
     onChange({
       key: value,
       comparison_operator: newOperator,

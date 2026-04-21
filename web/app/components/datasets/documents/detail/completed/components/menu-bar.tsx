@@ -47,7 +47,7 @@ const MenuBar: FC<MenuBarProps> = ({
         onCheck={onSelectedAll}
         disabled={isLoading}
       />
-      <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
+      <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">{totalText}</div>
       <SimpleSelect
         onSelect={onChangeStatus}
         items={statusList}
@@ -62,7 +62,7 @@ const MenuBar: FC<MenuBarProps> = ({
       <Input
         showLeftIcon
         showClearIcon
-        wrapperClassName="!w-52"
+        wrapperClassName="w-52!"
         value={inputValue}
         onChange={e => onInputChange(e.target.value)}
         onClear={() => onInputChange('')}

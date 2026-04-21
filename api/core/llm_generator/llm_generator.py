@@ -2,9 +2,10 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Protocol, cast
+from typing import Any, Protocol, TypedDict, cast
 
 import json_repair
+from sqlalchemy import select
 
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
@@ -29,7 +30,7 @@ from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -46,6 +47,17 @@ class WorkflowServiceInterface(Protocol):
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
         pass
+
+
+class CodeGenerateResultDict(TypedDict):
+    code: str
+    language: str
+    error: str
+
+
+class StructuredOutputResultDict(TypedDict):
+    output: str
+    error: str
 
 
 class LLMGenerator:
@@ -292,7 +304,7 @@ class LLMGenerator:
         cls,
         tenant_id: str,
         args: RuleCodeGeneratePayload,
-    ):
+    ) -> CodeGenerateResultDict:
         if args.code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
@@ -361,7 +373,9 @@ class LLMGenerator:
         return answer.strip()
 
     @classmethod
-    def generate_structured_output(cls, tenant_id: str, args: RuleStructuredOutputPayload):
+    def generate_structured_output(
+        cls, tenant_id: str, args: RuleStructuredOutputPayload
+    ) -> StructuredOutputResultDict:
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
@@ -410,8 +424,8 @@ class LLMGenerator:
         model_config: ModelConfig,
         ideal_output: str | None,
     ):
-        last_run: Message | None = (
-            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+        last_run: Message | None = db.session.scalar(
+            select(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).limit(1)
         )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
@@ -453,7 +467,7 @@ class LLMGenerator:
     ):
         session = db.session()
 
-        app: App | None = session.query(App).where(App.id == flow_id).first()
+        app: App | None = session.scalar(select(App).where(App.id == flow_id).limit(1))
         if not app:
             raise ValueError("App not found.")
         workflow = workflow_service.get_draft_workflow(app_model=app)
@@ -519,7 +533,7 @@ class LLMGenerator:
     def __instruction_modify_common(
         tenant_id: str,
         model_config: ModelConfig,
-        last_run: dict | None,
+        last_run: dict[str, Any] | None,
         current: str | None,
         error_message: str | None,
         instruction: str,

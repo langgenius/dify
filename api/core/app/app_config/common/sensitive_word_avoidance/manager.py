@@ -22,8 +22,8 @@ class SensitiveWordAvoidanceConfigManager:
 
     @classmethod
     def validate_and_set_defaults(
-        cls, tenant_id: str, config: dict, only_structure_validate: bool = False
-    ) -> tuple[dict, list[str]]:
+        cls, tenant_id: str, config: dict[str, Any], only_structure_validate: bool = False
+    ) -> tuple[dict[str, Any], list[str]]:
         if not config.get("sensitive_word_avoidance"):
             config["sensitive_word_avoidance"] = {"enabled": False}
 

@@ -521,6 +521,84 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
   })
 
+  it('filters workflow variables from slash input and matches child paths', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const user = userEvent.setup()
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('child_name', VarType.string)]),
+        makeWorkflowNodeVar('other_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/child', true)
+    await flushNextTick()
+
+    expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
+    expect(await screen.findByText('payload')).toBeInTheDocument()
+    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
+
+    const label = document.querySelector('[title="payload"]')
+    expect(label).not.toBeNull()
+    const row = (label as HTMLElement).parentElement?.parentElement
+    expect(row).not.toBeNull()
+
+    await user.hover(row as HTMLElement)
+    const childField = await screen.findByText('child_name')
+    fireEvent.mouseDown(childField)
+    await user.unhover(row as HTMLElement)
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'payload', 'child_name'])
+    await waitFor(() => expect(readEditorText(editor)).not.toContain('/child'))
+  })
+
+  it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('child_value', VarType.string),
+        makeWorkflowNodeVar('other_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    await setEditorText(editor, '/c', true)
+    await flushNextTick()
+
+    expect(await screen.findByText('child_value')).toBeInTheDocument()
+    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
+
+    const contextTitle = screen.getByText('common.promptEditor.context.item.title')
+    expect(contextTitle.closest('[tabindex="-1"]')).not.toHaveClass('bg-state-base-hover!')
+
+    await waitFor(() => {
+      expect(readEditorText(editor)).toContain('/c')
+    })
+  })
+
   it('skips removing the trigger when selection is null (needRemove is null) and still dispatches', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
@@ -635,7 +713,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   describe('blur/focus menu visibility', () => {
-    it('hides the menu after a 200ms delay when blur command is dispatched', async () => {
+    it('hides the menu after a 200ms delay when blur-sm command is dispatched', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render((
@@ -653,7 +731,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useFakeTimers()
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }))
       })
 
       expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
@@ -667,7 +745,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useRealTimers()
     })
 
-    it('restores menu visibility when focus command is dispatched after blur hides it', async () => {
+    it('restores menu visibility when focus command is dispatched after blur-sm hides it', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render((
@@ -685,7 +763,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useFakeTimers()
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }))
       })
       act(() => {
         vi.advanceTimersByTime(200)
@@ -705,7 +783,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       })
     })
 
-    it('cancels the blur timer when focus arrives before the 200ms timeout', async () => {
+    it('cancels the blur-sm timer when focus arrives before the 200ms timeout', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render((
@@ -723,7 +801,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useFakeTimers()
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }))
       })
 
       act(() => {
@@ -739,7 +817,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useRealTimers()
     })
 
-    it('cancels a pending blur timer when a subsequent blur targets var-search-input', async () => {
+    it('cancels a pending blur-sm timer when a subsequent blur-sm targets var-search-input', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render((
@@ -757,14 +835,14 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useFakeTimers()
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }))
       })
 
       const varInput = document.createElement('input')
       varInput.classList.add('var-search-input')
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: varInput }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: varInput }))
       })
 
       act(() => {
@@ -776,7 +854,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useRealTimers()
     })
 
-    it('does not hide the menu when blur target is var-search-input', async () => {
+    it('does not hide the menu when blur-sm target is var-search-input', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render((
@@ -797,7 +875,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       target.classList.add('var-search-input')
 
       act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: target }))
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: target }))
       })
 
       act(() => {

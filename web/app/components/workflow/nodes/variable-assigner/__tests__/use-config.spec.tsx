@@ -91,6 +91,15 @@ const createPayload = (overrides: Partial<VariableAssignerNodeType> = {}): Varia
   ...overrides,
 })
 
+const createPayloadWithoutAdvancedSettings = (): VariableAssignerNodeType => {
+  const payload = createPayload() as Omit<VariableAssignerNodeType, 'advanced_settings'> & {
+    advanced_settings?: VariableAssignerNodeType['advanced_settings']
+  }
+  delete payload.advanced_settings
+
+  return payload as VariableAssignerNodeType
+}
+
 describe('useConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -251,5 +260,26 @@ describe('useConfig', () => {
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       advanced_settings: expect.objectContaining({ group_enabled: false }),
     }))
+  })
+
+  it('should not throw when enabling groups with missing advanced settings', () => {
+    const { result } = renderHook(() => useConfig('assigner-node', createPayloadWithoutAdvancedSettings()))
+
+    expect(() => {
+      result.current.handleGroupEnabledChange(true)
+    }).not.toThrow()
+
+    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith(
+      'assigner-node',
+      ['assigner-node', 'output'],
+      ['assigner-node', 'Group1', 'output'],
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      advanced_settings: expect.objectContaining({
+        group_enabled: true,
+        groups: [expect.objectContaining({ group_name: 'Group1' })],
+      }),
+    }))
+    expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('assigner-node')
   })
 })

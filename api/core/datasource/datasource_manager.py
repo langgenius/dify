@@ -28,10 +28,8 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
 from factories import file_factory
-from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from graphon.enums import WorkflowNodeExecutionMetadataKey
-from graphon.file import File, get_file_type_by_mime_type
-from graphon.file.enums import FileTransferMethod, FileType
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType, get_file_type_by_mime_type
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -347,18 +345,18 @@ class DatasourceManager:
     @classmethod
     def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File:
         with session_factory.create_session() as session:
-            upload_file = (
-                session.query(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).first()
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
             )
             if not upload_file:
                 raise ValueError(f"UploadFile not found for file_id={file_id}, tenant_id={tenant_id}")
 
         file_info = File(
-            id=upload_file.id,
+            file_id=upload_file.id,
             filename=upload_file.name,
             extension="." + upload_file.extension,
             mime_type=upload_file.mime_type,
-            type=FileType.CUSTOM,
+            file_type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
             reference=build_file_reference(record_id=str(upload_file.id)),

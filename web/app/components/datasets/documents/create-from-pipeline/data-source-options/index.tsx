@@ -31,7 +31,7 @@ const DataSourceOptions = ({
 
   useEffect(() => {
     if (options.length > 0 && !datasourceNodeId)
-      handelSelect(options[0].value)
+      handelSelect(options[0]!.value)
   }, [])
 
   return (

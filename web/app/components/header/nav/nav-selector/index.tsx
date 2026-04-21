@@ -1,6 +1,7 @@
 'use client'
 import type { AppIconType, AppModeEnum } from '@/types/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -16,7 +17,6 @@ import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 export type NavItem = {
   id: string
@@ -58,19 +58,19 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
       {({ open }) => (
         <>
           <MenuButton className={cn(
-            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
+            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
             open && 'bg-components-main-nav-nav-button-bg-active',
           )}
           >
             <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
             <RiArrowDownSLine
-              className={cn('ml-1 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100', open && '!opacity-100')}
+              className={cn('ml-1 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100', open && 'opacity-100!')}
               aria-hidden="true"
             />
           </MenuButton>
           <MenuItems
             className="
-              absolute -left-11 right-0 mt-1.5 w-60 max-w-80
+              absolute right-0 -left-11 mt-1.5 w-60 max-w-80
               origin-top-right divide-y divide-divider-regular rounded-lg bg-components-panel-bg-blur
               shadow-lg
             "
@@ -119,10 +119,10 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                 <div
                   onClick={() => onCreate('')}
                   className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover ',
+                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
                   )}
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
                     <RiAddLine className="h-4 w-4 text-text-primary" />
                   </div>
                   <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
@@ -136,10 +136,10 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                     <MenuButton className="w-full p-1">
                       <div className={cn(
                         'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
-                        open && '!bg-state-base-hover',
+                        open && 'bg-state-base-hover!',
                       )}
                       >
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
                           <RiAddLine className="h-4 w-4 text-text-primary" />
                         </div>
                         <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
@@ -156,7 +156,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                       leaveTo="transform opacity-0 scale-95"
                     >
                       <MenuItems className={cn(
-                        'absolute right-[-198px] top-[3px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
+                        'absolute top-[3px] right-[-198px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
                       )}
                       >
                         <div className="p-1">

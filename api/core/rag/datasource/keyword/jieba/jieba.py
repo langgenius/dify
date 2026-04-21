@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import Any
+from typing import Any, TypedDict
 
 import orjson
 from pydantic import BaseModel
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
@@ -97,13 +96,13 @@ class Jieba(BaseKeyword):
 
         documents = []
 
-        segment_query_stmt = db.session.query(DocumentSegment).where(
+        segment_query_stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
         )
         if document_ids_filter:
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
 
-        segments = db.session.execute(segment_query_stmt).scalars().all()
+        segments = db.session.scalars(segment_query_stmt).all()
         segment_map = {segment.index_node_id: segment for segment in segments}
         for chunk_index in sorted_chunk_indices:
             segment = segment_map.get(chunk_index)
@@ -140,8 +139,10 @@ class Jieba(BaseKeyword):
             "__data__": {"index_id": self.dataset.id, "summary": None, "table": keyword_table},
         }
         dataset_keyword_table = self.dataset.dataset_keyword_table
-        keyword_data_source_type = dataset_keyword_table.data_source_type
+        keyword_data_source_type = dataset_keyword_table.data_source_type if dataset_keyword_table else "file"
         if keyword_data_source_type == "database":
+            if dataset_keyword_table is None:
+                return
             dataset_keyword_table.keyword_table = dumps_with_sets(keyword_table_dict)
             db.session.commit()
         else:

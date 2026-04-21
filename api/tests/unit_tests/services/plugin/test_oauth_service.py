@@ -93,3 +93,20 @@ class TestUseProxyContext:
         assert result == stored
         expected_key = "oauth_proxy_context:valid-id"
         redis_client.delete.assert_called_once_with(expected_key)
+
+    def test_returns_context_with_credential_id(self):
+        from extensions.ext_redis import redis_client
+
+        stored = {
+            "user_id": "u1",
+            "tenant_id": "t1",
+            "plugin_id": "p1",
+            "provider": "github",
+            "credential_id": "cred-42",
+        }
+        redis_client.get.return_value = json.dumps(stored).encode()
+
+        result = OAuthProxyService.use_proxy_context("ctx-with-cred")
+
+        assert result["credential_id"] == "cred-42"
+        assert result["tenant_id"] == "t1"

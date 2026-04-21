@@ -26,6 +26,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
@@ -44,6 +45,20 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+
+
+@pytest.fixture(autouse=True)
+def _patch_shared_httpx_client():
+    """Make BasePluginClient's module-level httpx client delegate to patched httpx.request/stream.
+
+    After refactor, code uses core.plugin.impl.base._httpx_client directly.
+    Patch its request/stream to route through module-level httpx so existing mocks still apply.
+    """
+    with (
+        patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+        patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+    ):
+        yield
 
 
 class TestPluginRuntimeExecution:
@@ -557,7 +572,7 @@ class TestPluginRuntimeErrorHandling:
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(PluginDaemonInternalServerError):
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
 
     def test_empty_data_response_error(self, plugin_client, mock_config):
@@ -1808,8 +1823,8 @@ class TestPluginInstallerAdvanced:
         mock_response.raise_for_status = raise_for_status
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
-            # Act & Assert - Should raise HTTPStatusError for 404
-            with pytest.raises(httpx.HTTPStatusError):
+            # Act & Assert - Should raise PluginDaemonClientSideError for 404
+            with pytest.raises(PluginDaemonClientSideError):
                 installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
     def test_list_plugins_with_pagination(self, installer, mock_config):

@@ -8,8 +8,7 @@ from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from graphon.file import file_manager
-from graphon.file.models import File
+from graphon.file import File, file_manager
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,

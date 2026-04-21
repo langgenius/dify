@@ -117,8 +117,8 @@ def mock_result_event():
     """Create a mock result event with NodeRunResult."""
     from datetime import datetime
 
-    from graphon.graph_events.node import NodeRunSucceededEvent
-    from graphon.node_events.base import NodeRunResult
+    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.node_events import NodeRunResult
 
     node_run_result = NodeRunResult(
         inputs={"query": "test query"},

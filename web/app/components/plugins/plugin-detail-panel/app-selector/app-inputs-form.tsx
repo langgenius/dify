@@ -64,7 +64,7 @@ const AppInputsForm = ({
     if (form.type === InputVarType.select) {
       return (
         <PortalSelect
-          popupClassName="w-[356px] z-[1050]"
+          popupClassName="w-[356px] z-1050"
           value={inputs[variable] || ''}
           items={options.map((option: string) => ({ value: option, name: option }))}
           onSelect={item => handleFormChange(variable, item.value as string)}
@@ -111,7 +111,7 @@ const AppInputsForm = ({
     <div className="flex flex-col gap-4 px-4 py-2">
       {inputsForms.map(form => (
         <div key={form.variable}>
-          <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+          <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
             <div className="truncate">{form.label}</div>
             {!form.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
           </div>

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
@@ -29,6 +30,31 @@ from services.entities.knowledge_entities.knowledge_entities import SegmentUpdat
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.summary_index_service import SummaryIndexService
+
+
+def _marshal_segment_with_summary(segment, dataset_id: str) -> dict[str, Any]:
+    """Marshal a single segment and enrich it with summary content."""
+    segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+    summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
+    segment_dict["summary"] = summary.summary_content if summary else None
+    return segment_dict
+
+
+def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict[str, Any]]:
+    """Marshal multiple segments and enrich them with summary content (batch query)."""
+    segment_ids = [segment.id for segment in segments]
+    summaries: dict[str, str | None] = {}
+    if segment_ids:
+        summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+        summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
+
+    result: list[dict[str, Any]] = []
+    for segment in segments:
+        segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+        segment_dict["summary"] = summaries.get(segment.id)
+        result.append(segment_dict)
+    return result
 
 
 class SegmentCreatePayload(BaseModel):
@@ -44,18 +70,10 @@ class SegmentUpdatePayload(BaseModel):
     segment: SegmentUpdateArgs
 
 
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
 class ChildChunkListQuery(BaseModel):
     limit: int = Field(default=20, ge=1)
     keyword: str | None = None
     page: int = Field(default=1, ge=1)
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 register_schema_models(
@@ -132,7 +150,7 @@ class SegmentApi(DatasetApiResource):
             for args_item in payload.segments:
                 SegmentService.segment_create_args_validate(args_item, document)
             segments = SegmentService.multi_create_segment(payload.segments, document, dataset)
-            return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
+            return {"data": _marshal_segments_with_summary(segments, dataset_id), "doc_form": document.doc_form}, 200
         else:
             return {"error": "Segments is required"}, 400
 
@@ -196,7 +214,7 @@ class SegmentApi(DatasetApiResource):
         )
 
         response = {
-            "data": marshal(segments, segment_fields),
+            "data": _marshal_segments_with_summary(segments, dataset_id),
             "doc_form": document.doc_form,
             "total": total,
             "has_more": len(segments) == limit,
@@ -296,7 +314,7 @@ class DatasetSegmentApi(DatasetApiResource):
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
         updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset)
-        return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _marshal_segment_with_summary(updated_segment, dataset_id), "doc_form": document.doc_form}, 200
 
     @service_api_ns.doc("get_segment")
     @service_api_ns.doc(description="Get a specific segment by ID")
@@ -326,7 +344,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _marshal_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
 
 @service_api_ns.route(

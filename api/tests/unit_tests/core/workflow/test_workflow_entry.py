@@ -11,8 +11,7 @@ from core.workflow.variable_prefixes import (
 )
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.file.enums import FileType
-from graphon.file.models import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool

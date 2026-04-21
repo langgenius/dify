@@ -1,9 +1,9 @@
 import type { Shape } from '../../store/workflow'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { toast } from '@/app/components/base/ui/toast'
 import { createNodeTracing, createWorkflowRunningData } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -16,7 +16,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },
@@ -33,7 +33,18 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
-  default: ({ status }: { status?: string }) => <div data-testid="result-panel">{status}</div>,
+  default: ({
+    status,
+    onOpenTracingTab,
+  }: {
+    status?: string
+    onOpenTracingTab?: () => void
+  }) => (
+    <div data-testid="result-panel">
+      <div>{status}</div>
+      <button type="button" onClick={onOpenTracingTab}>open-tracing</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/run/result-text', () => ({
@@ -327,6 +338,33 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByText('runLog.result'))
     await user.click(screen.getByRole('button', { name: 'open-detail' }))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+  })
+
+  it('should switch to the tracing tab when result panel requests it', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <WorkflowPreview />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            ...createWorkflowRunningData({
+              result: createWorkflowResult({
+                status: 'partial-succeeded',
+                files: [],
+              }),
+              tracing: [createNodeTracing()],
+            }),
+            resultText: 'ready',
+          } as NonNullable<Shape['workflowRunningData']>,
+        },
+      },
+    )
+
+    await user.click(screen.getByText('runLog.detail'))
+    await user.click(screen.getByRole('button', { name: 'open-tracing' }))
+
+    expect(screen.getByTestId('tracing-panel')).toHaveTextContent('1')
   })
 
   it('should resize the preview panel within the allowed workflow canvas bounds', async () => {

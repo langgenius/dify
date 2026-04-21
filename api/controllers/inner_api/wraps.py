@@ -3,10 +3,7 @@ from collections.abc import Callable
 from functools import wraps
 from hashlib import sha1
 from hmac import new as hmac_new
-from typing import ParamSpec, TypeVar
 
-P = ParamSpec("P")
-R = TypeVar("R")
 from flask import abort, request
 
 from configs import dify_config
@@ -14,9 +11,9 @@ from extensions.ext_database import db
 from models.model import EndUser
 
 
-def billing_inner_api_only(view: Callable[P, R]):
+def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             abort(404)
 
@@ -30,9 +27,9 @@ def billing_inner_api_only(view: Callable[P, R]):
     return decorated
 
 
-def enterprise_inner_api_only(view: Callable[P, R]):
+def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             abort(404)
 
@@ -46,9 +43,9 @@ def enterprise_inner_api_only(view: Callable[P, R]):
     return decorated
 
 
-def enterprise_inner_api_user_auth(view: Callable[P, R]):
+def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             return view(*args, **kwargs)
 
@@ -82,9 +79,9 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
     return decorated
 
 
-def plugin_inner_api_only(view: Callable[P, R]):
+def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.PLUGIN_DAEMON_KEY:
             abort(404)
 

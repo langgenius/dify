@@ -795,32 +795,20 @@ class TestIndexingRunnerRun:
         doc = sample_dataset_documents[0]
 
         # Mock database queries
-        mock_dependencies["db"].session.get.return_value = doc
-
         mock_dataset = Mock(spec=Dataset)
         mock_dataset.id = doc.dataset_id
         mock_dataset.tenant_id = doc.tenant_id
         mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset, "Account": mock_current_user}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
         mock_dependencies["db"].session.scalar.return_value = mock_process_rule
-
-        # Mock current_user (Account) for _transform
-        mock_current_user = MagicMock()
-        mock_current_user.set_tenant_id = MagicMock()
-
-        # Setup db.session.query to return different results based on the model
-        def mock_query_side_effect(model):
-            mock_query_result = MagicMock()
-            if model.__name__ == "Dataset":
-                mock_query_result.filter_by.return_value.first.return_value = mock_dataset
-            elif model.__name__ == "Account":
-                mock_query_result.filter_by.return_value.first.return_value = mock_current_user
-            return mock_query_result
-
-        mock_dependencies["db"].session.query.side_effect = mock_query_side_effect
 
         # Mock processor
         mock_processor = MagicMock()
@@ -891,10 +879,11 @@ class TestIndexingRunnerRun:
         doc = sample_dataset_documents[0]
 
         # Mock database
-        mock_dependencies["db"].session.get.return_value = doc
-
         mock_dataset = Mock(spec=Dataset)
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_dataset.tenant_id = doc.tenant_id
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -917,11 +906,12 @@ class TestIndexingRunnerRun:
         runner = IndexingRunner()
         doc = sample_dataset_documents[0]
 
-        # Mock database to raise ObjectDeletedError
-        mock_dependencies["db"].session.get.return_value = doc
-
+        # Mock database
         mock_dataset = Mock(spec=Dataset)
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_dataset.tenant_id = doc.tenant_id
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -945,17 +935,21 @@ class TestIndexingRunnerRun:
         docs = sample_dataset_documents
 
         # Mock database
-        def get_side_effect(model_class, doc_id):
-            for doc in docs:
-                if doc.id == doc_id:
-                    return doc
-            return None
-
-        mock_dependencies["db"].session.get.side_effect = get_side_effect
-
         mock_dataset = Mock(spec=Dataset)
         mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        doc_map = {doc.id: doc for doc in docs}
+        model_dispatch = {"Dataset": mock_dataset, "Account": mock_current_user}
+
+        def get_side_effect(model_class, id):
+            name = model_class.__name__
+            if name == "Document":
+                return doc_map.get(id)
+            return model_dispatch.get(name)
+
+        mock_dependencies["db"].session.get.side_effect = get_side_effect
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -1035,9 +1029,8 @@ class TestIndexingRunnerRetryLogic:
         mock_document = Mock(spec=DatasetDocument)
         mock_document.id = document_id
 
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 0
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_document
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.update.return_value = None
+        mock_dependencies["db"].session.scalar.return_value = 0
+        mock_dependencies["db"].session.get.return_value = mock_document
 
         # Act
         IndexingRunner._update_document_index_status(
@@ -1053,7 +1046,7 @@ class TestIndexingRunnerRetryLogic:
         """Test document status update when document is paused."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 1
+        mock_dependencies["db"].session.scalar.return_value = 1
 
         # Act & Assert
         with pytest.raises(DocumentIsPausedError):
@@ -1063,8 +1056,8 @@ class TestIndexingRunnerRetryLogic:
         """Test document status update when document is deleted."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 0
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_dependencies["db"].session.scalar.return_value = 0
+        mock_dependencies["db"].session.get.return_value = None
 
         # Act & Assert
         with pytest.raises(DocumentIsDeletedPausedError):

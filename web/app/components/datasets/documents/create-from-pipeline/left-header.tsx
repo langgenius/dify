@@ -1,7 +1,7 @@
 import type { Step } from './step-indicator'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
-import Button from '@/app/components/base/button'
 import Effect from '@/app/components/base/effect'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
@@ -21,9 +21,9 @@ const LeftHeader = ({
   const { datasetId } = useParams()
 
   return (
-    <div className="relative flex flex-col gap-y-0.5 pb-2 pt-4">
+    <div className="relative flex flex-col gap-y-0.5 pt-4 pb-2">
       <div className="flex items-center gap-x-2">
-        <span className="system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent">
+        <span className="bg-pipeline-add-documents-title-bg bg-clip-text system-2xs-semibold-uppercase text-transparent">
           {title}
         </span>
         <span className="system-2xs-regular text-divider-regular">/</span>
@@ -39,13 +39,13 @@ const LeftHeader = ({
         >
           <Button
             variant="secondary-accent"
-            className="absolute -left-11 top-3.5 size-9 rounded-full p-0"
+            className="absolute top-3.5 -left-11 size-9 rounded-full p-0"
           >
-            <RiArrowLeftLine className="size-5 " />
+            <RiArrowLeftLine className="size-5" />
           </Button>
         </Link>
       )}
-      <Effect className="left-8 top-[-34px] opacity-20" />
+      <Effect className="top-[-34px] left-8 opacity-20" />
     </div>
   )
 }

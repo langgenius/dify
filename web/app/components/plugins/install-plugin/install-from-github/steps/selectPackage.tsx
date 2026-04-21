@@ -2,9 +2,9 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import type { Item } from '@/app/components/base/select'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { PortalSelect } from '@/app/components/base/select'
 import { handleUpload } from '../../hooks'
 
@@ -82,7 +82,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={versions}
         installedValue={updatePayload?.originalPackageInfo.version}
         placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) || ''}
-        popupClassName="w-[512px] z-[1001]"
+        popupClassName="w-[512px] z-1001"
         triggerClassName="text-components-input-text-filled"
       />
       <label
@@ -97,7 +97,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={packages}
         readonly={!selectedVersion}
         placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) || ''}
-        popupClassName="w-[512px] z-[1001]"
+        popupClassName="w-[512px] z-1001"
         triggerClassName="text-components-input-text-filled"
       />
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">

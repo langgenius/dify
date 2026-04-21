@@ -5,6 +5,8 @@ import {
   shift,
   useFloating,
 } from '@floating-ui/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditLine,
   RiExternalLinkLine,
@@ -18,8 +20,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
 
@@ -71,7 +71,7 @@ const LinkEditorComponent = ({
               className={cn(
                 'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
                 !linkOperatorShow && 'p-1 shadow-md',
-                linkOperatorShow && 'system-xs-medium p-0.5 text-text-tertiary shadow-sm',
+                linkOperatorShow && 'p-0.5 system-xs-medium text-text-tertiary shadow-sm',
               )}
               style={floatingStyles}
               ref={refs.setFloating}
@@ -80,7 +80,7 @@ const LinkEditorComponent = ({
                 !linkOperatorShow && (
                   <>
                     <input
-                      className="mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none"
+                      className="mr-0.5 h-6 w-[196px] appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
@@ -117,7 +117,7 @@ const LinkEditorComponent = ({
                         {escape(url)}
                       </div>
                     </a>
-                    <div className="mx-1 h-3.5 w-[1px] bg-divider-regular"></div>
+                    <div className="mx-1 h-3.5 w-px bg-divider-regular"></div>
                     <div
                       className="mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={(e) => {

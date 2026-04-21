@@ -1,4 +1,5 @@
 from flask_login import current_user
+from sqlalchemy import select
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
@@ -24,10 +25,10 @@ class WorkspaceService:
         }
 
         # Get role of user
-        tenant_account_join = (
-            db.session.query(TenantAccountJoin)
+        tenant_account_join = db.session.scalar(
+            select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
-            .first()
+            .limit(1)
         )
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role

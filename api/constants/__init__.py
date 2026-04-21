@@ -7,15 +7,16 @@ UUID_NIL = "00000000-0000-0000-0000-000000000000"
 
 DEFAULT_FILE_NUMBER_LIMITS = 3
 
-IMAGE_EXTENSIONS = convert_to_lower_and_upper_set({"jpg", "jpeg", "png", "webp", "gif", "svg"})
+_IMAGE_EXTENSION_BASE: frozenset[str] = frozenset(("jpg", "jpeg", "png", "webp", "gif", "svg"))
+_VIDEO_EXTENSION_BASE: frozenset[str] = frozenset(("mp4", "mov", "mpeg", "webm"))
+_AUDIO_EXTENSION_BASE: frozenset[str] = frozenset(("mp3", "m4a", "wav", "amr", "mpga"))
 
-VIDEO_EXTENSIONS = convert_to_lower_and_upper_set({"mp4", "mov", "mpeg", "webm"})
+IMAGE_EXTENSIONS: frozenset[str] = frozenset(convert_to_lower_and_upper_set(_IMAGE_EXTENSION_BASE))
+VIDEO_EXTENSIONS: frozenset[str] = frozenset(convert_to_lower_and_upper_set(_VIDEO_EXTENSION_BASE))
+AUDIO_EXTENSIONS: frozenset[str] = frozenset(convert_to_lower_and_upper_set(_AUDIO_EXTENSION_BASE))
 
-AUDIO_EXTENSIONS = convert_to_lower_and_upper_set({"mp3", "m4a", "wav", "amr", "mpga"})
-
-_doc_extensions: set[str]
-if dify_config.ETL_TYPE == "Unstructured":
-    _doc_extensions = {
+_UNSTRUCTURED_DOCUMENT_EXTENSION_BASE: frozenset[str] = frozenset(
+    (
         "txt",
         "markdown",
         "md",
@@ -35,11 +36,10 @@ if dify_config.ETL_TYPE == "Unstructured":
         "pptx",
         "xml",
         "epub",
-    }
-    if dify_config.UNSTRUCTURED_API_URL:
-        _doc_extensions.add("ppt")
-else:
-    _doc_extensions = {
+    )
+)
+_DEFAULT_DOCUMENT_EXTENSION_BASE: frozenset[str] = frozenset(
+    (
         "txt",
         "markdown",
         "md",
@@ -53,8 +53,17 @@ else:
         "csv",
         "vtt",
         "properties",
-    }
-DOCUMENT_EXTENSIONS: set[str] = convert_to_lower_and_upper_set(_doc_extensions)
+    )
+)
+
+_doc_extensions: set[str]
+if dify_config.ETL_TYPE == "Unstructured":
+    _doc_extensions = set(_UNSTRUCTURED_DOCUMENT_EXTENSION_BASE)
+    if dify_config.UNSTRUCTURED_API_URL:
+        _doc_extensions.add("ppt")
+else:
+    _doc_extensions = set(_DEFAULT_DOCUMENT_EXTENSION_BASE)
+DOCUMENT_EXTENSIONS: frozenset[str] = frozenset(convert_to_lower_and_upper_set(_doc_extensions))
 
 # console
 COOKIE_NAME_ACCESS_TOKEN = "access_token"

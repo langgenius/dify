@@ -24,18 +24,24 @@ For example, use `vp install` instead of `pnpm install` and `vp test` instead of
 >
 > Learn more: [Corepack]
 
+Run the following commands from the repository root.
+
 First, install the dependencies:
 
 ```bash
 pnpm install
 ```
 
+> [!NOTE]
+> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.nvmrc`.
+> Install dependencies from the repository root, then run frontend scripts from `web/`.
+
 Then, configure the environment variables.
-Create a file named `.env.local` in the current directory and copy the contents from `.env.example`.
+Create `web/.env.local` and copy the contents from `web/.env.example`.
 Modify the values of these environment variables according to your requirements:
 
 ```bash
-cp .env.example .env.local
+cp web/.env.example web/.env.local
 ```
 
 > [!IMPORTANT]
@@ -46,16 +52,16 @@ cp .env.example .env.local
 Finally, run the development server:
 
 ```bash
-pnpm run dev
+pnpm -C web run dev
 # or if you are using vinext which provides a better development experience
-pnpm run dev:vinext
+pnpm -C web run dev:vinext
 # (optional) start the dev proxy server so that you can use online API in development
-pnpm run dev:proxy
+pnpm -C web run dev:proxy
 ```
 
 Open <http://localhost:3000> with your browser to see the result.
 
-You can start editing the file under folder `app`.
+You can start editing the files under `web/app`.
 The page auto-updates as you edit the file.
 
 ## Deploy
@@ -65,19 +71,25 @@ The page auto-updates as you edit the file.
 First, build the app for production:
 
 ```bash
-pnpm run build
+pnpm -C web run build
 ```
 
 Then, start the server:
 
 ```bash
-pnpm run start
+pnpm -C web run start
+```
+
+If you build the Docker image manually, use the repository root as the build context:
+
+```bash
+docker build -f web/Dockerfile -t dify-web .
 ```
 
 If you want to customize the host and port:
 
 ```bash
-pnpm run start --port=3001 --host=0.0.0.0
+pnpm -C web run start --port=3001 --host=0.0.0.0
 ```
 
 ## Storybook
@@ -87,14 +99,14 @@ This project uses [Storybook] for UI component development.
 To start the storybook server, run:
 
 ```bash
-pnpm storybook
+pnpm -C web storybook
 ```
 
 Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
 
 Then follow the [Lint Documentation] to lint the code.
 
@@ -112,7 +124,7 @@ We use [Vitest] and [React Testing Library] for Unit Testing.
 Run test:
 
 ```bash
-pnpm test
+pnpm -C web test
 ```
 
 > [!NOTE]
@@ -124,7 +136,6 @@ pnpm test
 
 If you are not familiar with writing tests, refer to:
 
-- [classnames.spec.ts] - Utility function test example
 - [index.spec.tsx] - Component test example
 
 ### Analyze Component Complexity
@@ -154,8 +165,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[classnames.spec.ts]: ./utils/classnames.spec.ts
-[index.spec.tsx]: ./app/components/base/button/index.spec.tsx
+[index.spec.tsx]: ./app/components/base/radio/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
 [web/docs/test.md]: ./docs/test.md

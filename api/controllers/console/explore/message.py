@@ -2,9 +2,10 @@ import logging
 from typing import Literal
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
@@ -25,7 +26,6 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
 from models.enums import FeedbackRating
 from models.model import AppMode
@@ -42,17 +42,6 @@ from services.message_service import MessageService
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
-
-
-class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100)
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = None
-    content: str | None = None
 
 
 class MoreLikeThisQuery(BaseModel):

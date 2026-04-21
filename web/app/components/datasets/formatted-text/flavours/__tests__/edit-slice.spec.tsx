@@ -162,10 +162,10 @@ describe('EditSlice', () => {
 
     await waitFor(() => {
       const labelEl = screen.getByText('S1').parentElement
-      expect(labelEl).toHaveClass('!bg-state-destructive-solid')
-      expect(labelEl).toHaveClass('!text-text-primary-on-surface')
+      expect(labelEl).toHaveClass('bg-state-destructive-solid!')
+      expect(labelEl).toHaveClass('text-text-primary-on-surface!')
     })
-    expect(screen.getByText('Sample text content')).toHaveClass('!bg-state-destructive-hover-alt')
+    expect(screen.getByText('Sample text content')).toHaveClass('bg-state-destructive-hover-alt!')
   })
 
   it('should remove destructive styles when mouse leaves delete button container', async () => {
@@ -177,14 +177,14 @@ describe('EditSlice', () => {
     fireEvent.mouseEnter(floatingSpan)
 
     await waitFor(() => {
-      expect(screen.getByText('S1').parentElement).toHaveClass('!bg-state-destructive-solid')
+      expect(screen.getByText('S1').parentElement).toHaveClass('bg-state-destructive-solid!')
     })
 
     fireEvent.mouseLeave(floatingSpan)
 
     await waitFor(() => {
-      expect(screen.getByText('S1').parentElement).not.toHaveClass('!bg-state-destructive-solid')
-      expect(screen.getByText('Sample text content')).not.toHaveClass('!bg-state-destructive-hover-alt')
+      expect(screen.getByText('S1').parentElement).not.toHaveClass('bg-state-destructive-solid!')
+      expect(screen.getByText('Sample text content')).not.toHaveClass('bg-state-destructive-hover-alt!')
     })
   })
 })

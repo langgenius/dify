@@ -40,7 +40,7 @@ class ClickZettaVolumeConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def validate_config(cls, values: dict[str, Any]):
         """Validate the configuration values.
 
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,

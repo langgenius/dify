@@ -524,7 +524,7 @@ describe('StepperStep', () => {
       expect(name).toBeInTheDocument()
     })
 
-    it('should have rounded pill shape for label container', () => {
+    it('should have rounded-sm pill shape for label container', () => {
       const { container } = renderStepperStep()
 
       const labelContainer = container.querySelector('.rounded-3xl')

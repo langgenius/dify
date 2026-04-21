@@ -124,7 +124,7 @@ describe('Footer', () => {
       expect(footerDiv).toHaveClass('absolute', 'bottom-0', 'left-0', 'right-0', 'z-10')
     })
 
-    it('should have backdrop blur effect', () => {
+    it('should have backdrop blur-sm effect', () => {
       const { container } = render(<Footer />)
       const footerDiv = container.firstChild as HTMLElement
       expect(footerDiv).toHaveClass('backdrop-blur-[6px]')

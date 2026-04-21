@@ -1,10 +1,10 @@
 import type { NodeTracing } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowRightSLine,
   RiRestartFill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 
 type RetryLogTriggerProps = {
   nodeInfo: NodeTracing

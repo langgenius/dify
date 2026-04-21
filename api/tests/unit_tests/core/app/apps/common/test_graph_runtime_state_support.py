@@ -5,8 +5,7 @@ import pytest
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.variable_pool import VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 
 def _make_state(workflow_run_id: str | None) -> GraphRuntimeState:

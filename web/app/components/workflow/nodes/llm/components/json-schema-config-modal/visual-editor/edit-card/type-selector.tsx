@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ArrayType, Type } from '../../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type TypeItem = {
   value: Type | ArrayType
@@ -57,7 +57,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
                   setOpen(false)
                 }}
               >
-                <span className="system-sm-medium px-1 text-text-secondary">{item.text}</span>
+                <span className="px-1 system-sm-medium text-text-secondary">{item.text}</span>
                 {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
               </div>
             )

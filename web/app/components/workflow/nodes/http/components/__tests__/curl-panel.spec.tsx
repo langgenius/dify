@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import * as curlParser from '../curl-parser'
@@ -19,7 +19,7 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
@@ -32,7 +32,7 @@ describe('curl-panel', () => {
 
   describe('parseCurl', () => {
     it('should parse method, headers, json body, and query params from a valid curl command', () => {
-      const { node, error } = curlParser.parseCurl('curl -X POST -H \"Authorization: Bearer token\" --json \"{\"name\":\"openai\"}\" https://example.com/users?page=1&size=2')
+      const { node, error } = curlParser.parseCurl('curl -X POST -H "Authorization: Bearer token" --json "{"name":"openai"}" https://example.com/users?page=1&size=2')
 
       expect(error).toBeNull()
       expect(node).toMatchObject({

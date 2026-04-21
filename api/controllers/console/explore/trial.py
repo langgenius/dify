@@ -169,6 +169,7 @@ console_ns.schema_model(
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
+    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     def post(self, trial_app):
         """
@@ -210,6 +211,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
+    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -290,7 +292,6 @@ class TrialChatApi(TrialAppResource):
 
 
 class TrialMessageSuggestedQuestionApi(TrialAppResource):
-    @trial_feature_enable
     def get(self, trial_app, message_id):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
@@ -470,7 +471,6 @@ class TrialCompletionApi(TrialAppResource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
@@ -492,7 +492,6 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
@@ -521,7 +520,6 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
@@ -534,7 +532,6 @@ class AppApi(Resource):
 
 
 class AppWorkflowApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
@@ -547,7 +544,6 @@ class AppWorkflowApi(Resource):
 
 
 class DatasetListApi(Resource):
-    @trial_feature_enable
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)

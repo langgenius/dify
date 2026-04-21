@@ -1,6 +1,15 @@
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+function findLastIndex<T>(list: T[], predicate: (item: T) => boolean): number {
+  for (let index = list.length - 1; index >= 0; index--) {
+    if (predicate(list[index]!))
+      return index
+  }
+
+  return -1
+}
+
 function printNodeStructure(node: NodeTracing, depth: number) {
   const indent = '  '.repeat(depth)
   console.log(`${indent}${node.title}`)
@@ -107,7 +116,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
           }
         }
         if (parentParallelStartNode!.parallelDetail.children) {
-          const sameBranchNodesLastIndex = parentParallelStartNode.parallelDetail.children.findLastIndex((node) => {
+          const sameBranchNodesLastIndex = findLastIndex(parentParallelStartNode.parallelDetail.children, (node) => {
             const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
             return currStartNodeId === parentParallelBranchStartNodeId
           })
@@ -124,7 +133,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     const parallelStartNode = result.find(item => parallel_start_node_id === item.node_id)
 
     if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children) {
-      const sameBranchNodesLastIndex = parallelStartNode.parallelDetail.children.findLastIndex((node) => {
+      const sameBranchNodesLastIndex = findLastIndex(parallelStartNode.parallelDetail.children, (node) => {
         const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
         return currStartNodeId === branchStartNodeId
       })

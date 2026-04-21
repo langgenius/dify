@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .filePreview {
     @apply flex flex-col border-l border-components-panel-border shrink-0 bg-background-default-lighter;
     width: 100%;

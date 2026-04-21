@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -28,12 +31,13 @@ class ShardedTopic:
     def __init__(self, redis_client: Redis | RedisCluster, topic: str):
         self._client = redis_client
         self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
 
     def as_producer(self) -> Producer:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.spublish(self._topic, payload)  # type: ignore[attr-defined,union-attr]
+        self._client.spublish(self._redis_topic, payload)  # type: ignore[attr-defined,union-attr]
 
     def as_subscriber(self) -> Subscriber:
         return self
@@ -42,7 +46,7 @@ class ShardedTopic:
         return _RedisShardedSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),
-            topic=self._topic,
+            topic=self._redis_topic,
         )
 
 
@@ -60,7 +64,7 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         assert self._pubsub is not None
         self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
         # upstream code. If Sharded PubSub is used with Cluster, the

@@ -48,7 +48,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -61,7 +61,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -70,7 +70,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -110,7 +110,7 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -121,7 +121,7 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -157,7 +157,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=False,
     )
@@ -168,7 +168,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -177,7 +177,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -270,7 +270,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
         tenant_id="tenant-id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type=ModelType.LLM.to_origin_model_type(),
+        model_type=ModelType.LLM,
     )
     mock_session = Mock()
     mock_session.scalar.return_value = existing_default_model
@@ -372,6 +372,78 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
+def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerFixture, mock_provider_entity):
+    manager = _build_provider_manager(mocker)
+    provider_configuration = Mock()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory) as mock_factory_cls,
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            return_value=provider_configuration,
+        ) as mock_provider_configuration,
+    ):
+        first = manager.get_configurations("tenant-id")
+        second = manager.get_configurations("tenant-id")
+
+    assert first is second
+    mock_get_all_providers.assert_called_once_with("tenant-id")
+    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_provider_configuration.assert_called_once()
+    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
+def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixture, mock_provider_entity):
+    manager = _build_provider_manager(mocker)
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+    provider_configuration_first = Mock()
+    provider_configuration_second = Mock()
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            side_effect=[provider_configuration_first, provider_configuration_second],
+        ) as mock_provider_configuration,
+    ):
+        first = manager.get_configurations("tenant-id")
+        manager.clear_configurations_cache("tenant-id")
+        second = manager.get_configurations("tenant-id")
+
+    assert first is not second
+    assert mock_get_all_providers.call_count == 2
+    assert mock_provider_configuration.call_count == 2
+    provider_configuration_first.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    provider_configuration_second.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
 def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: MockerFixture):
     manager = _build_provider_manager(mocker)
     provider_configuration = Mock()
@@ -449,7 +521,7 @@ def test_update_default_model_record_updates_existing_record(mocker: MockerFixtu
         tenant_id="tenant-id",
         provider_name="anthropic",
         model_name="claude-3-sonnet",
-        model_type=ModelType.LLM.to_origin_model_type(),
+        model_type=ModelType.LLM,
     )
     mock_session = Mock()
     mock_session.scalar.return_value = existing_default_model
@@ -487,7 +559,7 @@ def test_update_default_model_record_creates_record_with_origin_model_type(mocke
     assert created_default_model.tenant_id == "tenant-id"
     assert created_default_model.provider_name == "openai"
     assert created_default_model.model_name == "gpt-4"
-    assert created_default_model.model_type == ModelType.LLM.to_origin_model_type()
+    assert created_default_model.model_type == ModelType.LLM
     mock_session.commit.assert_called_once()
 
 

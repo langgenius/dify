@@ -1,7 +1,8 @@
 import json
+from typing import cast
 
 import flask_login
-from flask import Response, request
+from flask import Request, Response, request
 from flask_login import user_loaded_from_request, user_logged_in
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -16,13 +17,35 @@ from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 
-login_manager = flask_login.LoginManager()
+type LoginUser = Account | EndUser
+
+
+class DifyLoginManager(flask_login.LoginManager):
+    """Project-specific Flask-Login manager with a stable unauthorized contract.
+
+    Dify registers `unauthorized_handler` below to always return a JSON `Response`.
+    Overriding this method lets callers rely on that narrower return type instead of
+    Flask-Login's broader callback contract.
+    """
+
+    def unauthorized(self) -> Response:
+        """Return the registered unauthorized handler result as a Flask `Response`."""
+        return cast(Response, super().unauthorized())
+
+    def load_user_from_request_context(self) -> None:
+        """Populate Flask-Login's request-local user cache for the current request."""
+        self._load_user()
+
+
+login_manager = DifyLoginManager()
 
 
 # Flask-Login configuration
 @login_manager.request_loader
-def load_user_from_request(request_from_flask_login):
+def load_user_from_request(request_from_flask_login: Request) -> LoginUser | None:
     """Load user based on the request."""
+    del request_from_flask_login
+
     # Skip authentication for documentation endpoints
     if dify_config.SWAGGER_UI_ENABLED and request.path.endswith((dify_config.SWAGGER_UI_PATH, "/swagger.json")):
         return None
@@ -100,10 +123,12 @@ def load_user_from_request(request_from_flask_login):
             raise NotFound("End user not found.")
         return end_user
 
+    return None
+
 
 @user_logged_in.connect
 @user_loaded_from_request.connect
-def on_user_logged_in(_sender, user):
+def on_user_logged_in(_sender: object, user: LoginUser) -> None:
     """Called when a user logged in.
 
     Note: AccountService.load_logged_in_account will populate user.current_tenant_id
@@ -114,8 +139,10 @@ def on_user_logged_in(_sender, user):
 
 
 @login_manager.unauthorized_handler
-def unauthorized_handler():
+def unauthorized_handler() -> Response:
     """Handle unauthorized requests."""
+    # Keep this as a concrete `Response`; `DifyLoginManager.unauthorized()` narrows
+    # Flask-Login's callback contract based on this override.
     return Response(
         json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
         status=401,
@@ -123,5 +150,5 @@ def unauthorized_handler():
     )
 
 
-def init_app(app: DifyApp):
+def init_app(app: DifyApp) -> None:
     login_manager.init_app(app)

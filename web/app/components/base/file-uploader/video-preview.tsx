@@ -17,7 +17,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8"
+      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8"
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
@@ -31,7 +31,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
         </video>
       </div>
       <div
-        className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
+        className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
         onClick={onCancel}
       >
         <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="video-preview-close-btn" />
