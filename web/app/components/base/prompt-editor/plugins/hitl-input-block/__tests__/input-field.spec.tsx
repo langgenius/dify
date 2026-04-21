@@ -444,4 +444,31 @@ describe('InputField', () => {
     expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.string })).toBe(false)
     expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayFile })).toBe(false)
   })
+
+  it('should clear paragraph default state when switching to select', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-12"
+        isEdit={false}
+        payload={createPayload({
+          default: {
+            type: 'constant',
+            selector: [],
+            value: 'paragraph-default',
+          },
+        })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-select' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
+  })
 })
