@@ -241,6 +241,7 @@ const Item: FC<ItemProps> = ({
 
 type Props = {
   hideSearch?: boolean
+  searchText?: string
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
   isSupportFileVar?: boolean
@@ -258,6 +259,7 @@ type Props = {
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
+  searchText,
   searchBoxClassName,
   vars,
   isSupportFileVar,
@@ -274,7 +276,8 @@ const VarReferenceVars: FC<Props> = ({
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
-  const [searchText, setSearchText] = useState('')
+  const [internalSearchValue, setInternalSearchValue] = useState('')
+  const searchValue = searchText ?? internalSearchValue
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -283,7 +286,7 @@ const VarReferenceVars: FC<Props> = ({
     }
   }
 
-  const filteredVars = useMemo(() => filterReferenceVars(vars, searchText), [vars, searchText])
+  const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
 
   return (
     <>
@@ -295,11 +298,11 @@ const VarReferenceVars: FC<Props> = ({
                 className="var-search-input"
                 showLeftIcon
                 showClearIcon
-                value={searchText}
+                value={searchValue}
                 placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
-                onChange={e => setSearchText(e.target.value)}
+                onChange={e => setInternalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onClear={() => setSearchText('')}
+                onClear={() => setInternalSearchValue('')}
                 onBlur={onBlur}
                 autoFocus={autoFocus}
               />
