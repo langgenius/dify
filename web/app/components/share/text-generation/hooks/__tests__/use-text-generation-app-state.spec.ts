@@ -1,6 +1,12 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AppSourceType } from '@/service/share'
 import { useTextGenerationAppState } from '../use-text-generation-app-state'
+
+const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
+  renderHookWithSystemFeatures(callback, {
+    systemFeatures: { branding: { enabled: false, workspace_logo: '' } },
+  })
 
 const {
   changeLanguageMock,
@@ -53,13 +59,6 @@ vi.mock('@/service/share', async () => {
     saveMessage: (...args: Parameters<typeof actual.saveMessage>) => saveMessageMock(...args),
   }
 })
-
-const mockSystemFeatures = {
-  branding: {
-    enabled: false,
-    workspace_logo: null,
-  },
-}
 
 const defaultAppInfo = {
   app_id: 'app-123',
@@ -162,11 +161,6 @@ const resetMockWebAppState = () => {
   }
   mockWebAppState.webAppAccessMode = 'public'
 }
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: typeof mockSystemFeatures }) => unknown) =>
-    selector({ systemFeatures: mockSystemFeatures }),
-}))
 
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),

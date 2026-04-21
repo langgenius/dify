@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import dynamic from '@/next/dynamic'
@@ -34,7 +34,7 @@ type AppInfoModalsProps = {
   onCopy: DuplicateAppModalProps['onConfirm']
   onExport: (include?: boolean) => Promise<void>
   exportCheck: () => void
-  handleConfirmExport: () => void
+  handleConfirmExport: () => Promise<void>
   onConfirmDelete: () => void
 }
 
@@ -53,12 +53,26 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [isConfirmingExport, setIsConfirmingExport] = useState(false)
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
 
   const handleDeleteDialogClose = () => {
     setConfirmDeleteInput('')
     closeModal()
   }
+
+  const handleExportWarningConfirm = useCallback(async () => {
+    if (isConfirmingExport)
+      return
+
+    setIsConfirmingExport(true)
+    try {
+      await handleConfirmExport()
+    }
+    finally {
+      setIsConfirmingExport(false)
+    }
+  }, [handleConfirmExport, isConfirmingExport])
 
   return (
     <>
@@ -161,8 +175,15 @@ const AppInfoModals = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton tone="default" onClick={handleConfirmExport}>
-              {t('operation.confirm', { ns: 'common' })}
+            <AlertDialogConfirmButton
+              tone="default"
+              loading={isConfirmingExport}
+              disabled={isConfirmingExport}
+              onClick={handleExportWarningConfirm}
+            >
+              {isConfirmingExport
+                ? t('operation.exporting', { ns: 'common' })
+                : t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

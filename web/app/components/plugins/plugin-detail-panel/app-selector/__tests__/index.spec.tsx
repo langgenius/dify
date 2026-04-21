@@ -76,7 +76,7 @@ afterAll(() => {
 
 // Mock portal components for controlled positioning in tests
 // Use React context to properly scope open state per portal instance (for nested portals)
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@langgenius/dify-ui/popover', () => {
   // Context reference shared across mock components
   let sharedContext: React.Context<boolean> | null = null
 
@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   }
 
   return {
-    PortalToFollowElem: ({
+    Popover: ({
       children,
       open,
     }: {
@@ -104,20 +104,22 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
         React.createElement('div', { 'data-testid': 'portal-to-follow-elem', 'data-open': open }, children),
       )
     },
-    PortalToFollowElemTrigger: ({
+    PopoverTrigger: ({
       children,
+      render,
       onClick,
       className,
     }: {
       children: ReactNode
+      render?: ReactNode
       onClick?: () => void
       className?: string
     }) => (
       <div data-testid="portal-trigger" onClick={onClick} className={className}>
-        {children}
+        {render ?? children}
       </div>
     ),
-    PortalToFollowElemContent: ({ children, className }: { children: ReactNode, className?: string }) => {
+    PopoverContent: ({ children, className }: { children: ReactNode, className?: string }) => {
       const Context = getContext()
       const isOpen = React.useContext(Context)
       if (!isOpen)

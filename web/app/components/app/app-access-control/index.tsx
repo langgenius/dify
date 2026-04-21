@@ -5,11 +5,12 @@ import { Description as DialogDescription, DialogTitle } from '@headlessui/react
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -24,7 +25,7 @@ type AccessControlProps = {
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const setAppId = useAccessControlStore(s => s.setAppId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)

@@ -30,11 +30,6 @@ def create_webhook_node(
     tenant_id: str = "test-tenant",
 ) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    node_config = {
-        "id": "webhook-node-1",
-        "data": webhook_data.model_dump(),
-    }
-
     graph_init_params = GraphInitParams(
         workflow_id="test-workflow",
         graph_config={},
@@ -56,8 +51,8 @@ def create_webhook_node(
     )
 
     node = TriggerWebhookNode(
-        id="webhook-node-1",
-        config=node_config,
+        node_id="webhook-node-1",
+        config=webhook_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -65,10 +60,6 @@ def create_webhook_node(
     # Attach a lightweight app_config onto runtime state for tenant lookups
     runtime_state.app_config = Mock()
     runtime_state.app_config.tenant_id = tenant_id
-
-    # Provide compatibility alias expected by node implementation
-    # Some nodes reference `self.node_id`; expose it as an alias to `self.id` for tests
-    node.node_id = node.id
 
     return node
 

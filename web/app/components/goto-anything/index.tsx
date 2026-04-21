@@ -22,7 +22,7 @@ type Props = {
   onHide?: () => void
 }
 
-const GotoAnything: FC<Props> = ({
+const GotoAnythingDialog: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
@@ -234,15 +234,10 @@ const GotoAnything: FC<Props> = ({
   )
 }
 
-/**
- * GotoAnything component with context provider
- */
-const GotoAnythingWithContext: FC<Props> = (props) => {
+export const GotoAnything: FC<Props> = (props) => {
   return (
     <GotoAnythingProvider>
-      <GotoAnything {...props} />
+      <GotoAnythingDialog {...props} />
     </GotoAnythingProvider>
   )
 }
-
-export default GotoAnythingWithContext

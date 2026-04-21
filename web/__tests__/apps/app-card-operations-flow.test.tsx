@@ -10,8 +10,9 @@
  *   - Access mode icons
  */
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import AppCard from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
@@ -94,15 +95,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    if (typeof selector === 'function')
-      return selector(state)
-    return mockSystemFeatures
-  },
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -255,7 +247,10 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 const mockOnRefresh = vi.fn()
 
 const renderAppCard = (app?: Partial<App>) => {
-  return render(<AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />)
+  return renderWithSystemFeatures(
+    <AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />,
+    { systemFeatures: mockSystemFeatures },
+  )
 }
 
 const openOperationsMenu = () => {

@@ -7,7 +7,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -8,11 +9,6 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowUpRight,
 } from '@/app/components/base/icons/src/vender/line/arrows'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useApiBasedExtensions } from '@/service/use-common'
@@ -41,35 +37,42 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
   const currentItem = data?.find(item => item.id === value)
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} className="w-full">
-        {
-          currentItem
-            ? (
-                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
-                  <div className="text-sm text-text-primary">{currentItem.name}</div>
-                  <div className="flex items-center">
-                    <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
-                      {currentItem.api_endpoint}
+      <PopoverTrigger
+        render={(
+          <button type="button" className="block w-full border-0 bg-transparent p-0 text-left">
+            {
+              currentItem
+                ? (
+                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
+                      <div className="text-sm text-text-primary">{currentItem.name}</div>
+                      <div className="flex items-center">
+                        <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
+                          {currentItem.api_endpoint}
+                        </div>
+                        <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
+                      </div>
                     </div>
-                    <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
-                  </div>
-                </div>
-              )
-            : (
-                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
-                  {t('apiBasedExtension.selector.placeholder', { ns: 'common' })}
-                  <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
-                </div>
-              )
-        }
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1002 w-[calc(100%-32px)] max-w-[576px]">
+                  )
+                : (
+                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
+                      {t('apiBasedExtension.selector.placeholder', { ns: 'common' })}
+                      <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
+                    </div>
+                  )
+            }
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        className="w-[calc(100%-32px)] max-w-[576px]"
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
           <div className="p-1">
             <div className="flex items-center justify-between px-3 pt-2 pb-1">
@@ -116,8 +119,8 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
             </div>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

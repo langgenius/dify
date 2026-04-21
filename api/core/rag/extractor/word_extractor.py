@@ -3,6 +3,7 @@
 Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
 """
 
+import inspect
 import logging
 import mimetypes
 import os
@@ -36,8 +37,11 @@ class WordExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
+    _closed: bool
+
     def __init__(self, file_path: str, tenant_id: str, user_id: str):
         """Initialize with file path."""
+        self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
         self.user_id = user_id
@@ -65,9 +69,27 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
+    def close(self) -> None:
+        """Best-effort cleanup for downloaded temporary files."""
+        if getattr(self, "_closed", False):
+            return
+
+        self._closed = True
+        temp_file = getattr(self, "temp_file", None)
+        if temp_file is None:
+            return
+
+        try:
+            close_result = temp_file.close()
+            if inspect.isawaitable(close_result):
+                close_awaitable = getattr(close_result, "close", None)
+                if callable(close_awaitable):
+                    close_awaitable()
+        except Exception:
+            logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
+
     def __del__(self):
-        if hasattr(self, "temp_file"):
-            self.temp_file.close()
+        self.close()
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""

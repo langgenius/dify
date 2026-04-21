@@ -1181,7 +1181,7 @@
   "tracing.stopBy": "Dừng bởi {{user}}",
   "triggerStatus.disabled": "KÍCH HOẠT • VÔ HIỆU HÓA",
   "triggerStatus.enabled": "KÍCH HOẠT",
-  "variableReference.assignedVarsDescription": "Các biến được gán phải là các biến có thể ghi, chẳng hạn như",
+  "variableReference.assignedVarsDescription": "Các biến được gán phải là các biến có thể ghi, chẳng hạn như các biến hội thoại.",
   "variableReference.conversationVars": "Biến cuộc trò chuyện",
   "variableReference.noAssignedVars": "Không có biến được gán sẵn có",
   "variableReference.noAvailableVars": "Không có biến khả dụng",

@@ -7,7 +7,6 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import SystemVariableKey, get_system_segment
-from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeExecutionType,
@@ -36,13 +35,14 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: DatasourceNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-    ):
+    ) -> None:
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

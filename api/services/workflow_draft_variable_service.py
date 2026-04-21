@@ -146,7 +146,7 @@ class DraftVarLoader(VariableLoader):
             variable = segment_to_variable(
                 segment=segment,
                 selector=draft_var.get_selector(),
-                id=draft_var.id,
+                variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
             )
@@ -180,7 +180,7 @@ class DraftVarLoader(VariableLoader):
             variable = segment_to_variable(
                 segment=segment,
                 selector=draft_var.get_selector(),
-                id=draft_var.id,
+                variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
             )
@@ -191,7 +191,7 @@ class DraftVarLoader(VariableLoader):
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
-            id=draft_var.id,
+            variable_id=draft_var.id,
             name=draft_var.name,
             description=draft_var.description,
         )
@@ -1067,7 +1067,7 @@ class DraftVariableSaver:
             filename = f"{self._generate_filename(name)}.txt"
         else:
             # For other types, store as JSON
-            original_content_serialized = dumps_with_segments(value_seg.value, ensure_ascii=False)
+            original_content_serialized = dumps_with_segments(value_seg.value)
             content_type = "application/json"
             filename = f"{self._generate_filename(name)}.json"
 
