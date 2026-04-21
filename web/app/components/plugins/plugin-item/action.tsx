@@ -2,11 +2,6 @@
 import type { FC } from 'react'
 import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,8 +9,13 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'

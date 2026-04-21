@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,

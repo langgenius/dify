@@ -5,6 +5,7 @@ import type {
   ChatItemInTree,
   OnSend,
 } from '../types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AnswerIcon from '@/app/components/base/answer-icon'
@@ -12,7 +13,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,

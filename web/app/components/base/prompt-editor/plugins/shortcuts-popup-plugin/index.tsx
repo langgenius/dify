@@ -203,7 +203,7 @@ export default function ShortcutsPopupPlugin({
       let rect: DOMRect | null = null
 
       if (rects && rects.length)
-        rect = rects[rects.length - 1]
+        rect = rects[rects.length - 1]!
 
       else
         rect = range.getBoundingClientRect()

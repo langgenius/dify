@@ -1772,6 +1772,21 @@ class TestDatasetApiBaseUrlApi:
 
         assert response["api_base_url"] == "http://localhost:5000/v1"
 
+    def test_get_api_base_url_no_double_v1(self, app):
+        api = DatasetApiBaseUrlApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets.dify_config.SERVICE_API_URL",
+                "https://example.com/v1",
+            ),
+        ):
+            response = method(api)
+
+        assert response["api_base_url"] == "https://example.com/v1"
+
 
 class TestDatasetRetrievalSettingApi:
     def test_get_success(self, app):

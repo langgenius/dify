@@ -33,11 +33,11 @@ const Features = () => {
   const handleAddOpeningStatementVariable = (variables: PromptVariable[]) => {
     const newVariable = variables[0]
     const startNodeVariable: InputVar = {
-      variable: newVariable.key,
-      label: newVariable.name,
+      variable: newVariable!.key,
+      label: newVariable!.name,
       type: InputVarType.textInput,
-      max_length: newVariable.max_length,
-      required: newVariable.required || false,
+      max_length: newVariable!.max_length,
+      required: newVariable!.required || false,
       options: [],
     }
     handleAddVariable(startNodeVariable)

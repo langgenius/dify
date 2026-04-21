@@ -1,25 +1,25 @@
 'use client'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import type { App } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateUserProfile } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppList } from '@/service/use-apps'
-import { commonQueryKeys, useUserProfile } from '@/service/use-common'
+import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -34,12 +34,13 @@ const descriptionClassName = `
 
 export default function AccountPage() {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
   const apps = appList?.data || []
   const queryClient = useQueryClient()
-  const { data: userProfileResp } = useUserProfile()
-  const userProfile = userProfileResp?.profile
+  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
+  const userProfile = userProfileResp.profile
   const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
   const { isEducationAccount } = useProviderContext()
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)

@@ -11,6 +11,7 @@ from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
@@ -69,8 +70,8 @@ def init_parameter_extractor_node(config: dict, memory=None):
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
     node = ParameterExtractorNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=ParameterExtractorNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),

@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import Divider from '@/app/components/base/divider'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { WorkflowVersionFilterOptions } from '../../../types'
 import FilterItem from './filter-item'
 import FilterSwitch from './filter-switch'
@@ -37,26 +37,28 @@ const Filter: FC<FilterProps> = ({
   const isFiltering = filterValue !== WorkflowVersionFilterOptions.all || isOnlyShowNamedVersions
 
   return (
-    <PortalToFollowElem
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 55,
-      }}
+    <Popover
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div
-          className={cn(
-            'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md p-0.5',
-            isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
-          )}
-        >
-          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-12">
+      <PopoverTrigger
+        render={(
+          <div
+            className={cn(
+              'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md p-0.5',
+              isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
+            )}
+          >
+            <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={55}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="flex w-[248px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
           <div className="flex flex-col p-1">
             {
@@ -75,8 +77,8 @@ const Filter: FC<FilterProps> = ({
           <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

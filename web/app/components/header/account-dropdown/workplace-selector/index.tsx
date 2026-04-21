@@ -1,15 +1,15 @@
 import type { Plan } from '@/app/components/billing/type'
-import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
   SelectGroup,
-  SelectGroupLabel,
   SelectItem,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
-} from '@/app/components/base/ui/select'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useTranslation } from 'react-i18next'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
@@ -57,9 +57,9 @@ const WorkplaceSelector = () => {
       </SelectTrigger>
       <SelectContent popupClassName="w-[280px]">
         <SelectGroup>
-          <SelectGroupLabel>
+          <SelectLabel>
             {t('userProfile.workspace', { ns: 'common' })}
-          </SelectGroupLabel>
+          </SelectLabel>
           {workspaces.map(workspace => (
             <SelectItem key={workspace.id} value={workspace.id} className="gap-2 py-1 pr-2 pl-3">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">

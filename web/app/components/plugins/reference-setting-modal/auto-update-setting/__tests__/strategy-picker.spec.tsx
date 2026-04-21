@@ -5,7 +5,7 @@ import { AUTO_UPDATE_STRATEGY } from '../types'
 
 let portalOpen = false
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({
     children,
   }: {
@@ -14,7 +14,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
+  const _React = await import('react')
   return {
     PortalToFollowElem: ({
       open,

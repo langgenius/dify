@@ -202,6 +202,7 @@ describe('PluginItem', () => {
       fireEvent.click(clearButton)
 
       expect(handleClear).toHaveBeenCalledTimes(1)
+      expect(clearButton).toHaveClass('invisible', 'flex', 'group-hover/item:visible')
     })
 
     it('should not render clear button when onClear is not provided', () => {

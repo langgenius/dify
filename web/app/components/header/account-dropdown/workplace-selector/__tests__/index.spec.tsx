@@ -33,7 +33,7 @@ vi.mock('@/service/common', () => ({
   switchWorkspace: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -45,8 +45,8 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/select')>()
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
   return {
     ...actual,
@@ -71,7 +71,7 @@ vi.mock('@/app/components/base/ui/select', async (importOriginal) => {
       <div data-testid="workplace-selector-content">{children}</div>
     ),
     SelectGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectItem: ({
       children,
       value,
@@ -115,11 +115,11 @@ describe('WorkplaceSelector', () => {
     it('should render current workspace and available workspace options', () => {
       renderComponent()
 
-      expect(screen.getByTestId('workplace-selector-trigger')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-1')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-2')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-1')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-2')).toHaveTextContent('Workspace 2')
+      expect(screen.getByTestId('workplace-selector-trigger'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-1'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-2'))!.toHaveTextContent('Workspace 2')
     })
   })
 
@@ -127,7 +127,7 @@ describe('WorkplaceSelector', () => {
     it('should switch workspace successfully', async () => {
       vi.mocked(switchWorkspace).mockResolvedValue({
         result: 'success',
-        new_tenant: mockWorkspaces[1],
+        new_tenant: mockWorkspaces[1]!,
       })
 
       renderComponent()

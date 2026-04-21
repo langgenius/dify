@@ -322,7 +322,7 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     if (currentTriggerPlugin) {
       setDetail({
-        name: currentTriggerPlugin.label[language],
+        name: currentTriggerPlugin.label[language]!,
         plugin_id: currentTriggerPlugin.plugin_id || '',
         plugin_unique_identifier: currentTriggerPlugin.plugin_unique_identifier || '',
         id: currentTriggerPlugin.id,

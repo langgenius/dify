@@ -2,20 +2,20 @@
 
 import type { FC, ReactNode } from 'react'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
+import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -84,7 +84,7 @@ const ThreadMessage: FC<{
           continue
 
         const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar))
+        if (searchStart > 0 && !/\s/.test(previousChar!))
           continue
 
         if (
@@ -730,7 +730,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           )}
         </div>
         {loading && (
-          <div className="inset-0 absolute z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
             {t('comments.loading', { ns: 'workflow' })}
           </div>
         )}

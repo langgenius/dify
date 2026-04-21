@@ -1,14 +1,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import { AppModeEnum } from '@/types/app'
 
 type AppSelectorProps = {
@@ -148,9 +148,9 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
         'flex h-8 flex-nowrap items-center justify-between gap-1',
       )}
       >
-        <AppTypeIcon type={values[0]} />
+        <AppTypeIcon type={values[0]!} />
         <div className="line-clamp-1 flex flex-1 items-center text-center">
-          <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
+          <AppTypeLabel type={values[0]!} className="system-sm-medium text-components-menu-item-text" />
         </div>
       </div>
     )

@@ -95,7 +95,7 @@ def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPat
     reference = build_file_reference(record_id="upload-1", storage_key="files/source.pdf")
 
     file = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         remote_url="https://storage.example/source.pdf",
         reference=reference,

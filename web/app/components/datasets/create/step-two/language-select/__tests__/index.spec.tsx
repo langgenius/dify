@@ -108,7 +108,7 @@ describe('LanguageSelect', () => {
 
     it('should ignore null values emitted by the select control', async () => {
       vi.resetModules()
-      vi.doMock('@/app/components/base/ui/select', () => ({
+      vi.doMock('@langgenius/dify-ui/select', () => ({
         Select: ({ onValueChange, children }: { onValueChange?: (value: string | null) => void, children: React.ReactNode }) => {
           React.useEffect(() => {
             onValueChange?.(null)
@@ -131,7 +131,7 @@ describe('LanguageSelect', () => {
         expect(onSelect).not.toHaveBeenCalled()
       })
 
-      vi.doUnmock('@/app/components/base/ui/select')
+      vi.doUnmock('@langgenius/dify-ui/select')
     })
   })
 

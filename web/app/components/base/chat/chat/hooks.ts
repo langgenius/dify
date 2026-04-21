@@ -12,6 +12,7 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -29,7 +30,6 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -546,7 +546,7 @@ export const useChat = (
           if (responseItem.workflowProcess?.tracing) {
             const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
             if (currentTracingIndex > -1)
-              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+              responseItem.workflowProcess.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           }
         })
       },
@@ -569,7 +569,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },
@@ -1428,7 +1428,7 @@ export const useChat = (
         }
         const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
         if (currentTracingIndex > -1) {
-          responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          responseItem.workflowProcess!.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1458,7 +1458,7 @@ export const useChat = (
       onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1511,8 +1511,8 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
@@ -1520,22 +1520,22 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: answer,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         logAnnotation: undefined,
       } as any,
     })
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
     })
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
         id: annotationId,
         authorName,
@@ -1552,12 +1552,12 @@ export const useChat = (
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationRemoved = useCallback((index: number) => {
-    const targetAnswerId = chatList[index].id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         id: '',
       } as Annotation,
     })

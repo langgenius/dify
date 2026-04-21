@@ -10,7 +10,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: (props: {
     variant?: string
     children?: React.ReactNode
@@ -21,42 +21,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const OpenContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children?: React.ReactNode
-    }) => (
-      <OpenContext value={open}>
-        <div data-testid="portal" data-open={String(open)}>{children}</div>
-      </OpenContext>
-    ),
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children?: React.ReactNode
-      onClick?: () => void
-    }) => (
-      <button type="button" data-testid="portal-trigger" onClick={onClick}>
-        {children}
-      </button>
-    ),
-    PortalToFollowElemContent: ({
-      children,
-    }: {
-      children?: React.ReactNode
-    }) => {
-      const open = React.use(OpenContext)
-      return open ? <div data-testid="portal-content">{children}</div> : null
-    },
-  }
-})
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 describe('ButtonStyleDropdown', () => {
   const onChange = vi.fn()
@@ -80,16 +45,16 @@ describe('ButtonStyleDropdown', () => {
     expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({
       variant: 'ghost',
     }))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('popover'))!.toHaveAttribute('data-open', 'false')
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByText('nodes.humanInput.userActions.chooseStyle')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('popover-trigger'))
+    expect(screen.getByTestId('popover'))!.toHaveAttribute('data-open', 'true')
+    expect(screen.getByText('nodes.humanInput.userActions.chooseStyle'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('button-primary').parentElement as HTMLElement)
     fireEvent.click(screen.getByTestId('button-secondary').parentElement as HTMLElement)
     fireEvent.click(screen.getByTestId('button-secondary-accent').parentElement as HTMLElement)
-    fireEvent.click(screen.getAllByTestId('button-ghost')[1].parentElement as HTMLElement)
+    fireEvent.click(screen.getAllByTestId('button-ghost')[1]!.parentElement as HTMLElement)
 
     expect(onChange).toHaveBeenNthCalledWith(1, UserActionButtonType.Primary)
     expect(onChange).toHaveBeenNthCalledWith(2, UserActionButtonType.Default)
@@ -111,10 +76,10 @@ describe('ButtonStyleDropdown', () => {
       variant: 'secondary',
     }))
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByTestId('popover-trigger'))
 
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'false')
-    expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+    expect(screen.getByTestId('popover'))!.toHaveAttribute('data-open', 'false')
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 
