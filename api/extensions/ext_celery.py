@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -90,7 +90,36 @@ def get_celery_redis_global_keyprefix() -> str | None:
     return f"{normalized_prefix}:"
 
 
+_CLUSTER_SCHEMES = ("redis+cluster://", "rediss+cluster://")
+
+
+def _reject_cluster_broker_url(broker_url: str | None, backend_url: str | None) -> None:
+    """Celery / Kombu's redis transport does not support Redis Cluster.
+
+    Fail fast at startup if CELERY_BROKER_URL or CELERY_RESULT_BACKEND is a
+    redis+cluster:// URL, rather than crashing later on the first task enqueue
+    or result store. Catches the common mis-config where operators assume the
+    cluster story is symmetric with the main Redis client.
+    """
+    for label, url in (("CELERY_BROKER_URL", broker_url), ("CELERY_RESULT_BACKEND", backend_url)):
+        if not url:
+            continue
+        lowered = url.lower()
+        for scheme in _CLUSTER_SCHEMES:
+            if lowered.startswith(scheme):
+                raise ValueError(
+                    f"{label} is set to a Redis Cluster URL ({scheme}); Celery/Kombu's redis "
+                    "transport does not support Redis Cluster. Use a standalone or Sentinel "
+                    "Redis instance for Celery broker/backend."
+                )
+
+
 def init_app(app: DifyApp) -> Celery:
+    _reject_cluster_broker_url(
+        dify_config.CELERY_BROKER_URL,
+        cast("str | None", dify_config.CELERY_RESULT_BACKEND),
+    )
+
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             from core.logging.context import init_request_context
