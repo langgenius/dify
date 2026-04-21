@@ -423,11 +423,11 @@ describe('prompt-editor/hooks', () => {
         maxLength: 5,
       }))
 
-      const match = result.current('prefix @..', {} as LexicalEditor)
+      const match = result.current('prefix @ab', {} as LexicalEditor)
       expect(match).toEqual({
         leadOffset: 7,
-        matchingString: '..',
-        replaceableString: '@..',
+        matchingString: 'ab',
+        replaceableString: '@ab',
       })
     })
 
@@ -437,7 +437,7 @@ describe('prompt-editor/hooks', () => {
         maxLength: 5,
       }))
 
-      expect(result.current('prefix @.', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @a', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when matching text exceeds maxLength', () => {
@@ -445,7 +445,7 @@ describe('prompt-editor/hooks', () => {
         minLength: 1,
         maxLength: 2,
       }))
-      expect(result.current('prefix @...', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @abc', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when text has no trigger character', () => {
