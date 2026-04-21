@@ -1,5 +1,6 @@
 import type {
   CommonNodeType,
+  UploadFileSetting,
   ValueSelector,
 } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -59,11 +60,20 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-export type FormInputItemDefault = {
+export type StringDefault = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string
 }
+
+export type StringListSource = {
+  selector: ValueSelector
+  type: 'variable' | 'constant'
+  value: string[]
+}
+
+// Preserve the old export during the transition to the new schema names.
+export type FormInputItemDefault = StringDefault
 
 type BaseFormInputItem = {
   output_variable_name: string
@@ -71,19 +81,26 @@ type BaseFormInputItem = {
 
 export type ParagraphFormInput = BaseFormInputItem & {
   type: InputVarType.paragraph
-  default: FormInputItemDefault
+  default: StringDefault
 }
 
 export type SelectFormInput = BaseFormInputItem & {
   type: InputVarType.select
+  option_source: StringListSource
 }
 
-export type FileFormInput = BaseFormInputItem & {
+type SharedFileFormInput = Pick<
+  UploadFileSetting,
+  'allowed_file_extensions' | 'allowed_file_types' | 'allowed_file_upload_methods'
+>
+
+export type FileFormInput = BaseFormInputItem & SharedFileFormInput & {
   type: InputVarType.singleFile
 }
 
-export type FileListFormInput = BaseFormInputItem & {
+export type FileListFormInput = BaseFormInputItem & SharedFileFormInput & {
   type: InputVarType.multiFiles
+  max_upload_count?: number
 }
 
 export type FormInputItem
