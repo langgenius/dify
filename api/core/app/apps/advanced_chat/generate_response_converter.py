@@ -12,6 +12,7 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
+    StreamEvent,
 )
 
 
@@ -30,7 +31,7 @@ class AdvancedChatAppGenerateResponseConverter(
         if isinstance(blocking_response, ChatbotAppPausedBlockingResponse):
             paused_data = blocking_response.data.model_dump(mode="json")
             return {
-                "event": "workflow_paused",
+                "event": StreamEvent.WORKFLOW_PAUSED.value,
                 "task_id": blocking_response.task_id,
                 "id": blocking_response.data.id,
                 "message_id": blocking_response.data.message_id,
@@ -44,7 +45,7 @@ class AdvancedChatAppGenerateResponseConverter(
             }
 
         response = {
-            "event": "message",
+            "event": StreamEvent.MESSAGE.value,
             "task_id": blocking_response.task_id,
             "id": blocking_response.data.id,
             "message_id": blocking_response.data.message_id,
