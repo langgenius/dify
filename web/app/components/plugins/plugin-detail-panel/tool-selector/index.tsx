@@ -8,13 +8,13 @@ import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
 import {
@@ -102,8 +102,11 @@ const ToolSelector: FC<Props> = ({
     getSettingsValue,
   } = state
 
-  const handleTriggerClick = () => {
+  const handleTriggerClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault()
     if (disabled)
+      return
+    if (!currentProvider || !currentTool)
       return
     setIsShow(true)
   }
@@ -111,6 +114,9 @@ const ToolSelector: FC<Props> = ({
   // Determine portal open state based on controlled vs uncontrolled mode
   const portalOpen = trigger ? controlledState : isShow
   const onPortalOpenChange = trigger ? onControlledStateChange : setIsShow
+  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
+  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
 
   // Build error tooltip content
   const renderErrorTip = () => (
@@ -134,57 +140,58 @@ const ToolSelector: FC<Props> = ({
   )
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={portalOpen}
       onOpenChange={onPortalOpenChange}
     >
-      <PortalToFollowElemTrigger
-        className="w-full"
-        onClick={() => {
-          if (!currentProvider || !currentTool)
-            return
-          handleTriggerClick()
-        }}
+      <PopoverTrigger
+        render={(
+          <div className="w-full">
+            {trigger}
+
+            {/* Default trigger - no value */}
+            {!trigger && !value?.provider_name && (
+              <ToolTrigger
+                isConfigure
+                open={isShow}
+                value={value}
+                provider={currentProvider}
+              />
+            )}
+
+            {/* Default trigger - with value */}
+            {!trigger && value?.provider_name && (
+              <ToolItem
+                open={isShow}
+                icon={currentProvider?.icon || manifestIcon}
+                isMCPTool={currentProvider?.type === CollectionType.mcp}
+                providerName={value.provider_name}
+                providerShowName={value.provider_show_name}
+                toolLabel={value.tool_label || value.tool_name}
+                showSwitch={supportEnableSwitch}
+                switchValue={value.enabled}
+                onSwitchChange={handleEnabledChange}
+                onDelete={onDelete}
+                noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
+                uninstalled={!currentProvider && inMarketPlace}
+                versionMismatch={currentProvider && inMarketPlace && !currentTool}
+                installInfo={manifest?.latest_package_identifier}
+                onInstall={handleInstall}
+                isError={(!currentProvider || !currentTool) && !inMarketPlace}
+                errorTip={renderErrorTip()}
+              />
+            )}
+          </div>
+        )}
+        onClick={handleTriggerClick}
+      />
+
+      <PopoverContent
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        {trigger}
-
-        {/* Default trigger - no value */}
-        {!trigger && !value?.provider_name && (
-          <ToolTrigger
-            isConfigure
-            open={isShow}
-            value={value}
-            provider={currentProvider}
-          />
-        )}
-
-        {/* Default trigger - with value */}
-        {!trigger && value?.provider_name && (
-          <ToolItem
-            open={isShow}
-            icon={currentProvider?.icon || manifestIcon}
-            isMCPTool={currentProvider?.type === CollectionType.mcp}
-            providerName={value.provider_name}
-            providerShowName={value.provider_show_name}
-            toolLabel={value.tool_label || value.tool_name}
-            showSwitch={supportEnableSwitch}
-            switchValue={value.enabled}
-            onSwitchChange={handleEnabledChange}
-            onDelete={onDelete}
-            noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
-            uninstalled={!currentProvider && inMarketPlace}
-            versionMismatch={currentProvider && inMarketPlace && !currentTool}
-            installInfo={manifest?.latest_package_identifier}
-            onInstall={handleInstall}
-            isError={(!currentProvider || !currentTool) && !inMarketPlace}
-            errorTip={renderErrorTip()}
-          />
-        )}
-      </PortalToFollowElemTrigger>
-
-      <PortalToFollowElemContent className="z-10">
         <div className={cn(
           'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
           'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
@@ -239,8 +246,8 @@ const ToolSelector: FC<Props> = ({
             onParamsFormChange={handleParamsFormChange}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

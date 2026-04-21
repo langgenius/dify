@@ -1,14 +1,14 @@
 'use client'
 
 import { useTranslation } from '#i18n'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useTags } from '@/app/components/plugins/hooks'
 import MarketplaceTrigger from './trigger/marketplace'
 import ToolSelectorTrigger from './trigger/tool-selector'
@@ -37,43 +37,45 @@ const TagsFilter = ({
   const selectedTagsLength = tags.length
 
   return (
-    <PortalToFollowElem
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-        crossAxis: -6,
-      }}
+    <Popover
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger
-        className="shrink-0"
-        onClick={() => setOpen(v => !v)}
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
+          <div className="shrink-0">
+            {
+              usedInMarketplace && (
+                <MarketplaceTrigger
+                  selectedTagsLength={selectedTagsLength}
+                  open={open}
+                  tags={tags}
+                  tagsMap={tagsMap}
+                  onTagsChange={onTagsChange}
+                />
+              )
+            }
+            {
+              !usedInMarketplace && (
+                <ToolSelectorTrigger
+                  selectedTagsLength={selectedTagsLength}
+                  open={open}
+                  tags={tags}
+                  tagsMap={tagsMap}
+                  onTagsChange={onTagsChange}
+                />
+              )
+            }
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        alignOffset={-6}
+        popupClassName="border-none bg-transparent shadow-none"
       >
-        {
-          usedInMarketplace && (
-            <MarketplaceTrigger
-              selectedTagsLength={selectedTagsLength}
-              open={open}
-              tags={tags}
-              tagsMap={tagsMap}
-              onTagsChange={onTagsChange}
-            />
-          )
-        }
-        {
-          !usedInMarketplace && (
-            <ToolSelectorTrigger
-              selectedTagsLength={selectedTagsLength}
-              open={open}
-              tags={tags}
-              tagsMap={tagsMap}
-              onTagsChange={onTagsChange}
-            />
-          )
-        }
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1000">
         <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
@@ -103,8 +105,8 @@ const TagsFilter = ({
             }
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
