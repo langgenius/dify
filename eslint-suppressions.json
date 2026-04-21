@@ -488,11 +488,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3060,14 +3055,6 @@
       "count": 3
     }
   },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 11
@@ -3554,11 +3541,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-view.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3668,11 +3650,6 @@
     }
   },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/strategy-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/reference-setting-modal/auto-update-setting/tool-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -3933,11 +3910,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/labels/selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/create-card.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4119,11 +4091,6 @@
     }
   },
   "web/app/components/workflow/block-selector/tabs.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4311,14 +4278,6 @@
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/workflow/nodes/_base/components/agent-strategy.tsx": {
@@ -4547,19 +4506,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/variable/var-type-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4739,11 +4685,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/code/dependency-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/code/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -4894,16 +4835,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4954,11 +4885,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/if-else/components/condition-add.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4970,11 +4896,6 @@
     }
   },
   "web/app/components/workflow/nodes/if-else/components/condition-list/condition-operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/if-else/components/condition-list/condition-var-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5082,16 +5003,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/add-condition.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -5103,11 +5014,6 @@
     }
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-variable-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5291,11 +5197,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/loop/components/condition-add.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/loop/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -5307,11 +5208,6 @@
     }
   },
   "web/app/components/workflow/nodes/loop/components/condition-list/condition-operator.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/loop/components/condition-list/condition-var-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -6090,14 +5986,6 @@
   "web/app/education-apply/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 5
-    }
-  },
-  "web/app/education-apply/search-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/education-apply/verify-state-modal.tsx": {
