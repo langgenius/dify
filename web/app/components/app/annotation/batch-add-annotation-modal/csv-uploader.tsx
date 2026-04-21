@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 
 export type Props = {
   file: File | undefined
@@ -100,14 +100,14 @@ const CSVUploader: FC<Props> = ({
                 <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('batchModal.browse', { ns: 'appAnnotation' })}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
           </div>
         )}
         {file && (
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg px-6 text-sm font-normal', 'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur')}>
             <CSVIcon className="shrink-0" />
             <div className="ml-2 flex w-0 grow">
-              <span className="max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
+              <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
               <span className="shrink-0 text-text-tertiary">.csv</span>
             </div>
             <div className="hidden items-center group-hover:flex">

@@ -36,7 +36,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
               form.type === 'text-input' && (
                 <input
                   value={value?.[form.variable] || ''}
-                  className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
+                  className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden"
                   placeholder={form.placeholder}
                   onChange={e => handleFormChange(form.variable, e.target.value)}
                 />
@@ -65,7 +65,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                     }
                   })}
                   onSelect={item => handleFormChange(form.variable, item.value as string)}
-                  popupClassName="w-[576px] !z-[102]"
+                  popupClassName="w-[576px] z-102!"
                 />
               )
             }

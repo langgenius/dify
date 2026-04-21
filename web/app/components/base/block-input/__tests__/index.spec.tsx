@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import BlockInput, { getInputKeys } from '../index'
 
 vi.mock('@/utils/var', () => ({
@@ -173,7 +173,7 @@ describe('BlockInput', () => {
       expect(textarea).toBeInTheDocument()
     })
 
-    it('should exit edit mode on blur', async () => {
+    it('should exit edit mode on blur-sm', async () => {
       render(<BlockInput value="Hello" />)
 
       const contentArea = screen.getByText('Hello')

@@ -138,7 +138,7 @@ describe('Card (Service API)', () => {
       expect(wrapper).toHaveClass('w-[360px]')
     })
 
-    it('should have rounded corners', () => {
+    it('should have rounded-sm corners', () => {
       const { container } = renderWithProviders(<Card {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('rounded-xl')

@@ -1,14 +1,17 @@
 'use client'
+
 import type { ChangeEvent, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 import VarHighlight from '../../app/configuration/base/var-highlight'
+
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
+
 export const getInputKeys = (value: string) => {
   const keys = value.match(regex)?.map((item) => {
     return item.replace('{{', '').replace('}}', '')
@@ -19,25 +22,34 @@ export const getInputKeys = (value: string) => {
   keys.forEach((key) => {
     if (keyObj[key])
       return
+
     keyObj[key] = true
     res.push(key)
   })
   return res
 }
-export type IBlockInputProps = {
+
+type IBlockInputProps = {
   value: string
   className?: string // wrapper class
   highLightClassName?: string // class for the highlighted text default is text-blue-500
   readonly?: boolean
   onConfirm?: (value: string, keys: string[]) => void
 }
-const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = false, onConfirm }) => {
+
+const BlockInput: FC<IBlockInputProps> = ({
+  value = '',
+  className,
+  readonly = false,
+  onConfirm,
+}) => {
   const { t } = useTranslation()
   // current is used to store the current value of the contentEditable element
   const [currentValue, setCurrentValue] = useState<string>(value)
   useEffect(() => {
     setCurrentValue(value)
   }, [value])
+
   const contentEditableRef = useRef<HTMLTextAreaElement>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   useEffect(() => {
@@ -45,25 +57,35 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
       // TODO: Focus at the click position
       if (currentValue)
         contentEditableRef.current.setSelectionRange(currentValue.length, currentValue.length)
+
       contentEditableRef.current.focus()
     }
   }, [isEditing])
+
   const style = cn({
-    'block h-full w-full break-all border-0 px-4 py-2 text-sm text-gray-900 outline-0': true,
+    'block h-full w-full border-0 px-4 py-2 text-sm break-all text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
+
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
       const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
-        return (<VarHighlight key={`var-${index}`} name={variableMatch[1]} />)
+        return (
+          <VarHighlight
+            key={`var-${index}`}
+            name={variableMatch[1]!}
+          />
+        )
       }
       if (part === '\n')
         return <br key={`br-${index}`} />
+
       return <span key={`text-${index}`}>{part}</span>
     })
   }
+
   // Not use useCallback. That will cause out callback get old data.
   const handleSubmit = (value: string) => {
     if (onConfirm) {
@@ -76,11 +98,13 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
       onConfirm(value, keys)
     }
   }
+
   const onValueChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     setCurrentValue(value)
     handleSubmit(value)
   }, [])
+
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
   const TextAreaContentView = () => {
     return (
@@ -89,8 +113,10 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
       </div>
     )
   }
+
   const placeholder = ''
-  const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
+  const editAreaClassName = 'focus:outline-hidden bg-transparent text-sm'
+
   const textAreaContent = (
     <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
@@ -105,10 +131,10 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
                 onBlur={() => {
                   blur()
                   setIsEditing(false)
-                  // click confirm also make blur. Then outer value is change. So below code has problem.
-                  // setTimeout(() => {
-                  //   handleCancel()
-                  // }, 1000)
+                // click confirm also make blur. Then outer value is change. So below code has problem.
+                // setTimeout(() => {
+                //   handleCancel()
+                // }, 1000)
                 }}
               />
             </div>
@@ -116,6 +142,7 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
         : <TextAreaContentView />}
     </div>
   )
+
   return (
     <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')} data-testid="block-input">
       {textAreaContent}
@@ -129,4 +156,5 @@ const BlockInput: FC<IBlockInputProps> = ({ value = '', className, readonly = fa
     </div>
   )
 }
+
 export default React.memo(BlockInput)

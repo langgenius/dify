@@ -1,10 +1,11 @@
 from typing import Any
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import register_schema_models
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
@@ -30,18 +31,6 @@ class ConversationListQuery(BaseModel):
     last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
     pinned: bool | None = None
-
-
-class ConversationRenamePayload(BaseModel):
-    name: str | None = None
-    auto_generate: bool = False
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
 
 
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)

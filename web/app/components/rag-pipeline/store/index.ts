@@ -28,7 +28,6 @@ export type RagPipelineSliceShape = {
   setIsPreparingDataSource: (isPreparingDataSource: boolean) => void
 }
 
-export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
 export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = set => ({
   pipelineId: '',
   knowledgeName: '',

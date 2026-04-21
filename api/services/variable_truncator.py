@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, overload
 
+from configs import dify_config
 from graphon.file import File
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
 from graphon.variables.segments import (
@@ -20,8 +21,6 @@ from graphon.variables.segments import (
     StringSegment,
 )
 from graphon.variables.utils import dumps_with_segments
-
-from configs import dify_config
 
 _MAX_DEPTH = 100
 
@@ -129,6 +128,7 @@ class VariableTruncator(BaseTruncator):
             used_size += self.calculate_json_size(key)
             if used_size > budget:
                 truncated_mapping[key] = "..."
+                is_truncated = True
                 continue
             value_budget = (budget - used_size) // (length - len(truncated_mapping))
             if isinstance(value, Segment):
@@ -164,12 +164,12 @@ class VariableTruncator(BaseTruncator):
             result = self._truncate_segment(segment, self._max_size_bytes)
 
         if result.value_size > self._max_size_bytes:
-            if isinstance(result.value, str):
-                result = self._truncate_string(result.value, self._max_size_bytes)
-                return TruncationResult(StringSegment(value=result.value), True)
+            if isinstance(result.value, StringSegment):
+                fallback_result = self._truncate_string(result.value.value, self._max_size_bytes)
+                return TruncationResult(StringSegment(value=fallback_result.value), True)
 
             # Apply final fallback - convert to JSON string and truncate
-            json_str = dumps_with_segments(result.value, ensure_ascii=False)
+            json_str = dumps_with_segments(result.value)
             if len(json_str) > self._max_size_bytes:
                 json_str = json_str[: self._max_size_bytes] + "..."
             return TruncationResult(result=StringSegment(value=json_str), truncated=True)

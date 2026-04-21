@@ -21,7 +21,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -223,7 +223,7 @@ describe('TagManagementModal', () => {
       })
     })
 
-    it('should create a tag on input blur', async () => {
+    it('should create a tag on input blur-sm', async () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 

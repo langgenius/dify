@@ -28,7 +28,7 @@ const ShowPanel: FC<Props> = ({
         <Field
           key={name}
           name={name}
-          payload={schema.schema.properties![name]}
+          payload={schema.schema.properties![name]!}
           required={!!schema.schema.required?.includes(name)}
           rootClassName={rootClassName}
         />

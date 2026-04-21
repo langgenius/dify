@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from './ImageInput'
 import type { AppIconType, ImageFile } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiImageCircleAiLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import { cn } from '@/utils/classnames'
-import Button from '../button'
 import Divider from '../divider'
 import EmojiPickerInner from '../emoji-picker/Inner'
 import { useLocalFileUploader } from '../image-uploader/hooks'
@@ -113,7 +113,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       isShow
       closable={false}
       wrapperClassName={className}
-      className={cn(s.container, '!h-[462px] !w-[362px] !p-0')}
+      className={cn(s.container, 'h-[462px]! w-[362px]! p-0!')}
     >
       {!DISABLE_UPLOAD_IMAGE_AS_ICON && (
         <div className="w-full p-2 pb-0">
@@ -123,7 +123,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
                 type="button"
                 key={tab.key}
                 className={cn(
-                  'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-text-tertiary',
+                  'flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 system-sm-medium text-text-tertiary',
                   activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
                 )}
                 onClick={() => setActiveTab(tab.key as AppIconType)}

@@ -1,5 +1,5 @@
+import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
-import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
@@ -29,7 +29,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        popupClassName="w-[216px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+        popupClassName="w-[216px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs"
       >
         <DropdownMenuGroup className="py-1">
           {hasDedicatedChannel && hasZendeskWidget && (

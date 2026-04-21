@@ -1,21 +1,21 @@
 'use client'
 
+import type { AvatarProps } from '@langgenius/dify-ui/avatar'
 import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
-import type { AvatarProps } from '@/app/components/base/avatar'
 import type { ImageFile } from '@/types/app'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
-import { Avatar } from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { updateUserProfile } from '@/service/common'
 
@@ -133,7 +133,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       </div>
 
       <Dialog open={isShowAvatarPicker} onOpenChange={open => !open && setIsShowAvatarPicker(false)}>
-        <DialogContent className="!w-[362px] !p-0">
+        <DialogContent className="w-[362px]! p-0!">
           <ImageInput onImageInput={handleImageInput} cropShape="round" />
           <Divider className="m-0" />
 
@@ -150,8 +150,8 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       </Dialog>
 
       <Dialog open={isShowDeleteConfirm} onOpenChange={open => !open && setIsShowDeleteConfirm(false)}>
-        <DialogContent className="!w-[362px] !p-6">
-          <div className="mb-3 text-text-primary title-2xl-semi-bold">{t('avatar.deleteTitle', { ns: 'common' })}</div>
+        <DialogContent className="w-[362px]! p-6!">
+          <div className="mb-3 title-2xl-semi-bold text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
           <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
 
           <div className="flex w-full items-center justify-center gap-2">
@@ -159,7 +159,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
               {t('operation.cancel', { ns: 'common' })}
             </Button>
 
-            <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
+            <Button variant="primary" tone="destructive" className="w-full" onClick={handleDeleteAvatar}>
               {t('operation.delete', { ns: 'common' })}
             </Button>
           </div>

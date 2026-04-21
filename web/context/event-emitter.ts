@@ -20,5 +20,3 @@ export const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<Ev
 })
 
 export const useEventEmitterContextContext = () => useContext(EventEmitterContext)
-
-export default EventEmitterContext

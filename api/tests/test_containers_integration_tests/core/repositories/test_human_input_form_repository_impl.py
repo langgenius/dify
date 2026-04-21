@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -18,7 +17,15 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
@@ -29,7 +36,7 @@ from models.human_input import (
 
 
 def _create_tenant_with_members(session: Session, member_emails: list[str]) -> tuple[Tenant, list[Account]]:
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     session.add(tenant)
     session.flush()
 
@@ -39,7 +46,7 @@ def _create_tenant_with_members(session: Session, member_emails: list[str]) -> t
             email=email,
             name=f"Member {index}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         session.add(account)
         session.flush()

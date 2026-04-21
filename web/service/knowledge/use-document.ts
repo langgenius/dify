@@ -72,7 +72,7 @@ const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
   return ids.map(id => `document_id=${id}`).join('&')
 }
 
-export const useDocumentBatchAction = (action: DocumentActionType) => {
+const useDocumentBatchAction = (action: DocumentActionType) => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
       return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`)

@@ -1,4 +1,5 @@
 import type { FileEntity } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiDownloadLine,
@@ -14,7 +15,6 @@ import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileImageRender from '../file-image-render'
@@ -80,12 +80,12 @@ const FileInAttachmentItem = ({
         </div>
         <div className="mr-1 w-0 grow">
           <div
-            className="system-xs-medium mb-0.5 flex items-center truncate text-text-secondary"
+            className="mb-0.5 flex items-center truncate system-xs-medium text-text-secondary"
             title={file.name}
           >
             <div className="truncate">{name}</div>
           </div>
-          <div className="system-2xs-medium-uppercase flex items-center text-text-tertiary">
+          <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {
               ext && (
                 <span>{ext.toLowerCase()}</span>
@@ -93,7 +93,7 @@ const FileInAttachmentItem = ({
             }
             {
               ext && (
-                <span className="system-2xs-medium mx-1">•</span>
+                <span className="mx-1 system-2xs-medium">•</span>
               )
             }
             {

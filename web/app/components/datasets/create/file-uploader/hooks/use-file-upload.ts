@@ -1,10 +1,10 @@
 'use client'
 import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -19,7 +19,7 @@ export type FileUploadConfig = {
   file_upload_limit: number
 }
 
-export type UseFileUploadOptions = {
+type UseFileUploadOptions = {
   fileList: FileItem[]
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
@@ -33,7 +33,7 @@ export type UseFileUploadOptions = {
   allowedExtensions?: string[]
 }
 
-export type UseFileUploadReturn = {
+type UseFileUploadReturn = {
   // Refs
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>

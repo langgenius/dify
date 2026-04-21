@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { cn } from '@/utils/classnames'
 import { SegmentedControl } from '../../../../../base/segmented-control'
 import { Type } from '../../types'
 import {
@@ -207,11 +207,11 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="relative flex p-6 pb-3 pr-14">
-        <div className="grow truncate text-text-primary title-2xl-semi-bold">
+      <div className="relative flex p-6 pr-14 pb-3">
+        <div className="grow truncate title-2xl-semi-bold text-text-primary">
           {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
         </div>
-        <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
+        <div className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
           <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
@@ -260,7 +260,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
             <Button variant="secondary" onClick={handleResetDefaults}>
               {t('nodes.llm.jsonSchema.resetDefaults', { ns: 'workflow' })}
             </Button>
-            <Divider type="vertical" className="ml-1 mr-0 h-4" />
+            <Divider type="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>

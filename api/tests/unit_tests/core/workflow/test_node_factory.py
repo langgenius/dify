@@ -2,22 +2,66 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.nodes.code.entities import CodeLanguage
-from graphon.variables.segments import StringSegment
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.variables.segments import StringSegment
 
 
 def _assert_typed_node_config(config, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
-    assert config["id"] == node_id
-    assert isinstance(config["data"], BaseNodeData)
-    assert config["data"].type == node_type
-    assert config["data"].version == version
+    _ = node_id
+    assert isinstance(config, BaseNodeData)
+    assert config.type == node_type
+    assert config.version == version
+
+
+def _node_constructor(*, return_value):
+    constructor = MagicMock(return_value=return_value)
+    constructor.validate_node_data.side_effect = lambda node_data: node_data
+    return constructor
+
+
+class TestResolveWorkflowNodeClass:
+    def test_matching_version_uses_registry_mapping(self, monkeypatch) -> None:
+        document_extractor_class = sentinel.document_extractor_class
+        latest_node_class = sentinel.latest_document_extractor_class
+        monkeypatch.setattr(
+            node_factory,
+            "get_node_type_classes_mapping",
+            lambda: {
+                BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {
+                    "1": document_extractor_class,
+                    node_factory.LATEST_VERSION: latest_node_class,
+                }
+            },
+        )
+
+        resolved = node_factory.resolve_workflow_node_class(
+            node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
+            node_version="1",
+        )
+
+        assert resolved is document_extractor_class
+
+    def test_document_extractor_latest_falls_back_to_registry_mapping(self, monkeypatch) -> None:
+        latest_node_class = sentinel.latest_document_extractor_class
+        monkeypatch.setattr(
+            node_factory,
+            "get_node_type_classes_mapping",
+            lambda: {BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {node_factory.LATEST_VERSION: latest_node_class}},
+        )
+
+        resolved = node_factory.resolve_workflow_node_class(
+            node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
+            node_version=node_factory.LATEST_VERSION,
+        )
+
+        assert resolved is latest_node_class
 
 
 class TestFetchMemory:
@@ -110,6 +154,34 @@ class TestFetchMemory:
         )
 
 
+class TestDifyGraphInitContext:
+    def test_to_graph_init_params_preserves_explicit_values(self):
+        run_context = {
+            DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                user_id="user-id",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+            "extra": "value",
+        }
+        graph_config = {"nodes": [], "edges": []}
+        graph_init_context = node_factory.DifyGraphInitContext(
+            workflow_id="workflow-id",
+            graph_config=graph_config,
+            run_context=run_context,
+            call_depth=2,
+        )
+
+        result = graph_init_context.to_graph_init_params()
+
+        assert result.workflow_id == "workflow-id"
+        assert result.graph_config == graph_config
+        assert result.run_context == run_context
+        assert result.call_depth == 2
+
+
 class TestDefaultWorkflowCodeExecutor:
     def test_execute_delegates_to_code_executor(self, monkeypatch):
         executor = node_factory.DefaultWorkflowCodeExecutor()
@@ -172,6 +244,23 @@ class TestCodeExecutorJinja2TemplateRenderer:
 
 
 class TestDifyNodeFactoryInit:
+    def test_from_graph_init_context_translates_before_init(self):
+        graph_init_context = MagicMock()
+        graph_init_context.to_graph_init_params.return_value = sentinel.graph_init_params
+
+        with patch.object(node_factory.DifyNodeFactory, "__init__", return_value=None) as init:
+            factory = node_factory.DifyNodeFactory.from_graph_init_context(
+                graph_init_context=graph_init_context,
+                graph_runtime_state=sentinel.graph_runtime_state,
+            )
+
+        assert isinstance(factory, node_factory.DifyNodeFactory)
+        graph_init_context.to_graph_init_params.assert_called_once_with()
+        init.assert_called_once_with(
+            graph_init_params=sentinel.graph_init_params,
+            graph_runtime_state=sentinel.graph_runtime_state,
+        )
+
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state
@@ -361,8 +450,8 @@ class TestDifyNodeFactoryCreateNode:
 
     def test_uses_version_specific_class_when_available(self, monkeypatch, factory):
         matched_node = sentinel.matched_node
-        latest_node_class = MagicMock(return_value=sentinel.latest_node)
-        matched_node_class = MagicMock(return_value=matched_node)
+        latest_node_class = _node_constructor(return_value=sentinel.latest_node)
+        matched_node_class = _node_constructor(return_value=matched_node)
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -374,7 +463,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result is matched_node
         matched_node_class.assert_called_once()
         kwargs = matched_node_class.call_args.kwargs
-        assert kwargs["id"] == "node-id"
+        assert kwargs["node_id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
@@ -382,7 +471,7 @@ class TestDifyNodeFactoryCreateNode:
 
     def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch, factory):
         latest_node = sentinel.latest_node
-        latest_node_class = MagicMock(return_value=latest_node)
+        latest_node_class = _node_constructor(return_value=latest_node)
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -394,7 +483,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result is latest_node
         latest_node_class.assert_called_once()
         kwargs = latest_node_class.call_args.kwargs
-        assert kwargs["id"] == "node-id"
+        assert kwargs["node_id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
@@ -414,7 +503,8 @@ class TestDifyNodeFactoryCreateNode:
     )
     def test_creates_specialized_nodes(self, monkeypatch, factory, node_type, constructor_name):
         created_node = object()
-        constructor = MagicMock(name=constructor_name, return_value=created_node)
+        constructor = _node_constructor(return_value=created_node)
+        constructor._mock_name = constructor_name
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -431,7 +521,7 @@ class TestDifyNodeFactoryCreateNode:
 
         assert result is created_node
         kwargs = constructor.call_args.kwargs
-        assert kwargs["id"] == "node-id"
+        assert kwargs["node_id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=node_type)
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
@@ -498,7 +588,8 @@ class TestDifyNodeFactoryCreateNode:
         expected_extra_kwargs,
     ):
         created_node = object()
-        constructor = MagicMock(name=constructor_name, return_value=created_node)
+        constructor = _node_constructor(return_value=created_node)
+        constructor._mock_name = constructor_name
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -531,7 +622,7 @@ class TestDifyNodeFactoryCreateNode:
         assert helper_kwargs["include_jinja2_template_renderer"] is (node_type == BuiltinNodeTypes.LLM)
 
         constructor_kwargs = constructor.call_args.kwargs
-        assert constructor_kwargs["id"] == "node-id"
+        assert constructor_kwargs["node_id"] == "node-id"
         _assert_typed_node_config(constructor_kwargs["config"], node_id="node-id", node_type=node_type)
         assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
         assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state

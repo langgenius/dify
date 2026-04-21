@@ -242,7 +242,7 @@ describe('Tab', () => {
         )
 
         const button = screen.getByRole('button')
-        expect(button).toHaveClass('!cursor-not-allowed')
+        expect(button).toHaveClass('cursor-not-allowed!')
         expect(button).toHaveClass('opacity-30')
       })
 
@@ -261,7 +261,7 @@ describe('Tab', () => {
         )
 
         const button = screen.getByRole('button')
-        expect(button).not.toHaveClass('!cursor-not-allowed')
+        expect(button).not.toHaveClass('cursor-not-allowed!')
         expect(button).not.toHaveClass('opacity-30')
       })
     })
@@ -523,7 +523,7 @@ describe('Tab', () => {
       const button = screen.getByRole('button')
       expect(button).toBeDisabled()
       expect(button).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
-      expect(button).toHaveClass('!cursor-not-allowed')
+      expect(button).toHaveClass('cursor-not-allowed!')
       expect(button).toHaveClass('opacity-30')
     })
   })

@@ -71,7 +71,7 @@ describe('AnnotationFullModal', () => {
       expect(mockModalProps).toEqual(expect.objectContaining({
         isShow: true,
         closable: true,
-        className: '!p-0',
+        className: 'p-0!',
       }))
     })
   })

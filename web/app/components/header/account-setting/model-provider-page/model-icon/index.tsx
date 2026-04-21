@@ -3,12 +3,12 @@ import type {
   Model,
   ModelProvider,
 } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 
 type ModelIconProps = {

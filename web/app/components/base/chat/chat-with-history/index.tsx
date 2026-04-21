@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InstalledApp } from '@/models/explore'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEffect,
   useState,
@@ -8,7 +9,6 @@ import {
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { cn } from '@/utils/classnames'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
 import ChatWrapper from './chat-wrapper'
 import {
@@ -61,7 +61,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       {!isMobile && (
         <div className={cn(
           'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
-          isSidebarCollapsed && 'w-0 overflow-hidden !p-0',
+          isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
         )}
         >
           <Sidebar />
@@ -70,7 +70,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       {isMobile && (
         <HeaderInMobile />
       )}
-      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%_-_56px)] p-0')}>
+      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%-56px)] p-0')}>
         {isSidebarCollapsed && (
           <div
             className={cn(
@@ -97,7 +97,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   )
 }
 
-export type ChatWithHistoryWrapProps = {
+type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
 }

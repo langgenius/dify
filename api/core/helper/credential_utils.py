@@ -2,7 +2,7 @@
 Credential utility functions for checking credential existence and policy compliance.
 """
 
-from services.enterprise.plugin_manager_service import PluginCredentialType
+from core.entities import PluginCredentialType
 
 
 def is_credential_exists(credential_id: str, credential_type: "PluginCredentialType") -> bool:

@@ -27,15 +27,15 @@ const SchemaModal: FC<Props> = ({
       isShow={isShow}
       onClose={onClose}
       className="max-w-[960px] p-0"
-      wrapperClassName="z-[9999]"
+      wrapperClassName="z-9999"
     >
       <div className="pb-6">
         {/* Header */}
-        <div className="relative flex p-6 pb-3 pr-14">
-          <div className="title-2xl-semi-bold grow truncate text-text-primary">
+        <div className="relative flex p-6 pr-14 pb-3">
+          <div className="grow truncate title-2xl-semi-bold text-text-primary">
             {t('nodes.agent.parameterSchema', { ns: 'workflow' })}
           </div>
-          <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
+          <div className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
         </div>

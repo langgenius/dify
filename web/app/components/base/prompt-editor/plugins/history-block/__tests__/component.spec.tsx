@@ -6,6 +6,8 @@ import { UPDATE_HISTORY_EVENT_EMITTER } from '../../../constants'
 import HistoryBlockComponent from '../component'
 import { DELETE_HISTORY_BLOCK_COMMAND } from '../index'
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 type HistoryEventPayload = {
   type?: string
   payload?: RoleName
@@ -88,7 +90,7 @@ describe('HistoryBlockComponent', () => {
     )
 
     const wrapper = container.firstElementChild
-    expect(wrapper).toHaveClass('!border-[#F670C7]')
+    expect(wrapper).toHaveClass('border-[#F670C7]!')
     expect(wrapper).toHaveClass('bg-[#FCE7F6]')
   })
 
@@ -107,6 +109,24 @@ describe('HistoryBlockComponent', () => {
     expect(screen.getByText('assistant-role')).toBeInTheDocument()
     expect(screen.getByText('common.promptEditor.history.modal.user')).toBeInTheDocument()
     expect(screen.getByText('common.promptEditor.history.modal.assistant')).toBeInTheDocument()
+  })
+
+  it('should keep the popover closed when the trigger prevents the default click', async () => {
+    const user = userEvent.setup()
+    const setOpen = vi.fn() as unknown as Dispatch<SetStateAction<boolean>>
+    mockUseTrigger.mockReturnValue(createTriggerHookReturn(false, setOpen))
+
+    render(
+      <HistoryBlockComponent
+        nodeKey="history-node-trigger"
+        onEditRole={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByTestId('popover-trigger'))
+
+    expect(setOpen).not.toHaveBeenCalled()
+    expect(screen.queryByText('common.promptEditor.history.modal.edit')).not.toBeInTheDocument()
   })
 
   it('should call onEditRole when edit action is clicked', async () => {
@@ -182,6 +202,29 @@ describe('HistoryBlockComponent', () => {
           assistant: 'updated-assistant',
         },
       })
+    })
+
+    expect(screen.getByText('kept-user')).toBeInTheDocument()
+    expect(screen.getByText('kept-assistant')).toBeInTheDocument()
+  })
+
+  it('should ignore string events from the event emitter', () => {
+    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
+
+    render(
+      <HistoryBlockComponent
+        nodeKey="history-node-6-string"
+        roleName={createRoleName({
+          user: 'kept-user',
+          assistant: 'kept-assistant',
+        })}
+        onEditRole={vi.fn()}
+      />,
+    )
+
+    expect(subscribedHandler).not.toBeNull()
+    act(() => {
+      subscribedHandler?.('ignore-me' as unknown as HistoryEventPayload)
     })
 
     expect(screen.getByText('kept-user')).toBeInTheDocument()

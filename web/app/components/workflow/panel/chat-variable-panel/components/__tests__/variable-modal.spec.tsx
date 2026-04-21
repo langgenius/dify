@@ -1,7 +1,7 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '../../type'
 import VariableModal from '../variable-modal'
@@ -10,7 +10,7 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -156,7 +156,7 @@ describe('variable-modal', () => {
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
   })
 
-  it('should validate variable names on blur and preserve underscore replacement', () => {
+  it('should validate variable names on blur-sm and preserve underscore replacement', () => {
     renderVariableModal()
     const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')
 

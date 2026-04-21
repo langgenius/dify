@@ -10,6 +10,8 @@ This module tests the document indexing task functionality including:
 """
 
 import uuid
+from contextlib import nullcontext
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -80,8 +82,8 @@ def mock_db_session():
     """Mock session_factory.create_session() to return a session whose queries use shared test data.
 
     Tests set session._shared_data = {"dataset": <Dataset>, "documents": [<Document>, ...]}
-    This fixture makes session.query(Dataset).first() return the shared dataset,
-    and session.query(Document).all()/first() return from the shared documents.
+    This fixture makes session.scalar(select(Dataset)...) return the shared dataset,
+    and session.scalars(select(Document)...).all() return the shared documents.
     """
     with patch("tasks.document_indexing_task.session_factory") as mock_sf:
         session = MagicMock()
@@ -90,93 +92,68 @@ def mock_db_session():
         # Keep a pointer so repeated Document.first() calls iterate across provided docs
         session._doc_first_idx = 0
 
-        def _query_side_effect(model):
-            q = MagicMock()
+        def _get_entity(stmt) -> type | None:
+            """Extract the mapped entity class from a SQLAlchemy select statement."""
+            try:
+                descs = stmt.column_descriptions
+                if descs:
+                    return descs[0].get("entity")
+            except (AttributeError, TypeError):
+                pass
+            return None
 
-            # Capture filters passed via where(...) so first()/all() can honor them.
-            q._filters = {}
+        def _extract_id_from_where(stmt) -> str | None:
+            """Return the value bound to the 'id' column in the WHERE clause, if present."""
+            try:
+                where = stmt.whereclause
+                if where is None:
+                    return None
+                # Both single-clause and AND-clause-list cases
+                clauses = list(getattr(where, "clauses", [where]))
+                for clause in clauses:
+                    left = getattr(clause, "left", None)
+                    right = getattr(clause, "right", None)
+                    if left is not None and right is not None:
+                        if getattr(left, "key", None) == "id":
+                            return getattr(right, "value", None)
+            except Exception:
+                pass
+            return None
 
-            def _extract_filters(*conds, **kw):
-                # Support both SQLAlchemy expressions (BinaryExpression) and kwargs
-                # We only need the simple fields used by production code: id, dataset_id, and id.in_(...)
-                for cond in conds:
-                    left = getattr(cond, "left", None)
-                    right = getattr(cond, "right", None)
-                    key = None
-                    if left is not None:
-                        key = getattr(left, "key", None) or getattr(left, "name", None)
-                    if not key:
-                        continue
-                    # Right side might be a BindParameter with .value, or a raw value/sequence
-                    val = getattr(right, "value", right)
-                    q._filters[key] = val
-                # Also accept kwargs (e.g., where(id=...)) just in case
-                for k, v in kw.items():
-                    q._filters[k] = v
-
-            def _where_side_effect(*conds, **kw):
-                _extract_filters(*conds, **kw)
-                return q
-
-            q.where.side_effect = _where_side_effect
-
-            # Dataset queries
-            if model.__name__ == "Dataset":
-
-                def _dataset_first():
-                    ds = session._shared_data.get("dataset")
-                    if not ds:
-                        return None
-                    if "id" in q._filters:
-                        val = q._filters["id"]
-                        if isinstance(val, (list, tuple, set)):
-                            return ds if ds.id in val else None
-                        return ds if ds.id == val else None
-                    return ds
-
-                def _dataset_all():
-                    ds = session._shared_data.get("dataset")
-                    if not ds:
-                        return []
-                    first = _dataset_first()
-                    return [first] if first else []
-
-                q.first.side_effect = _dataset_first
-                q.all.side_effect = _dataset_all
-                return q
-
-            # Document queries
-            if model.__name__ == "Document":
-
-                def _apply_doc_filters(docs):
-                    result = list(docs)
-                    for key in ("id", "dataset_id"):
-                        if key in q._filters:
-                            val = q._filters[key]
-                            if isinstance(val, (list, tuple, set)):
-                                result = [d for d in result if getattr(d, key, None) in val]
-                            else:
-                                result = [d for d in result if getattr(d, key, None) == val]
-                    return result
-
-                def _docs_all():
+        def _scalar_side_effect(stmt):
+            entity = _get_entity(stmt)
+            if entity is not None:
+                if entity.__name__ == "Dataset":
+                    return session._shared_data.get("dataset")
+                elif entity.__name__ == "Document":
                     docs = session._shared_data.get("documents", [])
-                    return _apply_doc_filters(docs)
+                    if not docs:
+                        return None
+                    # When the WHERE clause filters by id, return the matching document
+                    queried_id = _extract_id_from_where(stmt)
+                    if queried_id:
+                        doc_map = {d.id: d for d in docs}
+                        return doc_map.get(queried_id, docs[0])
+                    return docs[0]
+            return None
 
-                def _docs_first():
-                    docs = _docs_all()
-                    return docs[0] if docs else None
+        def _scalars_side_effect(stmt):
+            entity = _get_entity(stmt)
+            result = MagicMock()
+            if entity is not None:
+                if entity.__name__ == "Document":
+                    result.all.return_value = list(session._shared_data.get("documents", []))
+                elif entity.__name__ == "Dataset":
+                    ds = session._shared_data.get("dataset")
+                    result.all.return_value = [ds] if ds else []
+                else:
+                    result.all.return_value = []
+            else:
+                result.all.return_value = []
+            return result
 
-                q.all.side_effect = _docs_all
-                q.first.side_effect = _docs_first
-                return q
-
-            # Default fallback
-            q.first.return_value = None
-            q.all.return_value = []
-            return q
-
-        session.query.side_effect = _query_side_effect
+        session.scalar.side_effect = _scalar_side_effect
+        session.scalars.side_effect = _scalars_side_effect
 
         # Implement session.begin() context manager that commits on exit
         session.commit = MagicMock()
@@ -636,8 +613,6 @@ class TestProgressTracking:
         wrapper = TaskWrapper(data=next_task_data)
         mock_redis.rpop.return_value = wrapper.serialize()
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
 
@@ -660,7 +635,6 @@ class TestProgressTracking:
         """
         # Arrange
         mock_redis.rpop.return_value = None  # No more tasks
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -778,8 +752,7 @@ class TestErrorHandling:
 
         If the dataset doesn't exist, the task should exit gracefully.
         """
-        # Arrange
-        mock_db_session.query.return_value.where.return_value.first.return_value = None
+        # Arrange - dataset is not in _shared_data (None by default), so scalar() returns None
 
         # Act
         _document_indexing(dataset_id, document_ids)
@@ -803,8 +776,6 @@ class TestErrorHandling:
         wrapper = TaskWrapper(data=next_task_data)
         # Set up rpop to return task once for concurrency check
         mock_redis.rpop.side_effect = [wrapper.serialize(), None]
-
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
 
         # Make _document_indexing raise an error
         with patch("tasks.document_indexing_task._document_indexing") as mock_indexing:
@@ -842,7 +813,7 @@ class TestErrorHandling:
         # Mock rpop to return tasks one by one
         mock_redis.rpop.side_effect = tasks[:concurrency_limit] + [None]
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -975,7 +946,7 @@ class TestAdvancedScenarios:
 
         # Mock rpop to return tasks up to concurrency limit
         mock_redis.rpop.side_effect = waiting_tasks[:concurrency_limit] + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1068,7 +1039,7 @@ class TestAdvancedScenarios:
 
         # Mock rpop to return tasks in FIFO order
         mock_redis.rpop.side_effect = tasks + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", 3):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1106,20 +1077,24 @@ class TestAdvancedScenarios:
         """
         # Arrange
         mock_redis.rpop.return_value = None  # Empty queue
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
             # Act
             _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
             # Assert
-            # Verify delete was called to clean up task key
-            mock_redis.delete.assert_called_once()
+            expected_task_key = f"tenant_document_indexing_task:{tenant_id}"
 
-            # Verify the correct key was deleted (contains tenant_id and "document_indexing")
-            delete_call_args = mock_redis.delete.call_args[0][0]
-            assert tenant_id in delete_call_args
-            assert "document_indexing" in delete_call_args
+            # Verify the task key for this tenant was deleted (do not assert call count; fixtures may be shared).
+            mock_redis.delete.assert_any_call(expected_task_key)
+
+            deleted_keys = [delete_call.args[0] for delete_call in mock_redis.delete.call_args_list if delete_call.args]
+            assert expected_task_key in deleted_keys
+
+            deleted_task_key = next(key for key in deleted_keys if key == expected_task_key)
+            assert tenant_id in deleted_task_key
+            assert "document_indexing" in deleted_task_key
 
     def test_billing_disabled_skips_limit_checks(
         self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
@@ -1270,7 +1245,7 @@ class TestIntegration:
         # First call returns task 2, second call returns None
         mock_redis.rpop.side_effect = [wrapper.serialize(), None]
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
@@ -1427,7 +1402,7 @@ class TestPerformanceScenarios:
 
         # Mock rpop to return tasks up to concurrency limit
         mock_redis.rpop.side_effect = waiting_tasks[:concurrency_limit] + [None]
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db_session._shared_data["dataset"] = mock_dataset
 
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
@@ -1510,3 +1485,439 @@ class TestRobustness:
 
             # Verify the exception message
             assert "Feature service" in str(exc_info.value) or isinstance(exc_info.value, Exception)
+
+
+class _SessionContext:
+    def __init__(self, session: MagicMock) -> None:
+        self._session = session
+
+    def __enter__(self) -> MagicMock:
+        return self._session
+
+    def __exit__(self, exc_type, exc, tb) -> None:  # type: ignore[override]
+        return None
+
+
+class TestDocumentIndexingTaskSummaryFlow:
+    """Additional coverage for summary and tenant queue branches."""
+
+    def test_should_return_when_dataset_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test early return when dataset does not exist."""
+        # Arrange
+        session = MagicMock()
+        session = MagicMock()
+        session.scalar.return_value = None  # dataset not found
+
+        create_session_mock = MagicMock(return_value=_SessionContext(session))
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+        features_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", features_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        features_mock.assert_not_called()
+
+    def test_should_mark_documents_error_when_batch_upload_limit_exceeded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test batch upload limit triggers error handling."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        document = SimpleNamespace(id="doc-1", indexing_status=None, error=None, stopped_at=None)
+
+        session = MagicMock()
+
+        def _scalar_se(stmt):
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is Dataset:
+                return dataset
+            return document
+
+        session.scalar.side_effect = _scalar_se
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(return_value=_SessionContext(session)),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(
+                enabled=True,
+                subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
+            ),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", "1")
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1", "doc-2"])
+
+        # Assert
+        assert document.indexing_status == "error"
+        assert "batch upload limit" in document.error
+        session.commit.assert_called_once()
+
+    def test_should_queue_summary_generation_for_completed_documents(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation is queued for eligible documents."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+
+        doc_eligible = SimpleNamespace(
+            id="doc-1",
+            indexing_status="completed",
+            doc_form="text",
+            need_summary=True,
+        )
+        doc_skip_form = SimpleNamespace(
+            id="doc-2",
+            indexing_status="completed",
+            doc_form="qa_model",
+            need_summary=True,
+        )
+        doc_skip_status = SimpleNamespace(
+            id="doc-3",
+            indexing_status="processing",
+            doc_form="text",
+            need_summary=True,
+        )
+
+        dataset_query = MagicMock()
+        dataset_query.where.return_value = dataset_query
+        dataset_query.first.return_value = dataset
+
+        phase1_docs = [SimpleNamespace(id="doc-1"), SimpleNamespace(id="doc-2"), SimpleNamespace(id="doc-3")]
+        phase1_document_query = MagicMock()
+        phase1_document_query.where.return_value = phase1_document_query
+        phase1_document_query.all.return_value = phase1_docs
+
+        summary_document_query = MagicMock()
+        summary_document_query.where.return_value = summary_document_query
+        summary_document_query.all.return_value = [doc_eligible, doc_skip_form, doc_skip_status]
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=phase1_docs))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(
+            all=MagicMock(return_value=[doc_eligible, doc_skip_form, doc_skip_status])
+        )
+
+        create_session_mock = MagicMock(
+            side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        indexing_runner = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1", "doc-2", "doc-3"])
+
+        # Assert
+        delay_mock.assert_called_once_with("dataset-1", "doc-1", None)
+
+    def test_should_continue_when_summary_queue_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary queueing errors are swallowed."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+
+        doc_eligible = SimpleNamespace(
+            id="doc-1",
+            indexing_status="completed",
+            doc_form="text",
+            need_summary=True,
+        )
+
+        dataset_query = MagicMock()
+        dataset_query.where.return_value = dataset_query
+        dataset_query.first.return_value = dataset
+
+        phase1_query = MagicMock()
+        phase1_query.where.return_value = phase1_query
+        phase1_query.all.return_value = [SimpleNamespace(id="doc-1")]
+
+        summary_query = MagicMock()
+        summary_query.where.return_value = summary_query
+        summary_query.all.return_value = [doc_eligible]
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[doc_eligible]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        indexing_runner = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
+        delay_mock = MagicMock(side_effect=Exception("boom"))
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_called_once_with("dataset-1", "doc-1", None)
+
+    def test_should_return_when_dataset_missing_after_indexing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test early return when dataset is missing after indexing."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = None  # dataset not found on second query
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        session3.scalar.assert_called()
+
+    def test_should_skip_summary_when_not_high_quality(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation skipped when indexing_technique is not high_quality."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="economy",
+            summary_index_setting={"enable": True},
+        )
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_skip_summary_generation_when_indexing_paused(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test summary generation is skipped when indexing is paused."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+
+        create_session_mock = MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)])
+        monkeypatch.setattr("tasks.document_indexing_task.session_factory.create_session", create_session_mock)
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        runner = MagicMock()
+        runner.run.side_effect = DocumentIsPausedError("paused")
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=runner))
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_handle_indexing_runner_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test generic indexing runner exception is handled."""
+        # Arrange
+        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+
+        runner = MagicMock()
+        runner.run.side_effect = RuntimeError("boom")
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=runner))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_should_log_missing_document_entry_in_summary_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test falsey document entries are handled in summary iteration."""
+
+        # Arrange
+        class _FalseyDocument:
+            def __init__(self, doc_id: str) -> None:
+                self.id = doc_id
+
+            def __bool__(self) -> bool:
+                return False
+
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+        session1 = MagicMock()
+        session2 = MagicMock()
+        session2.begin.return_value = nullcontext()
+        session3 = MagicMock()
+
+        session1.scalar.return_value = dataset
+        session2.scalars.return_value = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1")]))
+        session3.scalar.return_value = dataset
+        session3.scalars.return_value = MagicMock(all=MagicMock(return_value=[_FalseyDocument("missing-doc")]))
+
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.session_factory.create_session",
+            MagicMock(side_effect=[_SessionContext(session1), _SessionContext(session2), _SessionContext(session3)]),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
+        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
+
+        delay_mock = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", delay_mock)
+
+        # Act
+        _document_indexing("dataset-1", ["doc-1"])
+
+        # Assert
+        delay_mock.assert_not_called()
+
+    def test_normal_document_indexing_task_should_delegate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test normal indexing task delegates to tenant queue handler."""
+        # Arrange
+        handler = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task._document_indexing_with_tenant_queue", handler)
+
+        # Act
+        normal_document_indexing_task("tenant-1", "dataset-1", ["doc-1"])
+
+        # Assert
+        handler.assert_called_once_with("tenant-1", "dataset-1", ["doc-1"], normal_document_indexing_task)
+
+    def test_priority_document_indexing_task_should_delegate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test priority indexing task delegates to tenant queue handler."""
+        # Arrange
+        handler = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task._document_indexing_with_tenant_queue", handler)
+
+        # Act
+        priority_document_indexing_task("tenant-1", "dataset-1", ["doc-1"])
+
+        # Assert
+        handler.assert_called_once_with("tenant-1", "dataset-1", ["doc-1"], priority_document_indexing_task)

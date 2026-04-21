@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import overload
 
 from sqlalchemy import select
 
@@ -23,14 +23,30 @@ def _load_app_model_with_trial(app_id: str) -> App | None:
     return app_model
 
 
-def get_app_model(
-    view: Callable[..., Any] | None = None,
+@overload
+def get_app_model[**P, R](
+    view: Callable[P, R],
     *,
     mode: AppMode | list[AppMode] | None = None,
-) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
-    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
+) -> Callable[P, R]: ...
+
+
+@overload
+def get_app_model[**P, R](
+    view: None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def get_app_model[**P, R](
+    view: Callable[P, R] | None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: Any, **kwargs: Any):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 
@@ -68,14 +84,30 @@ def get_app_model(
         return decorator(view)
 
 
-def get_app_model_with_trial(
-    view: Callable[..., Any] | None = None,
+@overload
+def get_app_model_with_trial[**P, R](
+    view: Callable[P, R],
     *,
     mode: AppMode | list[AppMode] | None = None,
-) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
-    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
+) -> Callable[P, R]: ...
+
+
+@overload
+def get_app_model_with_trial[**P, R](
+    view: None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def get_app_model_with_trial[**P, R](
+    view: Callable[P, R] | None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: Any, **kwargs: Any):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 

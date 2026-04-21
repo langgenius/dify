@@ -1,13 +1,13 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { useState } from 'react'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type ConditionValueMethodProps = {
   valueMethod?: string
@@ -37,10 +37,10 @@ const ConditionValueMethod = ({
           size="small"
         >
           {capitalize(valueMethod)}
-          <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
+          <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (

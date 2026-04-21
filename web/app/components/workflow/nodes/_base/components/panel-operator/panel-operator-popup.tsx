@@ -47,7 +47,7 @@ const PanelOperatorPopup = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const edge = edges.find(edge => edge.target === id)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
-  const showChangeBlock = !nodeMetaData.isTypeFixed && !nodesReadOnly
+  const showChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const isChildNode = !!(data.isInIteration || data.isInLoop)
 
   const { data: workflowTools } = useAllWorkflowTools()
