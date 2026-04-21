@@ -2,10 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from graphon.model_runtime.entities.provider_entities import FormType
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from graphon.model_runtime.entities.provider_entities import FormType
 from models.account import Account
 from models.model import EndUser
 from models.oauth import DatasourceProvider
@@ -40,7 +40,10 @@ class TestDatasourceProviderService:
         q returns itself for .filter_by(), .order_by(), .where() so any
         SQLAlchemy chaining pattern works without multiple brittle sub-mocks.
         """
-        with patch("services.datasource_provider_service.Session") as mock_cls:
+        with (
+            patch("services.datasource_provider_service.Session") as mock_cls,
+            patch("services.datasource_provider_service.sessionmaker") as mock_sm,
+        ):
             sess = MagicMock(spec=Session)
 
             q = MagicMock()
@@ -63,6 +66,8 @@ class TestDatasourceProviderService:
 
             mock_cls.return_value.__enter__.return_value = sess
             mock_cls.return_value.no_autoflush.__enter__.return_value = sess
+            mock_sm.return_value.begin.return_value.__enter__.return_value = sess
+            mock_sm.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
 
             yield sess
 
@@ -174,11 +179,11 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_return_true_when_system_oauth_params_exist(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = MagicMock()
+        mock_db_session.scalar.return_value = MagicMock()
         assert service.is_system_oauth_params_exist(make_id()) is True
 
     def test_should_return_false_when_system_oauth_params_missing(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         assert service.is_system_oauth_params_exist(make_id()) is False
 
     # -----------------------------------------------------------------------
@@ -200,7 +205,7 @@ class TestDatasourceProviderService:
 
     def test_should_delete_tenant_config_when_removing_oauth_params(self, service, mock_db_session):
         service.remove_oauth_custom_client_params("t1", make_id())
-        mock_db_session.query().delete.assert_called_once()
+        mock_db_session.execute.assert_called_once()
 
     # -----------------------------------------------------------------------
     # setup_oauth_custom_client_params (315-351)
@@ -212,14 +217,14 @@ class TestDatasourceProviderService:
         mock_db_session.add.assert_not_called()
 
     def test_should_create_new_config_when_none_exists(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
             service.setup_oauth_custom_client_params("t1", make_id(), {"k": "v"}, True)
         mock_db_session.add.assert_called_once()
 
     def test_should_update_existing_config_when_record_found(self, service, mock_db_session):
         existing = MagicMock()
-        mock_db_session.query().first.return_value = existing
+        mock_db_session.scalar.return_value = existing
         with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
             service.setup_oauth_custom_client_params("t1", make_id(), {"k": "v"}, False)
         mock_db_session.add.assert_not_called()  # update in place, no add
@@ -250,7 +255,7 @@ class TestDatasourceProviderService:
 
     def test_should_return_empty_dict_when_credential_not_found(self, service, mock_db_session, mock_user):
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
-            mock_db_session.query().first.return_value = None
+            mock_db_session.scalar.return_value = None
             assert service.get_datasource_credentials("t1", "prov", "org/plug") == {}
 
     def test_should_refresh_oauth_tokens_when_expired(self, service, mock_db_session, mock_user):
@@ -259,14 +264,13 @@ class TestDatasourceProviderService:
         p.auth_type = "oauth2"
         p.expires_at = 0  # expired
         p.encrypted_credentials = {"tok": "x"}
-        mock_db_session.query().first.return_value = p
+        mock_db_session.scalar.return_value = p
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
-        mock_db_session.commit.assert_called_once()
 
     def test_should_return_decrypted_credentials_when_api_key_not_expired(self, service, mock_db_session, mock_user):
         """API key credentials with expires_at=-1 skip refresh and return directly."""
@@ -274,7 +278,7 @@ class TestDatasourceProviderService:
         p.auth_type = "api_key"
         p.expires_at = -1  # sentinel: never expires
         p.encrypted_credentials = {"k": "v"}
-        mock_db_session.query().first.return_value = p
+        mock_db_session.scalar.return_value = p
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "plain"}),
@@ -288,7 +292,7 @@ class TestDatasourceProviderService:
         p.auth_type = "api_key"
         p.expires_at = -1
         p.encrypted_credentials = {}
-        mock_db_session.query().first.return_value = p
+        mock_db_session.scalar.return_value = p
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "v"}),
@@ -302,7 +306,7 @@ class TestDatasourceProviderService:
 
     def test_should_return_empty_list_when_no_provider_credentials_exist(self, service, mock_db_session, mock_user):
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
-            mock_db_session.query().all.return_value = []
+            mock_db_session.scalars.return_value.all.return_value = []
             assert service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug") == []
 
     def test_should_refresh_and_return_credentials_when_oauth_expired(self, service, mock_db_session, mock_user):
@@ -310,7 +314,7 @@ class TestDatasourceProviderService:
         p.auth_type = "oauth2"
         p.expires_at = 0
         p.encrypted_credentials = {"t": "x"}
-        mock_db_session.query().all.return_value = [p]
+        mock_db_session.scalars.return_value.all.return_value = [p]
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
@@ -324,23 +328,21 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_provider_not_found_on_name_update(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(ValueError, match="not found"):
             service.update_datasource_provider_name("t1", make_id(), "new", "cred-id")
 
     def test_should_return_early_when_new_name_matches_current(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
         p.name = "same"
-        mock_db_session.query().first.return_value = p
+        mock_db_session.scalar.return_value = p
         service.update_datasource_provider_name("t1", make_id(), "same", "cred-id")
-        mock_db_session.commit.assert_not_called()
 
     def test_should_raise_value_error_when_name_already_exists(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
         p.name = "old_name"
         p.is_default = False
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 1  # conflict
+        mock_db_session.scalar.side_effect = [p, 1]  # first: fetch provider, second: name conflict count
         with pytest.raises(ValueError, match="already exists"):
             service.update_datasource_provider_name("t1", make_id(), "new_name", "some-id")
 
@@ -348,18 +350,16 @@ class TestDatasourceProviderService:
         p = MagicMock(spec=DatasourceProvider)
         p.name = "old_name"
         p.is_default = False
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         service.update_datasource_provider_name("t1", make_id(), "new_name", "some-id")
         assert p.name == "new_name"
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # set_default_datasource_provider (lines 277-303)
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_target_provider_not_found(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(ValueError, match="not found"):
             service.set_default_datasource_provider("t1", make_id(), "bad-id")
 
@@ -367,10 +367,9 @@ class TestDatasourceProviderService:
         target = MagicMock(spec=DatasourceProvider)
         target.provider = "provider"
         target.plugin_id = "org/plug"
-        mock_db_session.query().first.return_value = target
+        mock_db_session.scalar.return_value = target
         service.set_default_datasource_provider("t1", make_id(), "new-id")
         assert target.is_default is True
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # get_oauth_encrypter (lines 404-420)
@@ -427,13 +426,13 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_use_tenant_config_when_available(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = MagicMock(client_params={"k": "v"})
+        mock_db_session.scalar.return_value = MagicMock(client_params={"k": "v"})
         with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "dec"}
 
     def test_should_fallback_to_system_credentials_when_tenant_config_missing(self, service, mock_db_session):
-        mock_db_session.query().first.side_effect = [None, MagicMock(system_credentials={"k": "sys"})]
+        mock_db_session.scalar.side_effect = [None, MagicMock(system_credentials={"k": "sys"})]
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True),
@@ -443,7 +442,7 @@ class TestDatasourceProviderService:
 
     def test_should_raise_value_error_when_no_oauth_config_available(self, service, mock_db_session):
         """Neither tenant nor system credentials → raises ValueError."""
-        mock_db_session.query().first.side_effect = [None, None]
+        mock_db_session.scalar.side_effect = [None, None]
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
@@ -456,16 +455,14 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_add_oauth_provider_successfully_when_name_is_unique(self, service, mock_db_session):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.add_datasource_oauth_provider("new", "t1", make_id(), "http://cb", 9999, {})
         mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
 
     def test_should_auto_rename_when_oauth_provider_name_conflicts(self, service, mock_db_session):
         """Conflict on name results in auto-incremented name, not an error."""
-        mock_db_session.query().count.return_value = 1  # conflict first, then auto-named
-        mock_db_session.query().all.return_value = []
+        mock_db_session.scalar.return_value = 1  # conflict first, then auto-named
         with (
             patch.object(service, "extract_secret_variables", return_value=[]),
             patch.object(service, "generate_next_datasource_provider_name", return_value="new_gen"),
@@ -475,8 +472,7 @@ class TestDatasourceProviderService:
 
     def test_should_auto_generate_name_when_none_provided_for_oauth(self, service, mock_db_session):
         """name=None causes auto-generation via generate_next_datasource_provider_name."""
-        mock_db_session.query().count.return_value = 0
-        mock_db_session.query().all.return_value = []
+        mock_db_session.scalar.return_value = 0
         with (
             patch.object(service, "extract_secret_variables", return_value=[]),
             patch.object(service, "generate_next_datasource_provider_name", return_value="auto"),
@@ -485,13 +481,13 @@ class TestDatasourceProviderService:
         mock_db_session.add.assert_called_once()
 
     def test_should_encrypt_secret_fields_when_adding_oauth_provider(self, service, mock_db_session):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with patch.object(service, "extract_secret_variables", return_value=["secret_key"]):
             service.add_datasource_oauth_provider("nm", "t1", make_id(), "http://cb", 9999, {"secret_key": "value"})
         self._enc.encrypt_token.assert_called()
 
     def test_should_acquire_redis_lock_when_adding_oauth_provider(self, service, mock_db_session):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.add_datasource_oauth_provider("nm", "t1", make_id(), "http://cb", 9999, {})
         self._redis.lock.assert_called()
@@ -501,42 +497,36 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_credential_id_not_found_on_reauth(self, service, mock_db_session):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with patch.object(service, "extract_secret_variables", return_value=[]):
             with pytest.raises(ValueError, match="not found"):
                 service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "bad-id")
 
     def test_should_reauthorize_and_commit_when_credential_found(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "oid")
-        mock_db_session.commit.assert_called_once()
 
     def test_should_auto_rename_when_reauth_name_conflicts(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 1  # conflict
-        mock_db_session.query().all.return_value = []
+        mock_db_session.scalar.side_effect = [p, 1]  # first: fetch provider, second: name conflict count
+        mock_db_session.scalars.return_value.all.return_value = []
         with patch.object(service, "extract_secret_variables", return_value=["tok"]):
             service.reauthorize_datasource_oauth_provider(
                 "conflict_name", "t1", make_id(), "u", 9999, {"tok": "v"}, "cred-id"
             )
-        mock_db_session.commit.assert_called_once()
 
     def test_should_encrypt_secret_fields_when_reauthorizing(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         with patch.object(service, "extract_secret_variables", return_value=["tok"]):
             service.reauthorize_datasource_oauth_provider(None, "t1", make_id(), "u", 9999, {"tok": "val"}, "cred-id")
         self._enc.encrypt_token.assert_called()
 
     def test_should_acquire_redis_lock_when_reauthorizing(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "oid")
         self._redis.lock.assert_called()
@@ -547,13 +537,13 @@ class TestDatasourceProviderService:
 
     def test_should_raise_value_error_when_api_key_name_already_exists(self, service, mock_db_session, mock_user):
         """explicit name supplied + conflict → raises ValueError immediately."""
-        mock_db_session.query().count.return_value = 1
+        mock_db_session.scalar.return_value = 1
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="already exists"):
                 service.add_datasource_api_key_provider("clash", "t1", make_id(), {"sk": "v"})
 
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, mock_db_session, mock_user):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")),
@@ -563,7 +553,7 @@ class TestDatasourceProviderService:
                 service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
 
     def test_should_add_api_key_provider_and_commit_when_valid(self, service, mock_db_session, mock_user):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials"),
@@ -571,10 +561,9 @@ class TestDatasourceProviderService:
         ):
             service.add_datasource_api_key_provider(None, "t1", make_id(), {"sk": "v"})
         mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
 
     def test_should_acquire_redis_lock_when_adding_api_key_provider(self, service, mock_db_session, mock_user):
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.return_value = 0
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials"),
@@ -697,7 +686,7 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_credential_not_found_on_update(self, service, mock_db_session, mock_user):
-        mock_db_session.query().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="not found"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "name")
@@ -707,8 +696,7 @@ class TestDatasourceProviderService:
         p.name = "old_name"
         p.auth_type = "api_key"
         p.encrypted_credentials = {"sk": "e"}
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 1
+        mock_db_session.scalar.side_effect = [p, 1]  # first: fetch provider, second: name conflict count
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="already exists"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "new_name")
@@ -720,8 +708,7 @@ class TestDatasourceProviderService:
         p.name = "old_name"
         p.auth_type = "api_key"
         p.encrypted_credentials = {"sk": "e"}
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
@@ -736,8 +723,7 @@ class TestDatasourceProviderService:
         p.name = "old_name"
         p.auth_type = "api_key"
         p.encrypted_credentials = {"sk": "old_enc"}
-        mock_db_session.query().first.return_value = p
-        mock_db_session.query().count.return_value = 0
+        mock_db_session.scalar.side_effect = [p, 0]  # first: fetch provider, second: name conflict count
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
@@ -747,7 +733,6 @@ class TestDatasourceProviderService:
         # encrypter must have been called with the new secret value
         self._enc.encrypt_token.assert_called()
         # commit must be called exactly once
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # remove_datasource_credentials (lines 980-997)
@@ -758,7 +743,6 @@ class TestDatasourceProviderService:
         mock_db_session.scalar.return_value = p
         service.remove_datasource_credentials("t1", "id", "prov", "org/plug")
         mock_db_session.delete.assert_called_once_with(p)
-        mock_db_session.commit.assert_called_once()
 
     def test_should_do_nothing_when_credential_not_found_on_remove(self, service, mock_db_session):
         """No error raised; no delete called when record doesn't exist (lines 994 branch)."""

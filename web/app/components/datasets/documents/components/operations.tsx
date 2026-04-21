@@ -1,25 +1,35 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
-import { RiArchive2Line, RiDeleteBinLine, RiDownload2Line, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
-import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
-import CustomPopover from '@/app/components/base/popover'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentDownload, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentSummary, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
 import RenameModal from './rename-modal'
@@ -45,6 +55,7 @@ type OperationsProps = {
 const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSelectedIdChange, onUpdate, scene = 'list', className = '' }: OperationsProps) => {
   const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
+  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -60,7 +71,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
-  const onOperate = async (operationName: OperationName) => {
+  const onOperate = useCallback(async (operationName: OperationName) => {
     let opApi
     switch (operationName) {
       case 'archive':
@@ -108,7 +119,25 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
     }
     if (operationName === DocumentActionType.delete)
       setDeleting(false)
-  }
+  }, [
+    archiveDocument,
+    data_source_type,
+    datasetId,
+    deleteDocument,
+    disableDocument,
+    enableDocument,
+    generateSummary,
+    id,
+    onSelectedIdChange,
+    onUpdate,
+    pauseDocument,
+    resumeDocument,
+    selectedIds,
+    syncDocument,
+    syncWebsite,
+    t,
+    unArchiveDocument,
+  ])
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
     if (operationName === DocumentActionType.enable && enabled)
       return
@@ -131,6 +160,9 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
+  const closeOperationsMenu = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+  }, [])
   const handleDownload = useCallback(async () => {
     // Avoid repeated clicks while the signed URL request is in-flight.
     if (isDownloading)
@@ -144,21 +176,43 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name })
   }, [datasetId, downloadDocument, id, isDownloading, name, t])
+  const handleShowRename = useCallback(() => {
+    closeOperationsMenu()
+    handleShowRenameModal({
+      id: detail.id,
+      name: detail.name,
+    })
+  }, [closeOperationsMenu, detail.id, detail.name, handleShowRenameModal])
+  const handleMenuOperation = useCallback((operationName: OperationName) => {
+    closeOperationsMenu()
+    void onOperate(operationName)
+  }, [closeOperationsMenu, onOperate])
+  const handleDeleteClick = useCallback(() => {
+    closeOperationsMenu()
+    setShowModal(true)
+  }, [closeOperationsMenu])
+  const handleDownloadClick = useCallback((evt: React.MouseEvent<HTMLDivElement>) => {
+    evt.preventDefault()
+    evt.stopPropagation()
+    evt.nativeEvent.stopImmediatePropagation?.()
+    closeOperationsMenu()
+    void handleDownload()
+  }, [closeOperationsMenu, handleDownload])
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
-      {isListScene && !embeddingAvailable && (<Switch value={false} onChange={noop} disabled={true} size="md" />)}
+      {isListScene && !embeddingAvailable && (<Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />)}
       {isListScene && embeddingAvailable && (
         <>
           {archived
             ? (
                 <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="!font-semibold">
                   <div>
-                    <Switch value={false} onChange={noop} disabled={true} size="md" />
+                    <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
                   </div>
                 </Tooltip>
               )
-            : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
-          <Divider className="!ml-4 !mr-2 !h-3" type="vertical" />
+            : <Switch checked={enabled} onCheckedChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
+          <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
         </>
       )}
       {embeddingAvailable && (
@@ -171,49 +225,56 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 : 'p-0.5 hover:bg-state-base-hover')}
               onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
             >
-              <RiEqualizer2Line className="h-4 w-4 text-components-button-secondary-text" />
+              <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
             </button>
           </Tooltip>
-          <CustomPopover
-            htmlContent={(
+          <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+            <DropdownMenuTrigger
+              aria-label={t('operation.more', { ns: 'common' })}
+              className={cn(
+                isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
+                'inline-flex items-center justify-center',
+                !isListScene && '!h-8 !w-8 rounded-lg backdrop-blur-[5px]',
+                isOperationsMenuOpen
+                  ? '!shadow-none hover:!bg-state-base-hover'
+                  : isListScene && '!bg-transparent',
+              )}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}
+            >
+              <div className={cn(s.commonIcon)}>
+                <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-text" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              placement="bottom-end"
+              sideOffset={4}
+              popupClassName={cn('w-[200px] py-0', className)}
+            >
               <div className="w-full py-1">
                 {!archived && (
                   <>
-                    <div
-                      className={s.actionItem}
-                      onClick={() => {
-                        handleShowRenameModal({
-                          id: detail.id,
-                          name: detail.name,
-                        })
-                      }}
-                    >
-                      <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                    <div className={s.actionItem} onClick={handleShowRename}>
+                      <span aria-hidden className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
                     {data_source_type === DataSourceType.FILE && (
-                      <div
-                        className={s.actionItem}
-                        onClick={(evt) => {
-                          evt.preventDefault()
-                          evt.stopPropagation()
-                          evt.nativeEvent.stopImmediatePropagation?.()
-                          handleDownload()
-                        }}
-                      >
-                        <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                      <div className={s.actionItem} onClick={handleDownloadClick}>
+                        <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
-                      <div className={s.actionItem} onClick={() => onOperate('sync')}>
-                        <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
+                      <div className={s.actionItem} onClick={() => handleMenuOperation('sync')}>
+                        <span aria-hidden className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
                     {IS_CE_EDITION && (
-                      <div className={s.actionItem} onClick={() => onOperate('summary')}>
-                        <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
+                      <div className={s.actionItem} onClick={() => handleMenuOperation('summary')}>
+                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
@@ -222,66 +283,64 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 )}
                 {archived && data_source_type === DataSourceType.FILE && (
                   <>
-                    <div
-                      className={s.actionItem}
-                      onClick={(evt) => {
-                        evt.preventDefault()
-                        evt.stopPropagation()
-                        evt.nativeEvent.stopImmediatePropagation?.()
-                        handleDownload()
-                      }}
-                    >
-                      <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                    <div className={s.actionItem} onClick={handleDownloadClick}>
+                      <span aria-hidden className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                     </div>
                     <Divider className="my-1" />
                   </>
                 )}
                 {!archived && display_status?.toLowerCase() === 'indexing' && (
-                  <div className={s.actionItem} onClick={() => onOperate('pause')}>
-                    <RiPauseCircleLine className="h-4 w-4 text-text-tertiary" />
+                  <div className={s.actionItem} onClick={() => handleMenuOperation('pause')}>
+                    <span aria-hidden className="i-ri-pause-circle-line h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && display_status?.toLowerCase() === 'paused' && (
-                  <div className={s.actionItem} onClick={() => onOperate('resume')}>
-                    <RiPlayCircleLine className="h-4 w-4 text-text-tertiary" />
+                  <div className={s.actionItem} onClick={() => handleMenuOperation('resume')}>
+                    <span aria-hidden className="i-ri-play-circle-line h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && (
-                  <div className={s.actionItem} onClick={() => onOperate('archive')}>
-                    <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
+                  <div className={s.actionItem} onClick={() => handleMenuOperation('archive')}>
+                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {archived && (
-                  <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
-                    <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
+                  <div className={s.actionItem} onClick={() => handleMenuOperation('un_archive')}>
+                    <span aria-hidden className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
-                <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
-                  <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+                <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={handleDeleteClick}>
+                  <span aria-hidden className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
                   <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
                 </div>
               </div>
-            )}
-            trigger="click"
-            position="br"
-            btnElement={(
-              <div className={cn(s.commonIcon)}>
-                <RiMoreFill className="h-4 w-4 text-components-button-secondary-text" />
-              </div>
-            )}
-            btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
-            popupClassName="!w-full"
-            className={`!z-20 flex h-fit !w-[200px] justify-end ${className}`}
-          />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       )}
-      {showModal
-        && (<Confirm isShow={showModal} isLoading={deleting} isDisabled={deleting} title={t('list.delete.title', { ns: 'datasetDocuments' })} content={t('list.delete.content', { ns: 'datasetDocuments' })} confirmText={t('operation.sure', { ns: 'common' })} onConfirm={() => onOperate('delete')} onCancel={() => setShowModal(false)} />)}
+      <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('list.delete.content', { ns: 'datasetDocuments' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={() => onOperate('delete')}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {isShowRenameModal && currDocument && (<RenameModal datasetId={datasetId} documentId={currDocument.id} name={currDocument.name} onClose={setShowRenameModalFalse} onSaved={handleRenamed} />)}
     </div>

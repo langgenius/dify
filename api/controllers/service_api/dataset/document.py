@@ -10,6 +10,7 @@ from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -98,15 +99,6 @@ class DocumentListQuery(BaseModel):
     limit: int = Field(default=20, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
     status: str | None = Field(default=None, description="Document status filter")
-
-
-DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
-
-
-class DocumentBatchDownloadZipPayload(BaseModel):
-    """Request payload for bulk downloading uploaded documents as a ZIP archive."""
-
-    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
 
 
 register_enum_models(service_api_ns, RetrievalMethod)
@@ -527,7 +519,7 @@ class DocumentListApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id)
 
         if query_params.status:
             query = DocumentService.apply_display_status_filter(query, query_params.status)

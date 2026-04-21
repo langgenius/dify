@@ -9,12 +9,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from sqlalchemy import and_, func, literal, or_, select
+from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import (
@@ -69,6 +64,11 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
@@ -276,8 +276,8 @@ class DatasetRetrieval:
             document_ids = [i.segment.document_id for i in records]
 
             with session_factory.create_session() as session:
-                datasets = session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
-                documents = session.query(DatasetDocument).where(DatasetDocument.id.in_(document_ids)).all()
+                datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+                documents = session.scalars(select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))).all()
 
             dataset_map = {i.id: i for i in datasets}
             document_map = {i.id: i for i in documents}
@@ -517,11 +517,11 @@ class DatasetRetrieval:
                         if attachments_with_bindings:
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
-                                    id=upload_file.id,
+                                    file_id=upload_file.id,
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    type=FileType.IMAGE,
+                                    file_type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
                                     reference=build_file_reference(
@@ -875,7 +875,11 @@ class DatasetRetrieval:
         return retrieval_resource_list
 
     def _on_retrieval_end(
-        self, flask_app: Flask, documents: list[Document], message_id: str | None = None, timer: dict | None = None
+        self,
+        flask_app: Flask,
+        documents: list[Document],
+        message_id: str | None = None,
+        timer: dict[str, Any] | None = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
@@ -971,14 +975,16 @@ class DatasetRetrieval:
 
                 # Batch update hit_count for all segments
                 if segment_ids_to_update:
-                    session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids_to_update)).update(
-                        {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
-                        synchronize_session=False,
+                    session.execute(
+                        update(DocumentSegment)
+                        .where(DocumentSegment.id.in_(segment_ids_to_update))
+                        .values(hit_count=DocumentSegment.hit_count + 1)
+                        .execution_options(synchronize_session=False)
                     )
 
             self._send_trace_task(message_id, documents, timer)
 
-    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict | None):
+    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
         """Send trace task if trace manager is available."""
         trace_manager: TraceQueueManager | None = (
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
@@ -1140,7 +1146,7 @@ class DatasetRetrieval:
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
-        inputs: dict,
+        inputs: dict[str, Any],
     ) -> list[DatasetRetrieverBaseTool] | None:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
@@ -1335,7 +1341,7 @@ class DatasetRetrieval:
         metadata_filtering_mode: str,
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
-        inputs: dict,
+        inputs: dict[str, Any],
     ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
@@ -1415,7 +1421,7 @@ class DatasetRetrieval:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition
 
-    def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:
+    def _replace_metadata_filter_value(self, text: str, inputs: dict[str, Any]) -> str:
         if not inputs:
             return text
 
@@ -1822,7 +1828,7 @@ class DatasetRetrieval:
     def _get_available_datasets(self, tenant_id: str, dataset_ids: list[str]) -> list[Dataset]:
         with session_factory.create_session() as session:
             subquery = (
-                session.query(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
+                select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
                     DocumentModel.enabled == True,
@@ -1834,13 +1840,12 @@ class DatasetRetrieval:
                 .subquery()
             )
 
-            results = (
-                session.query(Dataset)
+            results = session.scalars(
+                select(Dataset)
                 .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
                 .where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
                 .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
-                .all()
-            )
+            ).all()
 
         available_datasets = []
         for dataset in results:

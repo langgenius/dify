@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { Slider } from '@/app/components/base/ui/slider'
 
 export type InputNumberWithSliderProps = {
   value: number

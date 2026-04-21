@@ -63,7 +63,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: list[dict] | None = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict[str, Any]] | None = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []

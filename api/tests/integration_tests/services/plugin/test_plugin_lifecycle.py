@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
 from models import Tenant
@@ -61,7 +61,11 @@ class TestPluginPermissionLifecycle:
         assert perm.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
 
         with session_factory.create_session() as session:
-            count = session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant).count()
+            count = session.scalar(
+                select(func.count())
+                .select_from(TenantPluginPermission)
+                .where(TenantPluginPermission.tenant_id == tenant)
+            )
         assert count == 1
 
 

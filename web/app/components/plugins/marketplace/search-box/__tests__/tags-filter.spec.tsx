@@ -1,10 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TagsFilter from '../tags-filter'
 
+const { mockTranslate } = vi.hoisted(() => ({
+  mockTranslate: vi.fn((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
+}))
+
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: mockTranslate,
   }),
 }))
 
@@ -46,20 +55,7 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  return {
-    PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: () => void
-    }) => <button data-testid="portal-trigger" onClick={onClick}>{children}</button>,
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div data-testid="portal-content">{children}</div>,
-  }
-})
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 vi.mock('../trigger/marketplace', () => ({
   default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
@@ -80,8 +76,16 @@ vi.mock('../trigger/tool-selector', () => ({
 }))
 
 describe('TagsFilter', () => {
+  const ensurePopoverOpen = () => {
+    if (!screen.queryByTestId('popover-content'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+
+    return screen.getByTestId('popover-content')
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mockTranslate.mockImplementation((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key)
   })
 
   it('renders marketplace trigger when used in marketplace', () => {
@@ -100,6 +104,7 @@ describe('TagsFilter', () => {
 
   it('filters tag options by search text', () => {
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('popover-trigger'))
 
     expect(screen.getByText('Agent')).toBeInTheDocument()
     expect(screen.getByText('RAG')).toBeInTheDocument()
@@ -116,11 +121,20 @@ describe('TagsFilter', () => {
     const onTagsChange = vi.fn()
     const { rerender } = render(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
 
-    fireEvent.click(screen.getByText('Agent'))
+    fireEvent.click(within(ensurePopoverOpen()).getByText('Agent'))
     expect(onTagsChange).toHaveBeenCalledWith([])
 
     rerender(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
-    fireEvent.click(screen.getByText('RAG'))
+    fireEvent.click(within(ensurePopoverOpen()).getByText('RAG'))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
+  })
+
+  it('falls back to an empty placeholder when translation is missing', () => {
+    mockTranslate.mockImplementation(() => undefined as unknown as string)
+
+    render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('popover-trigger'))
+
+    expect(screen.getByLabelText('tags-search')).toHaveAttribute('placeholder', '')
   })
 })

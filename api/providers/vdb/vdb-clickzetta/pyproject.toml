@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-clickzetta"
+version = "0.0.1"
+
+dependencies = [
+    "clickzetta-connector-python>=0.8.102",
+]
+description = "Dify vector store backend (dify-vdb-clickzetta)."
+
+[project.entry-points."dify.vector_backends"]
+clickzetta = "dify_vdb_clickzetta.clickzetta_vector:ClickzettaVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

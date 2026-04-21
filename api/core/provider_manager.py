@@ -6,14 +6,6 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -41,6 +33,14 @@ from core.helper.position_helper import is_filtered
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -856,7 +856,7 @@ class ProviderManager:
         secret_variables: list[str],
         cache_type: ProviderCredentialsCacheType,
         is_provider: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get and decrypt credentials with caching."""
         credentials_cache = ProviderCredentialsCache(
             tenant_id=tenant_id,

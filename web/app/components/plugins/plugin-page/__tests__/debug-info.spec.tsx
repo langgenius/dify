@@ -15,8 +15,8 @@ vi.mock('@/service/use-plugins', () => ({
   useDebugKey: () => mockDebugKey,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
 }))
 
 vi.mock('@/app/components/base/tooltip', () => ({

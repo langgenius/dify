@@ -383,3 +383,8 @@ export const resetEmail = (body: { new_email: string, token: string }): Promise<
 
 export const checkEmailExisted = (body: { email: string }): Promise<CommonResponse> =>
   post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
+
+export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
+  const { consoleClient } = await import('./client')
+  return consoleClient.account.avatar({ query: { avatar } })
+}

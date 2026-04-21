@@ -45,8 +45,8 @@ vi.mock('@/app/components/base/action-button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),
 }))
@@ -57,7 +57,7 @@ vi.mock('@/app/components/base/badge', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/tooltip', () => ({
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

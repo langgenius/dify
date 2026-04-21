@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
 import Card from '../../card'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 

@@ -1,5 +1,5 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ConfigurationMethodEnum } from '../declarations'
 
 type ConfigurationButtonProps = {

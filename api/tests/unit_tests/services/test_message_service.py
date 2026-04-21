@@ -131,9 +131,12 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
 
     # Test 03: Basic pagination without first_id (desc order)
+    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_without_first_id_desc(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_without_first_id_desc(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory
+    ):
         """Test basic pagination without first_id in descending order."""
         # Arrange
         app = factory.create_app_mock()
@@ -171,9 +174,12 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[0].id == "msg-000"
 
     # Test 04: Basic pagination without first_id (asc order)
+    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_without_first_id_asc(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_without_first_id_asc(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory
+    ):
         """Test basic pagination without first_id in ascending order."""
         # Arrange
         app = factory.create_app_mock()
@@ -211,9 +217,10 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[4].id == "msg-000"
 
     # Test 05: Pagination with first_id
+    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, mock_create_repo, factory):
         """Test pagination with first_id to get messages before a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -278,9 +285,10 @@ class TestMessageServicePaginationByFirstId:
             )
 
     # Test 07: Has_more flag when results exceed limit
+    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, mock_create_repo, factory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()

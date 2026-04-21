@@ -24,7 +24,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.api, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),

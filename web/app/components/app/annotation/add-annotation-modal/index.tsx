@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Drawer from '@/app/components/base/drawer-plus'
-import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'
@@ -92,11 +92,11 @@ const AddAnnotationModal: FC<Props> = ({
           (
             <div>
               {isAnnotationFull && (
-                <div className="mb-4 mt-6 px-6">
+                <div className="mt-6 mb-4 px-6">
                   <AnnotationFull />
                 </div>
               )}
-              <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
+              <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                 <div
                   className="flex items-center space-x-2"
                 >

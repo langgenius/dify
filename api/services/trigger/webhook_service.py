@@ -7,9 +7,6 @@ from typing import Any, NotRequired, TypedDict
 
 import orjson
 from flask import request
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.file import FileTransferMethod
-from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,6 +28,9 @@ from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -104,32 +104,32 @@ class WebhookService:
         """
         with Session(db.engine) as session:
             # Get webhook trigger
-            webhook_trigger = (
-                session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
+            webhook_trigger = session.scalar(
+                select(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).limit(1)
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
 
             if is_debug:
-                workflow = (
-                    session.query(Workflow)
-                    .filter(
+                workflow = session.scalar(
+                    select(Workflow)
+                    .where(
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version == Workflow.VERSION_DRAFT,
                     )
                     .order_by(Workflow.created_at.desc())
-                    .first()
+                    .limit(1)
                 )
             else:
                 # Check if the corresponding AppTrigger exists
-                app_trigger = (
-                    session.query(AppTrigger)
-                    .filter(
+                app_trigger = session.scalar(
+                    select(AppTrigger)
+                    .where(
                         AppTrigger.app_id == webhook_trigger.app_id,
                         AppTrigger.node_id == webhook_trigger.node_id,
                         AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
                     )
-                    .first()
+                    .limit(1)
                 )
 
                 if not app_trigger:
@@ -146,14 +146,14 @@ class WebhookService:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
                 # Get workflow
-                workflow = (
-                    session.query(Workflow)
-                    .filter(
+                workflow = session.scalar(
+                    select(Workflow)
+                    .where(
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version != Workflow.VERSION_DRAFT,
                     )
                     .order_by(Workflow.created_at.desc())
-                    .first()
+                    .limit(1)
                 )
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
