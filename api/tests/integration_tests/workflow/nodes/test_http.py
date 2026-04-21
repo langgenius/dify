@@ -55,7 +55,7 @@ def init_http_node(config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -204,7 +204,7 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     from graphon.runtime import VariablePool
 
     # Create variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="test", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -702,7 +702,7 @@ def test_nested_object_variable_selector(setup_http_mock):
     )
 
     # Create independent variable pool for this test only
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
