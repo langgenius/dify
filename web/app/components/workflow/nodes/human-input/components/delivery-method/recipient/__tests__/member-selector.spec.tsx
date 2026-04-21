@@ -2,6 +2,61 @@ import type { Member } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import MemberSelector from '../member-selector'
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: import('react').ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
+
+    return (
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
+    )
+  }
+
+  const PopoverTrigger = ({ render }: { render: import('react').ReactElement }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    return React.cloneElement(render, {
+      onClick: (e: import('react').MouseEvent<HTMLElement>) => {
+        render.props.onClick?.(e)
+        if (!e.defaultPrevented)
+          setOpen(!open)
+      },
+    })
+  }
+
+  const PopoverContent = ({ children }: { children: import('react').ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    return open ? <div data-testid="popover-content">{children}</div> : null
+  }
+
+  return {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+  }
+})
+
 const mockMemberList = vi.hoisted(() => vi.fn())
 
 vi.mock('../member-list', () => ({
