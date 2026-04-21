@@ -9,6 +9,13 @@ from decimal import Decimal
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+
+# pyrefly: ignore [missing-import]
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.factory import OrderConfig
 from graphon.entities import (
     WorkflowNodeExecution,
 )
@@ -18,13 +25,6 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
-# pyrefly: ignore [missing-import]
-from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session, sessionmaker
-
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
