@@ -1,6 +1,6 @@
 import json
 import uuid
-from collections.abc import Generator, Iterator  # Added Generator
+from collections.abc import Generator  # Added Generator
 from contextlib import contextmanager
 from typing import Any
 
