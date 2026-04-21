@@ -8,8 +8,8 @@ import {
   TooltipTrigger,
 } from '.'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 const iconButtonClassName = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs hover:bg-state-base-hover'
+const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 
 const meta = {
   title: 'Base/UI/Tooltip',
@@ -25,7 +25,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound tooltip built on Base UI Tooltip. Wrap the app in `TooltipProvider` (done automatically in these stories) so multiple tooltips share open/close delays. Each tooltip pairs a `TooltipTrigger` with a `TooltipContent` and supports placement, offsets, and two style variants.',
+        component: 'Compound tooltip built on Base UI Tooltip. Wrap the app in `TooltipProvider` (done automatically in these stories) so multiple tooltips share open/close delays. Each tooltip pairs a `TooltipTrigger` with a `TooltipContent` and supports placement and offsets.\n\n**Usage contract** (mirrors the [Base UI tooltip guidelines](https://base-ui.com/react/components/tooltip#alternatives-to-tooltips)):\n\n- Tooltips are **supplementary visual labels** for sighted mouse and keyboard users. They are disabled on touch devices and are not announced to screen readers.\n- The trigger **must carry its own `aria-label` or visible text** that matches the tooltip — the tooltip does not replace labeling.\n- Keep content short and non-interactive (an icon-button label, a keyboard shortcut, one-word clarification).\n- **Do not** place descriptions, prose, links, or interactive controls inside a tooltip — touch and screen-reader users cannot reach them.\n- For hover-triggered rich previews that users move their cursor onto, use `PreviewCard` (dwell-able, structured content).\n- For an info icon that explains a concept (an "infotip"), or for any hover popup that needs interactive content or to reach touch/assistive-tech users, use `Popover` with `openOnHover` on the trigger.',
       },
     },
   },
@@ -35,47 +35,58 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {
-  render: () => (
-    <Tooltip>
-      <TooltipTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
-        Hover me
-      </TooltipTrigger>
-      <TooltipContent>
-        Tooltips describe interactive elements without a click.
-      </TooltipContent>
-    </Tooltip>
-  ),
-}
+const ICON_ACTIONS = [
+  { icon: 'i-ri-pencil-line', label: 'Edit' },
+  { icon: 'i-ri-file-copy-line', label: 'Duplicate' },
+  { icon: 'i-ri-archive-line', label: 'Archive' },
+  { icon: 'i-ri-delete-bin-line', label: 'Delete' },
+] as const
 
-export const Plain: Story = {
+export const IconButton: Story = {
+  name: 'Icon button (canonical)',
   parameters: {
     docs: {
       description: {
-        story: 'Use `variant="plain"` to render the popup without default chrome (background, padding, typography). Apply your own styling via `className` on `TooltipContent`.',
+        story: 'The canonical tooltip use case: an icon-only button surfaces its accessible label as a tooltip for sighted mouse and keyboard users. The trigger already carries `aria-label` — the tooltip mirrors that label visually; it does **not** replace it.',
+      },
+    },
+  },
+  render: () => (
+    <div className="flex items-center gap-3">
+      {ICON_ACTIONS.map(({ icon, label }) => (
+        <Tooltip key={label}>
+          <TooltipTrigger
+            render={(
+              <button type="button" aria-label={label} className={iconButtonClassName}>
+                <span aria-hidden className={`${icon} h-4 w-4`} />
+              </button>
+            )}
+          />
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  ),
+}
+
+export const KeyboardShortcut: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'A short, supplementary hint that surfaces a keyboard shortcut next to a visible button label. The trigger is fully self-describing ("Save"); the tooltip only adds non-essential extra clarity for mouse/keyboard users.',
       },
     },
   },
   render: () => (
     <Tooltip>
       <TooltipTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
-        Preview details
-      </TooltipTrigger>
-      <TooltipContent
-        variant="plain"
-        className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg"
-      >
-        <div className="flex w-64 flex-col gap-1">
-          <span className="text-sm font-semibold text-text-primary">Dataset preview</span>
-          <span className="text-xs text-text-secondary">
-            32 documents • Last indexed 2 minutes ago
-          </span>
-        </div>
-      </TooltipContent>
+        render={(
+          <button type="button" className={triggerButtonClassName}>
+            Save
+          </button>
+        )}
+      />
+      <TooltipContent>⌘S</TooltipContent>
     </Tooltip>
   ),
 }
@@ -116,14 +127,10 @@ const PlacementsDemo = () => {
       </div>
       <Tooltip open>
         <TooltipTrigger
-          render={<button type="button" className={triggerButtonClassName} />}
-        >
-          Anchor
-        </TooltipTrigger>
+          render={<button type="button" aria-label="Placement anchor" className={iconButtonClassName}><span aria-hidden className="i-ri-pushpin-line h-4 w-4" /></button>}
+        />
         <TooltipContent placement={placement}>
-          placement="
-          {placement}
-          "
+          {`placement="${placement}"`}
         </TooltipContent>
       </Tooltip>
     </div>
@@ -133,113 +140,45 @@ const PlacementsDemo = () => {
 export const Placements: Story = {
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        story: 'Placement reference. `placement` accepts the 12 standard side/align combinations; Base UI flips automatically if the tooltip would overflow the viewport.',
+      },
+    },
   },
   render: () => <PlacementsDemo />,
 }
 
-export const OnIconButtons: Story = {
-  parameters: {
-    docs: {
-      description: {
-        story: 'Tooltips are essential for icon-only buttons. The trigger is the button; the tooltip provides the accessible label and hover hint.',
-      },
-    },
-  },
-  render: () => (
-    <div className="flex items-center gap-3">
-      <Tooltip>
-        <TooltipTrigger
-          render={(
-            <button type="button" aria-label="Edit" className={iconButtonClassName}>
-              <span aria-hidden className="i-ri-pencil-line h-4 w-4" />
-            </button>
-          )}
-        />
-        <TooltipContent>Edit</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={(
-            <button type="button" aria-label="Duplicate" className={iconButtonClassName}>
-              <span aria-hidden className="i-ri-file-copy-line h-4 w-4" />
-            </button>
-          )}
-        />
-        <TooltipContent>Duplicate</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={(
-            <button type="button" aria-label="Archive" className={iconButtonClassName}>
-              <span aria-hidden className="i-ri-archive-line h-4 w-4" />
-            </button>
-          )}
-        />
-        <TooltipContent>Archive</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={(
-            <button type="button" aria-label="Delete" className={iconButtonClassName}>
-              <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
-            </button>
-          )}
-        />
-        <TooltipContent>Delete</TooltipContent>
-      </Tooltip>
-    </div>
-  ),
-}
-
-export const LongContent: Story = {
-  render: () => (
-    <Tooltip>
-      <TooltipTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
-      >
-        What are tokens?
-      </TooltipTrigger>
-      <TooltipContent>
-        Tokens are the basic units a model reads. English text averages ~4 characters per token; non-Latin scripts often use more tokens per character. Both input and output count toward your quota.
-      </TooltipContent>
-    </Tooltip>
-  ),
-}
-
 const DELAY_PRESETS: Array<{ label: string, delay: number }> = [
-  { label: 'Instant (0ms)', delay: 0 },
-  { label: 'Fast (150ms)', delay: 150 },
-  { label: 'Default (600ms)', delay: 600 },
+  { label: 'Instant', delay: 0 },
+  { label: 'Fast', delay: 150 },
+  { label: 'Default', delay: 600 },
 ]
 
-const DelayDemo = () => {
-  return (
-    <div className="flex items-center gap-3">
-      {DELAY_PRESETS.map(({ label, delay }) => (
-        <TooltipProvider key={delay} delay={delay}>
-          <Tooltip>
-            <TooltipTrigger
-              render={<button type="button" className={triggerButtonClassName} />}
-            >
-              {label}
-            </TooltipTrigger>
-            <TooltipContent>
-              Appeared after
-              {delay}
-              ms hover delay.
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ))}
-    </div>
-  )
-}
+const DelayDemo = () => (
+  <div className="flex items-center gap-3">
+    {DELAY_PRESETS.map(({ label, delay }) => (
+      <TooltipProvider key={delay} delay={delay}>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <button type="button" aria-label={`${label} (${delay}ms)`} className={iconButtonClassName}>
+                <span aria-hidden className="i-ri-timer-line h-4 w-4" />
+              </button>
+            )}
+          />
+          <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    ))}
+  </div>
+)
 
 export const WithDelay: Story = {
   parameters: {
     docs: {
       description: {
-        story: '`TooltipProvider` controls hover `delay` (and `closeDelay`) for the tooltips nested inside it. Adjacent tooltips under the same provider open instantly after the first has been shown.',
+        story: '`TooltipProvider` controls hover `delay` (and `closeDelay`) for the tooltips nested inside it. Adjacent tooltips under the same provider open instantly after the first has been shown. The Dify app root sets `delay={300} closeDelay={200}` — override locally only when the surrounding UX demands it.',
       },
     },
   },
