@@ -6,16 +6,12 @@ import type {
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type {
-  DataSet,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { AgentStrategy, CompletionParams, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
-type JsonObject = { [key: string]: JsonValue }
-type CompletionParamsConfig = Partial<CompletionParams> & JsonObject
 
 export enum PromptMode {
   simple = 'simple',
@@ -62,11 +58,11 @@ export type PromptVariable = {
   max_length?: number
   is_context_var?: boolean
   enabled?: boolean
-  config?: JsonObject
+  config?: Record<string, any>
   icon?: string
   icon_background?: string
   hide?: boolean // used in frontend to hide variable
-  json_schema?: string | JsonObject
+  json_schema?: string | Record<string, any>
 }
 
 export type PromptConfig = {
@@ -83,7 +79,7 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
     provider: string
     name: string
     mode: ModelModeType
-    completion_params: CompletionParamsConfig
+    completion_params: Record<string, any>
   }
   prompt?: string
 }
@@ -120,7 +116,7 @@ export type ModerationConfig = MoreLikeThisConfig & {
     api_based_extension_id?: string
     inputs_config?: ModerationContentConfig
     outputs_config?: ModerationContentConfig
-  } & Partial<Record<string, JsonValue>>
+  } & Partial<Record<string, any>>
 }
 
 export type RetrieverResourceConfig = MoreLikeThisConfig
@@ -157,7 +153,7 @@ export type ModelConfig = {
     video_file_size_limit: number
     workflow_file_upload_limit: number
   }
-  dataSets: DataSet[]
+  dataSets: any[]
   agentConfig: AgentConfig
 }
 export type DatasetConfigs = {
