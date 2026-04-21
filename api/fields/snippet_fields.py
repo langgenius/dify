@@ -13,7 +13,9 @@ snippet_list_fields = {
     "use_count": fields.Integer,
     "is_published": fields.Boolean,
     "icon_info": fields.Raw,
+    "created_by": fields.String,
     "created_at": TimestampField,
+    "updated_by": fields.String,
     "updated_at": TimestampField,
 }
 
