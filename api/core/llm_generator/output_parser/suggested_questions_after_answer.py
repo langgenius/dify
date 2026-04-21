@@ -16,7 +16,8 @@ class SuggestedQuestionsAfterAnswerOutputParser:
         return self._instruction_prompt
 
     def parse(self, text: str) -> Sequence[str]:
-        action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)
+        stripped_text = text.strip()
+        action_match = re.search(r"\[.*?\]", stripped_text, re.DOTALL)
         questions: list[str] = []
         if action_match is not None:
             try:
@@ -26,4 +27,6 @@ class SuggestedQuestionsAfterAnswerOutputParser:
             else:
                 if isinstance(json_obj, list):
                     questions = [question for question in json_obj if isinstance(question, str)]
+        elif stripped_text:
+            logger.warning("Failed to find suggested questions payload array in text: %r", stripped_text[:200])
         return questions
