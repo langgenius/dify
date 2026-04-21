@@ -16,6 +16,7 @@ import {
   createDefaultFormInputByType,
   createDefaultParagraphFormInput,
   isFileFormInput,
+  isFileListFormInput,
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
@@ -167,6 +168,25 @@ const InputField: React.FC<InputFieldProps> = ({
       }
     })
   }, [])
+  const handleFileListPayloadChange = useCallback((payload: {
+    allowed_file_extensions: string[]
+    allowed_file_types: string[]
+    allowed_file_upload_methods: string[]
+    max_length?: number
+  }) => {
+    setTempPayload((prev) => {
+      if (!isFileListFormInput(prev))
+        return prev
+
+      return {
+        ...prev,
+        allowed_file_extensions: payload.allowed_file_extensions,
+        allowed_file_types: payload.allowed_file_types,
+        allowed_file_upload_methods: payload.allowed_file_upload_methods,
+        max_upload_count: payload.max_length,
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -279,6 +299,18 @@ const InputField: React.FC<InputFieldProps> = ({
             payload={tempPayload}
             isMultiple={false}
             onChange={handleFilePayloadChange}
+          />
+        </div>
+      )}
+      {isFileListFormInput(tempPayload) && (
+        <div className="mt-4">
+          <FileUploadSetting
+            payload={{
+              ...tempPayload,
+              max_length: tempPayload.max_upload_count,
+            }}
+            isMultiple
+            onChange={handleFileListPayloadChange}
           />
         </div>
       )}

@@ -57,6 +57,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
     allowed_file_extensions: string[]
     allowed_file_types: string[]
     allowed_file_upload_methods: string[]
+    max_length?: number
   }) => void }) => (
     <button
       type="button"
@@ -64,6 +65,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
         allowed_file_extensions: ['.pdf'],
         allowed_file_types: ['document'],
         allowed_file_upload_methods: ['local_file'],
+        max_length: 4,
       })}
     >
       file-upload-setting
@@ -517,6 +519,35 @@ describe('InputField', () => {
       allowed_file_extensions: ['.pdf'],
       allowed_file_types: ['document'],
       allowed_file_upload_methods: ['local_file'],
+    })
+  })
+
+  it('should save file-list upload settings and max upload count', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-14"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file-list' }))
+    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.multiFiles,
+      output_variable_name: 'valid_name',
+      allowed_file_extensions: ['.pdf'],
+      allowed_file_types: ['document'],
+      allowed_file_upload_methods: ['local_file'],
+      max_upload_count: 4,
     })
   })
 })
