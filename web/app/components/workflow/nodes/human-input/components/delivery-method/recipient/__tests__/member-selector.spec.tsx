@@ -34,15 +34,13 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     )
   }
 
-  const PopoverTrigger = ({ render }: { render: import('react').ReactElement }) => {
+  const PopoverTrigger = ({ render }: { render: import('react').ReactNode }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
-    return React.cloneElement(render, {
-      onClick: (e: import('react').MouseEvent<HTMLElement>) => {
-        render.props.onClick?.(e)
-        if (!e.defaultPrevented)
-          setOpen(!open)
-      },
-    })
+    return (
+      <div onClick={() => setOpen(!open)}>
+        {render}
+      </div>
+    )
   }
 
   const PopoverContent = ({ children }: { children: import('react').ReactNode }) => {
