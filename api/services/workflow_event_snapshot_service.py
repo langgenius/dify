@@ -73,17 +73,7 @@ def build_workflow_event_stream(
        represents the history that already happened from the client's point of view.
     2. Tail phase: events delivered by the broadcast subscription **from the moment of
        subscription onward only**. Anything that was published before the subscription was
-       established is intentionally ignored here, because it has already been covered by
-       the snapshot phase.
-
-    The application layer does not use the broadcast channel's replay capability on any path
-    (see ``stream_topic_events``). Mixing replay with the snapshot produces events that
-    overlap along the history axis, and the frontend handlers are not idempotent across the
-    whole event set (string content is accumulated, ``workflow_paused`` re-opens a new SSE
-    subscription, iteration/loop starts and file entries are pushed into lists, etc.). A
-    future feature that wants to recover events published *after* the snapshot was read but
-    *before* this function subscribed should solve it at the subscription layer
-    (cursor/position) rather than by re-sending the historical prefix.
+       established is ignored here, since message id is not tracked in current implementation.
     """
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
