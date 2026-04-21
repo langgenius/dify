@@ -1,8 +1,8 @@
 import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
+import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
 import { memo, useMemo } from 'react'
 import dynamic from '@/next/dynamic'
-import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
 const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
@@ -42,7 +42,7 @@ export const Markdown = memo((props: MarkdownProps) => {
   const latexContent = useMemo(() => preprocess(content), [content])
 
   return (
-    <div className={cn('markdown-body', '!text-text-primary', className)} data-testid="markdown-body">
+    <div className={cn('markdown-body', 'text-text-primary!', className)} data-testid="markdown-body">
       <StreamdownWrapper
         pluginInfo={pluginInfo}
         latexContent={latexContent}

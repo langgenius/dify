@@ -1,15 +1,15 @@
 'use client'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import Input from '../components/base/input'
 
@@ -29,10 +29,7 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }, [])
 
   const valid = useCallback(() => {
@@ -89,7 +86,7 @@ const ChangePasswordForm = () => {
             <h2 className="text-[32px] font-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full !text-sm">
+            <Button variant="primary" className="w-full text-sm!">
               <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
             </Button>
           </div>
@@ -140,7 +137,7 @@ const ChangePasswordForm = () => {
               <div>
                 <Button
                   variant="primary"
-                  className="w-full !text-sm"
+                  className="w-full text-sm!"
                   onClick={handleChangePassword}
                 >
                   {t('operation.reset', { ns: 'common' })}

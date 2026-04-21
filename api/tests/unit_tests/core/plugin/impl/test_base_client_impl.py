@@ -57,7 +57,7 @@ class TestBasePluginClientImpl:
     def test_stream_request_handles_data_lines_and_dict_payload(self, mocker):
         client = BasePluginClient()
         stream_mock = mocker.patch(
-            "core.plugin.impl.base.httpx.stream",
+            "httpx.Client.stream",
             return_value=_StreamContext([b"", b"data: hello", "world"]),
         )
 

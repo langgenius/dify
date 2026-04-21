@@ -1,6 +1,7 @@
 import type { Category, Tag } from '../constant'
 import type { FilterState } from '../index'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { createContext, useContext } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ==================== Imports (after mocks) ====================
@@ -68,19 +69,47 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
-// Track portal open state for testing
-let mockPortalOpenState = false
+type MockPopoverContextValue = {
+  open: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpenState = open
-    return <div data-testid="portal-container" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
+const MockPopoverContext = createContext<MockPopoverContextValue>({
+  open: false,
+})
+
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open, onOpenChange }: {
+    children: React.ReactNode
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => (
+    <MockPopoverContext.Provider value={{ open, onOpenChange }}>
+      <div data-testid="portal-container" data-open={open}>{children}</div>
+    </MockPopoverContext.Provider>
   ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
+  PopoverTrigger: ({ children, render, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
+    className?: string
+  }) => {
+    const { open, onOpenChange } = useContext(MockPopoverContext)
+    return (
+      <div
+        data-testid="portal-trigger"
+        onClick={() => onOpenChange?.(!open)}
+        className={className}
+      >
+        {render ?? children}
+      </div>
+    )
+  },
+  PopoverContent: ({ children, className }: {
+    children: React.ReactNode
+    className?: string
+  }) => {
+    const { open } = useContext(MockPopoverContext)
+    if (!open)
       return null
     return <div data-testid="portal-content" className={className}>{children}</div>
   },
@@ -338,7 +367,8 @@ describe('SearchBox Component', () => {
       render(<SearchBox searchQuery="" onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByPlaceholderText('plugin.search')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
     it('should render with provided searchQuery value', () => {
@@ -346,7 +376,8 @@ describe('SearchBox Component', () => {
       render(<SearchBox searchQuery="test query" onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByDisplayValue('test query')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByDisplayValue('test query'))!.toBeInTheDocument()
     })
 
     it('should render search icon', () => {
@@ -355,7 +386,7 @@ describe('SearchBox Component', () => {
 
       // Assert - Input should have showLeftIcon which renders search icon
       const wrapper = container.querySelector('.w-\\[200px\\]')
-      expect(wrapper).toBeInTheDocument()
+      expect(wrapper)!.toBeInTheDocument()
     })
   })
 
@@ -455,7 +486,6 @@ describe('SearchBox Component', () => {
 describe('CategoriesFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -464,7 +494,8 @@ describe('CategoriesFilter Component', () => {
       render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('plugin.allCategories')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
     })
 
     it('should render dropdown arrow when no selection', () => {
@@ -473,7 +504,7 @@ describe('CategoriesFilter Component', () => {
 
       // Assert - Arrow icon should be visible
       const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toBeInTheDocument()
+      expect(arrowIcon)!.toBeInTheDocument()
     })
 
     it('should render selected category labels', () => {
@@ -481,7 +512,8 @@ describe('CategoriesFilter Component', () => {
       render(<CategoriesFilter value={['model']} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('Models')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
 
     it('should show clear button when categories are selected', () => {
@@ -490,7 +522,7 @@ describe('CategoriesFilter Component', () => {
 
       // Assert - Close icon should be visible
       const closeIcon = container.querySelector('[class*="cursor-pointer"]')
-      expect(closeIcon).toBeInTheDocument()
+      expect(closeIcon)!.toBeInTheDocument()
     })
 
     it('should show count badge for more than 2 selections', () => {
@@ -498,7 +530,8 @@ describe('CategoriesFilter Component', () => {
       render(<CategoriesFilter value={['model', 'tool', 'extension']} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('+1')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('+1'))!.toBeInTheDocument()
     })
   })
 
@@ -512,7 +545,7 @@ describe('CategoriesFilter Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       })
     })
 
@@ -525,10 +558,10 @@ describe('CategoriesFilter Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('Models')).toBeInTheDocument()
-        expect(screen.getByText('Tools')).toBeInTheDocument()
-        expect(screen.getByText('Extensions')).toBeInTheDocument()
-        expect(screen.getByText('Agents')).toBeInTheDocument()
+        expect(screen.getByText('Models'))!.toBeInTheDocument()
+        expect(screen.getByText('Tools'))!.toBeInTheDocument()
+        expect(screen.getByText('Extensions'))!.toBeInTheDocument()
+        expect(screen.getByText('Agents'))!.toBeInTheDocument()
       })
     })
 
@@ -541,7 +574,7 @@ describe('CategoriesFilter Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('plugin.searchCategories')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('plugin.searchCategories'))!.toBeInTheDocument()
       })
     })
   })
@@ -555,7 +588,7 @@ describe('CategoriesFilter Component', () => {
       // Act - Open dropdown and click category
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByText('Models')).toBeInTheDocument()
+        expect(screen.getByText('Models'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Models'))
 
@@ -592,7 +625,7 @@ describe('CategoriesFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByText('Tools')).toBeInTheDocument()
+        expect(screen.getByText('Tools'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Tools'))
 
@@ -607,7 +640,7 @@ describe('CategoriesFilter Component', () => {
 
       // Act - Find and click the close icon
       const closeIcon = container.querySelector('.text-text-quaternary')
-      expect(closeIcon).toBeInTheDocument()
+      expect(closeIcon)!.toBeInTheDocument()
       fireEvent.click(closeIcon!)
 
       // Assert
@@ -623,14 +656,15 @@ describe('CategoriesFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('plugin.searchCategories')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('plugin.searchCategories'))!.toBeInTheDocument()
       })
       fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), {
         target: { value: 'mod' },
       })
 
       // Assert
-      expect(screen.getByText('Models')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
       expect(screen.queryByText('Extensions')).not.toBeInTheDocument()
     })
 
@@ -641,14 +675,15 @@ describe('CategoriesFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('plugin.searchCategories')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('plugin.searchCategories'))!.toBeInTheDocument()
       })
       fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), {
         target: { value: 'MOD' },
       })
 
       // Assert
-      expect(screen.getByText('Models')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
   })
 
@@ -687,7 +722,6 @@ describe('CategoriesFilter Component', () => {
 describe('TagFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -696,7 +730,8 @@ describe('TagFilter Component', () => {
       render(<TagFilter value={[]} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
     })
 
     it('should render selected tag labels', () => {
@@ -704,7 +739,8 @@ describe('TagFilter Component', () => {
       render(<TagFilter value={['agent']} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show count badge for more than 2 selections', () => {
@@ -712,7 +748,8 @@ describe('TagFilter Component', () => {
       render(<TagFilter value={['agent', 'rag', 'search']} onChange={vi.fn()} />)
 
       // Assert
-      expect(screen.getByText('+1')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('+1'))!.toBeInTheDocument()
     })
 
     it('should show clear button when tags are selected', () => {
@@ -721,7 +758,7 @@ describe('TagFilter Component', () => {
 
       // Assert
       const closeIcon = container.querySelector('.text-text-quaternary')
-      expect(closeIcon).toBeInTheDocument()
+      expect(closeIcon)!.toBeInTheDocument()
     })
   })
 
@@ -735,7 +772,7 @@ describe('TagFilter Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
       })
     })
 
@@ -748,10 +785,10 @@ describe('TagFilter Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
-        expect(screen.getByText('RAG')).toBeInTheDocument()
-        expect(screen.getByText('Search')).toBeInTheDocument()
-        expect(screen.getByText('Image')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
+        expect(screen.getByText('RAG'))!.toBeInTheDocument()
+        expect(screen.getByText('Search'))!.toBeInTheDocument()
+        expect(screen.getByText('Image'))!.toBeInTheDocument()
       })
     })
   })
@@ -765,7 +802,7 @@ describe('TagFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Agent'))
 
@@ -783,7 +820,7 @@ describe('TagFilter Component', () => {
       await waitFor(() => {
         // Find the Agent option in dropdown
         const agentOptions = screen.getAllByText('Agent')
-        fireEvent.click(agentOptions[agentOptions.length - 1])
+        fireEvent.click(agentOptions[agentOptions.length - 1]!)
       })
 
       // Assert
@@ -798,7 +835,7 @@ describe('TagFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByText('RAG')).toBeInTheDocument()
+        expect(screen.getByText('RAG'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('RAG'))
 
@@ -828,14 +865,15 @@ describe('TagFilter Component', () => {
       // Act
       fireEvent.click(screen.getByTestId('portal-trigger'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('pluginTags.searchTags')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('pluginTags.searchTags'))!.toBeInTheDocument()
       })
       fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
         target: { value: 'rag' },
       })
 
       // Assert
-      expect(screen.getByText('RAG')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('RAG'))!.toBeInTheDocument()
       expect(screen.queryByText('Image')).not.toBeInTheDocument()
     })
   })
@@ -846,7 +884,6 @@ describe('FilterManagement Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInitFilters = createFilterState()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -855,9 +892,10 @@ describe('FilterManagement Component', () => {
       renderFilterManagement()
 
       // Assert - All three filters should be present
-      expect(screen.getByText('plugin.allCategories')).toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('plugin.search')).toBeInTheDocument()
+      // Assert - All three filters should be present
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
     it('should render with correct container classes', () => {
@@ -866,7 +904,7 @@ describe('FilterManagement Component', () => {
 
       // Assert
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'items-center', 'gap-2', 'self-stretch')
+      expect(wrapper)!.toHaveClass('flex', 'items-center', 'gap-2', 'self-stretch')
     })
   })
 
@@ -879,9 +917,10 @@ describe('FilterManagement Component', () => {
       renderFilterManagement()
 
       // Assert
-      expect(screen.getByText('plugin.allCategories')).toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('plugin.search')).toHaveValue('')
+      // Assert
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toHaveValue('')
     })
 
     it('should initialize with pre-selected categories', () => {
@@ -892,7 +931,8 @@ describe('FilterManagement Component', () => {
       renderFilterManagement()
 
       // Assert
-      expect(screen.getByText('Models')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Models'))!.toBeInTheDocument()
     })
 
     it('should initialize with pre-selected tags', () => {
@@ -903,7 +943,8 @@ describe('FilterManagement Component', () => {
       renderFilterManagement()
 
       // Assert
-      expect(screen.getByText('Agent')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should initialize with search query', () => {
@@ -914,7 +955,8 @@ describe('FilterManagement Component', () => {
       renderFilterManagement()
 
       // Assert
-      expect(screen.getByDisplayValue('initial search')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByDisplayValue('initial search'))!.toBeInTheDocument()
     })
   })
 
@@ -926,10 +968,10 @@ describe('FilterManagement Component', () => {
 
       // Act - Open categories dropdown and select
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[0]) // Categories filter trigger
+      fireEvent.click(triggers[0]!) // Categories filter trigger
 
       await waitFor(() => {
-        expect(screen.getByText('Models')).toBeInTheDocument()
+        expect(screen.getByText('Models'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Models'))
 
@@ -948,10 +990,10 @@ describe('FilterManagement Component', () => {
 
       // Act - Open tags dropdown and select
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1]) // Tags filter trigger
+      fireEvent.click(triggers[1]!) // Tags filter trigger
 
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Agent'))
 
@@ -990,9 +1032,9 @@ describe('FilterManagement Component', () => {
 
       // Act 1 - Select a category
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[0])
+      fireEvent.click(triggers[0]!)
       await waitFor(() => {
-        expect(screen.getByText('Models')).toBeInTheDocument()
+        expect(screen.getByText('Models'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Models'))
 
@@ -1003,12 +1045,12 @@ describe('FilterManagement Component', () => {
       })
 
       // Close dropdown by clicking trigger again
-      fireEvent.click(triggers[0])
+      fireEvent.click(triggers[0]!)
 
       // Act 2 - Select a tag (state should include previous category)
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
       await waitFor(() => {
-        expect(screen.getByText('Agent')).toBeInTheDocument()
+        expect(screen.getByText('Agent'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Agent'))
 
@@ -1051,20 +1093,20 @@ describe('FilterManagement Component', () => {
 
       // Act 1 - Select categories
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[0])
+      fireEvent.click(triggers[0]!)
       await waitFor(() => {
-        expect(screen.getByText('Models')).toBeInTheDocument()
+        expect(screen.getByText('Models'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('Models'))
-      fireEvent.click(triggers[0]) // Close
+      fireEvent.click(triggers[0]!) // Close
 
       // Act 2 - Select tags
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
       await waitFor(() => {
-        expect(screen.getByText('RAG')).toBeInTheDocument()
+        expect(screen.getByText('RAG'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('RAG'))
-      fireEvent.click(triggers[1]) // Close
+      fireEvent.click(triggers[1]!) // Close
 
       // Act 3 - Enter search
       fireEvent.change(screen.getByPlaceholderText('plugin.search'), {
@@ -1103,7 +1145,7 @@ describe('FilterManagement Component', () => {
 
       // Act - Clear categories (click clear button)
       const closeIcons = container.querySelectorAll('.text-text-quaternary')
-      fireEvent.click(closeIcons[0]) // First close icon is for categories
+      fireEvent.click(closeIcons[0]!) // First close icon is for categories
 
       // Assert
       expect(onFilterChange).toHaveBeenLastCalledWith({
@@ -1124,7 +1166,8 @@ describe('FilterManagement Component', () => {
       render(<FilterManagement onFilterChange={onFilterChange} />)
 
       // Assert - Should render without errors
-      expect(screen.getByText('plugin.allCategories')).toBeInTheDocument()
+      // Assert - Should render without errors
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
     })
 
     it('should handle multiple rapid filter changes', () => {

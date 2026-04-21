@@ -1,5 +1,5 @@
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import type { TextNode } from 'lexical'
+import type { LexicalEditor, TextNode } from 'lexical'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -21,11 +21,19 @@ import {
 } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
+import {
+  BLUR_COMMAND,
+  COMMAND_PRIORITY_EDITOR,
+  FOCUS_COMMAND,
+  KEY_ESCAPE_COMMAND,
+} from 'lexical'
 import {
   Fragment,
   memo,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
@@ -81,12 +89,58 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
-  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
+  const triggerMatchRef = useRef<string | null>(null)
+  const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
-    maxLength: 0,
+    maxLength: 75,
   })
+  const checkForTriggerMatch = useCallback((text: string, editor: LexicalEditor) => {
+    const match = baseCheckForTriggerMatch(text, editor)
+    triggerMatchRef.current = match?.matchingString ?? null
+    return match
+  }, [baseCheckForTriggerMatch])
 
   const [queryString, setQueryString] = useState<string | null>(null)
+  const [blurHidden, setBlurHidden] = useState(false)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearBlurTimer = useCallback(() => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current)
+      blurTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const unregister = mergeRegister(
+      editor.registerCommand(
+        BLUR_COMMAND,
+        (event) => {
+          clearBlurTimer()
+          const target = event?.relatedTarget as HTMLElement
+          if (!target?.classList?.contains('var-search-input'))
+            blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        FOCUS_COMMAND,
+        () => {
+          clearBlurTimer()
+          setBlurHidden(false)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+
+    return () => {
+      if (blurTimerRef.current)
+        clearTimeout(blurTimerRef.current)
+      unregister()
+    }
+  }, [editor, clearBlurTimer])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -107,6 +161,7 @@ const ComponentPicker = ({
     currentBlock,
     errorMessageBlock,
     lastRunBlock,
+    queryString || undefined,
   )
 
   const onSelectOption = useCallback(
@@ -159,6 +214,10 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    const effectiveQueryString = triggerMatchRef.current ?? queryString
+
+    if (blurHidden)
+      return null
     if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
 
@@ -187,6 +246,8 @@ const ComponentPicker = ({
                   workflowVariableBlock?.show && (
                     <div className="p-1">
                       <VarReferenceVars
+                        hideSearch={triggerString === '/'}
+                        searchText={triggerString === '/' ? (effectiveQueryString || '') : undefined}
                         searchBoxClassName="mt-1"
                         vars={workflowVariableOptions}
                         onChange={(variables: string[]) => {
@@ -220,8 +281,8 @@ const ComponentPicker = ({
                           )
                         }
                         {option.renderMenuOption({
-                          queryString,
-                          isSelected: selectedIndex === index,
+                          queryString: effectiveQueryString,
+                          isSelected: workflowVariableBlock?.show ? false : selectedIndex === index,
                           onSelect: () => {
                             selectOptionAndCleanUp(option)
                           },
@@ -240,7 +301,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [blurHidden, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin
@@ -252,7 +313,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
+      anchorClassName="z-999999 translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

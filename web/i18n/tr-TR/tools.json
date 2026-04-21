@@ -21,7 +21,7 @@
   "auth.setupModalTitleDescription": "Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.",
   "auth.unauthorized": "Yetkisiz",
   "author": "Tarafından",
-  "builtInPromptTitle": "Prompt",
+  "builtInPromptTitle": "İstem",
   "contribute.line1": "Dify'ye ",
   "contribute.line2": "araçlar eklemekle ilgileniyorum.",
   "contribute.viewGuide": "Rehberi Görüntüle",
@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "örneğin, Taşıyıcı jeton123",
   "mcp.modal.headers": "Başlıklar",
   "mcp.modal.headersTip": "MCP sunucu istekleri ile gönderilecek ek HTTP başlıkları",
+  "mcp.modal.invalidServerIdentifier": "Lütfen geçerli bir sunucu tanımlayıcısı girin",
+  "mcp.modal.invalidServerUrl": "Lütfen geçerli bir sunucu URL'si girin",
   "mcp.modal.maskedHeadersTip": "Başlık değerleri güvenlik amacıyla gizlenmiştir. Değişiklikler gerçek değerleri güncelleyecektir.",
   "mcp.modal.name": "Ad ve Simge",
   "mcp.modal.namePlaceholder": "MCP sunucunuza ad verin",
@@ -190,7 +192,7 @@
   "setBuiltInTools.parameters": "parametreler",
   "setBuiltInTools.required": "Gerekli",
   "setBuiltInTools.setting": "Ayar",
-  "setBuiltInTools.string": "string",
+  "setBuiltInTools.string": "metin",
   "setBuiltInTools.toolDescription": "Araç açıklaması",
   "test.parameters": "Parametreler",
   "test.parametersValue": "Parametreler ve Değer",
@@ -203,9 +205,9 @@
   "thought.used": "Kullanıldı",
   "thought.using": "Kullanılıyor",
   "title": "Araçlar",
-  "toolNameUsageTip": "Agent akıl yürütme ve prompt için araç çağrı adı",
+  "toolNameUsageTip": "Ajan akıl yürütme ve istem için araç çağrı adı",
   "toolRemoved": "Araç kaldırıldı",
   "type.builtIn": "Yerleşik",
   "type.custom": "Özel",
-  "type.workflow": "Workflow"
+  "type.workflow": "İş Akışı"
 }

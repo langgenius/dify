@@ -2,16 +2,16 @@
 
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { useGitHubReleases } from '../../../install-plugin/hooks'
+import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
@@ -39,7 +39,6 @@ export const usePluginOperations = ({
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
   const { t } = useTranslation()
-  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
@@ -60,10 +59,7 @@ export const usePluginOperations = ({
     }
 
     if (!meta?.repo || !meta?.version || !meta?.package) {
-      Toast.notify({
-        type: 'error',
-        message: 'Missing plugin metadata for GitHub update',
-      })
+      toast.error('Missing plugin metadata for GitHub update')
       return
     }
 
@@ -74,7 +70,7 @@ export const usePluginOperations = ({
       return
 
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
-    Toast.notify(toastProps)
+    toast(toastProps.message, { type: toastProps.type })
 
     if (needUpdate) {
       setShowUpdatePluginModal({
@@ -122,10 +118,7 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      Toast.notify({
-        type: 'success',
-        message: t('action.deleteSuccess', { ns: 'plugin' }),
-      })
+      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
       handlePluginUpdated(true)
 
       if (PluginCategoryEnum.model.includes(category))

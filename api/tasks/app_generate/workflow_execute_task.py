@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
-from typing import Annotated, Any, TypeAlias, Union
+from typing import Annotated, Any
 
 from celery import shared_task
 from flask import current_app, json
@@ -21,8 +21,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -68,7 +68,7 @@ def _get_user_type_descriminator(value: Any):
         return None
 
 
-User: TypeAlias = Annotated[
+type User = Annotated[
     (Annotated[_Account, Tag(_UserType.ACCOUNT)] | Annotated[_EndUser, Tag(_UserType.END_USER)]),
     Discriminator(_get_user_type_descriminator),
 ]
@@ -93,7 +93,7 @@ class AppExecutionParams(BaseModel):
         cls,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -239,13 +239,18 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any], None, None], workflow_run_id: str, app_mode: AppMode
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    workflow_run_id: str,
+    app_mode: AppMode,
 ) -> None:
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     for event in response_stream:
         try:
-            payload = json.dumps(event)
-        except TypeError:
+            if isinstance(event, BaseModel):
+                payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+            else:
+                payload = json.dumps(event, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
             logger.exception("error while encoding event")
             continue
 

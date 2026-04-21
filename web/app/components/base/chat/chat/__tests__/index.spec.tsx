@@ -8,10 +8,10 @@ import Chat from '../index'
 // ─── Why each mock exists ─────────────────────────────────────────────────────
 //
 // Answer        – transitively pulls Markdown (rehype/remark/katex), AgentContent,
-//                 WorkflowProcessItem and Operation; none can resolve in jsdom.
+//                 WorkflowProcessItem and Operation; none can resolve in the test DOM runtime.
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
 // ChatInputArea – pulls js-audio-recorder (requires Web Audio API unavailable in
-//                 jsdom) and VoiceInput / FileContextProvider chains.
+//                 the test DOM runtime) and VoiceInput / FileContextProvider chains.
 // PromptLogModal– pulls CopyFeedbackNew and deep modal dep chain.
 // AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
 //                 from ahooks, and AgentLogDetail (workflow graph renderer).

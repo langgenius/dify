@@ -4,37 +4,38 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
 import * as ReactI18next from 'react-i18next'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Panel from '../panel'
 import { useStore as useTagStore } from '../store'
 
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
+}))
+
 // Hoisted mocks
-const { createTag, bindTag, unBindTag, contextOverrides } = vi.hoisted(() => ({
+const { createTag, bindTag, unBindTag } = vi.hoisted(() => ({
   createTag: vi.fn(),
   bindTag: vi.fn(),
   unBindTag: vi.fn(),
-  contextOverrides: new Map<object, unknown>(),
 }))
-
-const mockNotify = vi.fn()
 
 vi.mock('@/service/tag', () => ({
   createTag,
   bindTag,
   unBindTag,
-}))
-
-// Mock use-context-selector with context-aware values and toast notify override.
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: <T,>(context: React.Context<T>) => {
-    const contextValue = React.useContext(context)
-    const override = contextOverrides.get(context as unknown as object)
-    if (override)
-      return override as T
-
-    return contextValue
-  },
 }))
 
 // i18n mock renders "ns.key" format (dot-separated)
@@ -60,8 +61,8 @@ const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge'
 const defaultProps = {
   targetID: 'target-1',
   type: 'app' as const,
-  value: ['tag-1'], // tag-1 is already selected/bound
-  selectedTags: [appTags[0]], // pre-selected tags shown separately
+  value: ['tag-1'!], // tag-1 is already selected/bound
+  selectedTags: [appTags[0]!], // pre-selected tags shown separately
   onCacheUpdate: vi.fn<(tags: Tag[]) => void>(),
   onChange: vi.fn<() => void>(),
   onCreate: vi.fn<() => void>(),
@@ -70,11 +71,6 @@ const defaultProps = {
 describe('Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    contextOverrides.clear()
-    contextOverrides.set(ToastContext as unknown as object, {
-      notify: mockNotify,
-      close: vi.fn(),
-    })
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
@@ -86,13 +82,13 @@ describe('Panel', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<Panel {...defaultProps} />)
-      expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(i18n.selectorPlaceholder))!.toBeInTheDocument()
     })
 
     it('should render the search input', () => {
       render(<Panel {...defaultProps} />)
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      expect(input).toBeInTheDocument()
+      expect(input)!.toBeInTheDocument()
       expect(input.tagName).toBe('INPUT')
     })
 
@@ -107,30 +103,62 @@ describe('Panel', () => {
 
       render(<Panel {...defaultProps} />)
 
-      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
+      expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', '')
     })
 
     it('should render selected tags from selectedTags prop', () => {
       render(<Panel {...defaultProps} />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
     })
 
     it('should render unselected tags matching the type', () => {
       render(<Panel {...defaultProps} />)
       // tag-2 and tag-3 are app type and not in value[]
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('API')).toBeInTheDocument()
+      // tag-2 and tag-3 are app type and not in value[]
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('API'))!.toBeInTheDocument()
     })
 
     it('should not render tags of a different type', () => {
       render(<Panel {...defaultProps} />)
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
+      // knowledgeTag is type 'knowledge', should not appear
       // knowledgeTag is type 'knowledge', should not appear
       expect(screen.queryByText('KnowledgeDB')).not.toBeInTheDocument()
     })
 
     it('should render the manage tags button', () => {
       render(<Panel {...defaultProps} />)
-      expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
+      expect(screen.getByText(i18n.manageTags))!.toBeInTheDocument()
     })
 
     it('should show no-tag message when there are no tags', () => {
@@ -138,7 +166,7 @@ describe('Panel', () => {
         useTagStore.setState({ tagList: [] })
       })
       render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
-      expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+      expect(screen.getByText(i18n.noTag))!.toBeInTheDocument()
     })
 
     it('should not show no-tag message when tags exist', () => {
@@ -155,7 +183,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Back')
 
-      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
       expect(screen.queryByText('API')).not.toBeInTheDocument()
     })
 
@@ -166,7 +194,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Front')
 
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
     })
 
@@ -183,8 +211,9 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       // The create row shows "Create 'BrandNewTag'"
-      expect(screen.getByText(/BrandNewTag/)).toBeInTheDocument()
-      expect(screen.getByText(i18n.create, { exact: false })).toBeInTheDocument()
+      // The create row shows "Create 'BrandNewTag'"
+      expect(screen.getByText(/BrandNewTag/))!.toBeInTheDocument()
+      expect(screen.getByText(i18n.create, { exact: false }))!.toBeInTheDocument()
     })
 
     it('should not show create option when keyword matches an existing tag name', async () => {
@@ -199,6 +228,37 @@ describe('Panel', () => {
       await user.type(input, 'Frontend')
 
       // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
+      // 'Frontend' matches tag-1 name, so notExisted = false
       expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
     })
 
@@ -208,16 +268,17 @@ describe('Panel', () => {
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Back')
-      expect(input).toHaveValue('Back')
+      expect(input)!.toHaveValue('Back')
 
       // The Input component renders a clear icon with data-testid="input-clear"
       const clearButton = screen.getByTestId('input-clear')
       await user.click(clearButton)
 
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
       // All tags should be visible again
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('API')).toBeInTheDocument()
+      // All tags should be visible again
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('API'))!.toBeInTheDocument()
     })
   })
 
@@ -238,7 +299,7 @@ describe('Panel', () => {
       await user.click(screen.getByText('Backend'))
 
       const backendRowAfterSelect = getTagRow('Backend')
-      expect(within(backendRowAfterSelect).getByTestId('check-icon-tag-2')).toBeInTheDocument()
+      expect(within(backendRowAfterSelect).getByTestId('check-icon-tag-2'))!.toBeInTheDocument()
     })
 
     it('should deselect a selected tag when clicked', async () => {
@@ -246,7 +307,7 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
 
       const frontendRowBeforeDeselect = getTagRow('Frontend')
-      expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-tag-1')).toBeInTheDocument()
+      expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-tag-1'))!.toBeInTheDocument()
 
       await user.click(screen.getByText('Frontend'))
 
@@ -264,7 +325,7 @@ describe('Panel', () => {
       await user.click(screen.getByText('Backend'))
 
       const backendRowAfterFirstClick = getTagRow('Backend')
-      expect(within(backendRowAfterFirstClick).getByTestId('check-icon-tag-2')).toBeInTheDocument()
+      expect(within(backendRowAfterFirstClick).getByTestId('check-icon-tag-2'))!.toBeInTheDocument()
 
       await user.click(screen.getByText('Backend'))
 
@@ -325,7 +386,7 @@ describe('Panel', () => {
       await user.click(createOption)
 
       await waitFor(() => {
-        expect(input).toHaveValue('')
+        expect(input)!.toHaveValue('')
       })
     })
 
@@ -386,6 +447,37 @@ describe('Panel', () => {
     it('should not create tag when keywords is empty', () => {
       render(<Panel {...defaultProps} />)
 
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
+      // The create option should not appear when no keywords
       // The create option should not appear when no keywords
       expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
       expect(createTag).not.toHaveBeenCalled()
@@ -463,8 +555,8 @@ describe('Panel', () => {
         expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
       })
 
-      const [updatedTags] = vi.mocked(defaultProps.onCacheUpdate).mock.calls[0]
-      expect(updatedTags.map(tag => tag.id)).toEqual(['tag-1', 'tag-2'])
+      const [updatedTags] = (vi.mocked(defaultProps.onCacheUpdate).mock.calls[0] ?? []) as [any]
+      expect(updatedTags.map((tag: any) => tag.id)).toEqual(['tag-1', 'tag-2'])
     })
 
     it('should not call bind/unbind when value has not changed', async () => {
@@ -572,9 +664,10 @@ describe('Panel', () => {
     it('should handle empty value array', () => {
       render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
       // All app-type tags should appear in the unselected list
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('API')).toBeInTheDocument()
+      // All app-type tags should appear in the unselected list
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('API'))!.toBeInTheDocument()
     })
 
     it('should handle empty tagList in store', () => {
@@ -582,7 +675,7 @@ describe('Panel', () => {
         useTagStore.setState({ tagList: [] })
       })
       render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
-      expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+      expect(screen.getByText(i18n.noTag))!.toBeInTheDocument()
     })
 
     it('should handle all tags already selected', () => {
@@ -594,9 +687,10 @@ describe('Panel', () => {
         />,
       )
       // All app tags appear in selectedTags, filteredTagList should be empty
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('API')).toBeInTheDocument()
+      // All app tags appear in selectedTags, filteredTagList should be empty
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
+      expect(screen.getByText('API'))!.toBeInTheDocument()
     })
 
     it('should show divider between create option and tag list when both present', async () => {
@@ -626,7 +720,7 @@ describe('Panel', () => {
           selectedTags={[]}
         />,
       )
-      expect(screen.getByText('KnowledgeDB')).toBeInTheDocument()
+      expect(screen.getByText('KnowledgeDB'))!.toBeInTheDocument()
     })
   })
 })

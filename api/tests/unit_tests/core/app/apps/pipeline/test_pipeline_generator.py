@@ -8,6 +8,7 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from models.enums import DataSourceType
 
 
 class FakeRagPipelineGenerateEntity(SimpleNamespace):
@@ -345,7 +346,7 @@ def test_generate_raises_when_workflow_not_found(generator, mocker):
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     session = MagicMock()
-    session.query.return_value.where.return_value.first.return_value = None
+    session.get.return_value = None
     mocker.patch.object(module.db, "session", session)
 
     with pytest.raises(ValueError):
@@ -556,6 +557,24 @@ def test_build_document_sets_metadata_for_builtin_fields(generator, mocker):
 
     assert document.name == "file"
     assert document.doc_metadata
+
+
+def test_build_document_supports_online_drive_datasource_type(generator):
+    document = generator._build_document(
+        tenant_id="tenant",
+        dataset_id="ds",
+        built_in_field_enabled=True,
+        datasource_type=DatasourceProviderType.ONLINE_DRIVE,
+        datasource_info={"id": "file-1", "bucket": "bucket-1", "name": "drive.pdf", "type": "file"},
+        created_from="rag-pipeline",
+        position=1,
+        account=_build_user(),
+        batch="batch",
+        document_form="text",
+    )
+
+    assert DataSourceType(document.data_source_type) == DataSourceType.ONLINE_DRIVE
+    assert document.name == "drive.pdf"
 
 
 def test_build_document_invalid_datasource_type(generator):

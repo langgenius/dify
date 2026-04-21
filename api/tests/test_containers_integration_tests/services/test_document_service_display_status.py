@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
@@ -42,7 +43,7 @@ def _create_document(
         name=f"doc-{uuid4()}",
         created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
     document.id = str(uuid4())
     document.indexing_status = indexing_status
@@ -142,3 +143,11 @@ def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_c
 
     rows = db_session_with_containers.scalars(filtered).all()
     assert {row.id for row in rows} == {doc1.id, doc2.id}
+
+
+def test_normalize_display_status_alias_mapping():
+    """Test that normalize_display_status maps aliases correctly."""
+    assert DocumentService.normalize_display_status("ACTIVE") == "available"
+    assert DocumentService.normalize_display_status("enabled") == "available"
+    assert DocumentService.normalize_display_status("archived") == "archived"
+    assert DocumentService.normalize_display_status("unknown") is None

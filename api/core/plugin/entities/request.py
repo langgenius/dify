@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.utils.http_parser import deserialize_response
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,
@@ -17,18 +17,13 @@ from dify_graph.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.nodes.parameter_extractor.entities import (
-    ModelConfig as ParameterExtractorModelConfig,
-)
-from dify_graph.nodes.parameter_extractor.entities import (
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
+from graphon.nodes.parameter_extractor.entities import (
     ParameterConfig,
 )
-from dify_graph.nodes.question_classifier.entities import (
+from graphon.nodes.question_classifier.entities import (
     ClassConfig,
-)
-from dify_graph.nodes.question_classifier.entities import (
-    ModelConfig as QuestionClassifierModelConfig,
 )
 
 
@@ -54,7 +49,7 @@ class RequestInvokeTool(BaseModel):
     tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
-    tool_parameters: dict
+    tool_parameters: dict[str, Any]
     credential_id: str | None = None
 
 
@@ -176,7 +171,7 @@ class RequestInvokeParameterExtractorNode(BaseModel):
     """
 
     parameters: list[ParameterConfig]
-    model: ParameterExtractorModelConfig
+    model: LLMModelConfig
     instruction: str
     query: str
 
@@ -187,7 +182,7 @@ class RequestInvokeQuestionClassifierNode(BaseModel):
     """
 
     query: str
-    model: QuestionClassifierModelConfig
+    model: LLMModelConfig
     classes: list[ClassConfig]
     instruction: str
 
@@ -214,7 +209,7 @@ class RequestInvokeEncrypt(BaseModel):
     opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
-    data: dict = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
 
 

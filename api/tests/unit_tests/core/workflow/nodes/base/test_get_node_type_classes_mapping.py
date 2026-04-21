@@ -2,15 +2,15 @@ import types
 from collections.abc import Mapping
 
 from core.workflow.node_factory import get_node_type_classes_mapping
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.nodes.base.node import Node
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.base.node import Node
 
 # Import concrete nodes we will assert on (numeric version path)
-from dify_graph.nodes.variable_assigner.v1.node import (
+from graphon.nodes.variable_assigner.v1.node import (
     VariableAssignerNode as VariableAssignerV1,
 )
-from dify_graph.nodes.variable_assigner.v2.node import (
+from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
 

@@ -1,15 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
 import { InstallationScope } from '@/types/feature'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    plugin_installation_permission: {
-      restrict_to_marketplace_only: false,
-      plugin_installation_scope: InstallationScope.ALL,
-    },
-  }),
-}))
 
 describe('Plugin Marketplace to Install Flow', () => {
   describe('install permission validation pipeline', () => {

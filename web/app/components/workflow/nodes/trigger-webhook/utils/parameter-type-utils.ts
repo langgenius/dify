@@ -91,7 +91,7 @@ export const normalizeParameterType = (input: string | undefined | null): VarTyp
 /**
  * Gets display name for parameter types in UI components
  */
-export const getParameterTypeDisplayName = (type: VarType): string => {
+const getParameterTypeDisplayName = (type: VarType): string => {
   return TYPE_DISPLAY_NAMES[type]
 }
 
@@ -99,7 +99,7 @@ export const getParameterTypeDisplayName = (type: VarType): string => {
  * Gets available parameter types based on content type
  * Provides context-aware type filtering for different webhook content types
  */
-export const getAvailableParameterTypes = (contentType?: string): VarType[] => {
+const getAvailableParameterTypes = (contentType?: string): VarType[] => {
   if (!contentType)
     return [VarType.string, VarType.number, VarType.boolean]
 

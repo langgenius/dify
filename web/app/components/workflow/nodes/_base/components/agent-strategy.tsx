@@ -4,12 +4,6 @@ import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { noop } from 'es-toolkit/function'
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import ListEmpty from '@/app/components/base/list-empty'
-import Slider from '@/app/components/base/slider'
 import {
   NumberField,
   NumberFieldControls,
@@ -17,7 +11,13 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { noop } from 'es-toolkit/function'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Agent } from '@/app/components/base/icons/src/vender/workflow'
+import ListEmpty from '@/app/components/base/list-empty'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -41,7 +41,7 @@ export type Strategy = {
   meta?: PluginMeta
 }
 
-export type AgentStrategyProps = {
+type AgentStrategyProps = {
   strategy?: Strategy
   onStrategyChange: (strategy?: Strategy) => void
   formSchema: CredentialFormSchema[]
@@ -147,10 +147,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               <div className="flex w-[200px] items-center gap-3">
                 <Slider
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   className="w-full"
                   min={def.min}
                   max={def.max}
+                  aria-label={renderI18nObject(def.label)}
                 />
                 <NumberField
                   value={value}
@@ -158,11 +159,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   max={def.max}
                   onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
                 >
-                  <NumberFieldGroup size="regular">
-                    <NumberFieldInput size="regular" className="w-12" />
+                  <NumberFieldGroup>
+                    <NumberFieldInput className="w-12" />
                     <NumberFieldControls>
-                      <NumberFieldIncrement size="regular" />
-                      <NumberFieldDecrement size="regular" />
+                      <NumberFieldIncrement />
+                      <NumberFieldDecrement />
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>

@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UpgradeBtn from '../index'
@@ -14,14 +13,16 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
+type GtagHandler = (command: string, action: string, payload: { loc: string }) => void
+
 // Typed window accessor for gtag tracking tests
-const gtagWindow = window as unknown as Record<string, Mock | undefined>
-let mockGtag: Mock | undefined
+const gtagWindow = window as unknown as { gtag?: GtagHandler }
+let mockGtag = vi.fn<GtagHandler>()
 
 describe('UpgradeBtn', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGtag = vi.fn()
+    mockGtag = vi.fn<GtagHandler>()
     gtagWindow.gtag = mockGtag
   })
 

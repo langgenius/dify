@@ -4,12 +4,18 @@ from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from dify_graph.variables.segments import IntegerSegment, Segment
+from core.helper import encrypter
+from core.workflow.file_reference import build_file_reference
 from factories.variable_factory import build_segment
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from graphon.variables.segments import IntegerSegment, Segment
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+    is_system_variable_editable,
+)
 
 
 def test_environment_variables():
@@ -29,18 +35,10 @@ def test_environment_variables():
     )
 
     # Create some EnvironmentVariable instances
-    variable1 = StringVariable.model_validate(
-        {"name": "var1", "value": "value1", "id": str(uuid4()), "selector": ["env", "var1"]}
-    )
-    variable2 = IntegerVariable.model_validate(
-        {"name": "var2", "value": 123, "id": str(uuid4()), "selector": ["env", "var2"]}
-    )
-    variable3 = SecretVariable.model_validate(
-        {"name": "var3", "value": "secret", "id": str(uuid4()), "selector": ["env", "var3"]}
-    )
-    variable4 = FloatVariable.model_validate(
-        {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
-    )
+    variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
+    variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
+    variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
+    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -71,18 +69,10 @@ def test_update_environment_variables():
     )
 
     # Create some EnvironmentVariable instances
-    variable1 = StringVariable.model_validate(
-        {"name": "var1", "value": "value1", "id": str(uuid4()), "selector": ["env", "var1"]}
-    )
-    variable2 = IntegerVariable.model_validate(
-        {"name": "var2", "value": 123, "id": str(uuid4()), "selector": ["env", "var2"]}
-    )
-    variable3 = SecretVariable.model_validate(
-        {"name": "var3", "value": "secret", "id": str(uuid4()), "selector": ["env", "var3"]}
-    )
-    variable4 = FloatVariable.model_validate(
-        {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
-    )
+    variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
+    variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
+    variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
+    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -131,8 +121,8 @@ def test_to_dict():
     ):
         # Set the environment_variables property of the Workflow instance
         workflow.environment_variables = [
-            SecretVariable.model_validate({"name": "secret", "value": "secret", "id": str(uuid4())}),
-            StringVariable.model_validate({"name": "text", "value": "text", "id": str(uuid4())}),
+            SecretVariable(name="secret", value="secret", id=str(uuid4())),
+            StringVariable(name="text", value="text", id=str(uuid4())),
         ]
 
         workflow_dict = workflow.to_dict()
@@ -142,6 +132,36 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": encrypter.full_mask_token(),
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
+
+
+def test_normalize_environment_variable_mappings_keeps_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": HIDDEN_VALUE,
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
 
 
 class TestWorkflowNodeExecution:
@@ -183,8 +203,7 @@ class TestWorkflowDraftVariableGetValue:
         tenant_id = "test_tenant_id"
 
         test_file = File(
-            tenant_id=tenant_id,
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/example.jpg",
             filename="example.jpg",
@@ -255,9 +274,8 @@ class TestWorkflowDraftVariableGetValue:
 
         # Create a File with specific field values
         test_file = File(
-            id="test_file_id",
-            tenant_id=tenant_id,
-            type=FileType.IMAGE,
+            file_id="test_file_id",
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/test.jpg",
             filename="test.jpg",
@@ -278,7 +296,6 @@ class TestWorkflowDraftVariableGetValue:
 
         # Verify all important fields are preserved
         assert retrieved_file.id == test_file.id
-        assert retrieved_file.tenant_id == test_file.tenant_id
         assert retrieved_file.type == test_file.type
         assert retrieved_file.transfer_method == test_file.transfer_method
         assert retrieved_file.remote_url == test_file.remote_url
@@ -290,6 +307,43 @@ class TestWorkflowDraftVariableGetValue:
 
         # Verify the segments have the same type and the important fields match
         assert file_segment.value_type == retrieved_segment.value_type
+
+    def test_file_variable_rebuilds_storage_backed_payloads_with_app_tenant(self):
+        persisted_file = File(
+            file_id="test_file_id",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1", storage_key="legacy-storage-key"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+        )
+        rebuilt_file = File(
+            file_id="test_file_id",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+            storage_key="canonical-storage-key",
+        )
+        draft_var = WorkflowDraftVariable()
+        draft_var.app_id = "app-1"
+        draft_var.set_value(build_segment(persisted_file))
+        draft_var._WorkflowDraftVariable__value = None
+
+        with (
+            mock.patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
+            mock.patch("models.workflow.build_file_from_stored_mapping", return_value=rebuilt_file) as rebuild_file,
+        ):
+            retrieved_segment = draft_var.get_value()
+
+        assert retrieved_segment.value == rebuilt_file
+        rebuild_file.assert_called_once()
+        assert rebuild_file.call_args.kwargs["tenant_id"] == "tenant-1"
 
     def test_get_and_set_value(self):
         draft_var = WorkflowDraftVariable()

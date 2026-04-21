@@ -50,18 +50,30 @@ vi.mock('../../hooks/use-credential', () => ({
   }),
 }))
 
-// Mock toast context
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 // Mock openOAuthPopup
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
+
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 // Mock service/use-triggers
 vi.mock('@/service/use-triggers', () => ({
@@ -137,7 +149,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render with custom trigger when renderTrigger is provided', () => {
@@ -153,8 +165,8 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
-      expect(screen.getByText('Closed')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByText('Closed'))!.toBeInTheDocument()
     })
 
     it('should show singular authorization text for 1 credential', () => {
@@ -170,7 +182,8 @@ describe('Authorized Component', () => {
       )
 
       // Text is split by elements, use regex to find partial match
-      expect(screen.getByText(/plugin\.auth\.authorization/)).toBeInTheDocument()
+      // Text is split by elements, use regex to find partial match
+      expect(screen.getByText(/plugin\.auth\.authorization/))!.toBeInTheDocument()
     })
 
     it('should show plural authorizations text for multiple credentials', () => {
@@ -189,7 +202,8 @@ describe('Authorized Component', () => {
       )
 
       // Text is split by elements, use regex to find partial match
-      expect(screen.getByText(/plugin\.auth\.authorizations/)).toBeInTheDocument()
+      // Text is split by elements, use regex to find partial match
+      expect(screen.getByText(/plugin\.auth\.authorizations/))!.toBeInTheDocument()
     })
 
     it('should show unavailable count when there are unavailable credentials', () => {
@@ -207,7 +221,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText(/plugin\.auth\.unavailable/)).toBeInTheDocument()
+      expect(screen.getByText(/plugin\.auth\.unavailable/))!.toBeInTheDocument()
     })
 
     it('should show gray indicator when default credential is unavailable', () => {
@@ -225,7 +239,8 @@ describe('Authorized Component', () => {
       )
 
       // The indicator should be rendered
-      expect(container.querySelector('[data-testid="status-indicator"]')).toBeInTheDocument()
+      // The indicator should be rendered
+      expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDocument()
     })
   })
 
@@ -247,7 +262,8 @@ describe('Authorized Component', () => {
       fireEvent.click(trigger)
 
       // Popup should be open - check for popup content
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Popup should be open - check for popup content
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should use controlled open state when isOpen and onOpenChange are provided', () => {
@@ -266,11 +282,12 @@ describe('Authorized Component', () => {
       )
 
       // Popup should be open since isOpen is true
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Popup should be open since isOpen is true
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Click trigger to close - get all buttons and click the first one (trigger)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
 
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
@@ -291,7 +308,7 @@ describe('Authorized Component', () => {
 
       // Open
       fireEvent.click(trigger)
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Close
       fireEvent.click(trigger)
@@ -316,8 +333,8 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
-      expect(screen.getByText('OAuth Cred')).toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('OAuth Cred'))!.toBeInTheDocument()
     })
 
     it('should render API Key credentials section when apiKeyCredentials exist', () => {
@@ -335,8 +352,8 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
-      expect(screen.getByText('API Key Cred')).toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
+      expect(screen.getByText('API Key Cred'))!.toBeInTheDocument()
     })
 
     it('should render both OAuth and API Key sections when both exist', () => {
@@ -355,8 +372,8 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should render extra authorization items when provided', () => {
@@ -376,7 +393,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('Extra Item')).toBeInTheDocument()
+      expect(screen.getByText('Extra Item'))!.toBeInTheDocument()
     })
 
     it('should pass showSelectedIcon and selectedCredentialId to items', () => {
@@ -395,7 +412,8 @@ describe('Authorized Component', () => {
       )
 
       // Selected icon should be visible
-      expect(document.querySelector('.text-text-accent')).toBeInTheDocument()
+      // Selected icon should be visible
+      expect(document.querySelector('.text-text-accent'))!.toBeInTheDocument()
     })
   })
 
@@ -421,7 +439,7 @@ describe('Authorized Component', () => {
 
         // Confirm dialog should appear
         await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
         })
       }
     })
@@ -441,7 +459,7 @@ describe('Authorized Component', () => {
 
       // Wait for OAuth section to render
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find all SVG icons in the action area and try to find delete button
@@ -472,7 +490,8 @@ describe('Authorized Component', () => {
       }
 
       // Component should render correctly regardless of button finding
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
+      // Component should render correctly regardless of button finding
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
     })
 
     it('should call deletePluginCredential when confirm is clicked', async () => {
@@ -496,7 +515,7 @@ describe('Authorized Component', () => {
         fireEvent.click(deleteButton)
 
         await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
         })
 
         // Click confirm button
@@ -507,7 +526,7 @@ describe('Authorized Component', () => {
           expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'delete-me' })
         })
 
-        expect(mockNotify).toHaveBeenCalledWith({
+        expect(toastMocks.call).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -560,7 +579,7 @@ describe('Authorized Component', () => {
           expect(mockSetPluginDefaultCredential).toHaveBeenCalledWith('set-default-id')
         })
 
-        expect(mockNotify).toHaveBeenCalledWith({
+        expect(toastMocks.call).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -612,7 +631,7 @@ describe('Authorized Component', () => {
           })
         })
 
-        expect(mockNotify).toHaveBeenCalledWith({
+        expect(toastMocks.call).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -674,7 +693,7 @@ describe('Authorized Component', () => {
             })
           })
 
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'success',
             message: 'common.api.actionSuccess',
           })
@@ -683,7 +702,8 @@ describe('Authorized Component', () => {
       }
       else {
         // Verify component renders properly
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        // Verify component renders properly
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -706,13 +726,14 @@ describe('Authorized Component', () => {
       )
 
       // Verify component renders
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
+      // Verify component renders
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
     })
 
     it('should execute handleRename function body when saving', async () => {
       // Reset mock to ensure clean state
       mockUpdatePluginCredential.mockClear()
-      mockNotify.mockClear()
+      toastMocks.call.mockClear()
 
       const pluginPayload = createPluginPayload()
       const credentials = [
@@ -735,8 +756,9 @@ describe('Authorized Component', () => {
       )
 
       // Wait for component to render
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
-      expect(screen.getByText('Execute Rename Test')).toBeInTheDocument()
+      // Wait for component to render
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
+      expect(screen.getByText('Execute Rename Test'))!.toBeInTheDocument()
 
       // The handleRename is tested through the "should call updatePluginCredential when rename is confirmed" test
       // This test verifies the component properly renders OAuth credentials
@@ -744,7 +766,7 @@ describe('Authorized Component', () => {
 
     it('should fully execute handleRename when Item triggers onRename callback', async () => {
       mockUpdatePluginCredential.mockClear()
-      mockNotify.mockClear()
+      toastMocks.call.mockClear()
       mockUpdatePluginCredential.mockResolvedValue({})
 
       const pluginPayload = createPluginPayload()
@@ -768,7 +790,8 @@ describe('Authorized Component', () => {
       )
 
       // Verify OAuth section renders
-      expect(screen.getByText('OAuth')).toBeInTheDocument()
+      // Verify OAuth section renders
+      expect(screen.getByText('OAuth'))!.toBeInTheDocument()
 
       // Find all action buttons in the credential item
       // The rename button should be present for OAuth credentials
@@ -803,7 +826,7 @@ describe('Authorized Component', () => {
             })
 
             // Verify success notification
-            expect(mockNotify).toHaveBeenCalledWith({
+            expect(toastMocks.call).toHaveBeenCalledWith({
               type: 'success',
               message: 'common.api.actionSuccess',
             })
@@ -847,7 +870,8 @@ describe('Authorized Component', () => {
         // ApiKeyModal should appear - look for modal content
         await waitFor(() => {
           // The modal should be rendered
-          expect(document.querySelector('.fixed')).toBeInTheDocument()
+          // The modal should be rendered
+          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
         })
       }
     })
@@ -877,7 +901,7 @@ describe('Authorized Component', () => {
         fireEvent.click(editButton)
 
         await waitFor(() => {
-          expect(document.querySelector('.fixed')).toBeInTheDocument()
+          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
         })
 
         // Find and click close/cancel button in the modal
@@ -897,7 +921,8 @@ describe('Authorized Component', () => {
 
           await waitFor(() => {
             // Verify component state is cleared by checking we can open again
-            expect(screen.getByText('API Keys')).toBeInTheDocument()
+            // Verify component state is cleared by checking we can open again
+            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
       }
@@ -961,13 +986,14 @@ describe('Authorized Component', () => {
 
           // Verify state was reset - we should be able to see the credential list again
           await waitFor(() => {
-            expect(screen.getByText('API Keys')).toBeInTheDocument()
+            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
       }
       else {
         // Verify component renders
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        // Verify component renders
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
 
@@ -992,12 +1018,13 @@ describe('Authorized Component', () => {
       )
 
       // Wait for component to render
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Wait for component to render
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button by looking for settings icon
       const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
       if (settingsIcons.length > 0) {
-        const editButton = settingsIcons[0].closest('button')
+        const editButton = settingsIcons[0]!.closest('button')
         if (editButton) {
           // Click to open edit modal
           await act(async () => {
@@ -1023,7 +1050,7 @@ describe('Authorized Component', () => {
               // Verify the modal is closed and state is reset
               // The component should render normally after close
               await waitFor(() => {
-                expect(screen.getByText('API Keys')).toBeInTheDocument()
+                expect(screen.getByText('API Keys'))!.toBeInTheDocument()
               })
               break
             }
@@ -1053,12 +1080,13 @@ describe('Authorized Component', () => {
       )
 
       // Wait for component to render
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Wait for component to render
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find and click edit button to open ApiKeyModal
       const settingsIcons = document.querySelectorAll('svg.ri-equalizer-2-line')
       if (settingsIcons.length > 0) {
-        const editButton = settingsIcons[0].closest('button')
+        const editButton = settingsIcons[0]!.closest('button')
         if (editButton) {
           await act(async () => {
             fireEvent.click(editButton)
@@ -1083,7 +1111,7 @@ describe('Authorized Component', () => {
             await waitFor(() => {
               const confirmDialog = screen.queryByText('datasetDocuments.list.delete.title')
               if (confirmDialog) {
-                expect(confirmDialog).toBeInTheDocument()
+                expect(confirmDialog)!.toBeInTheDocument()
               }
             }, { timeout: 1000 })
           }
@@ -1112,7 +1140,8 @@ describe('Authorized Component', () => {
       )
 
       // Verify API Keys section is shown
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify API Keys section is shown
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button - look for buttons in the action area
       const actionAreaButtons = Array.from(document.querySelectorAll('.group-hover\\:flex button, .hidden button'))
@@ -1139,7 +1168,8 @@ describe('Authorized Component', () => {
       }
 
       // Verify component renders correctly
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component renders correctly
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should trigger handleRemove when remove button is clicked in ApiKeyModal', async () => {
@@ -1163,7 +1193,8 @@ describe('Authorized Component', () => {
       )
 
       // Verify component renders
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component renders
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button by looking for action buttons (not in the confirm dialog)
       // These are grouped in hidden elements that show on hover
@@ -1193,7 +1224,8 @@ describe('Authorized Component', () => {
       }
 
       // Verify component still works
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component still works
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should show confirm dialog when remove is clicked from edit modal', async () => {
@@ -1220,7 +1252,7 @@ describe('Authorized Component', () => {
         fireEvent.click(editButton)
 
         await waitFor(() => {
-          expect(document.querySelector('.fixed')).toBeInTheDocument()
+          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
         })
 
         // Find remove button in modal (usually has delete/remove text)
@@ -1232,7 +1264,7 @@ describe('Authorized Component', () => {
 
           // Confirm dialog should appear
           await waitFor(() => {
-            expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+            expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
           })
         }
       }
@@ -1274,7 +1306,7 @@ describe('Authorized Component', () => {
         // Wait for modal to open
         await waitFor(() => {
           const modal = document.querySelector('.fixed')
-          expect(modal).toBeInTheDocument()
+          expect(modal)!.toBeInTheDocument()
         })
 
         // Find the close/cancel button
@@ -1294,13 +1326,14 @@ describe('Authorized Component', () => {
 
           // Verify component still works after closing
           await waitFor(() => {
-            expect(screen.getByText('API Keys')).toBeInTheDocument()
+            expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
       }
       else {
         // If no edit button found, just verify the component renders
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        // If no edit button found, just verify the component renders
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
   })
@@ -1349,7 +1382,8 @@ describe('Authorized Component', () => {
       )
 
       // Should have divider and authorize buttons
-      expect(document.querySelector('.bg-divider-subtle')).toBeInTheDocument()
+      // Should have divider and authorize buttons
+      expect(document.querySelector('.bg-divider-subtle'))!.toBeInTheDocument()
     })
 
     it('should not render Authorize component when notAllowCustomCredential is true', () => {
@@ -1390,7 +1424,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(document.querySelector('.custom-popup-class')).toBeInTheDocument()
+      expect(document.querySelector('.custom-popup-class'))!.toBeInTheDocument()
     })
 
     it('should pass placement to PortalToFollowElem', () => {
@@ -1409,7 +1443,8 @@ describe('Authorized Component', () => {
       )
 
       // Component should render without error
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Component should render without error
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should pass disabled to Item components', () => {
@@ -1431,11 +1466,12 @@ describe('Authorized Component', () => {
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
       if (setDefaultButton) {
         const button = setDefaultButton.closest('button')
-        expect(button).toBeDisabled()
+        expect(button)!.toBeDisabled()
       }
       else {
         // If no set default button, verify the component rendered
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        // If no set default button, verify the component rendered
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       }
     })
 
@@ -1453,6 +1489,37 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
+      // Set default button should not be visible
       // Set default button should not be visible
       expect(screen.queryByText('plugin.auth.setDefault')).not.toBeInTheDocument()
     })
@@ -1482,7 +1549,7 @@ describe('Authorized Component', () => {
         fireEvent.click(deleteButton)
 
         await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
         })
 
         const confirmButton = screen.getByText('common.operation.confirm')
@@ -1613,7 +1680,8 @@ describe('Authorized Component', () => {
       )
 
       // Component should render without error
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Component should render without error
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
   })
 
@@ -1639,7 +1707,7 @@ describe('Authorized Component', () => {
       const onUpdate = vi.fn()
 
       mockDeletePluginCredential.mockResolvedValue({})
-      mockNotify.mockClear()
+      toastMocks.call.mockClear()
 
       render(
         <Authorized
@@ -1653,7 +1721,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find all buttons in the credential item's action area
@@ -1688,7 +1756,7 @@ describe('Authorized Component', () => {
 
         // Verify confirm dialog appears
         await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
         })
 
         // Click confirm - this calls handleConfirm
@@ -1705,7 +1773,7 @@ describe('Authorized Component', () => {
         })
 
         // Verify success notification
-        expect(mockNotify).toHaveBeenCalledWith({
+        expect(toastMocks.call).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -1720,7 +1788,8 @@ describe('Authorized Component', () => {
       }
       else {
         // Component should still render correctly
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        // Component should still render correctly
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -1743,7 +1812,8 @@ describe('Authorized Component', () => {
       )
 
       // Verify component renders
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component renders
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should prevent handleConfirm when doingAction is true', async () => {
@@ -1802,7 +1872,8 @@ describe('Authorized Component', () => {
 
       if (!foundDeleteButton) {
         // Verify component renders
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        // Verify component renders
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       }
     })
 
@@ -1821,6 +1892,99 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
+      // With no credentials, there's no way to trigger openConfirm,
+      // so pendingOperationCredentialId stays null
+      // This edge case is handled by the component's internal logic
       // With no credentials, there's no way to trigger openConfirm,
       // so pendingOperationCredentialId stays null
       // This edge case is handled by the component's internal logic
@@ -1849,7 +2013,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find delete button in action area
@@ -1898,7 +2062,7 @@ describe('Authorized Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
@@ -1911,7 +2075,7 @@ describe('Authorized Component', () => {
 
         const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
         if (confirmTitle) {
-          expect(confirmTitle).toBeInTheDocument()
+          expect(confirmTitle)!.toBeInTheDocument()
 
           // Now click cancel to execute closeConfirm
           const cancelBtn = screen.getByText('common.operation.cancel')
@@ -1930,7 +2094,7 @@ describe('Authorized Component', () => {
           })
 
           await waitFor(() => {
-            expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+            expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
           })
           break
         }
@@ -1956,7 +2120,7 @@ describe('Authorized Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
@@ -2002,7 +2166,7 @@ describe('Authorized Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
@@ -2056,7 +2220,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
       // Find edit button in action area
@@ -2083,7 +2247,7 @@ describe('Authorized Component', () => {
               await waitFor(() => {
                 const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
                 if (confirmTitle) {
-                  expect(confirmTitle).toBeInTheDocument()
+                  expect(confirmTitle)!.toBeInTheDocument()
                 }
               }, { timeout: 2000 })
             }
@@ -2093,7 +2257,8 @@ describe('Authorized Component', () => {
       }
 
       // Verify component renders correctly
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component renders correctly
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
     it('should execute handleRemove to set deleteCredentialId from pendingOperationCredentialId', async () => {
@@ -2117,7 +2282,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
       // Find and click edit button to open ApiKeyModal
@@ -2145,7 +2310,7 @@ describe('Authorized Component', () => {
                 const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
                 // If confirm dialog appears, handleRemove was called
                 if (confirmTitle) {
-                  expect(confirmTitle).toBeInTheDocument()
+                  expect(confirmTitle)!.toBeInTheDocument()
                 }
               }, { timeout: 1000 })
             }
@@ -2155,7 +2320,8 @@ describe('Authorized Component', () => {
       }
 
       // Verify component still renders correctly
-      expect(screen.getByText('API Keys')).toBeInTheDocument()
+      // Verify component still renders correctly
+      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
   })
 
@@ -2185,7 +2351,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find rename button in action area
@@ -2249,7 +2415,7 @@ describe('Authorized Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('OAuth')).toBeInTheDocument()
+        expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find rename button
@@ -2314,7 +2480,7 @@ describe('Authorized Component', () => {
 
       // Wait for component to render
       await waitFor(() => {
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
       // Find and click edit button to open modal
@@ -2336,12 +2502,12 @@ describe('Authorized Component', () => {
             if (cancelBtns.length > 0) {
               // Click the first cancel button (modal's cancel)
               await act(async () => {
-                fireEvent.click(cancelBtns[0])
+                fireEvent.click(cancelBtns[0]!)
               })
 
               // Modal should be closed
               await waitFor(() => {
-                expect(screen.getByText('API Keys')).toBeInTheDocument()
+                expect(screen.getByText('API Keys'))!.toBeInTheDocument()
               })
             }
             break
@@ -2370,7 +2536,7 @@ describe('Authorized Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('API Keys')).toBeInTheDocument()
+        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       })
 
       // Open edit modal by clicking edit button
@@ -2388,12 +2554,12 @@ describe('Authorized Component', () => {
           const cancelButtons = screen.queryAllByText('common.operation.cancel')
           if (cancelButtons.length > 0) {
             await act(async () => {
-              fireEvent.click(cancelButtons[0])
+              fireEvent.click(cancelButtons[0]!)
             })
 
             // After onClose, editValues should be null so modal won't render
             await waitFor(() => {
-              expect(screen.getByText('API Keys')).toBeInTheDocument()
+              expect(screen.getByText('API Keys'))!.toBeInTheDocument()
             })
 
             // Try opening modal again to verify state was properly reset
@@ -2403,7 +2569,7 @@ describe('Authorized Component', () => {
 
             await waitFor(() => {
               const newModal = document.querySelector('.fixed')
-              expect(newModal).toBeInTheDocument()
+              expect(newModal)!.toBeInTheDocument()
             })
           }
           break
@@ -2441,7 +2607,7 @@ describe('Authorized Component', () => {
 
         // Wait for modal
         await waitFor(() => {
-          expect(document.querySelector('.fixed')).toBeInTheDocument()
+          expect(document.querySelector('.fixed'))!.toBeInTheDocument()
         })
 
         // Close the modal via cancel
@@ -2458,7 +2624,7 @@ describe('Authorized Component', () => {
 
         // Verify component can render again normally
         await waitFor(() => {
-          expect(screen.getByText('API Keys')).toBeInTheDocument()
+          expect(screen.getByText('API Keys'))!.toBeInTheDocument()
         })
 
         // Verify we can open the modal again (state was properly reset)
@@ -2471,7 +2637,7 @@ describe('Authorized Component', () => {
           })
 
           await waitFor(() => {
-            expect(document.querySelector('.fixed')).toBeInTheDocument()
+            expect(document.querySelector('.fixed'))!.toBeInTheDocument()
           })
         }
       }
@@ -2508,7 +2674,7 @@ describe('Authorized Component', () => {
 
         // Confirm dialog should appear with the correct credential id
         await waitFor(() => {
-          expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+          expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
         })
 
         // Now click confirm to verify the correct id is used

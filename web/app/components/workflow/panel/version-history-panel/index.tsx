@@ -1,5 +1,6 @@
 'use client'
 import type { VersionHistory } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -7,10 +8,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
@@ -27,12 +27,15 @@ const INITIAL_PAGE = 1
 export type VersionHistoryPanelProps = {
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
+  restoreVersionUrl: (versionId: string) => string
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
+
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
+  restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
@@ -43,8 +46,8 @@ export const VersionHistoryPanel = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
@@ -118,10 +121,7 @@ export const VersionHistoryPanel = ({
         break
       case VersionHistoryContextMenuOptions.copyId:
         copy(item.id)
-        toast.add({
-          type: 'success',
-          title: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
         handleExportDSL?.(false, item.id)
@@ -143,33 +143,76 @@ export const VersionHistoryPanel = ({
     }
   }, [])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const emitRestoreIntent = useCallback(async (item: VersionHistory) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreIntent({
+        versionId: item.id,
+        versionName: item.marked_name,
+        initiatorUserId: userProfile.id,
+        initiatorName: userProfile.name,
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore intent:', error)
+    }
+  }, [userProfile.id, userProfile.name])
 
-  const handleRestore = useCallback((item: VersionHistory) => {
+  const emitRestoreComplete = useCallback(async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreComplete({
+        versionId: item.id,
+        success,
+        ...(errorMessage ? { error: errorMessage } : {}),
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore complete:', error)
+    }
+  }, [])
+
+  const emitWorkflowUpdate = useCallback(async () => {
+    try {
+      const appId = configsMap?.flowId
+      if (!appId)
+        return
+
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitWorkflowUpdate(appId)
+    }
+    catch (error) {
+      console.error('Failed to emit workflow update:', error)
+    }
+  }, [configsMap?.flowId])
+
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+
+  const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
-    handleRestoreFromPublishedWorkflow(item)
-    workflowStore.setState({ isRestoring: false })
-    workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        toast.add({
-          type: 'success',
-          title: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
-        deleteAllInspectVars()
-        invalidAllLastRun()
-      },
-      onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
-      },
-      onSettled: () => {
-        resetWorkflowVersionHistory()
-      },
-    })
-  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+    await emitRestoreIntent(item)
+
+    try {
+      await restoreWorkflow(restoreVersionUrl(item.id))
+      setCurrentVersion(item)
+      workflowStore.setState({ isRestoring: false })
+      workflowStore.setState({ backupDraft: undefined })
+      handleRefreshWorkflowDraft()
+      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+      deleteAllInspectVars()
+      invalidAllLastRun()
+      await emitRestoreComplete(item, true)
+      await emitWorkflowUpdate()
+    }
+    catch {
+      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      await emitRestoreComplete(item, false, 'restore failed')
+    }
+    finally {
+      resetWorkflowVersionHistory()
+    }
+  }, [setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, setCurrentVersion, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 
@@ -177,19 +220,13 @@ export const VersionHistoryPanel = ({
     await deleteWorkflow(deleteVersionUrl?.(id) || '', {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
-        toast.add({
-          type: 'success',
-          title: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.deleteSuccess', { ns: 'workflow' }))
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
         invalidAllLastRun()
       },
       onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.deleteFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         setDeleteConfirmOpen(false)
@@ -207,17 +244,11 @@ export const VersionHistoryPanel = ({
     }, {
       onSuccess: () => {
         setEditModalOpen(false)
-        toast.add({
-          type: 'success',
-          title: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.updateSuccess', { ns: 'workflow' }))
         resetWorkflowVersionHistory()
       },
       onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.updateFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         setEditModalOpen(false)
@@ -228,7 +259,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -267,7 +298,7 @@ export const VersionHistoryPanel = ({
                       )
                     })
                   ))}
-                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0]!.items.length) && (
                     <Empty onResetFilter={handleResetFilter} />
                   )}
                 </>
@@ -284,7 +315,7 @@ export const VersionHistoryPanel = ({
                   ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
                   : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
-              <div className="system-xs-medium-uppercase py-[1px] text-text-accent">
+              <div className="py-px system-xs-medium-uppercase text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>

@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -34,13 +35,14 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
-from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -60,7 +62,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -75,7 +77,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -90,28 +92,28 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -276,7 +278,7 @@ class PipelineGenerator(BaseAppGenerator):
         context: contextvars.Context,
         pipeline: Pipeline,
         workflow_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -284,7 +286,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -300,7 +302,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
+            workflow = db.session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -622,10 +624,10 @@ class PipelineGenerator(BaseAppGenerator):
         application_generate_entity: RagPipelineGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -666,7 +668,7 @@ class PipelineGenerator(BaseAppGenerator):
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Union[Account, EndUser],
+        account: Account | EndUser,
         batch: str,
         document_form: str,
     ):
@@ -713,7 +715,7 @@ class PipelineGenerator(BaseAppGenerator):
         pipeline: Pipeline,
         workflow: Workflow,
         start_node_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
         Format datasource info list.
@@ -780,7 +782,7 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
     ):
         """
         Get files in a folder.

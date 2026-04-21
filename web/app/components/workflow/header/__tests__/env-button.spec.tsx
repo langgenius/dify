@@ -49,7 +49,7 @@ describe('EnvButton', () => {
       },
     })
 
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-sm')
+    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 
   it('should keep the button disabled when the disabled prop is true', () => {

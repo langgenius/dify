@@ -114,6 +114,7 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -121,6 +122,7 @@ import pytest
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
 from models.dataset import ChildChunk, Dataset, DatasetDocument, DatasetProcessRule, DocumentSegment
 from services.vector_service import VectorService
@@ -151,11 +153,11 @@ class VectorServiceTestDataFactory:
     def create_dataset_mock(
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
-        doc_form: str = "text_model",
-        indexing_technique: str = "high_quality",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
-        index_struct_dict: dict | None = None,
+        index_struct_dict: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         """
@@ -493,7 +495,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="text_model", indexing_technique="high_quality"
+            doc_form=IndexStructureType.PARAGRAPH_INDEX, indexing_technique=IndexTechniqueType.HIGH_QUALITY
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -505,7 +507,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.create_segments_vector(keywords_list, [segment], dataset, "text_model")
+        VectorService.create_segments_vector(keywords_list, [segment], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
         # Assert
         mock_index_processor.load.assert_called_once()
@@ -521,7 +523,7 @@ class TestVectorService:
         assert call_args[1]["keywords_list"] == keywords_list
 
     @patch("services.vector_service.VectorService.generate_child_chunks")
-    @patch("services.vector_service.ModelManager")
+    @patch("services.vector_service.ModelManager.for_tenant")
     @patch("services.vector_service.db")
     def test_create_segments_vector_parent_child_indexing(
         self, mock_db, mock_model_manager, mock_generate_child_chunks
@@ -534,7 +536,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="parent_child_model", indexing_technique="high_quality"
+            doc_form="parent_child_model", indexing_technique=IndexTechniqueType.HIGH_QUALITY
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -567,7 +569,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="parent_child_model", indexing_technique="high_quality"
+            doc_form="parent_child_model", indexing_technique=IndexTechniqueType.HIGH_QUALITY
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -590,7 +592,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="parent_child_model", indexing_technique="high_quality"
+            doc_form="parent_child_model", indexing_technique=IndexTechniqueType.HIGH_QUALITY
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -615,7 +617,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="parent_child_model", indexing_technique="economy"
+            doc_form="parent_child_model", indexing_technique=IndexTechniqueType.ECONOMY
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -649,7 +651,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.create_segments_vector(None, [], dataset, "text_model")
+        VectorService.create_segments_vector(None, [], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
         # Assert
         mock_index_processor.load.assert_not_called()
@@ -668,7 +670,7 @@ class TestVectorService:
         store when using high_quality indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
 
@@ -694,7 +696,7 @@ class TestVectorService:
         index when using economy indexing with keywords.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
 
@@ -730,7 +732,7 @@ class TestVectorService:
         index when using economy indexing without keywords.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
 
@@ -894,7 +896,7 @@ class TestVectorService:
         when using high_quality indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         child_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -922,7 +924,7 @@ class TestVectorService:
         using economy indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         child_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -950,7 +952,7 @@ class TestVectorService:
         when there are new chunks, updated chunks, and deleted chunks.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         new_chunk = VectorServiceTestDataFactory.create_child_chunk_mock(chunk_id="new-chunk-1")
 
@@ -992,7 +994,7 @@ class TestVectorService:
         add_texts is called, not delete_by_ids.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         new_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -1018,7 +1020,7 @@ class TestVectorService:
         delete_by_ids is called, not add_texts.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         delete_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -1044,7 +1046,7 @@ class TestVectorService:
         using economy indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         new_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -1074,7 +1076,7 @@ class TestVectorService:
         when using high_quality indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
         child_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -1098,7 +1100,7 @@ class TestVectorService:
         using economy indexing.
         """
         # Arrange
-        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = VectorServiceTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         child_chunk = VectorServiceTestDataFactory.create_child_chunk_mock()
 
@@ -1754,7 +1756,7 @@ class TestVector:
     # ========================================================================
 
     @patch("core.rag.datasource.vdb.vector_factory.CacheEmbedding")
-    @patch("core.rag.datasource.vdb.vector_factory.ModelManager")
+    @patch("core.rag.datasource.vdb.vector_factory.ModelManager.for_tenant")
     @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
     def test_vector_get_embeddings(self, mock_init_vector, mock_model_manager, mock_cache_embedding):
         """

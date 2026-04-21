@@ -1,10 +1,11 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { toast } from '@/app/components/base/ui/toast'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'
@@ -12,13 +13,14 @@ import { createExternalKnowledgeBase } from '@/service/datasets'
 const ExternalKnowledgeBaseConnector = () => {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { t } = useTranslation()
 
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {
     try {
       setLoading(true)
       const result = await createExternalKnowledgeBase({ body: formValue })
       if (result && result.id) {
-        toast.add({ type: 'success', title: 'External Knowledge Base Connected Successfully' })
+        toast.success(t('externalKnowledgeForm.connectedSuccess', { ns: 'dataset' }))
         trackEvent('create_external_knowledge_base', {
           provider: formValue.provider,
           name: formValue.name,
@@ -29,7 +31,7 @@ const ExternalKnowledgeBaseConnector = () => {
     }
     catch (error) {
       console.error('Error creating external knowledge base:', error)
-      toast.add({ type: 'error', title: 'Failed to connect External Knowledge Base' })
+      toast.error(t('externalKnowledgeForm.connectedFailed', { ns: 'dataset' }))
     }
     setLoading(false)
   }

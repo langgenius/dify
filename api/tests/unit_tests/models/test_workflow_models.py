@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 
-from dify_graph.enums import (
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,

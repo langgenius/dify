@@ -1,11 +1,11 @@
 import type { OnResize } from 'reactflow'
 import type { CommonNodeType } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
 } from 'react'
 import { NodeResizeControl } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import { useNodesInteractions } from '../../../hooks'
 
 const Icon = () => {
@@ -41,18 +41,18 @@ const NodeResizer = ({
   return (
     <div className={cn(
       'hidden group-hover:block',
-      nodeData.selected && '!block',
+      nodeData.selected && 'block!',
     )}
     >
       <NodeResizeControl
         position="bottom-right"
-        className="!border-none !bg-transparent"
+        className="border-none! bg-transparent!"
         onResize={handleResize}
         minWidth={minWidth}
         minHeight={minHeight}
         maxWidth={maxWidth}
       >
-        <div className="absolute bottom-[1px] right-[1px]">{icon}</div>
+        <div className="absolute right-px bottom-px">{icon}</div>
       </NodeResizeControl>
     </div>
   )

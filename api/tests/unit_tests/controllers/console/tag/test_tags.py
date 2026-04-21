@@ -1,9 +1,11 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
+import controllers.console.tag.tags as module
 from controllers.console import console_ns
 from controllers.console.tag.tags import (
     TagBindingCreateApi,
@@ -11,6 +13,7 @@ from controllers.console.tag.tags import (
     TagListApi,
     TagUpdateDeleteApi,
 )
+from models.enums import TagType
 
 
 def unwrap(func):
@@ -52,7 +55,7 @@ def tag():
     tag = MagicMock()
     tag.id = "tag-1"
     tag.name = "test-tag"
-    tag.type = "knowledge"
+    tag.type = TagType.KNOWLEDGE
     return tag
 
 
@@ -82,13 +85,20 @@ class TestTagListApi:
                 ),
                 patch(
                     "controllers.console.tag.tags.TagService.get_tags",
-                    return_value=[{"id": "1", "name": "tag"}],
+                    return_value=[
+                        SimpleNamespace(
+                            id="1",
+                            name="tag",
+                            type=TagType.KNOWLEDGE,
+                            binding_count=1,
+                        )
+                    ],
                 ),
             ):
                 result, status = method(api)
 
         assert status == 200
-        assert isinstance(result, list)
+        assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
     def test_post_success(self, app, admin_user, tag, payload_patch):
         api = TagListApi()
@@ -112,6 +122,7 @@ class TestTagListApi:
 
         assert status == 200
         assert result["name"] == "test-tag"
+        assert result["binding_count"] == "0"
 
     def test_post_forbidden(self, app, readonly_user, payload_patch):
         api = TagListApi()
@@ -157,7 +168,7 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, "tag-1")
 
         assert status == 200
-        assert result["binding_count"] == 3
+        assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app, readonly_user, payload_patch):
         api = TagUpdateDeleteApi()
@@ -276,3 +287,13 @@ class TestTagBindingDeleteApi:
             ):
                 with pytest.raises(Forbidden):
                     method(api)
+
+
+class TestTagResponseModel:
+    def test_tag_response_normalizes_enum_type(self):
+        payload = module.TagResponse.model_validate(
+            {"id": "tag-1", "name": "tag", "type": TagType.KNOWLEDGE, "binding_count": 1}
+        ).model_dump(mode="json")
+
+        assert payload["type"] == "knowledge"
+        assert payload["binding_count"] == "1"

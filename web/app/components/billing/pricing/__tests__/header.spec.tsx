@@ -1,12 +1,14 @@
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { Dialog } from '@/app/components/base/ui/dialog'
 import Header from '../header'
 
 function renderHeader(onClose: () => void) {
   return render(
     <Dialog open>
-      <Header onClose={onClose} />
+      <DialogContent>
+        <Header onClose={onClose} />
+      </DialogContent>
     </Dialog>,
   )
 }
@@ -24,7 +26,7 @@ describe('Header', () => {
 
       expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.title.description')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -33,7 +35,7 @@ describe('Header', () => {
       const handleClose = vi.fn()
       renderHeader(handleClose)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
@@ -41,11 +43,11 @@ describe('Header', () => {
 
   describe('Edge Cases', () => {
     it('should render structural elements with translation keys', () => {
-      const { container } = renderHeader(vi.fn())
+      renderHeader(vi.fn())
 
-      expect(container.querySelector('span')).toBeInTheDocument()
-      expect(container.querySelector('p')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.title.description')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 })

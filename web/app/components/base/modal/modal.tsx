@@ -1,18 +1,18 @@
 /**
- * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * @deprecated Use `@langgenius/dify-ui/dialog` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 type ModalProps = {
   onClose?: () => void
@@ -46,7 +46,7 @@ const Modal = ({
   cancelButtonText,
   onCancel,
   showExtraButton,
-  extraButtonVariant = 'warning',
+  extraButtonVariant = 'primary',
   extraButtonText,
   onExtraButtonClick,
   footerSlot,
@@ -61,7 +61,7 @@ const Modal = ({
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent
-        className={cn('z-[9998] flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
+        className={cn('z-9998 flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
         onClick={clickOutsideNotClose ? noop : onClose}
       >
         <div
@@ -73,17 +73,17 @@ const Modal = ({
           )}
           onClick={e => e.stopPropagation()}
         >
-          <div className="relative shrink-0 p-6 pb-3 pr-14 text-text-primary title-2xl-semi-bold">
+          <div className="relative shrink-0 p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
             {title}
             {
               subTitle && (
-                <div className="mt-1 text-text-tertiary system-xs-regular">
+                <div className="mt-1 system-xs-regular text-text-tertiary">
                   {subTitle}
                 </div>
               )
             }
             <div
-              className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={onClose}
             >
               <span className="i-ri-close-line h-5 w-5 text-text-tertiary" data-testid="close-icon" />
@@ -109,7 +109,7 @@ const Modal = ({
                     >
                       {extraButtonText || t('operation.remove', { ns: 'common' })}
                     </Button>
-                    <div className="mx-3 h-4 w-[1px] bg-divider-regular"></div>
+                    <div className="mx-3 h-4 w-px bg-divider-regular"></div>
                   </>
                 )
               }

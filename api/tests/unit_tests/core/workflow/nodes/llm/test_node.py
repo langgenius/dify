@@ -1,44 +1,85 @@
 import base64
+import logging
 import uuid
 from collections.abc import Sequence
 from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
-from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.llm.model_access import (
+    DifyCredentialsProvider,
+    DifyModelFactory,
+    build_dify_model_access,
+    fetch_model_config,
+)
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.model_manager import ModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from dify_graph.entities import GraphInitParams
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.message_entities import (
+from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+    LLMUsage,
+)
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageRole,
+    SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from dify_graph.nodes.llm import llm_utils
-from dify_graph.nodes.llm.entities import (
+from graphon.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    FetchFrom,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
+from graphon.nodes.base.entities import VariableSelector
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
     ModelConfig,
+    PromptConfig,
     VisionConfig,
     VisionConfigOptions,
 )
-from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from graphon.nodes.llm.exc import (
+    InvalidContextStructureError,
+    LLMNodeError,
+    NoPromptFoundError,
+    VariableNotFoundError,
+)
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.node import (
+    LLMNode,
+    _calculate_rest_token,
+    _handle_completion_template,
+    _handle_memory_chat_mode,
+    _handle_memory_completion_mode,
+    _render_jinja2_message,
+)
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.template_rendering import TemplateRenderError
+from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -53,6 +94,62 @@ class MockTokenBufferMemory:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
         return self.history_messages
+
+
+def _build_prepared_llm_mock() -> mock.MagicMock:
+    model_instance = mock.MagicMock()
+    model_instance.provider = "openai"
+    model_instance.model_name = "gpt-3.5-turbo"
+    model_instance.parameters = {}
+    model_instance.stop = ()
+    model_instance.get_llm_num_tokens.return_value = 0
+    model_instance.get_model_schema.return_value = AIModelEntity(
+        model="gpt-3.5-turbo",
+        label=I18nObject(en_US="GPT-3.5 Turbo"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+        model_properties={},
+    )
+    model_instance.is_structured_output_parse_error.return_value = False
+    return model_instance
+
+
+def _build_model_schema(
+    *,
+    features: list[ModelFeature] | None = None,
+    model_properties: dict[ModelPropertyKey, object] | None = None,
+    parameter_rules: list[ParameterRule] | None = None,
+) -> AIModelEntity:
+    return AIModelEntity(
+        model="gpt-3.5-turbo",
+        label=I18nObject(en_US="GPT-3.5 Turbo"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+        features=features,
+        model_properties=model_properties or {},
+        parameter_rules=parameter_rules or [],
+    )
+
+
+def _build_image_file(
+    *,
+    file_id: str,
+    related_id: str,
+    remote_url: str,
+    extension: str = ".png",
+    mime_type: str = "image/png",
+) -> File:
+    return File(
+        file_id=file_id,
+        file_type=FileType.IMAGE,
+        filename=f"{file_id}{extension}",
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url=remote_url,
+        related_id=related_id,
+        extension=extension,
+        mime_type=mime_type,
+        storage_key="",
+    )
 
 
 @pytest.fixture
@@ -91,7 +188,7 @@ def graph_init_params() -> GraphInitParams:
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable.default(),
+        system_variables=default_system_variables(),
         user_inputs={},
     )
     return GraphRuntimeState(
@@ -107,22 +204,18 @@ def llm_node(
     mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
+    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        config=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
-        model_instance=mock.MagicMock(spec=ModelInstance),
+        model_instance=_build_prepared_llm_mock(),
         llm_file_saver=mock_file_saver,
-        template_renderer=mock_template_renderer,
+        prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
     )
     return node
@@ -132,28 +225,31 @@ def llm_node(
 def model_config(monkeypatch):
     from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
 
-    def mock_plugin_model_providers(_self):
-        providers = MockModelClass().fetch_model_providers("test")
-        for provider in providers:
-            provider.declaration.provider = f"{provider.plugin_id}/{provider.declaration.provider}"
+    def mock_model_providers(_self):
+        providers = []
+        for provider in MockModelClass().fetch_model_providers("test"):
+            provider_schema = provider.declaration.model_copy(deep=True)
+            provider_schema.provider = f"{provider.plugin_id}/{provider.provider}"
+            provider_schema.provider_name = provider.provider
+            providers.append(provider_schema)
         return providers
 
     monkeypatch.setattr(
         ModelProviderFactory,
-        "get_plugin_model_providers",
-        mock_plugin_model_providers,
+        "get_model_providers",
+        mock_model_providers,
     )
 
     # Create actual provider and model type instances
-    model_provider_factory = ModelProviderFactory(tenant_id="test")
-    provider_instance = model_provider_factory.get_plugin_model_provider("openai")
+    model_provider_factory = ModelProviderFactory(model_runtime=create_plugin_model_runtime(tenant_id="test"))
+    provider_instance = model_provider_factory.get_model_provider("openai")
     model_type_instance = model_provider_factory.get_model_type_instance("openai", ModelType.LLM)
 
     # Create a ProviderModelBundle
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
             tenant_id="1",
-            provider=provider_instance.declaration,
+            provider=provider_instance,
             preferred_provider_type=ProviderType.CUSTOM,
             using_provider_type=ProviderType.CUSTOM,
             system_configuration=SystemConfiguration(enabled=False),
@@ -181,13 +277,18 @@ def model_config(monkeypatch):
     )
 
 
-def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsEntity):
+def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_config: ModelConfigWithCredentialsEntity):
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    mock_model_factory = mock.MagicMock(spec=ModelFactory)
+    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
 
     provider_model_bundle = model_config.provider_model_bundle
     model_type_instance = provider_model_bundle.model_type_instance
     provider_model = mock.MagicMock()
+    completion_params = {
+        "temperature": 0.7,
+        "max_tokens": 256,
+        "stop": ["Observation:", "Human:"],
+    }
 
     model_instance = mock.MagicMock(
         model_type_instance=model_type_instance,
@@ -208,12 +309,36 @@ def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsE
             model_type_instance.__class__, "get_model_schema", return_value=model_config.model_schema, autospec=True
         ),
     ):
-        fetch_model_config(
-            node_data_model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+        hydrated_model_instance, model_config_with_credentials = fetch_model_config(
+            node_data_model=ModelConfig(
+                provider="openai",
+                name="gpt-3.5-turbo",
+                mode="chat",
+                completion_params=completion_params,
+            ),
             credentials_provider=mock_credentials_provider,
             model_factory=mock_model_factory,
         )
 
+    assert hydrated_model_instance is model_instance
+    assert hydrated_model_instance.provider == "openai"
+    assert hydrated_model_instance.model_name == "gpt-3.5-turbo"
+    assert hydrated_model_instance.credentials == {"api_key": "test"}
+    assert hydrated_model_instance.parameters == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+    }
+    assert hydrated_model_instance.stop == ("Observation:", "Human:")
+    assert model_config_with_credentials.parameters == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+    }
+    assert model_config_with_credentials.stop == ["Observation:", "Human:"]
+    assert completion_params == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+        "stop": ["Observation:", "Human:"],
+    }
     mock_credentials_provider.fetch.assert_called_once_with("openai", "gpt-3.5-turbo")
     mock_model_factory.init_model_instance.assert_called_once_with("openai", "gpt-3.5-turbo")
     provider_model.raise_for_status.assert_called_once()
@@ -230,12 +355,20 @@ def test_dify_model_access_adapters_call_managers():
     mock_provider_configuration.get_provider_model.return_value = mock_provider_model
     mock_provider_configuration.get_current_credentials.return_value = {"api_key": "test"}
 
-    credentials_provider = DifyCredentialsProvider(
+    run_context = DifyRunContext(
         tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    credentials_provider = DifyCredentialsProvider(
+        run_context=run_context,
         provider_manager=mock_provider_manager,
     )
     model_factory = DifyModelFactory(
-        tenant_id="tenant",
+        run_context=run_context,
         model_manager=mock_model_manager,
     )
 
@@ -255,19 +388,19 @@ def test_dify_model_access_adapters_call_managers():
         model="gpt-3.5-turbo",
     )
     mock_provider_model.raise_for_status.assert_called_once()
-    mock_model_manager.get_model_instance.assert_called_once_with(
-        tenant_id="tenant",
-        provider="openai",
-        model_type=ModelType.LLM,
-        model="gpt-3.5-turbo",
-    )
+    mock_model_manager.get_model_instance.assert_called_once()
+    assert mock_model_manager.get_model_instance.call_args.kwargs == {
+        "tenant_id": "tenant",
+        "provider": "openai",
+        "model_type": ModelType.LLM,
+        "model": "gpt-3.5-turbo",
+    }
 
 
 def test_fetch_files_with_file_segment():
     file = File(
-        id="1",
-        tenant_id="test",
-        type=FileType.IMAGE,
+        file_id="1",
+        file_type=FileType.IMAGE,
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="1",
@@ -283,18 +416,16 @@ def test_fetch_files_with_file_segment():
 def test_fetch_files_with_array_file_segment():
     files = [
         File(
-            id="1",
-            tenant_id="test",
-            type=FileType.IMAGE,
+            file_id="1",
+            file_type=FileType.IMAGE,
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="1",
             storage_key="",
         ),
         File(
-            id="2",
-            tenant_id="test",
-            type=FileType.IMAGE,
+            file_id="2",
+            file_type=FileType.IMAGE,
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="2",
@@ -343,7 +474,6 @@ def test_fetch_files_with_non_existent_variable():
 # files = [
 #     File(
 #         id="1",
-#         tenant_id="test",
 #         type=FileType.IMAGE,
 #         filename="test1.jpg",
 #         transfer_method=FileTransferMethod.REMOTE_URL,
@@ -448,7 +578,6 @@ def test_fetch_files_with_non_existent_variable():
 #         sys_query=fake_query,
 #         sys_files=[
 #             File(
-#                 tenant_id="test",
 #                 type=FileType.IMAGE,
 #                 filename="test1.jpg",
 #                 transfer_method=FileTransferMethod.REMOTE_URL,
@@ -524,7 +653,6 @@ def test_fetch_files_with_non_existent_variable():
 #         + [UserPromptMessage(content=fake_query)],
 #         file_variables={
 #             "input.image": File(
-#                 tenant_id="test",
 #                 type=FileType.IMAGE,
 #                 filename="test1.jpg",
 #                 transfer_method=FileTransferMethod.REMOTE_URL,
@@ -569,7 +697,7 @@ def test_fetch_files_with_non_existent_variable():
 def test_handle_list_messages_basic(llm_node):
     messages = [
         LLMNodeChatModelMessage(
-            text="Hello, {#context#}",
+            text="Hello, {{#context#}}",
             role=PromptMessageRole.USER,
             edition_type="basic",
         )
@@ -592,31 +720,413 @@ def test_handle_list_messages_basic(llm_node):
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
 
 
-def test_handle_list_messages_jinja2_uses_template_renderer(llm_node):
-    llm_node._template_renderer.render_jinja2.return_value = "Hello, world"
+def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node):
     messages = [
         LLMNodeChatModelMessage(
-            text="",
-            jinja2_text="Hello, {{ name }}",
-            role=PromptMessageRole.USER,
-            edition_type="jinja2",
+            text="Answer user's question with the following context:\n\n{{#context#}}",
+            role=PromptMessageRole.SYSTEM,
+            edition_type="basic",
         )
     ]
+    context = "## Overview\nSends a JSON request."
 
     result = llm_node.handle_list_messages(
         messages=messages,
-        context=None,
+        context=context,
         jinja2_variables=[],
         variable_pool=llm_node.graph_runtime_state.variable_pool,
         vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-        template_renderer=llm_node._template_renderer,
     )
 
-    assert result == [UserPromptMessage(content=[TextPromptMessageContent(data="Hello, world")])]
-    llm_node._template_renderer.render_jinja2.assert_called_once_with(
-        template="Hello, {{ name }}",
-        inputs={},
+    assert len(result) == 1
+    assert isinstance(result[0].content, list)
+    assert result[0].content == [
+        TextPromptMessageContent(
+            data="Answer user's question with the following context:\n\n## Overview\nSends a JSON request."
+        )
+    ]
+
+
+def test_handle_list_messages_renders_jinja2_messages(llm_node):
+    llm_node.graph_runtime_state.variable_pool.add(["input", "name"], "Dify")
+    renderer = mock.MagicMock()
+    renderer.render_template.return_value = "Hello Dify"
+
+    prompt_messages = llm_node.handle_list_messages(
+        messages=[
+            LLMNodeChatModelMessage(
+                text="ignored",
+                jinja2_text="Hello {{ name }}",
+                role=PromptMessageRole.SYSTEM,
+                edition_type="jinja2",
+            )
+        ],
+        context="",
+        jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        jinja2_template_renderer=renderer,
     )
+
+    assert prompt_messages == [
+        SystemPromptMessage(content=[TextPromptMessageContent(data="Hello Dify")]),
+    ]
+    renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
+
+
+def test_transform_chat_messages_prefers_jinja2_text(llm_node):
+    completion_template = LLMNodeCompletionModelPromptTemplate(
+        text="ignored",
+        jinja2_text="completion prompt",
+        edition_type="jinja2",
+    )
+    chat_messages = [
+        LLMNodeChatModelMessage(
+            text="ignored",
+            jinja2_text="chat prompt",
+            role=PromptMessageRole.USER,
+            edition_type="jinja2",
+        ),
+        LLMNodeChatModelMessage(
+            text="keep original",
+            role=PromptMessageRole.SYSTEM,
+            edition_type="basic",
+        ),
+    ]
+
+    transformed_completion = llm_node._transform_chat_messages(completion_template)
+    transformed_messages = llm_node._transform_chat_messages(chat_messages)
+
+    assert transformed_completion.text == "completion prompt"
+    assert transformed_messages[0].text == "chat prompt"
+    assert transformed_messages[1].text == "keep original"
+
+
+def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
+    llm_node.graph_runtime_state.variable_pool.add(
+        ["input", "items"],
+        ["alpha", {"metadata": {"_source": "knowledge"}, "content": "beta"}, 3],
+    )
+    llm_node.graph_runtime_state.variable_pool.add(
+        ["input", "context_doc"],
+        {"metadata": {"_source": "knowledge"}, "content": "context body"},
+    )
+    llm_node.graph_runtime_state.variable_pool.add(["input", "payload"], {"a": 1})
+
+    node_data = llm_node.node_data.model_copy(
+        update={
+            "prompt_config": PromptConfig(
+                jinja2_variables=[
+                    VariableSelector(variable="items", value_selector=["input", "items"]),
+                    VariableSelector(variable="context_doc", value_selector=["input", "context_doc"]),
+                    VariableSelector(variable="payload", value_selector=["input", "payload"]),
+                ]
+            )
+        }
+    )
+
+    assert llm_node._fetch_jinja_inputs(node_data) == {
+        "items": "alpha\nbeta\n3",
+        "context_doc": "context body",
+        "payload": '{"a": 1}',
+    }
+
+
+def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
+    node_data = llm_node.node_data.model_copy(
+        update={
+            "prompt_config": PromptConfig(
+                jinja2_variables=[VariableSelector(variable="missing", value_selector=["input", "missing"])]
+            )
+        }
+    )
+
+    with pytest.raises(VariableNotFoundError, match="Variable missing not found"):
+        llm_node._fetch_jinja_inputs(node_data)
+
+
+def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
+    llm_node.graph_runtime_state.variable_pool.add(["input", "name"], "Dify")
+    llm_node.graph_runtime_state.variable_pool.add(["input", "payload"], {"active": True})
+
+    node_data = llm_node.node_data.model_copy(
+        update={
+            "prompt_template": [
+                LLMNodeChatModelMessage(
+                    text="Hello {{#input.name#}} with {{#input.payload#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            "memory": MemoryConfig(
+                role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
+                window=MemoryConfig.WindowConfig(enabled=True, size=1),
+                query_prompt_template="Repeat {{#input.name#}}",
+            ),
+        }
+    )
+
+    assert llm_node._fetch_inputs(node_data) == {
+        "#input.name#": "Dify",
+        "#input.payload#": {"active": True},
+    }
+
+
+def test_fetch_context_emits_string_context_event(llm_node):
+    llm_node.graph_runtime_state.variable_pool.add(["context", "value"], "retrieved context")
+    node_data = llm_node.node_data.model_copy(
+        update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
+    )
+
+    events = list(llm_node._fetch_context(node_data))
+
+    assert events == [
+        RunRetrieverResourceEvent(retriever_resources=[], context="retrieved context", context_files=[]),
+    ]
+
+
+def test_fetch_context_collects_retriever_resources_and_attachments(llm_node):
+    attachment = _build_image_file(
+        file_id="attachment",
+        related_id="attachment-related",
+        remote_url="https://example.com/attachment.png",
+    )
+    llm_node._retriever_attachment_loader = mock.MagicMock()
+    llm_node._retriever_attachment_loader.load.return_value = [attachment]
+
+    llm_node.graph_runtime_state.variable_pool.add(
+        ["context", "value"],
+        [
+            {
+                "content": "chunk body",
+                "summary": "chunk summary",
+                "files": [{"id": "file-1"}],
+                "metadata": {
+                    "_source": "knowledge",
+                    "dataset_id": "dataset-1",
+                    "segment_id": "segment-1",
+                    "segment_word_count": 12,
+                },
+            },
+            "tail text",
+        ],
+    )
+    node_data = llm_node.node_data.model_copy(
+        update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
+    )
+
+    events = list(llm_node._fetch_context(node_data))
+
+    assert len(events) == 1
+    event = events[0]
+    assert event.context == "chunk summary\nchunk body\ntail text"
+    assert event.context_files == [attachment]
+    assert event.retriever_resources == [
+        {
+            "position": None,
+            "dataset_id": "dataset-1",
+            "dataset_name": None,
+            "document_id": None,
+            "document_name": None,
+            "data_source_type": None,
+            "segment_id": "segment-1",
+            "retriever_from": None,
+            "score": None,
+            "hit_count": None,
+            "word_count": 12,
+            "segment_position": None,
+            "index_node_hash": None,
+            "content": "chunk body",
+            "page": None,
+            "doc_metadata": None,
+            "files": [{"id": "file-1"}],
+            "summary": "chunk summary",
+        }
+    ]
+    llm_node._retriever_attachment_loader.load.assert_called_once_with(segment_id="segment-1")
+
+
+def test_fetch_context_rejects_invalid_context_structure(llm_node):
+    llm_node.graph_runtime_state.variable_pool.add(["context", "value"], [{"summary": "missing content"}])
+    node_data = llm_node.node_data.model_copy(
+        update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
+    )
+
+    with pytest.raises(InvalidContextStructureError, match="Invalid context structure"):
+        list(llm_node._fetch_context(node_data))
+
+
+def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
+    model_instance = _build_prepared_llm_mock()
+    model_instance.get_model_schema.return_value = _build_model_schema(features=[ModelFeature.VISION])
+
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+    memory.get_history_prompt_messages.return_value = [AssistantPromptMessage(content="history answer")]
+
+    sys_file = _build_image_file(file_id="sys-file", related_id="sys-related", remote_url="https://example.com/sys.png")
+    context_file = _build_image_file(
+        file_id="context-file",
+        related_id="context-related",
+        remote_url="https://example.com/context.png",
+    )
+
+    prompt_content_side_effect = [
+        ImagePromptMessageContent(
+            url="https://example.com/sys.png",
+            format="png",
+            mime_type="image/png",
+            detail=ImagePromptMessageContent.DETAIL.HIGH,
+        ),
+        ImagePromptMessageContent(
+            url="https://example.com/context.png",
+            format="png",
+            mime_type="image/png",
+            detail=ImagePromptMessageContent.DETAIL.HIGH,
+        ),
+    ]
+
+    with mock.patch("graphon.nodes.llm.node.file_manager.to_prompt_message_content") as mock_to_prompt:
+        mock_to_prompt.side_effect = prompt_content_side_effect
+        prompt_messages, stop = LLMNode.fetch_prompt_messages(
+            sys_query="current question",
+            sys_files=[sys_file],
+            context="",
+            memory=memory,
+            model_instance=model_instance,
+            prompt_template=[
+                LLMNodeChatModelMessage(
+                    text="Before query",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            stop=("STOP",),
+            memory_config=MemoryConfig(
+                window=MemoryConfig.WindowConfig(enabled=False),
+            ),
+            vision_enabled=True,
+            vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            variable_pool=VariablePool.empty(),
+            jinja2_variables=[],
+            context_files=[context_file],
+        )
+
+    assert stop == ("STOP",)
+    assert prompt_messages[0] == UserPromptMessage(content="Before query")
+    assert prompt_messages[1] == AssistantPromptMessage(content="history answer")
+    assert isinstance(prompt_messages[2], UserPromptMessage)
+    assert isinstance(prompt_messages[2].content, list)
+    assert isinstance(prompt_messages[2].content[0], ImagePromptMessageContent)
+    assert isinstance(prompt_messages[2].content[1], ImagePromptMessageContent)
+    assert isinstance(prompt_messages[2].content[2], TextPromptMessageContent)
+    assert prompt_messages[2].content[0].url == "https://example.com/context.png"
+    assert prompt_messages[2].content[1].url == "https://example.com/sys.png"
+    assert prompt_messages[2].content[2].data == "current question"
+    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=None)
+
+
+def test_fetch_prompt_messages_completion_mode_injects_histories_and_query():
+    model_instance = _build_prepared_llm_mock()
+    model_instance.get_model_schema.return_value = _build_model_schema(features=[])
+
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+    memory.get_history_prompt_messages.return_value = [
+        UserPromptMessage(content="previous question"),
+        AssistantPromptMessage(content="previous answer"),
+    ]
+
+    prompt_messages, stop = LLMNode.fetch_prompt_messages(
+        sys_query="latest question",
+        sys_files=[],
+        context="",
+        memory=memory,
+        model_instance=model_instance,
+        prompt_template=LLMNodeCompletionModelPromptTemplate(
+            text="Prompt header\n#histories#",
+            edition_type="basic",
+        ),
+        stop=("HALT",),
+        memory_config=MemoryConfig(
+            role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
+            window=MemoryConfig.WindowConfig(enabled=True, size=2),
+        ),
+        vision_enabled=False,
+        vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+        variable_pool=VariablePool.empty(),
+        jinja2_variables=[],
+    )
+
+    assert stop == ("HALT",)
+    assert prompt_messages == [
+        UserPromptMessage(
+            content="latest question\nPrompt header\nHuman: previous question\nAssistant: previous answer"
+        )
+    ]
+
+
+def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains():
+    model_instance = _build_prepared_llm_mock()
+    model_instance.get_model_schema.return_value = _build_model_schema(features=[])
+
+    variable_pool = VariablePool.empty()
+    variable_pool.add(
+        ["input", "image"],
+        _build_image_file(file_id="image-file", related_id="image-related", remote_url="https://example.com/file.png"),
+    )
+
+    with (
+        mock.patch(
+            "graphon.nodes.llm.node.file_manager.to_prompt_message_content",
+            return_value=ImagePromptMessageContent(
+                url="https://example.com/file.png",
+                format="png",
+                mime_type="image/png",
+                detail=ImagePromptMessageContent.DETAIL.HIGH,
+            ),
+        ),
+        pytest.raises(NoPromptFoundError, match="No prompt found"),
+    ):
+        LLMNode.fetch_prompt_messages(
+            sys_query=None,
+            sys_files=[],
+            context="",
+            memory=None,
+            model_instance=model_instance,
+            prompt_template=[
+                LLMNodeChatModelMessage(
+                    text="{{#input.image#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            stop=None,
+            memory_config=None,
+            vision_enabled=False,
+            vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            variable_pool=variable_pool,
+            jinja2_variables=[],
+        )
+
+
+def test_handle_completion_template_replaces_double_brace_context_placeholder(llm_node):
+    prompt_messages = _handle_completion_template(
+        template=LLMNodeCompletionModelPromptTemplate(
+            text="Summarize the following context:\n{{#context#}}",
+            edition_type="basic",
+        ),
+        context="## Overview\nSends a JSON request.",
+        jinja2_variables=[],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        jinja2_template_renderer=None,
+    )
+
+    assert prompt_messages == [
+        UserPromptMessage(
+            content=[
+                TextPromptMessageContent(data="Summarize the following context:\n## Overview\nSends a JSON request.")
+            ]
+        )
+    ]
 
 
 def test_handle_memory_completion_mode_uses_prompt_message_interface():
@@ -635,15 +1145,15 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         AssistantPromptMessage(content="first answer"),
     ]
 
-    model_instance = mock.MagicMock(spec=ModelInstance)
+    model_instance = _build_prepared_llm_mock()
 
     memory_config = MemoryConfig(
         role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=2000) as mock_rest_token:
-        memory_text = llm_utils.handle_memory_completion_mode(
+    with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = _handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
             model_instance=model_instance,
@@ -659,22 +1169,18 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
+    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        config=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
-        model_instance=mock.MagicMock(spec=ModelInstance),
+        model_instance=_build_prepared_llm_mock(),
         llm_file_saver=mock_file_saver,
-        template_renderer=mock_template_renderer,
+        prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
     )
     return node, mock_file_saver
@@ -689,9 +1195,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/png",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            tenant_id="1",
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -720,9 +1225,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/jpg",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            tenant_id="1",
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -750,6 +1254,10 @@ def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
 
 
 class TestSaveMultimodalOutputAndConvertResultToMarkdown:
+    class _UnknownItem:
+        def __str__(self) -> str:
+            return "<unknown-item>"
+
     def test_str_content(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
@@ -775,9 +1283,8 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         image_b64_data = base64.b64encode(image_raw_data).decode()
 
         mock_saved_file = File(
-            id=str(uuid.uuid4()),
-            tenant_id="1",
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             filename="test.png",
             extension=".png",
@@ -820,18 +1327,23 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
     def test_unknown_content_type(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)), file_saver=mock_file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
         llm_node, mock_file_saver = llm_node_for_multimodal
-        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=[frozenset(["hello world"])], file_saver=mock_file_saver, file_outputs=[]
-        )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        unknown_item = self._UnknownItem()
+
+        with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
+            gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+                contents=[unknown_item], file_saver=mock_file_saver, file_outputs=[]
+            )
+            assert list(gen) == [str(unknown_item)]
+
+        assert "unknown item type encountered" in caplog.text
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
@@ -906,3 +1418,319 @@ class TestReasoningFormat:
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
+
+
+@pytest.mark.parametrize(
+    ("structured_output_enabled", "structured_output"),
+    [
+        (False, None),
+        (True, {"schema": {"type": "object", "properties": {"answer": {"type": "string"}}}}),
+    ],
+)
+def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enabled, structured_output):
+    model_instance = _build_prepared_llm_mock()
+    prompt_messages = [UserPromptMessage(content="hello")]
+    file_saver = mock.MagicMock(spec=LLMFileSaver)
+
+    model_instance.invoke_llm.return_value = iter([])
+    model_instance.invoke_llm_with_structured_output.return_value = iter([])
+
+    with (
+        mock.patch.object(LLMNode, "handle_invoke_result", return_value=iter(["handled"])) as mock_handle,
+        mock.patch("graphon.nodes.llm.node.time.perf_counter", return_value=10.0),
+    ):
+        result = list(
+            LLMNode.invoke_llm(
+                model_instance=model_instance,
+                prompt_messages=prompt_messages,
+                stop=("STOP",),
+                structured_output_enabled=structured_output_enabled,
+                structured_output=structured_output,
+                file_saver=file_saver,
+                file_outputs=[],
+                node_id="node-1",
+                reasoning_format="separated",
+            )
+        )
+
+    assert result == ["handled"]
+    if structured_output_enabled:
+        model_instance.invoke_llm_with_structured_output.assert_called_once_with(
+            prompt_messages=prompt_messages,
+            json_schema={"type": "object", "properties": {"answer": {"type": "string"}}},
+            model_parameters={},
+            stop=("STOP",),
+            stream=True,
+        )
+        model_instance.invoke_llm.assert_not_called()
+    else:
+        model_instance.invoke_llm.assert_called_once_with(
+            prompt_messages=prompt_messages,
+            model_parameters={},
+            tools=None,
+            stop=("STOP",),
+            stream=True,
+        )
+        model_instance.invoke_llm_with_structured_output.assert_not_called()
+
+    assert mock_handle.call_args.kwargs["request_start_time"] == 10.0
+
+
+def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_output():
+    usage = LLMUsage.from_metadata({"prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16})
+    first_chunk = LLMResultChunkWithStructuredOutput(
+        model="gpt-3.5-turbo",
+        prompt_messages=[],
+        delta=LLMResultChunkDelta(
+            index=0,
+            message=AssistantPromptMessage(content=[TextPromptMessageContent(data="<think>plan</think>")]),
+        ),
+        structured_output={"draft": True},
+    )
+    final_chunk = LLMResultChunk(
+        model="gpt-3.5-turbo",
+        prompt_messages=[],
+        delta=LLMResultChunkDelta(
+            index=1,
+            message=AssistantPromptMessage(content=[TextPromptMessageContent(data="answer")]),
+            usage=usage,
+            finish_reason="stop",
+        ),
+    )
+
+    with mock.patch("graphon.nodes.llm.node.time.perf_counter", side_effect=[2.0, 5.0]):
+        events = list(
+            LLMNode.handle_invoke_result(
+                invoke_result=iter([first_chunk, final_chunk]),
+                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_outputs=[],
+                node_id="node-1",
+                model_instance=_build_prepared_llm_mock(),
+                reasoning_format="separated",
+                request_start_time=1.0,
+            )
+        )
+
+    assert events[0] == first_chunk
+    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="<think>plan</think>", is_final=False)
+    assert events[2] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+
+    completed = events[3]
+    assert isinstance(completed, ModelInvokeCompletedEvent)
+    assert completed.text == "answer"
+    assert completed.reasoning_content == "plan"
+    assert completed.structured_output == {"draft": True}
+    assert completed.finish_reason == "stop"
+    assert completed.usage.total_tokens == 16
+    assert completed.usage.latency == 4.0
+    assert completed.usage.time_to_first_token == 1.0
+    assert completed.usage.time_to_generate == 3.0
+
+
+def test_handle_invoke_result_wraps_structured_output_parse_errors():
+    model_instance = _build_prepared_llm_mock()
+    model_instance.is_structured_output_parse_error.return_value = True
+
+    def broken_stream():
+        raise ValueError("bad json")
+        yield
+
+    with pytest.raises(LLMNodeError, match="Failed to parse structured output: bad json"):
+        list(
+            LLMNode.handle_invoke_result(
+                invoke_result=broken_stream(),
+                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_outputs=[],
+                node_id="node-1",
+                model_instance=model_instance,
+            )
+        )
+
+
+def test_handle_blocking_result_extracts_reasoning_and_structured_output():
+    invoke_result = LLMResultWithStructuredOutput(
+        model="gpt-3.5-turbo",
+        prompt_messages=[],
+        message=AssistantPromptMessage(content="<think>reasoning</think>final answer"),
+        usage=LLMUsage.empty_usage(),
+        structured_output={"answer": "final answer"},
+    )
+
+    event = LLMNode.handle_blocking_result(
+        invoke_result=invoke_result,
+        saver=mock.MagicMock(spec=LLMFileSaver),
+        file_outputs=[],
+        reasoning_format="separated",
+        request_latency=1.2345,
+    )
+
+    assert event.text == "final answer"
+    assert event.reasoning_content == "reasoning"
+    assert event.structured_output == {"answer": "final answer"}
+    assert event.usage.latency == 1.234
+
+
+def test_fetch_structured_output_schema_validates_payload():
+    assert LLMNode.fetch_structured_output_schema(structured_output={"schema": {"type": "object"}}) == {
+        "type": "object"
+    }
+
+    with pytest.raises(LLMNodeError, match="Please provide a valid structured output schema"):
+        LLMNode.fetch_structured_output_schema(structured_output={})
+
+    with pytest.raises(LLMNodeError, match="structured_output_schema must be a JSON object"):
+        LLMNode.fetch_structured_output_schema(structured_output={"schema": ["not", "an", "object"]})
+
+
+def test_extract_variable_selector_to_variable_mapping_includes_runtime_selectors():
+    node_data = LLMNodeData(
+        title="Test LLM",
+        model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+        prompt_template=[
+            LLMNodeChatModelMessage(
+                text="Hello {{#input.name#}}",
+                role=PromptMessageRole.USER,
+                edition_type="basic",
+            ),
+            LLMNodeChatModelMessage(
+                text="ignored",
+                jinja2_text="Hello {{ name }}",
+                role=PromptMessageRole.SYSTEM,
+                edition_type="jinja2",
+            ),
+        ],
+        prompt_config=PromptConfig(
+            jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])]
+        ),
+        memory=MemoryConfig(
+            window=MemoryConfig.WindowConfig(enabled=True, size=1),
+            query_prompt_template="Repeat {{#sys.query#}}",
+        ),
+        context=ContextConfig(enabled=True, variable_selector=["context", "value"]),
+        vision=VisionConfig(enabled=True),
+    )
+
+    mapping = LLMNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="llm-1",
+        node_data=node_data,
+    )
+
+    assert mapping == {
+        "llm-1.#input.name#": ["input", "name"],
+        "llm-1.#sys.query#": ["sys", "query"],
+        "llm-1.#context#": ["context", "value"],
+        "llm-1.#files#": ["sys", "files"],
+        "llm-1.name": ["input", "name"],
+    }
+
+
+def test_render_jinja2_message_requires_renderer_and_passes_inputs():
+    variable_pool = VariablePool.empty()
+    variable_pool.add(["input", "name"], "Dify")
+    variables = [VariableSelector(variable="name", value_selector=["input", "name"])]
+
+    with pytest.raises(
+        TemplateRenderError,
+        match="LLMNode requires an injected jinja2_template_renderer for jinja2 prompts",
+    ):
+        _render_jinja2_message(
+            template="Hello {{ name }}",
+            jinja2_variables=variables,
+            variable_pool=variable_pool,
+            jinja2_template_renderer=None,
+        )
+
+    renderer = mock.MagicMock()
+    renderer.render_template.return_value = "Hello Dify"
+
+    assert (
+        _render_jinja2_message(
+            template="Hello {{ name }}",
+            jinja2_variables=variables,
+            variable_pool=variable_pool,
+            jinja2_template_renderer=renderer,
+        )
+        == "Hello Dify"
+    )
+    renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
+
+
+def test_calculate_rest_token_uses_context_size_and_max_tokens():
+    model_instance = _build_prepared_llm_mock()
+    model_instance.parameters = {"max_tokens": 512}
+    model_instance.get_model_schema.return_value = _build_model_schema(
+        model_properties={ModelPropertyKey.CONTEXT_SIZE: 4096},
+        parameter_rules=[
+            ParameterRule(
+                name="max_tokens",
+                label=I18nObject(en_US="Max Tokens"),
+                type=ParameterType.INT,
+            )
+        ],
+    )
+    model_instance.get_llm_num_tokens.return_value = 1000
+
+    assert (
+        _calculate_rest_token(
+            prompt_messages=[UserPromptMessage(content="hello")],
+            model_instance=model_instance,
+        )
+        == 2584
+    )
+
+
+def test_handle_memory_chat_mode_uses_calculated_token_budget():
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+    history = [UserPromptMessage(content="question")]
+    memory.get_history_prompt_messages.return_value = history
+
+    with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=321) as mock_rest_token:
+        result = _handle_memory_chat_mode(
+            memory=memory,
+            memory_config=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=True, size=2)),
+            model_instance=_build_prepared_llm_mock(),
+        )
+
+    assert result == history
+    mock_rest_token.assert_called_once()
+    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=321, message_limit=2)
+
+
+def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected():
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    with mock.patch("core.app.llm.model_access.create_plugin_provider_manager") as mock_provider_manager_factory:
+        DifyCredentialsProvider(run_context=run_context, provider_manager=mock.MagicMock())
+        DifyModelFactory(run_context=run_context, model_manager=mock.MagicMock())
+
+    mock_provider_manager_factory.assert_not_called()
+
+
+def test_build_dify_model_access_binds_run_context_user_id_once():
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    with mock.patch("core.app.llm.model_access.create_plugin_provider_manager") as mock_provider_manager:
+        build_dify_model_access(run_context)
+
+    mock_provider_manager.assert_called_once_with(tenant_id="tenant", user_id="user")
+
+
+def test_dify_model_access_requires_run_context_argument():
+    with pytest.raises(TypeError):
+        DifyCredentialsProvider()
+
+    with pytest.raises(TypeError):
+        DifyModelFactory()

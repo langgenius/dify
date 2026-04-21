@@ -1,11 +1,11 @@
 import type { ResponseError } from '@/service/fetch'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
@@ -35,18 +35,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      toast.add({
-        type: 'error',
-        title: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      toast.add({ type: 'error', title: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
@@ -83,18 +80,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         }
       }
       else {
-        toast.add({
-          type: 'error',
-          title: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
       if ((error as ResponseError).code === 'authentication_failed') {
-        toast.add({
-          type: 'error',
-          title: t('error.invalidEmailOrPassword', { ns: 'login' }),
-        })
+        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
     }
     finally {
@@ -105,7 +96,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">
+        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
@@ -124,7 +115,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="text-text-secondary system-md-semibold">{t('password', { ns: 'login' })}</span>
+          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}

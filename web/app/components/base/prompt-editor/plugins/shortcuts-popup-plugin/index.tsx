@@ -7,6 +7,7 @@ import {
   size,
   useFloating,
 } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $getSelection,
@@ -20,7 +21,6 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '@/utils/classnames'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
 
@@ -141,7 +141,7 @@ export default function ShortcutsPopupPlugin({
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
-  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/jsdom). @preserve */
+  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/test DOM runtime). @preserve */
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
@@ -203,14 +203,14 @@ export default function ShortcutsPopupPlugin({
       let rect: DOMRect | null = null
 
       if (rects && rects.length)
-        rect = rects[rects.length - 1]
+        rect = rects[rects.length - 1]!
 
       else
         rect = range.getBoundingClientRect()
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
-        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in jsdom is unreliable. @preserve */
+        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in the test DOM runtime is unreliable. @preserve */
         if (root) {
           const sc = range.startContainer
           const node = sc.nodeType === Node.ELEMENT_NODE
@@ -295,7 +295,7 @@ export default function ShortcutsPopupPlugin({
         refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-[999999]',
+        useContainer ? '' : 'z-999999',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}

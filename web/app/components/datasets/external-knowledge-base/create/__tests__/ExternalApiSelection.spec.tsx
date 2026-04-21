@@ -35,7 +35,7 @@ vi.mock('../ExternalApiSelect', () => ({
       <span data-testid="select-value">{value}</span>
       <span data-testid="select-items-count">{items.length}</span>
       {items.map((item: MockSelectItem) => (
-        <button key={item.value} data-testid={`select-${item.value}`} onClick={() => onSelect(item)}>
+        <button type="button" key={item.value} data-testid={`select-${item.value}`} onClick={() => onSelect(item)}>
           {item.name}
         </button>
       ))}

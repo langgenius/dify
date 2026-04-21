@@ -1,5 +1,5 @@
-from dify_graph.nodes.human_input.entities import EmailDeliveryConfig, EmailRecipients
-from dify_graph.runtime import VariablePool
+from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailRecipients
+from graphon.runtime import VariablePool
 
 
 def test_render_body_template_replaces_variable_values():

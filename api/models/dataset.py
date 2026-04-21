@@ -19,14 +19,14 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
+from core.rag.entities import ParentMode, Rule
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
-from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
 from .base import Base, TypeBase
@@ -43,7 +43,9 @@ from .enums import (
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
+    SegmentType,
     SummaryStatus,
+    TidbAuthBindingStatus,
 )
 from .model import App, Tag, TagBinding, UploadFile
 from .types import AdjustedJSON, BinaryData, EnumText, LongText, StringUUID, adjusted_json_index
@@ -106,6 +108,56 @@ class ExternalKnowledgeApiDict(TypedDict):
     created_at: str
 
 
+class DocumentDict(TypedDict):
+    id: str
+    tenant_id: str
+    dataset_id: str
+    position: int
+    data_source_type: str
+    data_source_info: str | None
+    dataset_process_rule_id: str | None
+    batch: str
+    name: str
+    created_from: str
+    created_by: str
+    created_api_request_id: str | None
+    created_at: datetime
+    processing_started_at: datetime | None
+    file_id: str | None
+    word_count: int | None
+    parsing_completed_at: datetime | None
+    cleaning_completed_at: datetime | None
+    splitting_completed_at: datetime | None
+    tokens: int | None
+    indexing_latency: float | None
+    completed_at: datetime | None
+    is_paused: bool | None
+    paused_by: str | None
+    paused_at: datetime | None
+    error: str | None
+    stopped_at: datetime | None
+    indexing_status: str
+    enabled: bool
+    disabled_at: datetime | None
+    disabled_by: str | None
+    archived: bool
+    archived_reason: str | None
+    archived_by: str | None
+    archived_at: datetime | None
+    updated_at: datetime
+    doc_type: str | None
+    doc_metadata: Any
+    doc_form: IndexStructureType
+    doc_language: str | None
+    display_status: str | None
+    data_source_info_dict: dict[str, Any]
+    average_segment_length: int
+    dataset_process_rule: ProcessRuleDict | None
+    dataset: None
+    segment_count: int | None
+    hit_count: int | None
+
+
 class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
     ALL_TEAM = "all_team_members"
@@ -135,7 +187,7 @@ class Dataset(Base):
         default=DatasetPermissionEnum.ONLY_ME,
     )
     data_source_type = mapped_column(EnumText(DataSourceType, length=255))
-    indexing_technique: Mapped[str | None] = mapped_column(String(255))
+    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -301,13 +353,17 @@ class Dataset(Base):
         if self.provider != "external":
             return None
         external_knowledge_binding = db.session.scalar(
-            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == self.id)
+            select(ExternalKnowledgeBindings).where(
+                ExternalKnowledgeBindings.dataset_id == self.id,
+                ExternalKnowledgeBindings.tenant_id == self.tenant_id,
+            )
         )
         if not external_knowledge_binding:
             return None
         external_knowledge_api = db.session.scalar(
             select(ExternalKnowledgeApis).where(
-                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id
+                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
+                ExternalKnowledgeApis.tenant_id == self.tenant_id,
             )
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
@@ -494,7 +550,9 @@ class Document(Base):
     )
     doc_type = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
-    doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
+    doc_form: Mapped[IndexStructureType] = mapped_column(
+        EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
+    )
     doc_language = mapped_column(String(255), nullable=True)
     need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
@@ -671,8 +729,8 @@ class Document(Base):
         )
         return built_in_fields
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
+    def to_dict(self) -> DocumentDict:
+        result: DocumentDict = {
             "id": self.id,
             "tenant_id": self.tenant_id,
             "dataset_id": self.dataset_id,
@@ -717,10 +775,11 @@ class Document(Base):
             "data_source_info_dict": self.data_source_info_dict,
             "average_segment_length": self.average_segment_length,
             "dataset_process_rule": self.dataset_process_rule.to_dict() if self.dataset_process_rule else None,
-            "dataset": None,  # Dataset class doesn't have a to_dict method
+            "dataset": None,
             "segment_count": self.segment_count,
             "hit_count": self.hit_count,
         }
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
@@ -998,7 +1057,9 @@ class ChildChunk(Base):
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
     index_node_hash = mapped_column(String(255), nullable=True)
-    type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
+    type: Mapped[SegmentType] = mapped_column(
+        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -1239,9 +1300,12 @@ class TidbAuthBinding(TypeBase):
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
+    status: Mapped[TidbAuthBindingStatus] = mapped_column(
+        EnumText(TidbAuthBindingStatus, length=255), nullable=False, server_default=sa.text("'CREATING'")
+    )
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+    qdrant_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1488,7 +1552,7 @@ class PipelineBuiltInTemplate(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    icon: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
     copyright: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -1521,7 +1585,7 @@ class PipelineCustomizedTemplate(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    icon: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -1594,7 +1658,7 @@ class DocumentPipelineExecutionLog(TypeBase):
     datasource_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     datasource_info: Mapped[str] = mapped_column(LongText, nullable=False)
     datasource_node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    input_data: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    input_data: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1625,7 +1689,7 @@ class PipelineRecommendedPlugin(TypeBase):
     )
 
 
-class SegmentAttachmentBinding(Base):
+class SegmentAttachmentBinding(TypeBase):
     __tablename__ = "segment_attachment_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="segment_attachment_binding_pkey"),
@@ -1638,16 +1702,20 @@ class SegmentAttachmentBinding(Base):
         ),
         sa.Index("segment_attachment_binding_attachment_idx", "attachment_id"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     attachment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
-class DocumentSegmentSummary(Base):
+class DocumentSegmentSummary(TypeBase):
     __tablename__ = "document_segment_summaries"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
@@ -1657,25 +1725,40 @@ class DocumentSegmentSummary(Base):
         sa.Index("document_segment_summaries_status_idx", "status"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # corresponds to DocumentSegment.id or parent chunk id
     chunk_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    summary_content: Mapped[str] = mapped_column(LongText, nullable=True)
-    summary_index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
-    summary_index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    status: Mapped[str] = mapped_column(
-        EnumText(SummaryStatus, length=32), nullable=False, server_default=sa.text("'generating'")
+    summary_content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    summary_index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    summary_index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    status: Mapped[SummaryStatus] = mapped_column(
+        EnumText(SummaryStatus, length=32),
+        nullable=False,
+        server_default=sa.text("'generating'"),
+        default=SummaryStatus.GENERATING,
     )
-    error: Mapped[str] = mapped_column(LongText, nullable=True)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     def __repr__(self):

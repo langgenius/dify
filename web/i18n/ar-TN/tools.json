@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "على سبيل المثال، Bearer token123",
   "mcp.modal.headers": "رؤوس",
   "mcp.modal.headersTip": "رؤوس HTTP إضافية للإرسال مع طلبات خادم MCP",
+  "mcp.modal.invalidServerIdentifier": "يرجى إدخال معرف خادم صالح",
+  "mcp.modal.invalidServerUrl": "يرجى إدخال عنوان URL صالح للخادم",
   "mcp.modal.maskedHeadersTip": "يتم إخفاء قيم الرأس للأمان. ستقوم التغييرات بتحديث القيم الفعلية.",
   "mcp.modal.name": "الاسم والأيقونة",
   "mcp.modal.namePlaceholder": "قم بتسمية خادم MCP الخاص بك",

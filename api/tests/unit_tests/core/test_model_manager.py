@@ -6,8 +6,8 @@ from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 @pytest.fixture

@@ -55,9 +55,9 @@ class TestAccountInitApi:
             patch("controllers.console.workspace.account.current_account_with_tenant", return_value=(account, "t1")),
             patch("controllers.console.workspace.account.db.session.commit", return_value=None),
             patch("controllers.console.workspace.account.dify_config.EDITION", "CLOUD"),
-            patch("controllers.console.workspace.account.db.session.query") as query_mock,
+            patch("controllers.console.workspace.account.db.session.scalar") as scalar_mock,
         ):
-            query_mock.return_value.where.return_value.first.return_value = MagicMock(status="unused")
+            scalar_mock.return_value = MagicMock(status="unused")
             resp = method(api)
 
         assert resp["result"] == "success"

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { act, screen, waitFor } from '@testing-library/react'
 import { FlowType } from '@/types/common'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
 
@@ -102,16 +103,8 @@ vi.mock('../tip-popup', () => ({
   default: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }))
 
-const renderWithReactFlow = (nodes: Array<{ id: string, position: { x: number, y: number }, data: { type: BlockEnum } }>) => {
-  return render(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow nodes={nodes} edges={[]} fitView />
-        <AddBlock />
-      </ReactFlowProvider>
-    </div>,
-  )
-}
+const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>>) =>
+  renderWorkflowFlowComponent(<AddBlock />, { nodes, edges: [] })
 
 describe('AddBlock', () => {
   beforeEach(() => {
@@ -135,7 +128,7 @@ describe('AddBlock', () => {
         availableBlocksTypes: mockAvailableNextBlocks,
         showStartTab: true,
         placement: 'right-start',
-        popupClassName: '!min-w-[256px]',
+        popupClassName: 'min-w-[256px]!',
       })
       expect(latestBlockSelectorProps?.offset).toEqual({
         mainAxis: 4,
@@ -145,7 +138,7 @@ describe('AddBlock', () => {
 
     it('should hide the start tab for chat mode and rag pipeline flows', async () => {
       mockIsChatMode = true
-      const { rerender } = renderWithReactFlow([])
+      const { unmount } = renderWithReactFlow([])
 
       await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
 
@@ -153,14 +146,8 @@ describe('AddBlock', () => {
 
       mockIsChatMode = false
       mockFlowType = FlowType.ragPipeline
-      rerender(
-        <div style={{ width: 800, height: 600 }}>
-          <ReactFlowProvider>
-            <ReactFlow nodes={[]} edges={[]} fitView />
-            <AddBlock />
-          </ReactFlowProvider>
-        </div>,
-      )
+      unmount()
+      renderWithReactFlow([])
 
       expect(latestBlockSelectorProps?.showStartTab).toBe(false)
     })
@@ -182,8 +169,8 @@ describe('AddBlock', () => {
 
     it('should create a candidate node with an incremented title when a block is selected', async () => {
       renderWithReactFlow([
-        { id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer } },
-        { id: 'node-2', position: { x: 80, y: 0 }, data: { type: BlockEnum.Answer } },
+        createNode({ id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer } }),
+        createNode({ id: 'node-2', position: { x: 80, y: 0 }, data: { type: BlockEnum.Answer } }),
       ])
 
       await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())

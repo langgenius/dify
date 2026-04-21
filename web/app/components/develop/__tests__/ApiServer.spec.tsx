@@ -185,7 +185,7 @@ describe('ApiServer', () => {
       const { container } = render(<ApiServer {...defaultProps} />)
       const divider = container.querySelector('.bg-divider-regular')
       expect(divider?.className).toContain('h-[14px]')
-      expect(divider?.className).toContain('w-[1px]')
+      expect(divider?.className).toContain('w-px')
     })
   })
 

@@ -11,8 +11,8 @@ from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessag
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities import (
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -25,7 +25,7 @@ from dify_graph.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 tools=prompt_messages_tools,
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
-                user=self.user_id,
                 callbacks=[],
             )
 
@@ -300,7 +299,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
-                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+                tool_instance = tool_instances.get(prompt_tool.name)
+                if tool_instance:
+                    self.update_prompt_message_tool(tool_instance, prompt_tool)
 
             iteration_step += 1
 

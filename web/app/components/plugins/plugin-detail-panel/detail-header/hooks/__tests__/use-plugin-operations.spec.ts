@@ -3,7 +3,6 @@ import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
 
@@ -20,6 +19,7 @@ const {
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
+  mockToastNotify,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
@@ -29,8 +29,24 @@ const {
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
+    mockToastNotify: vi.fn(),
   }
 })
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -56,12 +72,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
@@ -124,7 +142,6 @@ describe('usePluginOperations', () => {
     modalStates = createModalStatesMock()
     versionPicker = createVersionPickerMock()
     mockOnUpdate = vi.fn()
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 
@@ -233,7 +250,7 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockCheckForUpdates).toHaveBeenCalled()
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Update available' })
     })
 
     it('should show update plugin modal when update is needed', async () => {

@@ -1,5 +1,8 @@
+import type { ReactElement } from 'react'
 import type { Model, ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { SystemFeatures } from '@/types/feature'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -59,11 +62,12 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: { trial_models: mockTrialModels.current },
-  }),
-}))
+const renderPopup = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  // The Popup component never inspects trial_models beyond passing them
+  // through, so an opaque string[] is enough; cast to satisfy the
+  // ModelProviderQuotaGetPaid[] declared on SystemFeatures.
+  systemFeatures: { trial_models: mockTrialModels.current as unknown as SystemFeatures['trial_models'] },
+})
 
 const mockTrialCredits = vi.hoisted(() => ({
   credits: 200,
@@ -183,7 +187,7 @@ describe('Popup', () => {
   })
 
   it('should filter models by search and allow clearing search', () => {
-    const { container } = render(
+    const { container } = renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -191,20 +195,20 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
     fireEvent.change(input, { target: { value: 'not-found' } })
-    expect(screen.getByText('No model found for \u201Cnot-found\u201D')).toBeInTheDocument()
+    expect(screen.getByText('No model found for \u201Cnot-found\u201D'))!.toBeInTheDocument()
 
     const clearIcon = container.querySelector('.i-custom-vender-solid-general-x-circle')
-    expect(clearIcon).toBeInTheDocument()
+    expect(clearIcon)!.toBeInTheDocument()
     fireEvent.click(clearIcon!)
     expect((input as HTMLInputElement).value).toBe('')
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -216,7 +220,7 @@ describe('Popup', () => {
   })
 
   it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = render(
+    const { container } = renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -225,9 +229,9 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByTestId('compatible-models-banner')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown')).toBeInTheDocument()
-    expect(container.querySelector('.i-ri-information-2-fill')).toBeInTheDocument()
+    expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'))!.toBeInTheDocument()
+    expect(container.querySelector('.i-ri-information-2-fill'))!.toBeInTheDocument()
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
@@ -236,7 +240,7 @@ describe('Popup', () => {
     ]
 
     mockSupportFunctionCall.mockReturnValue(false)
-    const { unmount } = render(
+    const { unmount } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -244,11 +248,11 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D')).toBeInTheDocument()
+    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
 
     unmount()
     mockSupportFunctionCall.mockReturnValue(true)
-    const { unmount: unmount2 } = render(
+    const { unmount: unmount2 } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -256,10 +260,10 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     unmount2()
-    const { unmount: unmount3 } = render(
+    const { unmount: unmount3 } = renderPopup(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -267,10 +271,10 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     unmount3()
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel({ models: [makeModelItem({ features: undefined })] })]}
         onSelect={vi.fn()}
@@ -278,13 +282,13 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D')).toBeInTheDocument()
+    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
   })
 
   it('should match model labels from fallback languages when current language key is missing', () => {
     mockLanguage = 'fr_FR'
 
-    render(
+    renderPopup(
       <Popup
         modelList={[
           makeModel({
@@ -305,7 +309,7 @@ describe('Popup', () => {
       { target: { value: 'openai' } },
     )
 
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
   })
 
   it('should show credits exhausted alert when an exhausted provider supports credits', () => {
@@ -323,7 +327,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -331,7 +335,7 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute('data-has-api-key-fallback', 'false')
+    expect(screen.getByTestId('credits-exhausted-alert'))!.toHaveAttribute('data-has-api-key-fallback', 'false')
   })
 
   it('should not show credits exhausted alert when only non-trial system providers are exhausted', () => {
@@ -350,7 +354,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -380,7 +384,7 @@ describe('Popup', () => {
       }),
     ]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -393,7 +397,7 @@ describe('Popup', () => {
 
   it('should open provider settings when clicking footer link', () => {
     const onHide = vi.fn()
-    render(
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -411,7 +415,7 @@ describe('Popup', () => {
 
   it('should show empty state when no providers are configured', () => {
     const onHide = vi.fn()
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -419,8 +423,8 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/)).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.noProviderConfiguredDesc/)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.noProviderConfiguredDesc/))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
     expect(onHide).toHaveBeenCalled()
@@ -432,7 +436,7 @@ describe('Popup', () => {
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -441,9 +445,9 @@ describe('Popup', () => {
     )
 
     expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
-    expect(screen.getByText('TestAnthropic')).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/)).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).toBeInTheDocument()
+    expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {
@@ -454,7 +458,7 @@ describe('Popup', () => {
       } as MockContextProvider['system_configuration'],
     })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -462,8 +466,8 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByText('test-anthropic')).toBeInTheDocument()
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+    expect(screen.getByText('test-anthropic'))!.toBeInTheDocument()
+    expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
   it('should hide installed marketplace providers without models when AI credits are exhausted', () => {
@@ -479,7 +483,7 @@ describe('Popup', () => {
       } as MockContextProvider['system_configuration'],
     })]
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -489,11 +493,11 @@ describe('Popup', () => {
 
     expect(screen.queryByText('test-anthropic')).not.toBeInTheDocument()
     expect(screen.queryByText('TestAnthropic')).not.toBeInTheDocument()
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+    expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
   it('should toggle marketplace section collapse', () => {
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -501,7 +505,7 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+    expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
 
@@ -509,7 +513,7 @@ describe('Popup', () => {
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
 
-    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+    expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
   it('should install plugin when clicking install button', async () => {
@@ -518,7 +522,7 @@ describe('Popup', () => {
     ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -527,7 +531,7 @@ describe('Popup', () => {
     )
 
     const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
+    fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalledWith('langgenius/openai:1.0.0')
@@ -541,7 +545,7 @@ describe('Popup', () => {
     ]
     mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -550,7 +554,7 @@ describe('Popup', () => {
     )
 
     const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
+    fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalled()
@@ -567,7 +571,7 @@ describe('Popup', () => {
     mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
     mockCheck.mockResolvedValue(undefined)
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -576,7 +580,7 @@ describe('Popup', () => {
     )
 
     const installButtons = screen.getAllByText(/common\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0])
+    fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
       expect(mockCheck).toHaveBeenCalledWith({
@@ -593,7 +597,7 @@ describe('Popup', () => {
     ]
     mockMarketplacePlugins.isLoading = true
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -601,7 +605,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
+    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).not.toHaveBeenCalled()
@@ -611,7 +615,7 @@ describe('Popup', () => {
   it('should skip install requests when the marketplace plugin cannot be found', async () => {
     mockMarketplacePlugins.current = []
 
-    render(
+    renderPopup(
       <Popup
         modelList={[]}
         onSelect={vi.fn()}
@@ -619,7 +623,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
+    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).not.toHaveBeenCalled()
@@ -627,7 +631,7 @@ describe('Popup', () => {
   })
 
   it('should sort the selected provider to the top when a default model is provided', () => {
-    render(
+    renderPopup(
       <Popup
         defaultModel={{ provider: 'anthropic', model: 'claude-3' }}
         modelList={[
@@ -640,6 +644,6 @@ describe('Popup', () => {
     )
 
     const providerLabels = screen.getAllByText(/openai|anthropic/)
-    expect(providerLabels[0]).toHaveTextContent('anthropic')
+    expect(providerLabels[0])!.toHaveTextContent('anthropic')
   })
 })

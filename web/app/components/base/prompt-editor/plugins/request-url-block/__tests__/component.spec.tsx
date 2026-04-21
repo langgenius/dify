@@ -36,8 +36,8 @@ describe('RequestURLBlockComponent', () => {
       const { container } = render(<RequestURLBlockComponent nodeKey="node-2" />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).toHaveClass('!border-[#7839ee]')
-      expect(wrapper).toHaveClass('hover:!border-[#7839ee]')
+      expect(wrapper).toHaveClass('border-[#7839ee]!')
+      expect(wrapper).toHaveClass('hover:border-[#7839ee]!')
     })
 
     it('should not apply selected border classes when the block is not selected', () => {
@@ -46,8 +46,8 @@ describe('RequestURLBlockComponent', () => {
       const { container } = render(<RequestURLBlockComponent nodeKey="node-3" />)
       const wrapper = container.firstElementChild
 
-      expect(wrapper).not.toHaveClass('!border-[#7839ee]')
-      expect(wrapper).not.toHaveClass('hover:!border-[#7839ee]')
+      expect(wrapper).not.toHaveClass('border-[#7839ee]!')
+      expect(wrapper).not.toHaveClass('hover:border-[#7839ee]!')
     })
   })
 })

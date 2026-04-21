@@ -11,6 +11,8 @@ describe('KeyWordNumber', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
+
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<KeyWordNumber {...defaultProps} />)
@@ -31,8 +33,7 @@ describe('KeyWordNumber', () => {
 
     it('should render slider', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      // Slider has a slider role
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
 
     it('should render input number field', () => {
@@ -61,7 +62,7 @@ describe('KeyWordNumber', () => {
 
     it('should pass correct value to slider', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={30} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
       expect(slider).toHaveAttribute('aria-valuenow', '30')
     })
   })
@@ -71,8 +72,7 @@ describe('KeyWordNumber', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const slider = screen.getByRole('slider')
-      // Verify slider is rendered and interactive
+      const slider = getSlider()
       expect(slider).toBeInTheDocument()
       expect(slider).not.toBeDisabled()
     })
@@ -109,14 +109,14 @@ describe('KeyWordNumber', () => {
   describe('Slider Configuration', () => {
     it('should have max value of 50', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      const slider = screen.getByRole('slider')
-      expect(slider).toHaveAttribute('aria-valuemax', '50')
+      const slider = getSlider()
+      expect(slider).toHaveAttribute('max', '50')
     })
 
     it('should have min value of 0', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      const slider = screen.getByRole('slider')
-      expect(slider).toHaveAttribute('aria-valuemin', '0')
+      const slider = getSlider()
+      expect(slider).toHaveAttribute('min', '0')
     })
   })
 
@@ -162,7 +162,7 @@ describe('KeyWordNumber', () => {
   describe('Accessibility', () => {
     it('should have accessible slider', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
       expect(slider).toBeInTheDocument()
     })
 

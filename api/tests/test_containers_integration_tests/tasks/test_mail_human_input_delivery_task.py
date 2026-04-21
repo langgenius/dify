@@ -3,23 +3,24 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import delete
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    HumanInputNodeData,
     MemberRecipient,
 )
-from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_storage import storage
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
@@ -30,14 +31,14 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 @pytest.fixture(autouse=True)
 def cleanup_database(db_session_with_containers):
-    db_session_with_containers.query(HumanInputFormRecipient).delete()
-    db_session_with_containers.query(HumanInputDelivery).delete()
-    db_session_with_containers.query(HumanInputForm).delete()
-    db_session_with_containers.query(WorkflowPause).delete()
-    db_session_with_containers.query(WorkflowRun).delete()
-    db_session_with_containers.query(TenantAccountJoin).delete()
-    db_session_with_containers.query(Tenant).delete()
-    db_session_with_containers.query(Account).delete()
+    db_session_with_containers.execute(delete(HumanInputFormRecipient))
+    db_session_with_containers.execute(delete(HumanInputDelivery))
+    db_session_with_containers.execute(delete(HumanInputForm))
+    db_session_with_containers.execute(delete(WorkflowPause))
+    db_session_with_containers.execute(delete(WorkflowRun))
+    db_session_with_containers.execute(delete(TenantAccountJoin))
+    db_session_with_containers.execute(delete(Tenant))
+    db_session_with_containers.execute(delete(Account))
     db_session_with_containers.commit()
 
 
@@ -79,9 +80,9 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
     delivery_method = EmailDeliveryMethod(
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
-                    MemberRecipient(user_id=account.id),
+                    MemberRecipient(reference_id=account.id),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -96,9 +97,8 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
         delivery_methods=[delivery_method],
     )
 
-    repo = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
+    repo = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=app_id)
     params = FormCreateParams(
-        app_id=app_id,
         workflow_execution_id=workflow_execution_id,
         node_id="node-1",
         form_config=node_data,

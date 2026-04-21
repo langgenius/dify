@@ -4,7 +4,6 @@ import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from '../features-trigger'
@@ -20,7 +19,24 @@ const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
@@ -148,11 +164,7 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      {ui}
-    </ToastContext.Provider>,
-  )
+  return render(ui)
 }
 
 describe('FeaturesTrigger', () => {
@@ -375,7 +387,7 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
@@ -421,7 +433,7 @@ describe('FeaturesTrigger', () => {
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
         expect(useAppStore.getState().appDetail).toBeDefined()
       })
@@ -443,6 +455,27 @@ describe('FeaturesTrigger', () => {
           releaseNotes: 'Test notes',
         })
       })
+    })
+
+    it('should skip success side effects when publish mutation returns no workflow version', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockPublishWorkflow.mockResolvedValue(null)
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
+      expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
+      expect(mockSetPublishedAt).not.toHaveBeenCalled()
+      expect(mockSetLastPublishedHasUserInput).not.toHaveBeenCalled()
+      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
     })
 
     it('should log error when app detail refresh fails after publish', async () => {

@@ -13,7 +13,7 @@ export { default as Http } from './Http'
 export { default as HumanInLoop } from './HumanInLoop'
 export { default as IfElse } from './IfElse'
 export { default as Iteration } from './Iteration'
-export { default as IterationStart } from './IterationStart'
+
 export { default as Jinja } from './Jinja'
 export { default as KnowledgeBase } from './KnowledgeBase'
 export { default as KnowledgeRetrieval } from './KnowledgeRetrieval'

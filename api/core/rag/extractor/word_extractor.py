@@ -3,6 +3,7 @@
 Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
 """
 
+import inspect
 import logging
 import mimetypes
 import os
@@ -21,6 +22,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -35,8 +37,11 @@ class WordExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
+    _closed: bool
+
     def __init__(self, file_path: str, tenant_id: str, user_id: str):
         """Initialize with file path."""
+        self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
         self.user_id = user_id
@@ -64,9 +69,27 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
+    def close(self) -> None:
+        """Best-effort cleanup for downloaded temporary files."""
+        if getattr(self, "_closed", False):
+            return
+
+        self._closed = True
+        temp_file = getattr(self, "temp_file", None)
+        if temp_file is None:
+            return
+
+        try:
+            close_result = temp_file.close()
+            if inspect.isawaitable(close_result):
+                close_awaitable = getattr(close_result, "close", None)
+                if callable(close_awaitable):
+                    close_awaitable()
+        except Exception:
+            logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
+
     def __del__(self):
-        if hasattr(self, "temp_file"):
-            self.temp_file.close()
+        self.close()
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
@@ -112,7 +135,7 @@ class WordExtractor(BaseExtractor):
                         # save file to db
                         upload_file = UploadFile(
                             tenant_id=self.tenant_id,
-                            storage_type=dify_config.STORAGE_TYPE,
+                            storage_type=StorageType(dify_config.STORAGE_TYPE),
                             key=file_key,
                             name=file_key,
                             size=0,
@@ -140,7 +163,7 @@ class WordExtractor(BaseExtractor):
                     # save file to db
                     upload_file = UploadFile(
                         tenant_id=self.tenant_id,
-                        storage_type=dify_config.STORAGE_TYPE,
+                        storage_type=StorageType(dify_config.STORAGE_TYPE),
                         key=file_key,
                         name=file_key,
                         size=0,
@@ -365,7 +388,7 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             # State for legacy HYPERLINK fields
             hyperlink_field_url = None
-            hyperlink_field_text_parts: list = []
+            hyperlink_field_text_parts: list[str] = []
             is_collecting_field_text = False
             # Iterate through paragraph elements in document order
             for child in paragraph._element:

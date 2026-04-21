@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ModelParameterModal from '../index'
 
-let isAPIKeySet = true
 let parameterRules: Array<Record<string, unknown>> | undefined = [
   {
     name: 'temperature',
@@ -40,7 +39,7 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    isAPIKeySet,
+    isAPIKeySet: true,
   }),
 }))
 
@@ -50,6 +49,7 @@ vi.mock('@/service/use-common', () => ({
       data: parameterRules,
     },
     isLoading: isRulesLoading,
+    isPending: isRulesLoading,
   }),
 }))
 
@@ -62,12 +62,18 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../parameter-item', () => ({
-  default: ({ parameterRule, onChange, onSwitch }: {
+  default: ({ parameterRule, onChange, onSwitch, nodesOutputVars, availableNodes }: {
     parameterRule: { name: string, label: { en_US: string } }
     onChange: (v: number) => void
     onSwitch: (checked: boolean, val: unknown) => void
+    nodesOutputVars?: unknown[]
+    availableNodes?: unknown[]
   }) => (
-    <div data-testid={`param-${parameterRule.name}`}>
+    <div
+      data-testid={`param-${parameterRule.name}`}
+      data-has-nodes-output-vars={!!nodesOutputVars}
+      data-has-available-nodes={!!availableNodes}
+    >
       {parameterRule.label.en_US}
       <button onClick={() => onChange(0.9)}>Change</button>
       <button onClick={() => onSwitch(false, undefined)}>Remove</button>
@@ -119,7 +125,6 @@ describe('ModelParameterModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    isAPIKeySet = true
     isRulesLoading = false
     parameterRules = [
       {
@@ -231,6 +236,26 @@ describe('ModelParameterModal', () => {
     fireEvent.click(screen.getByText('Open Settings'))
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+  })
+
+  it('should pass nodesOutputVars and availableNodes to ParameterItem', () => {
+    const mockNodesOutputVars = [{ nodeId: 'n1', title: 'Node', vars: [] }]
+    const mockAvailableNodes = [{ id: 'n1', data: { title: 'Node', type: 'llm' } }]
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isInWorkflow
+        nodesOutputVars={mockNodesOutputVars as never}
+        availableNodes={mockAvailableNodes as never}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    const paramEl = screen.getByTestId('param-temperature')
+    expect(paramEl).toHaveAttribute('data-has-nodes-output-vars', 'true')
+    expect(paramEl).toHaveAttribute('data-has-available-nodes', 'true')
   })
 
   it('should support custom triggers, workflow mode, and missing default model values', async () => {

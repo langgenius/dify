@@ -7,7 +7,6 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
-    'taze.config.js',
     'tsslint.config.ts',
   ],
   ignore: [
@@ -18,25 +17,25 @@ const config: KnipConfig = {
   ],
   ignoreDependencies: [
     '@iconify-json/*',
-
     '@storybook/addon-onboarding',
-
-    '@voidzero-dev/vite-plus-core',
   ],
+  /// keep-sorted
   rules: {
-    files: 'warn',
+    binaries: 'error',
+    catalog: 'error',
     dependencies: 'error',
     devDependencies: 'error',
+    duplicates: 'error',
+    enumMembers: 'error',
+    exports: 'error',
+    files: 'error',
+    namespaceMembers: 'error',
+    nsExports: 'error',
+    nsTypes: 'error',
     optionalPeerDependencies: 'error',
-    unlisted: 'warn',
-    unresolved: 'warn',
-    exports: 'warn',
-    nsExports: 'warn',
-    classMembers: 'warn',
-    types: 'warn',
-    nsTypes: 'warn',
-    enumMembers: 'warn',
-    duplicates: 'warn',
+    types: 'error',
+    unlisted: 'error',
+    unresolved: 'error',
   },
 }
 

@@ -13,9 +13,9 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.variables.types import SegmentType
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
@@ -310,14 +310,12 @@ def test_workflow_node_variables_fields():
 
 def test_workflow_file_variable_with_signed_url():
     """Test that File type variables include signed URLs in API responses."""
-    from dify_graph.file.enums import FileTransferMethod, FileType
-    from dify_graph.file.models import File
+    from graphon.file import File, FileTransferMethod, FileType
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
-        id="test_file_id",
-        tenant_id="test_tenant_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_upload_file_id",
         filename="test.jpg",
@@ -368,14 +366,12 @@ def test_workflow_file_variable_with_signed_url():
 
 def test_workflow_file_variable_remote_url():
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
-    from dify_graph.file.enums import FileTransferMethod, FileType
-    from dify_graph.file.models import File
+    from graphon.file import File, FileTransferMethod, FileType
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(
-        id="test_file_id",
-        tenant_id="test_tenant_id",
-        type=FileType.IMAGE,
+        file_id="test_file_id",
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/test.jpg",
         filename="test.jpg",

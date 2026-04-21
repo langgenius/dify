@@ -35,6 +35,7 @@
   "details.structureTooltip": "Struktura kosov določa, kako so dokumenti razdeljeni in indeksirani – ponuja načine Splošno, Nadrejeno-podrejeno in Vprašanja in odgovori – in je edinstvena za vsako zbirko znanja.",
   "documentSettings.title": "Nastavitve dokumenta",
   "editPipelineInfo": "Urejanje informacij o cevovodu",
+  "editPipelineInfoNameRequired": "Prosim vnesite ime za Bazo znanja.",
   "exportDSL.errorTip": "Izvoz cevovoda DSL ni uspel",
   "exportDSL.successTip": "Uspešno izvozite DSL",
   "inputField": "Vnosno polje",

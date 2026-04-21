@@ -1,0 +1,26 @@
+{
+  "name": "dify",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "scripts": {
+    "prepare": "vp config",
+    "type-check": "vp run -r type-check",
+    "lint": "eslint --cache --concurrency=auto",
+    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
+    "lint:fix": "vp run lint --fix",
+    "lint:quiet": "vp run lint --quiet"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:",
+    "eslint": "catalog:",
+    "eslint-markdown": "catalog:",
+    "eslint-plugin-markdown-preferences": "catalog:",
+    "eslint-plugin-no-barrel-files": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

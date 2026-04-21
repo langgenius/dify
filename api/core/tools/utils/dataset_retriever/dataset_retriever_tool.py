@@ -1,13 +1,12 @@
-from typing import NotRequired, TypedDict, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.entities import DocumentContext, RetrievalSourceMetadata
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -16,18 +15,6 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
-
-
-class DefaultRetrievalModelDict(TypedDict):
-    search_method: RetrievalMethod
-    reranking_enable: bool
-    reranking_model: RerankingModelDict
-    reranking_mode: NotRequired[str]
-    weights: NotRequired[WeightsDict | None]
-    score_threshold: NotRequired[float]
-    top_k: int
-    score_threshold_enabled: bool
-
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -52,7 +39,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     dataset_id: str
     user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
-    inputs: dict
+    inputs: dict[str, Any]
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -140,7 +127,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
             retrieval_resource_list: list[RetrievalSourceMetadata] = []
-            if dataset.indexing_technique == "economy":
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -173,7 +160,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 for hit_callback in self.hit_callbacks:
                     hit_callback.on_tool_end(documents)
                 document_score_list = {}
-                if dataset.indexing_technique != "economy":
+                if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
                     for item in documents:
                         if item.metadata is not None and item.metadata.get("score"):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
@@ -204,7 +191,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                            dataset = db.session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
                                 DatasetDocument.enabled == True,

@@ -31,7 +31,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
   const shouldShowTooltip = topic.name.length > MAX_CLASS_TEXT_LENGTH
 
   const content = (
-    <div className="system-xs-regular truncate text-text-tertiary">
+    <div className="truncate system-xs-regular text-text-tertiary">
       <ReadonlyInputWithSelectVar
         value={truncatedText}
         nodeId={nodeId}
@@ -42,14 +42,14 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
   return (
     <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
-      <div className="system-2xs-semibold-uppercase uppercase text-text-secondary">
+      <div className="system-2xs-semibold-uppercase text-text-secondary uppercase">
         {`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
       </div>
       {shouldShowTooltip
         ? (
             <Tooltip
               popupContent={(
-                <div className="max-w-[300px] break-words">
+                <div className="max-w-[300px] wrap-break-word">
                   <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
                 </div>
               )}
@@ -82,7 +82,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
-          triggerClassName="!h-6 !rounded-md"
+          triggerClassName="h-6! rounded-md!"
           modelList={textGenerationModelList}
           readonly
         />
@@ -105,7 +105,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
                   <NodeSourceHandle
                     {...props}
                     handleId={topic.id}
-                    handleClassName="!top-1/2 !-translate-y-1/2 !-right-[21px]"
+                    handleClassName="top-1/2! -translate-y-1/2! -right-[21px]!"
                   />
                 </div>
               ))}

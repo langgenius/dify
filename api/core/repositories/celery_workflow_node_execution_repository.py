@@ -7,16 +7,15 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.repositories.workflow_node_execution_repository import (
+from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
+from graphon.entities import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -54,7 +53,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
@@ -148,24 +147,24 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             # For now, we'll re-raise the exception
             raise
 
-    def get_by_workflow_run(
+    def get_by_workflow_execution(
         self,
-        workflow_run_id: str,
+        workflow_execution_id: str,
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all WorkflowNodeExecution instances for a specific workflow run from cache.
+        Retrieve all workflow node executions for a workflow execution from cache.
 
         Args:
-            workflow_run_id: The workflow run ID
+            workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
 
         Returns:
             A sequence of WorkflowNodeExecution instances
         """
         try:
-            # Get execution IDs for this workflow run from cache
-            execution_ids = self._workflow_execution_mapping.get(workflow_run_id, [])
+            # Get execution IDs for this workflow execution from cache
+            execution_ids = self._workflow_execution_mapping.get(workflow_execution_id, [])
 
             # Retrieve executions from cache
             result = []
@@ -182,9 +181,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 for field_name in reversed(order_config.order_by):
                     result.sort(key=lambda x: getattr(x, field_name, 0), reverse=reverse)
 
-            logger.debug("Retrieved %d workflow node executions for run %s from cache", len(result), workflow_run_id)
+            logger.debug(
+                "Retrieved %d workflow node executions for execution %s from cache",
+                len(result),
+                workflow_execution_id,
+            )
             return result
 
         except Exception:
-            logger.exception("Failed to get workflow node executions for run %s from cache", workflow_run_id)
+            logger.exception(
+                "Failed to get workflow node executions for execution %s from cache",
+                workflow_execution_id,
+            )
             return []

@@ -1,9 +1,8 @@
 import json
 import time
-from typing import Any, NotRequired, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
-from typing_extensions import TypedDict
 
 from extensions.ext_storage import storage
 
@@ -95,15 +94,11 @@ class FirecrawlApp:
         if response.status_code == 200:
             crawl_status_response = response.json()
             if crawl_status_response.get("status") == "completed":
-                total = crawl_status_response.get("total", 0)
-                if total == 0:
+                # Normalize to avoid None bypassing the zero-guard when the API returns null.
+                total = crawl_status_response.get("total") or 0
+                if total <= 0:
                     raise Exception("Failed to check crawl status. Error: No page found")
-                data = crawl_status_response.get("data", [])
-                url_data_list: list[FirecrawlDocumentData] = []
-                for item in data:
-                    if isinstance(item, dict) and "metadata" in item and "markdown" in item:
-                        url_data = self._extract_common_fields(item)
-                        url_data_list.append(url_data)
+                url_data_list = self._collect_all_crawl_pages(crawl_status_response, headers)
                 if url_data_list:
                     file_key = "website_files/" + job_id + ".txt"
                     try:
@@ -119,6 +114,36 @@ class FirecrawlApp:
                 )
         self._handle_error(response, "check crawl status")
         raise RuntimeError("unreachable: _handle_error always raises")
+
+    def _collect_all_crawl_pages(
+        self, first_page: dict[str, Any], headers: dict[str, str]
+    ) -> list[FirecrawlDocumentData]:
+        """Collect all crawl result pages by following pagination links.
+
+        Raises an exception if any paginated request fails, to avoid returning
+        partial data that is inconsistent with the reported total.
+
+        The number of pages processed is capped at ``total`` (the
+        server-reported page count) to guard against infinite loops caused by
+        a misbehaving server that keeps returning a ``next`` URL.
+        """
+        total: int = first_page.get("total") or 0
+        url_data_list: list[FirecrawlDocumentData] = []
+        current_page = first_page
+        pages_processed = 0
+        while True:
+            for item in current_page.get("data", []):
+                if isinstance(item, dict) and "metadata" in item and "markdown" in item:
+                    url_data_list.append(self._extract_common_fields(item))
+            next_url: str | None = current_page.get("next")
+            pages_processed += 1
+            if not next_url or pages_processed >= total:
+                break
+            response = self._get_request(next_url, headers)
+            if response.status_code != 200:
+                self._handle_error(response, "fetch next crawl page")
+            current_page = response.json()
+        return url_data_list
 
     def _format_crawl_status_response(
         self,
@@ -149,21 +174,25 @@ class FirecrawlApp:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
+        response: httpx.Response | None = None
         for attempt in range(retries):
             response = httpx.post(url, headers=headers, json=data)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
+        assert response is not None, "retries must be at least 1"
         return response
 
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
+        response: httpx.Response | None = None
         for attempt in range(retries):
             response = httpx.get(url, headers=headers)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
+        assert response is not None, "retries must be at least 1"
         return response
 
     def _handle_error(self, response, action):

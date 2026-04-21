@@ -79,10 +79,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -100,10 +97,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -121,15 +115,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            message_query = MagicMock()
-            message_query.where.return_value = message_query
-            message_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, message_query]
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -152,19 +138,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            message_query = MagicMock()
-            message_query.where.return_value = message_query
-            message_query.first.return_value = message
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, message_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, message, setting]
 
             # Act
             result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
@@ -202,19 +176,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            message_query = MagicMock()
-            message_query.where.return_value = message_query
-            message_query.first.return_value = message
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, message_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, message, None]
 
             # Act
             result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
@@ -245,10 +207,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -270,15 +229,7 @@ class TestAppAnnotationServiceUpInsert:
             patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
@@ -406,10 +357,7 @@ class TestAppAnnotationServiceListAndExport:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -427,10 +375,7 @@ class TestAppAnnotationServiceListAndExport:
             patch("services.annotation_service.db") as mock_db,
             patch("libs.helper.escape_like_pattern", return_value="safe"),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
             mock_db.paginate.return_value = pagination
 
             # Act
@@ -451,10 +396,7 @@ class TestAppAnnotationServiceListAndExport:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
             mock_db.paginate.return_value = pagination
 
             # Act
@@ -481,16 +423,8 @@ class TestAppAnnotationServiceListAndExport:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.CSVSanitizer.sanitize_value", side_effect=lambda v: f"safe:{v}"),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.order_by.return_value = annotation_query
-            annotation_query.all.return_value = [annotation1, annotation2]
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.scalars.return_value.all.return_value = [annotation1, annotation2]
 
             # Act
             result = AppAnnotationService.export_annotation_list_by_app_id(app.id)
@@ -511,10 +445,7 @@ class TestAppAnnotationServiceListAndExport:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -534,10 +465,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -554,10 +482,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -579,15 +504,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.insert_app_annotation_directly(args, app.id)
@@ -621,15 +538,8 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.get.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -645,10 +555,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -666,15 +573,8 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = annotation
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.get.return_value = annotation
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -695,19 +595,8 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = annotation
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, annotation_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = annotation
 
             # Act
             result = AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id)
@@ -740,22 +629,11 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = annotation
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
+            mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = annotation
 
             scalars_result = MagicMock()
             scalars_result.all.return_value = [history1, history2]
-
-            mock_db.session.query.side_effect = [app_query, annotation_query, setting_query]
             mock_db.session.scalars.return_value = scalars_result
 
             # Act
@@ -782,10 +660,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -801,15 +676,8 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.get.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -825,16 +693,8 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotations_query = MagicMock()
-            annotations_query.outerjoin.return_value = annotations_query
-            annotations_query.where.return_value = annotations_query
-            annotations_query.all.return_value = []
-
-            mock_db.session.query.side_effect = [app_query, annotations_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.execute.return_value.all.return_value = []
 
             # Act
             result = AppAnnotationService.delete_app_annotations_in_batch(app.id, ["ann-1"])
@@ -851,10 +711,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -874,24 +731,14 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
+            mock_db.session.scalar.return_value = app
 
-            annotations_query = MagicMock()
-            annotations_query.outerjoin.return_value = annotations_query
-            annotations_query.where.return_value = annotations_query
-            annotations_query.all.return_value = [(annotation1, setting), (annotation2, None)]
-
-            hit_history_query = MagicMock()
-            hit_history_query.where.return_value = hit_history_query
-            hit_history_query.delete.return_value = None
-
-            delete_query = MagicMock()
-            delete_query.where.return_value = delete_query
-            delete_query.delete.return_value = 2
-
-            mock_db.session.query.side_effect = [app_query, annotations_query, hit_history_query, delete_query]
+            # First execute().all() for multi-column query, subsequent execute() calls for deletes
+            execute_result_multi = MagicMock()
+            execute_result_multi.all.return_value = [(annotation1, setting), (annotation2, None)]
+            execute_result_delete = MagicMock()
+            execute_result_delete.rowcount = 2
+            mock_db.session.execute.side_effect = [execute_result_multi, MagicMock(), execute_result_delete]
 
             # Act
             result = AppAnnotationService.delete_app_annotations_in_batch(app.id, ["ann-1", "ann-2"])
@@ -915,10 +762,7 @@ class TestAppAnnotationServiceBatchImport:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -941,10 +785,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -968,10 +809,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -999,10 +837,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=2),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1028,10 +863,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=1, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1061,10 +893,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1090,10 +919,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1119,10 +945,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1148,10 +971,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1182,10 +1002,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1218,10 +1035,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
 
             # Act
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
@@ -1257,10 +1071,7 @@ class TestAppAnnotationServiceBatchImport:
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = app
             mock_redis.zadd.side_effect = RuntimeError("boom")
             mock_redis.zrem.side_effect = RuntimeError("cleanup-failed")
 
@@ -1285,10 +1096,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -1306,15 +1114,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = annotation
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.get.return_value = annotation
             mock_db.paginate.return_value = pagination
 
             # Act
@@ -1334,15 +1135,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            annotation_query = MagicMock()
-            annotation_query.where.return_value = annotation_query
-            annotation_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, annotation_query]
+            mock_db.session.scalar.return_value = app
+            mock_db.session.get.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -1352,10 +1146,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         """Test get_annotation_by_id returns None when not found."""
         # Arrange
         with patch("services.annotation_service.db") as mock_db:
-            query = MagicMock()
-            query.where.return_value = query
-            query.first.return_value = None
-            mock_db.session.query.return_value = query
+            mock_db.session.get.return_value = None
 
             # Act
             result = AppAnnotationService.get_annotation_by_id("ann-1")
@@ -1368,10 +1159,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         # Arrange
         annotation = _make_annotation("ann-1")
         with patch("services.annotation_service.db") as mock_db:
-            query = MagicMock()
-            query.where.return_value = query
-            query.first.return_value = annotation
-            mock_db.session.query.return_value = query
+            mock_db.session.get.return_value = annotation
 
             # Act
             result = AppAnnotationService.get_annotation_by_id("ann-1")
@@ -1386,10 +1174,6 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.AppAnnotationHitHistory") as mock_history_cls,
         ):
-            query = MagicMock()
-            query.where.return_value = query
-            mock_db.session.query.return_value = query
-
             # Act
             AppAnnotationService.add_annotation_history(
                 annotation_id="ann-1",
@@ -1404,7 +1188,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             )
 
             # Assert
-            query.update.assert_called_once()
+            mock_db.session.execute.assert_called_once()
             mock_history_cls.assert_called_once()
             mock_db.session.add.assert_called_once()
             mock_db.session.commit.assert_called_once()
@@ -1420,15 +1204,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
@@ -1448,10 +1224,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -1468,15 +1241,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
@@ -1495,15 +1260,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act
             result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
@@ -1525,15 +1282,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.naive_utc_now", return_value="now"),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args)
@@ -1560,15 +1309,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.naive_utc_now", return_value="now"),
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = setting
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
             result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args)
@@ -1587,10 +1328,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = None
-            mock_db.session.query.return_value = app_query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -1606,15 +1344,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            app_query = MagicMock()
-            app_query.where.return_value = app_query
-            app_query.first.return_value = app
-
-            setting_query = MagicMock()
-            setting_query.where.return_value = setting_query
-            setting_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [app_query, setting_query]
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -1634,25 +1364,21 @@ class TestAppAnnotationServiceClearAll:
         annotation2 = _make_annotation("ann-2")
         history = MagicMock(spec=AppAnnotationHitHistory)
 
-        def query_side_effect(*args: object, **kwargs: object) -> MagicMock:
-            query = MagicMock()
-            query.where.return_value = query
-            if App in args:
-                query.first.return_value = app
-            elif AppAnnotationSetting in args:
-                query.first.return_value = setting
-            elif MessageAnnotation in args:
-                query.yield_per.return_value = [annotation1, annotation2]
-            elif AppAnnotationHitHistory in args:
-                query.yield_per.return_value = [history]
-            return query
-
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
-            mock_db.session.query.side_effect = query_side_effect
+            # scalar calls: app lookup, annotation_setting lookup
+            mock_db.session.scalar.side_effect = [app, setting]
+            # scalars calls: first for annotations iteration, then for each annotation's hit histories
+            annotations_scalars = MagicMock()
+            annotations_scalars.yield_per.return_value = [annotation1, annotation2]
+            histories_scalars_1 = MagicMock()
+            histories_scalars_1.yield_per.return_value = [history]
+            histories_scalars_2 = MagicMock()
+            histories_scalars_2.yield_per.return_value = []
+            mock_db.session.scalars.side_effect = [annotations_scalars, histories_scalars_1, histories_scalars_2]
 
             # Act
             result = AppAnnotationService.clear_all_annotations(app.id)
@@ -1675,10 +1401,7 @@ class TestAppAnnotationServiceClearAll:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            query = MagicMock()
-            query.where.return_value = query
-            query.first.return_value = None
-            mock_db.session.query.return_value = query
+            mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):

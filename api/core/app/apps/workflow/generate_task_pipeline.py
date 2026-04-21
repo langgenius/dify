@@ -4,12 +4,13 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -55,12 +56,11 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
-from dify_graph.runtime import GraphRuntimeState
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -104,7 +104,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._invoke_from = queue_manager.invoke_from
         self._draft_var_saver_factory = draft_var_saver_factory
         self._workflow = workflow
-        self._workflow_system_variables = SystemVariable(
+        self._workflow_system_variables = build_system_variables(
             files=application_generate_entity.files,
             user_id=user_session_id,
             app_id=application_generate_entity.app_config.app_id,
@@ -252,13 +252,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            yield session
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
@@ -687,15 +682,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
+        match invoke_from:
+            case InvokeFrom.SERVICE_API:
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.EXPLORE:
+                created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+            case InvokeFrom.WEB_APP:
+                created_from = WorkflowAppLogCreatedFrom.WEB_APP
+            case InvokeFrom.DEBUGGER | InvokeFrom.TRIGGER | InvokeFrom.PUBLISHED_PIPELINE | InvokeFrom.VALIDATION:
+                # not save log for debugging
+                return
 
         if not workflow_run_id:
             return
@@ -705,7 +701,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             app_id=self._application_generate_entity.app_config.app_id,
             workflow_id=self._workflow.id,
             workflow_run_id=workflow_run_id,
-            created_from=created_from.value,
+            created_from=created_from,
             created_by_role=self._created_by_role,
             created_by=self._user_id,
         )
@@ -728,13 +724,11 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return response
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
-        with Session(db.engine) as session, session.begin():
-            saver = self._draft_var_saver_factory(
-                session=session,
-                app_id=self._application_generate_entity.app_config.app_id,
-                node_id=event.node_id,
-                node_type=event.node_type,
-                node_execution_id=node_execution_id,
-                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
-            )
-            saver.save(event.process_data, event.outputs)
+        saver = self._draft_var_saver_factory(
+            app_id=self._application_generate_entity.app_config.app_id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            node_execution_id=node_execution_id,
+            enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+        )
+        saver.save(event.process_data, event.outputs)

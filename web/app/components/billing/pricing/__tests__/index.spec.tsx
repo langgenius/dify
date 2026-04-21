@@ -68,6 +68,7 @@ describe('Pricing', () => {
     it('should render pricing header and localized footer link', () => {
       render(<Pricing onCancel={vi.fn()} />)
 
+      expect(screen.getByRole('dialog', { name: 'billing.plansCommon.title.plans' })).toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
       expect(screen.getByTestId('pricing-link')).toHaveAttribute('href', 'https://dify.ai/en/pricing#plans-and-features')
     })

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -44,11 +44,13 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from dify_graph.enums import BuiltinNodeTypes, WorkflowExecutionStatus
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 def _make_pipeline():
@@ -164,7 +166,7 @@ class TestWorkflowGenerateTaskPipeline:
     def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
@@ -191,7 +193,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -205,7 +207,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -244,7 +246,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -257,7 +259,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -302,7 +304,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -318,7 +320,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -326,7 +328,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -342,7 +344,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         filled_event = QueueHumanInputFormFilledEvent(
@@ -358,7 +360,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.utcnow(),
+            expiration_time=naive_utc_now(),
         )
         agent_event = QueueAgentLogEvent(
             id="log",
@@ -451,7 +453,7 @@ class TestWorkflowGenerateTaskPipeline:
         )
 
         assert pipeline._created_by_role == CreatorUserRole.END_USER
-        assert pipeline._workflow_system_variables.user_id == "session-id"
+        assert system_variables_to_mapping(pipeline._workflow_system_variables)["user_id"] == "session-id"
 
     def test_process_returns_stream_and_blocking_variants(self):
         pipeline = _make_pipeline()
@@ -609,33 +611,33 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_database_session_rolls_back_on_error(self, monkeypatch):
         pipeline = _make_pipeline()
-        calls = {"commit": 0, "rollback": 0}
+        calls = {"enter": 0, "exit_exc": None}
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
+        class _BeginContext:
             def __enter__(self):
-                return self
+                calls["enter"] += 1
+                return MagicMock()
 
             def __exit__(self, exc_type, exc, tb):
+                calls["exit_exc"] = exc_type
                 return False
 
-            def commit(self):
-                calls["commit"] += 1
+        class _Sessionmaker:
+            def __init__(self, *args, **kwargs):
+                pass
 
-            def rollback(self):
-                calls["rollback"] += 1
+            def begin(self):
+                return _BeginContext()
 
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.Session", _Session)
+        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.sessionmaker", _Sessionmaker)
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
 
         with pytest.raises(RuntimeError, match="db error"):
             with pipeline._database_session():
                 raise RuntimeError("db error")
 
-        assert calls["commit"] == 0
-        assert calls["rollback"] == 1
+        assert calls["enter"] == 1
+        assert calls["exit_exc"] is RuntimeError
 
     def test_node_retry_and_started_handlers_cover_none_and_value(self):
         pipeline = _make_pipeline()
@@ -647,7 +649,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             provider_type="provider",
             provider_id="provider-id",
             error="error",
@@ -659,7 +661,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             provider_type="provider",
             provider_id="provider-id",
         )
@@ -684,7 +686,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec-id",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -699,7 +701,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
 
@@ -727,7 +729,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._handle_ping_event = lambda event, **kwargs: iter(["ping"])
@@ -743,7 +745,7 @@ class TestWorkflowGenerateTaskPipeline:
     def test_process_stream_response_main_match_paths_and_cleanup(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
@@ -815,7 +817,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id=None)
         assert len(added) == count_before
 
-    def test_save_output_for_event_writes_draft_variables(self, monkeypatch):
+    def test_save_output_for_event_writes_draft_variables(self):
         pipeline = _make_pipeline()
         saver_calls: list[tuple[object, object]] = []
         captured_factory_args: dict[str, object] = {}
@@ -828,36 +830,14 @@ class TestWorkflowGenerateTaskPipeline:
             captured_factory_args.update(kwargs)
             return _Saver()
 
-        class _Begin:
-            def __enter__(self):
-                return None
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def begin(self):
-                return _Begin()
-
         pipeline._draft_var_saver_factory = _factory
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
 
         event = QueueNodeSucceededEvent(
             node_execution_id="exec-id",
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,
             in_loop_id="loop-id",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             process_data={"k": "v"},
             outputs={"out": 1},
         )

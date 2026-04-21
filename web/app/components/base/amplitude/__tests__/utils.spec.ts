@@ -20,8 +20,10 @@ const MockIdentify = vi.hoisted(() =>
   },
 )
 
-vi.mock('../AmplitudeProvider', () => ({
-  isAmplitudeEnabled: () => mockState.enabled,
+vi.mock('@/config', () => ({
+  get isAmplitudeEnabled() {
+    return mockState.enabled
+  },
 }))
 
 vi.mock('@amplitude/analytics-browser', () => ({
@@ -83,7 +85,7 @@ describe('amplitude utils', () => {
       setUserProperties(properties)
 
       expect(mockIdentify).toHaveBeenCalledTimes(1)
-      const identifyArg = mockIdentify.mock.calls[0][0] as InstanceType<typeof MockIdentify>
+      const identifyArg = mockIdentify.mock.calls[0]![0] as InstanceType<typeof MockIdentify>
       expect(identifyArg).toBeInstanceOf(MockIdentify)
       expect(identifyArg.setCalls).toEqual([
         ['role', 'owner'],

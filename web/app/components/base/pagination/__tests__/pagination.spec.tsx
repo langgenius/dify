@@ -131,7 +131,7 @@ describe('Pagination', () => {
         setCurrentPage,
         children: <Pagination.PrevButton>Prev</Pagination.PrevButton>,
       })
-      fireEvent.keyPress(screen.getByText(/prev/i), { key: 'Enter', charCode: 13 })
+      fireEvent.keyDown(screen.getByText(/prev/i).closest('button')!, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 })
       expect(setCurrentPage).toHaveBeenCalledWith(2)
     })
 
@@ -142,7 +142,7 @@ describe('Pagination', () => {
         setCurrentPage,
         children: <Pagination.PrevButton>Prev</Pagination.PrevButton>,
       })
-      fireEvent.keyPress(screen.getByText(/prev/i), { key: 'Enter', charCode: 13 })
+      fireEvent.keyDown(screen.getByText(/prev/i).closest('button')!, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 })
       expect(setCurrentPage).not.toHaveBeenCalled()
     })
 
@@ -213,7 +213,7 @@ describe('Pagination', () => {
         setCurrentPage,
         children: <Pagination.NextButton>Next</Pagination.NextButton>,
       })
-      fireEvent.keyPress(screen.getByText(/next/i), { key: 'Enter', charCode: 13 })
+      fireEvent.keyDown(screen.getByText(/next/i).closest('button')!, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 })
       expect(setCurrentPage).toHaveBeenCalledWith(1)
     })
 
@@ -225,7 +225,7 @@ describe('Pagination', () => {
         setCurrentPage,
         children: <Pagination.NextButton>Next</Pagination.NextButton>,
       })
-      fireEvent.keyPress(screen.getByText(/next/i), { key: 'Enter', charCode: 13 })
+      fireEvent.keyDown(screen.getByText(/next/i).closest('button')!, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 })
       expect(setCurrentPage).not.toHaveBeenCalled()
     })
 
@@ -318,7 +318,7 @@ describe('Pagination', () => {
           />
         ),
       })
-      fireEvent.keyPress(screen.getByText('4'), { key: 'Enter', charCode: 13 })
+      fireEvent.keyDown(screen.getByText('4').closest('a')!, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 })
       expect(setCurrentPage).toHaveBeenCalledWith(3) // 0-indexed
     })
 

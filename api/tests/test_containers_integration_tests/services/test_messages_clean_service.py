@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import datetime
 import json
 import uuid
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -10,8 +12,16 @@ from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
+from graphon.file import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import DataSourceType, MessageChainType
+from models.enums import (
+    ConversationFromSource,
+    DataSourceType,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    MessageFileBelongsTo,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -166,7 +176,7 @@ class TestMessagesCleanServiceIntegration:
             name="Test conversation",
             inputs={},
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )
         db_session_with_containers.add(conversation)
@@ -196,7 +206,7 @@ class TestMessagesCleanServiceIntegration:
             answer_unit_price=Decimal("0.002"),
             total_price=Decimal("0.003"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_account_id=conversation.from_end_user_id,
             created_at=created_at,
         )
@@ -216,8 +226,8 @@ class TestMessagesCleanServiceIntegration:
             app_id=message.app_id,
             conversation_id=message.conversation_id,
             message_id=message.id,
-            rating="like",
-            from_source="api",
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
             from_end_user_id=str(uuid.uuid4()),
         )
         db_session_with_containers.add(feedback)
@@ -246,10 +256,10 @@ class TestMessagesCleanServiceIntegration:
         # MessageFile
         file = MessageFile(
             message_id=message.id,
-            type="image",
+            type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
@@ -1161,3 +1171,66 @@ class TestMessagesCleanServiceIntegration:
 
         # Verify all messages were deleted
         assert db_session_with_containers.query(Message).where(Message.id.in_(msg_ids)).count() == 0
+
+    def test_from_time_range_validation(self):
+        """Test that from_time_range raises ValueError for invalid inputs."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        now = datetime.datetime.now()
+
+        with pytest.raises(ValueError, match="start_from .* must be less than end_before"):
+            MessagesCleanService.from_time_range(policy, now, now)
+
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(policy, now - datetime.timedelta(days=1), now, batch_size=0)
+
+    def test_from_time_range_success(self):
+        """Test that from_time_range creates a service with correct parameters."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        start = datetime.datetime(2024, 1, 1)
+        end = datetime.datetime(2024, 2, 1)
+
+        service = MessagesCleanService.from_time_range(policy, start, end)
+        assert service._start_from == start
+        assert service._end_before == end
+
+    def test_from_days_validation(self):
+        """Test that from_days raises ValueError for invalid inputs."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+
+        with pytest.raises(ValueError, match="days .* must be greater than or equal to 0"):
+            MessagesCleanService.from_days(policy, days=-1)
+
+        with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy, days=30, batch_size=0)
+
+    def test_from_days_success(self):
+        """Test that from_days creates a service with correct parameters."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
+            fixed_now = datetime.datetime(2024, 6, 1)
+            mock_now.return_value = fixed_now
+
+            service = MessagesCleanService.from_days(policy, days=10)
+            assert service._start_from is None
+            assert service._end_before == fixed_now - datetime.timedelta(days=10)
+
+    def test_batch_delete_message_relations_empty(self, db_session_with_containers: Session):
+        """Test that batch_delete_message_relations with empty list does nothing."""
+        # Get execute call count before
+        MessagesCleanService._batch_delete_message_relations(db_session_with_containers, [])
+        # No exception means success — empty list is a no-op
+
+    def test_run_calls_clean_messages(self):
+        """Test that run() delegates to _clean_messages_by_time_range."""
+        policy = MagicMock(spec=BillingDisabledPolicy)
+        service = MessagesCleanService(
+            policy=policy,
+            end_before=datetime.datetime.now(),
+            batch_size=10,
+        )
+        with patch.object(service, "_clean_messages_by_time_range") as mock_clean:
+            mock_clean.return_value = {"total_deleted": 5}
+            result = service.run()
+            assert result == {"total_deleted": 5}
+            mock_clean.assert_called_once()

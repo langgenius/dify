@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -21,7 +22,6 @@ import Textarea from '@/app/components/base/textarea'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { Resolution, TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
 import CodeEditor from '../editor/code-editor'
@@ -79,7 +79,7 @@ const FormItem: FC<Props> = ({
         <div className="flex h-full items-center">
           {!isChatVar && (
             <div className="flex items-center">
-              <div className="p-[1px]">
+              <div className="p-px">
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
               <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary" title={nodeName}>
@@ -124,19 +124,19 @@ const FormItem: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
-        <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
           <div className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true
             ? (
-                <span className="text-text-tertiary system-xs-regular">
+                <span className="system-xs-regular text-text-tertiary">
                   {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
-                  <span className="text-text-tertiary system-xs-regular">
+                  <span className="system-xs-regular text-text-tertiary">
                     {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
@@ -236,10 +236,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: inStepRun && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
@@ -263,10 +263,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: (inStepRun || isIteratorItemFile) ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,

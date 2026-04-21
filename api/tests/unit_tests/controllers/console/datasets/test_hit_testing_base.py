@@ -20,7 +20,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService

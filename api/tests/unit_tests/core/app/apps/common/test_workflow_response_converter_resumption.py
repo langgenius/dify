@@ -2,14 +2,14 @@ from types import SimpleNamespace
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 
 def _build_converter() -> WorkflowResponseConverter:
     """Construct a minimal WorkflowResponseConverter for testing."""
-    system_variables = SystemVariable(
+    system_variables = build_system_variables(
         files=[],
         user_id="user-1",
         app_id="app-1",

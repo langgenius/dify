@@ -1,13 +1,28 @@
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// Import component after mocks
-import Toast from '@/app/components/base/toast'
-
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
+// Import component after mocks
 import ModelParameterModal from '../index'
 
 // ==================== Mock Setup ====================
+
+const mockToastNotify = vi.fn()
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 // Mock provider context
 const mockProviderContextValue = {
@@ -52,8 +67,6 @@ const mockFetchAndMergeValidCompletionParams = vi.fn()
 vi.mock('@/utils/completion-params', () => ({
   fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
 }))
-
-const mockToastNotify = vi.spyOn(Toast, 'notify')
 
 // Mock child components
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
@@ -244,7 +257,6 @@ const setupModelLists = (config: {
 describe('ModelParameterModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReturnValue({})
     mockProviderContextValue.isAPIKeySet = true
     mockProviderContextValue.modelProviders = []
     setupModelLists()
@@ -865,9 +877,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'warning' }),
-          )
+          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
         })
       })
 
@@ -892,9 +902,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'error' }),
-          )
+          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
         })
       })
     })

@@ -123,27 +123,26 @@ def _configure_session_factory(_unit_test_engine):
 
 def setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account):
     """
-    Helper to set up the mock DB query chain for tenant/account authentication.
+    Helper to set up the mock DB execute chain for tenant/account authentication.
 
-    This configures the mock to return (tenant, account) for the join query used
-    by validate_app_token and validate_dataset_token decorators.
+    This configures the mock to return (tenant, account) for the
+    db.session.execute(select(...).join().join().where()).one_or_none()
+    query used by validate_app_token decorator.
 
     Args:
         mock_db: The mocked db object
         mock_tenant: Mock tenant object to return
         mock_account: Mock account object to return
     """
-    query = mock_db.session.query.return_value
-    join_chain = query.join.return_value.join.return_value
-    where_chain = join_chain.where.return_value
-    where_chain.one_or_none.return_value = (mock_tenant, mock_account)
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_account)
 
 
 def setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta):
     """
-    Helper to set up the mock DB query chain for dataset tenant authentication.
+    Helper to set up the mock DB execute chain for dataset tenant authentication.
 
-    This configures the mock to return (tenant, tenant_account) for the where chain
+    This configures the mock to return (tenant, tenant_account) for the
+    db.session.execute(select(...).where().where().where().where()).one_or_none()
     query used by validate_dataset_token decorator.
 
     Args:
@@ -151,6 +150,4 @@ def setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta):
         mock_tenant: Mock tenant object to return
         mock_ta: Mock tenant account object to return
     """
-    query = mock_db.session.query.return_value
-    where_chain = query.where.return_value.where.return_value.where.return_value.where.return_value
-    where_chain.one_or_none.return_value = (mock_tenant, mock_ta)
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_ta)

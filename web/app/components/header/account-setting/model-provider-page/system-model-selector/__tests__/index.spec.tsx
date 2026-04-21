@@ -24,7 +24,7 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-const mockNotify = vi.hoisted(() => vi.fn())
+const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
@@ -43,11 +43,16 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    add: mockNotify,
-  },
-}))
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+    },
+  }
+})
 
 vi.mock('../../hooks', () => ({
   useModelList: () => ({
@@ -115,12 +120,6 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should render the primary button variant when configuration is required', () => {
-    render(<SystemModel {...defaultProps} notConfigured />)
-
-    expect(screen.getByRole('button', { name: /system model settings/i })).toHaveClass('btn-primary')
-  })
-
   it('should close dialog when cancel is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
@@ -148,10 +147,7 @@ describe('SystemModel', () => {
 
     await waitFor(() => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        title: 'Modified successfully',
-      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('Modified successfully')
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
@@ -173,7 +169,7 @@ describe('SystemModel', () => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
     })
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
     expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })

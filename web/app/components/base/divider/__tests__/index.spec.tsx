@@ -19,7 +19,7 @@ describe('Divider', () => {
   it('renders vertical solid divider correctly', () => {
     const { container } = render(<Divider type="vertical" bgStyle="solid" />)
     const divider = container.firstChild as HTMLElement
-    expect(divider).toHaveClass('w-[1px] h-full mx-2')
+    expect(divider).toHaveClass('w-px h-full mx-2')
     expect(divider).toHaveClass('bg-divider-regular')
   })
 
@@ -27,14 +27,14 @@ describe('Divider', () => {
     const { container } = render(<Divider type="horizontal" bgStyle="gradient" />)
     const divider = container.firstChild as HTMLElement
     expect(divider).toHaveClass('w-full h-[0.5px] my-2')
-    expect(divider).toHaveClass('bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent')
+    expect(divider).toHaveClass('bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent')
   })
 
   it('renders vertical gradient divider correctly', () => {
     const { container } = render(<Divider type="vertical" bgStyle="gradient" />)
     const divider = container.firstChild as HTMLElement
-    expect(divider).toHaveClass('w-[1px] h-full mx-2')
-    expect(divider).toHaveClass('bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent')
+    expect(divider).toHaveClass('w-px h-full mx-2')
+    expect(divider).toHaveClass('bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent')
   })
 
   it('applies custom className correctly', () => {

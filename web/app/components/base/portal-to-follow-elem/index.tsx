@@ -1,15 +1,15 @@
 'use client'
 /**
- * @deprecated Use semantic overlay primitives from `@/app/components/base/ui/` instead.
+ * @deprecated Use semantic overlay primitives from `@langgenius/dify-ui/*` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  *
  * Migration guide:
- * - Tooltip → `@/app/components/base/ui/tooltip`
- * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
- * - Popover → `@/app/components/base/ui/popover`
- * - Dialog/Modal → `@/app/components/base/ui/dialog`
- * - Select → `@/app/components/base/ui/select`
+ * - Tooltip → `@langgenius/dify-ui/tooltip`
+ * - Menu/Dropdown → `@langgenius/dify-ui/dropdown-menu`
+ * - Popover → `@langgenius/dify-ui/popover`
+ * - Dialog/Modal → `@langgenius/dify-ui/dialog`
+ * - Select → `@langgenius/dify-ui/select`
  */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
@@ -28,9 +28,9 @@ import {
   useRole,
 } from '@floating-ui/react'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 export type PortalToFollowElemOptions = {
   /*
@@ -46,7 +46,7 @@ export type PortalToFollowElemOptions = {
 }
 
 /** @deprecated Use semantic overlay primitives instead. See #32767. */
-export function usePortalToFollowElem({
+function usePortalToFollowElem({
   placement = 'bottom',
   open: controlledOpen,
   offset: offsetValue = 0,
@@ -114,7 +114,7 @@ type ContextType = ReturnType<typeof usePortalToFollowElem> | null
 
 const PortalToFollowElemContext = React.createContext<ContextType>(null)
 
-export function usePortalToFollowElemContext() {
+function usePortalToFollowElemContext() {
   const context = React.useContext(PortalToFollowElemContext)
 
   if (context == null)
@@ -148,14 +148,17 @@ export const PortalToFollowElemTrigger = (
   }: React.HTMLProps<HTMLElement> & { ref?: React.RefObject<HTMLElement | null>, asChild?: boolean },
 ) => {
   const context = usePortalToFollowElemContext()
-  const childrenRef = (children as any).props?.ref
+  const childElement = React.isValidElement<{ ref?: React.Ref<HTMLElement | null> }>(children)
+    ? children
+    : null
+  const childrenRef = childElement?.props.ref
   const ref = useMergeRefs([context.refs.setReference, propRef, childrenRef])
 
   // `asChild` allows the user to pass any element as the anchor
-  if (asChild && React.isValidElement(children)) {
-    const childProps = (children.props ?? {}) as Record<string, unknown>
+  if (asChild && childElement) {
+    const childProps = (childElement.props ?? {}) as Record<string, unknown>
     return React.cloneElement(
-      children,
+      childElement,
       context.getReferenceProps({
         ref,
         ...props,

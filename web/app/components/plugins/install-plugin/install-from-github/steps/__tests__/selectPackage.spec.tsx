@@ -5,11 +5,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
 
-// Mock the useGitHubUpload hook
-const mockHandleUpload = vi.fn()
-vi.mock('../../../hooks', () => ({
-  useGitHubUpload: () => ({ handleUpload: mockHandleUpload }),
+// Mock upload helper from hooks module
+const { mockHandleUpload } = vi.hoisted(() => ({
+  mockHandleUpload: vi.fn(),
 }))
+vi.mock('../../../hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks')>()
+  return {
+    ...actual,
+    handleUpload: mockHandleUpload,
+  }
+})
 
 // Factory functions
 const createMockManifest = (): PluginDeclaration => ({
