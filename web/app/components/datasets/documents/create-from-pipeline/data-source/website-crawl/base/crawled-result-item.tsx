@@ -1,12 +1,12 @@
 'use client'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import { cn } from '@/utils/classnames'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType
@@ -58,13 +58,13 @@ const CrawledResultItem = ({
       }
       <div className="flex min-w-0 grow flex-col gap-y-0.5">
         <div
-          className="system-sm-medium truncate text-text-secondary"
+          className="truncate system-sm-medium text-text-secondary"
           title={payload.title}
         >
           {payload.title}
         </div>
         <div
-          className="system-xs-regular truncate text-text-tertiary"
+          className="truncate system-xs-regular text-text-tertiary"
           title={payload.source_url}
         >
           {payload.source_url}
@@ -74,7 +74,7 @@ const CrawledResultItem = ({
         <Button
           size="small"
           onClick={onPreview}
-          className="system-xs-medium-uppercase right-2 top-2 hidden px-1.5 group-hover:absolute group-hover:block"
+          className="top-2 right-2 hidden px-1.5 system-xs-medium-uppercase group-hover:absolute group-hover:block"
         >
           {t('stepOne.website.preview', { ns: 'datasetCreation' })}
         </Button>

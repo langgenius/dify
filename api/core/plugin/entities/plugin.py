@@ -3,7 +3,6 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any
 
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -14,6 +13,7 @@ from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 from core.trigger.entities.entities import TriggerProviderEntity
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class PluginInstallationSource(StrEnum):
@@ -123,7 +123,7 @@ class PluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_category(cls, values: dict):
+    def validate_category(cls, values: dict[str, Any]) -> dict[str, Any]:
         # auto detect category
         if values.get("tool"):
             values["category"] = PluginCategory.Tool

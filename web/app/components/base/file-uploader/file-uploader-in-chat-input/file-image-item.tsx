@@ -1,10 +1,10 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiCloseLine,
   RiDownloadLine,
 } from '@remixicon/react'
 import { useState } from 'react'
-import Button from '@/app/components/base/button'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
@@ -43,7 +43,7 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
-              className="absolute -right-1.5 -top-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+              className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
               onClick={() => onRemove?.(id)}
             >
               <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
@@ -80,9 +80,9 @@ const FileImageItem = ({
         }
         {
           showDownloadAction && (
-            <div className="absolute inset-0.5 z-10 hidden bg-background-overlay-alt bg-opacity-[0.3] group-hover/file-image:block">
+            <div className="bg-opacity-[0.3] absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
               <div
-                className="absolute bottom-0.5 right-0.5  flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
+                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })

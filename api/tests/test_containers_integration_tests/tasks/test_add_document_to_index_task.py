@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -530,22 +531,18 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Verify logs exist before processing
-        existing_logs = (
-            db_session_with_containers.query(DatasetAutoDisableLog)
-            .where(DatasetAutoDisableLog.document_id == document.id)
-            .all()
-        )
+        existing_logs = db_session_with_containers.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id)
+        ).all()
         assert len(existing_logs) == 2
 
         # Act: Execute the task
         add_document_to_index_task(document.id)
 
         # Assert: Verify auto disable logs were deleted
-        remaining_logs = (
-            db_session_with_containers.query(DatasetAutoDisableLog)
-            .where(DatasetAutoDisableLog.document_id == document.id)
-            .all()
-        )
+        remaining_logs = db_session_with_containers.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id)
+        ).all()
         assert len(remaining_logs) == 0
 
         # Verify index processing occurred normally

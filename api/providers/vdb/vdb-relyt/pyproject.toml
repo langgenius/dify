@@ -1,0 +1,12 @@
+[project]
+name = "dify-vdb-relyt"
+version = "0.0.1"
+
+dependencies = []
+description = "Dify vector store backend (dify-vdb-relyt)."
+
+[project.entry-points."dify.vector_backends"]
+relyt = "dify_vdb_relyt.relyt_vector:RelytVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

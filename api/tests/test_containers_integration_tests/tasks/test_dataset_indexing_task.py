@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -175,7 +176,7 @@ class TestDatasetIndexingTaskIntegration:
 
     def _query_document(self, db_session_with_containers, document_id: str) -> Document | None:
         """Return the latest persisted document state."""
-        return db_session_with_containers.query(Document).where(Document.id == document_id).first()
+        return db_session_with_containers.scalar(select(Document).where(Document.id == document_id).limit(1))
 
     def _assert_documents_parsing(self, db_session_with_containers, document_ids: Sequence[str]) -> None:
         """Assert all target documents are persisted in parsing status."""

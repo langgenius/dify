@@ -16,15 +16,15 @@ vi.mock('@/context/app-context', () => ({
 
 describe('PermissionSelector', () => {
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', last_login_at: '', created_at: '', status: 'active' },
+    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', last_login_at: '', created_at: '', status: 'active' }!,
   ]
 
   const defaultProps = {
     permission: DatasetPermission.onlyMe,
-    value: ['user-1'],
+    value: ['user-1'!],
     memberList: mockMemberList,
     onChange: vi.fn(),
     onMemberSelect: vi.fn(),
@@ -37,17 +37,17 @@ describe('PermissionSelector', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<PermissionSelector {...defaultProps} />)
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should render Only Me option when permission is onlyMe', () => {
       render(<PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />)
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should render All Team Members option when permission is allTeamMembers', () => {
       render(<PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
-      expect(screen.getByText(/form\.permissionsAllMember/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsAllMember/))!.toBeInTheDocument()
     })
 
     it('should render selected member names when permission is partialMembers', () => {
@@ -59,7 +59,8 @@ describe('PermissionSelector', () => {
         />,
       )
       // Should show member names
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
+      // Should show member names
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
   })
 
@@ -97,7 +98,7 @@ describe('PermissionSelector', () => {
 
       await waitFor(() => {
         const onlyMeOptions = screen.getAllByText(/form\.permissionsOnlyMe/)
-        fireEvent.click(onlyMeOptions[0])
+        fireEvent.click(onlyMeOptions[0]!)
       })
 
       expect(handleChange).toHaveBeenCalledWith(DatasetPermission.onlyMe)
@@ -112,7 +113,7 @@ describe('PermissionSelector', () => {
 
       await waitFor(() => {
         const allMemberOptions = screen.getAllByText(/form\.permissionsAllMember/)
-        fireEvent.click(allMemberOptions[0])
+        fireEvent.click(allMemberOptions[0]!)
       })
 
       expect(handleChange).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
@@ -134,7 +135,7 @@ describe('PermissionSelector', () => {
 
       await waitFor(() => {
         const invitedOptions = screen.getAllByText(/form\.permissionsInvitedMembers/)
-        fireEvent.click(invitedOptions[0])
+        fireEvent.click(invitedOptions[0]!)
       })
 
       expect(handleChange).toHaveBeenCalledWith(DatasetPermission.partialMembers)
@@ -156,8 +157,9 @@ describe('PermissionSelector', () => {
 
       await waitFor(() => {
         // Should show member list
-        expect(screen.getByText('John Doe')).toBeInTheDocument()
-        expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+        // Should show member list
+        expect(screen.getByText('John Doe'))!.toBeInTheDocument()
+        expect(screen.getByText('Jane Smith'))!.toBeInTheDocument()
       })
     })
 
@@ -222,7 +224,7 @@ describe('PermissionSelector', () => {
 
       // Type in search
       fireEvent.change(searchInput, { target: { value: 'John' } })
-      expect(searchInput).toHaveValue('John')
+      expect(searchInput)!.toHaveValue('John')
     })
 
     it('should render search input in partial members mode', async () => {
@@ -238,7 +240,7 @@ describe('PermissionSelector', () => {
 
       // Wait for dropdown to open and search input to be available
       const searchInput = await screen.findByRole('textbox')
-      expect(searchInput).toBeInTheDocument()
+      expect(searchInput)!.toBeInTheDocument()
     })
 
     it('should filter members after debounce completes', async () => {
@@ -261,7 +263,7 @@ describe('PermissionSelector', () => {
       // Wait for debounce (500ms) + buffer
       await waitFor(
         () => {
-          expect(screen.getByText('John Doe')).toBeInTheDocument()
+          expect(screen.getByText('John Doe'))!.toBeInTheDocument()
         },
         { timeout: 1000 },
       )
@@ -283,14 +285,14 @@ describe('PermissionSelector', () => {
 
       // Type in search
       fireEvent.change(searchInput, { target: { value: 'test' } })
-      expect(searchInput).toHaveValue('test')
+      expect(searchInput)!.toHaveValue('test')
 
       const clearButton = screen.getByTestId('input-clear')
       fireEvent.click(clearButton)
 
       // After clicking clear, input should be empty
       await waitFor(() => {
-        expect(searchInput).toHaveValue('')
+        expect(searchInput)!.toHaveValue('')
       })
     })
 
@@ -314,7 +316,7 @@ describe('PermissionSelector', () => {
       // Wait for debounce
       await waitFor(
         () => {
-          expect(screen.getByText('John Doe')).toBeInTheDocument()
+          expect(screen.getByText('John Doe'))!.toBeInTheDocument()
         },
         { timeout: 1000 },
       )
@@ -340,7 +342,7 @@ describe('PermissionSelector', () => {
       // Wait for debounce and no results message
       await waitFor(
         () => {
-          expect(screen.getByText(/form\.onSearchResults/)).toBeInTheDocument()
+          expect(screen.getByText(/form\.onSearchResults/))!.toBeInTheDocument()
         },
         { timeout: 1000 },
       )
@@ -365,7 +367,9 @@ describe('PermissionSelector', () => {
 
       // Current user (showMe) should remain visible based on name match
       // The component uses useMemo to check if userProfile.name.includes(searchKeywords)
-      expect(searchInput).toHaveValue('Current')
+      // Current user (showMe) should remain visible based on name match
+      // The component uses useMemo to check if userProfile.name.includes(searchKeywords)
+      expect(searchInput)!.toHaveValue('Current')
       // Current User label appears multiple times (trigger + member list)
       expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
     })
@@ -388,7 +392,8 @@ describe('PermissionSelector', () => {
       fireEvent.change(searchInput, { target: { value: 'current@' } })
 
       // The component checks userProfile.email.includes(searchKeywords)
-      expect(searchInput).toHaveValue('current@')
+      // The component checks userProfile.email.includes(searchKeywords)
+      expect(searchInput)!.toHaveValue('current@')
       // Current User should remain visible based on email match
       expect(screen.getAllByText('Current User').length).toBeGreaterThanOrEqual(1)
     })
@@ -399,7 +404,7 @@ describe('PermissionSelector', () => {
       const { container } = render(<PermissionSelector {...defaultProps} disabled={true} />)
       // When disabled, the component has cursor-not-allowed! class (escaped in Tailwind)
       const triggerElement = container.querySelector('[class*="cursor-not-allowed"]')
-      expect(triggerElement).toBeInTheDocument()
+      expect(triggerElement)!.toBeInTheDocument()
     })
   })
 
@@ -414,7 +419,8 @@ describe('PermissionSelector', () => {
       )
 
       // Should display single avatar
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
+      // Should display single avatar
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
 
     it('should display two avatars when two or more members selected', () => {
@@ -427,7 +433,8 @@ describe('PermissionSelector', () => {
       )
 
       // Should display member names
-      expect(screen.getByTitle(/Current User, John Doe/)).toBeInTheDocument()
+      // Should display member names
+      expect(screen.getByTitle(/Current User, John Doe/))!.toBeInTheDocument()
     })
   })
 
@@ -440,18 +447,18 @@ describe('PermissionSelector', () => {
         />,
       )
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should handle member list with only current user', () => {
       render(
         <PermissionSelector
           {...defaultProps}
-          memberList={[mockMemberList[0]]}
+          memberList={[mockMemberList[0]!]}
         />,
       )
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should only show members with allowed roles', () => {
@@ -472,7 +479,8 @@ describe('PermissionSelector', () => {
       )
 
       // The component renders - the filtering logic is internal
-      expect(screen.getByTitle(/Current User/)).toBeInTheDocument()
+      // The component renders - the filtering logic is internal
+      expect(screen.getByTitle(/Current User/))!.toBeInTheDocument()
     })
   })
 
@@ -480,11 +488,11 @@ describe('PermissionSelector', () => {
     it('should update when permission prop changes', () => {
       const { rerender } = render(<PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />)
 
-      expect(screen.getByText(/form\.permissionsOnlyMe/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
 
       rerender(<PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
 
-      expect(screen.getByText(/form\.permissionsAllMember/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.permissionsAllMember/))!.toBeInTheDocument()
     })
   })
 })

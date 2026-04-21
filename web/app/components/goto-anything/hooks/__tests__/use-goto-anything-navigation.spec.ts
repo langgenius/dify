@@ -8,6 +8,7 @@ import { useGotoAnythingNavigation } from '../use-goto-anything-navigation'
 
 const mockRouterPush = vi.fn()
 const mockSelectWorkflowNode = vi.fn()
+const mockAddRecentItem = vi.fn()
 
 type MockCommandResult = {
   mode: string
@@ -30,6 +31,10 @@ vi.mock('../../actions/commands/registry', () => ({
   slashCommandRegistry: {
     findCommand: () => mockFindCommandResult,
   },
+}))
+
+vi.mock('../../actions/recent-store', () => ({
+  addRecentItem: (...args: unknown[]) => mockAddRecentItem(...args),
 }))
 
 const createMockActionItem = (
@@ -313,6 +318,107 @@ describe('useGotoAnythingNavigation', () => {
       })
 
       expect(mockRouterPush).toHaveBeenCalledWith('/datasets/kb-1')
+    })
+
+    it('should record app navigation to recent history', () => {
+      const options = createMockOptions()
+
+      const { result } = renderHook(() => useGotoAnythingNavigation(options))
+
+      act(() => {
+        result.current.handleNavigate({
+          id: 'app-1',
+          type: 'app' as const,
+          title: 'My App',
+          description: 'Desc',
+          path: '/app/app-1',
+          data: { id: 'app-1', name: 'My App' } as unknown as App,
+        })
+      })
+
+      expect(mockAddRecentItem).toHaveBeenCalledWith({
+        id: 'app-1',
+        title: 'My App',
+        description: 'Desc',
+        path: '/app/app-1',
+        originalType: 'app',
+      })
+    })
+
+    it('should record knowledge navigation to recent history', () => {
+      const options = createMockOptions()
+
+      const { result } = renderHook(() => useGotoAnythingNavigation(options))
+
+      act(() => {
+        result.current.handleNavigate({
+          id: 'kb-1',
+          type: 'knowledge' as const,
+          title: 'My KB',
+          path: '/datasets/kb-1',
+          data: { id: 'kb-1', name: 'My KB' } as unknown as DataSet,
+        })
+      })
+
+      expect(mockAddRecentItem).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'kb-1', originalType: 'knowledge' }),
+      )
+    })
+
+    it('should NOT record to recent history when path is missing', () => {
+      const options = createMockOptions()
+
+      const { result } = renderHook(() => useGotoAnythingNavigation(options))
+
+      act(() => {
+        result.current.handleNavigate({
+          id: 'app-1',
+          type: 'app' as const,
+          title: 'My App',
+          path: '',
+          data: { id: 'app-1', name: 'My App' } as unknown as App,
+        })
+      })
+
+      expect(mockAddRecentItem).not.toHaveBeenCalled()
+    })
+
+    it('should navigate for recent type without recording again', () => {
+      const options = createMockOptions()
+
+      const { result } = renderHook(() => useGotoAnythingNavigation(options))
+
+      act(() => {
+        result.current.handleNavigate({
+          id: 'recent-app-1',
+          type: 'recent' as const,
+          originalType: 'app',
+          title: 'My App',
+          path: '/app/app-1',
+          data: { path: '/app/app-1' },
+        })
+      })
+
+      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-1')
+      expect(mockAddRecentItem).not.toHaveBeenCalled()
+    })
+
+    it('should NOT call router.push for recent type when path is missing', () => {
+      const options = createMockOptions()
+
+      const { result } = renderHook(() => useGotoAnythingNavigation(options))
+
+      act(() => {
+        result.current.handleNavigate({
+          id: 'recent-app-1',
+          type: 'recent' as const,
+          originalType: 'app',
+          title: 'My App',
+          data: { path: '' },
+        })
+      })
+
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 

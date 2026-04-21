@@ -28,7 +28,7 @@ const { mockToast } = vi.hoisted(() => {
 
 vi.mock('@/service/datasets')
 vi.mock('@/service/knowledge/use-dataset')
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 

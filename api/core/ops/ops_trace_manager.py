@@ -204,114 +204,117 @@ class TracingProviderConfigEntry(TypedDict):
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
     def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
-        match provider:
-            case TracingProviderEnum.LANGFUSE:
-                from core.ops.entities.config_entity import LangfuseConfig
-                from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+        try:
+            match provider:
+                case TracingProviderEnum.LANGFUSE:
+                    from dify_trace_langfuse.config import LangfuseConfig
+                    from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
 
-                return {
-                    "config_class": LangfuseConfig,
-                    "secret_keys": ["public_key", "secret_key"],
-                    "other_keys": ["host", "project_key"],
-                    "trace_instance": LangFuseDataTrace,
-                }
+                    return {
+                        "config_class": LangfuseConfig,
+                        "secret_keys": ["public_key", "secret_key"],
+                        "other_keys": ["host", "project_key"],
+                        "trace_instance": LangFuseDataTrace,
+                    }
 
-            case TracingProviderEnum.LANGSMITH:
-                from core.ops.entities.config_entity import LangSmithConfig
-                from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
+                case TracingProviderEnum.LANGSMITH:
+                    from dify_trace_langsmith.config import LangSmithConfig
+                    from dify_trace_langsmith.langsmith_trace import LangSmithDataTrace
 
-                return {
-                    "config_class": LangSmithConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "endpoint"],
-                    "trace_instance": LangSmithDataTrace,
-                }
+                    return {
+                        "config_class": LangSmithConfig,
+                        "secret_keys": ["api_key"],
+                        "other_keys": ["project", "endpoint"],
+                        "trace_instance": LangSmithDataTrace,
+                    }
 
-            case TracingProviderEnum.OPIK:
-                from core.ops.entities.config_entity import OpikConfig
-                from core.ops.opik_trace.opik_trace import OpikDataTrace
+                case TracingProviderEnum.OPIK:
+                    from dify_trace_opik.config import OpikConfig
+                    from dify_trace_opik.opik_trace import OpikDataTrace
 
-                return {
-                    "config_class": OpikConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "url", "workspace"],
-                    "trace_instance": OpikDataTrace,
-                }
+                    return {
+                        "config_class": OpikConfig,
+                        "secret_keys": ["api_key"],
+                        "other_keys": ["project", "url", "workspace"],
+                        "trace_instance": OpikDataTrace,
+                    }
 
-            case TracingProviderEnum.WEAVE:
-                from core.ops.entities.config_entity import WeaveConfig
-                from core.ops.weave_trace.weave_trace import WeaveDataTrace
+                case TracingProviderEnum.WEAVE:
+                    from dify_trace_weave.config import WeaveConfig
+                    from dify_trace_weave.weave_trace import WeaveDataTrace
 
-                return {
-                    "config_class": WeaveConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "entity", "endpoint", "host"],
-                    "trace_instance": WeaveDataTrace,
-                }
-            case TracingProviderEnum.ARIZE:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
-                from core.ops.entities.config_entity import ArizeConfig
+                    return {
+                        "config_class": WeaveConfig,
+                        "secret_keys": ["api_key"],
+                        "other_keys": ["project", "entity", "endpoint", "host"],
+                        "trace_instance": WeaveDataTrace,
+                    }
+                case TracingProviderEnum.ARIZE:
+                    from dify_trace_arize_phoenix.arize_phoenix_trace import ArizePhoenixDataTrace
+                    from dify_trace_arize_phoenix.config import ArizeConfig
 
-                return {
-                    "config_class": ArizeConfig,
-                    "secret_keys": ["api_key", "space_id"],
-                    "other_keys": ["project", "endpoint"],
-                    "trace_instance": ArizePhoenixDataTrace,
-                }
-            case TracingProviderEnum.PHOENIX:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
-                from core.ops.entities.config_entity import PhoenixConfig
+                    return {
+                        "config_class": ArizeConfig,
+                        "secret_keys": ["api_key", "space_id"],
+                        "other_keys": ["project", "endpoint"],
+                        "trace_instance": ArizePhoenixDataTrace,
+                    }
+                case TracingProviderEnum.PHOENIX:
+                    from dify_trace_arize_phoenix.arize_phoenix_trace import ArizePhoenixDataTrace
+                    from dify_trace_arize_phoenix.config import PhoenixConfig
 
-                return {
-                    "config_class": PhoenixConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "endpoint"],
-                    "trace_instance": ArizePhoenixDataTrace,
-                }
-            case TracingProviderEnum.ALIYUN:
-                from core.ops.aliyun_trace.aliyun_trace import AliyunDataTrace
-                from core.ops.entities.config_entity import AliyunConfig
+                    return {
+                        "config_class": PhoenixConfig,
+                        "secret_keys": ["api_key"],
+                        "other_keys": ["project", "endpoint"],
+                        "trace_instance": ArizePhoenixDataTrace,
+                    }
+                case TracingProviderEnum.ALIYUN:
+                    from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
+                    from dify_trace_aliyun.config import AliyunConfig
 
-                return {
-                    "config_class": AliyunConfig,
-                    "secret_keys": ["license_key"],
-                    "other_keys": ["endpoint", "app_name"],
-                    "trace_instance": AliyunDataTrace,
-                }
-            case TracingProviderEnum.MLFLOW:
-                from core.ops.entities.config_entity import MLflowConfig
-                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+                    return {
+                        "config_class": AliyunConfig,
+                        "secret_keys": ["license_key"],
+                        "other_keys": ["endpoint", "app_name"],
+                        "trace_instance": AliyunDataTrace,
+                    }
+                case TracingProviderEnum.MLFLOW:
+                    from dify_trace_mlflow.config import MLflowConfig
+                    from dify_trace_mlflow.mlflow_trace import MLflowDataTrace
 
-                return {
-                    "config_class": MLflowConfig,
-                    "secret_keys": ["password"],
-                    "other_keys": ["tracking_uri", "experiment_id", "username"],
-                    "trace_instance": MLflowDataTrace,
-                }
-            case TracingProviderEnum.DATABRICKS:
-                from core.ops.entities.config_entity import DatabricksConfig
-                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+                    return {
+                        "config_class": MLflowConfig,
+                        "secret_keys": ["password"],
+                        "other_keys": ["tracking_uri", "experiment_id", "username"],
+                        "trace_instance": MLflowDataTrace,
+                    }
+                case TracingProviderEnum.DATABRICKS:
+                    from dify_trace_mlflow.config import DatabricksConfig
+                    from dify_trace_mlflow.mlflow_trace import MLflowDataTrace
 
-                return {
-                    "config_class": DatabricksConfig,
-                    "secret_keys": ["personal_access_token", "client_secret"],
-                    "other_keys": ["host", "client_id", "experiment_id"],
-                    "trace_instance": MLflowDataTrace,
-                }
+                    return {
+                        "config_class": DatabricksConfig,
+                        "secret_keys": ["personal_access_token", "client_secret"],
+                        "other_keys": ["host", "client_id", "experiment_id"],
+                        "trace_instance": MLflowDataTrace,
+                    }
 
-            case TracingProviderEnum.TENCENT:
-                from core.ops.entities.config_entity import TencentConfig
-                from core.ops.tencent_trace.tencent_trace import TencentDataTrace
+                case TracingProviderEnum.TENCENT:
+                    from dify_trace_tencent.config import TencentConfig
+                    from dify_trace_tencent.tencent_trace import TencentDataTrace
 
-                return {
-                    "config_class": TencentConfig,
-                    "secret_keys": ["token"],
-                    "other_keys": ["endpoint", "service_name"],
-                    "trace_instance": TencentDataTrace,
-                }
+                    return {
+                        "config_class": TencentConfig,
+                        "secret_keys": ["token"],
+                        "other_keys": ["endpoint", "service_name"],
+                        "trace_instance": TencentDataTrace,
+                    }
 
-            case _:
-                raise KeyError(f"Unsupported tracing provider: {provider}")
+                case _:
+                    raise KeyError(f"Unsupported tracing provider: {provider}")
+        except ImportError:
+            raise ImportError(f"Provider {provider} is not installed.")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -324,7 +327,7 @@ class OpsTraceManager:
 
     @classmethod
     def encrypt_tracing_config(
-        cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
+        cls, tenant_id: str, tracing_provider: str, tracing_config: dict[str, Any], current_trace_config=None
     ):
         """
         Encrypt tracing config.
@@ -363,7 +366,7 @@ class OpsTraceManager:
         return encrypted_config.model_dump()
 
     @classmethod
-    def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
+    def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict[str, Any]):
         """
         Decrypt tracing config
         :param tenant_id: tenant id
@@ -408,7 +411,7 @@ class OpsTraceManager:
             return dict(decrypted_config)
 
     @classmethod
-    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict):
+    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict[str, Any]):
         """
         Decrypt tracing config
         :param tracing_provider: tracing provider
@@ -581,7 +584,7 @@ class OpsTraceManager:
         return app_trace_config
 
     @staticmethod
-    def check_trace_config_is_effective(tracing_config: dict, tracing_provider: str):
+    def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
         """
         Check trace config is effective
         :param tracing_config: tracing config
@@ -596,7 +599,7 @@ class OpsTraceManager:
         return trace_instance(config).api_check()
 
     @staticmethod
-    def get_trace_config_project_key(tracing_config: dict, tracing_provider: str):
+    def get_trace_config_project_key(tracing_config: dict[str, Any], tracing_provider: str):
         """
         get trace config is project key
         :param tracing_config: tracing config
@@ -611,7 +614,7 @@ class OpsTraceManager:
         return trace_instance(config).get_project_key()
 
     @staticmethod
-    def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
+    def get_trace_config_project_url(tracing_config: dict[str, Any], tracing_provider: str):
         """
         get trace config is project key
         :param tracing_config: tracing config
@@ -1322,8 +1325,8 @@ class TraceTask:
             error=error,
         )
 
-    def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict:
-        node_data: dict = kwargs.get("node_execution_data", {})
+    def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict[str, Any]:
+        node_data: dict[str, Any] = kwargs.get("node_execution_data", {})
         if not node_data:
             return {}
 
@@ -1431,7 +1434,7 @@ class TraceTask:
             return node_trace
         return DraftNodeExecutionTrace(**node_trace.model_dump())
 
-    def _extract_streaming_metrics(self, message_data) -> dict:
+    def _extract_streaming_metrics(self, message_data) -> dict[str, Any]:
         if not message_data.message_metadata:
             return {}
 

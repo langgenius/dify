@@ -5,6 +5,8 @@ import type {
   ChatItemInTree,
   OnSend,
 } from '../types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
@@ -21,9 +23,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { formatBooleanInputs } from '@/utils/model-config'
-import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -265,7 +265,7 @@ const ChatWrapper = () => {
               imageUrl={appData?.site.icon_url}
             />
             <div className="w-0 grow">
-              <div className="body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary">
+              <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
                 <Markdown content={welcomeMessage.content} />
                 <SuggestedQuestions item={welcomeMessage} />
               </div>

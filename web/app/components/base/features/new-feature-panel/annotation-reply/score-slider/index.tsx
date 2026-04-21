@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Slider } from '@/app/components/base/ui/slider'
 
 type Props = {
   className?: string
@@ -38,7 +38,7 @@ const ScoreSlider: FC<Props> = ({
           aria-label={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}
         />
         <div
-          className="pointer-events-none absolute top-[-16px] text-text-primary system-sm-semibold"
+          className="pointer-events-none absolute top-[-16px] system-sm-semibold text-text-primary"
           style={{
             left: `calc(4px + ${(safeValue - 80) / 20} * (100% - 8px))`,
             transform: 'translateX(-50%)',

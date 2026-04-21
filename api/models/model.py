@@ -14,9 +14,6 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -24,7 +21,11 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
+from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
 
@@ -446,7 +447,8 @@ class App(Base):
 
     @property
     def api_base_url(self) -> str:
-        return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return normalize_api_base_url(base)
 
     @property
     def tenant(self) -> Tenant | None:
@@ -674,28 +676,24 @@ class AppModelConfig(TypeBase):
     def suggested_questions_list(self) -> list[str]:
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
+    def _get_enabled_config(self, value: str | None, *, default_enabled: bool = False) -> EnabledConfig:
+        return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
+
     @property
     def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig,
-            json.loads(self.suggested_questions_after_answer)
-            if self.suggested_questions_after_answer
-            else {"enabled": False},
-        )
+        return self._get_enabled_config(self.suggested_questions_after_answer)
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.speech_to_text) if self.speech_to_text else {"enabled": False})
+        return self._get_enabled_config(self.speech_to_text)
 
     @property
     def text_to_speech_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.text_to_speech) if self.text_to_speech else {"enabled": False})
+        return self._get_enabled_config(self.text_to_speech)
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig, json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
-        )
+        return self._get_enabled_config(self.retriever_resource, default_enabled=True)
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
@@ -722,7 +720,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def more_like_this_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.more_like_this) if self.more_like_this else {"enabled": False})
+        return self._get_enabled_config(self.more_like_this)
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
@@ -842,7 +840,7 @@ class AppModelConfig(TypeBase):
         return self
 
 
-class RecommendedApp(Base):  # bug
+class RecommendedApp(TypeBase):
     __tablename__ = "recommended_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -850,20 +848,37 @@ class RecommendedApp(Base):  # bug
         sa.Index("recommended_app_is_listed_idx", "is_listed", "language"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    description = mapped_column(sa.JSON, nullable=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    description: Mapped[Any] = mapped_column(sa.JSON, nullable=False)
     copyright: Mapped[str] = mapped_column(String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False)
-    custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     category: Mapped[str] = mapped_column(String(255), nullable=False)
+    custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'"))
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    language: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        server_default=sa.text("'en-US'"),
+        default="en-US",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -902,7 +917,7 @@ class InstalledApp(TypeBase):
         return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
-class TrialApp(Base):
+class TrialApp(TypeBase):
     __tablename__ = "trial_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
@@ -911,18 +926,22 @@ class TrialApp(Base):
         sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
     )
 
-    id = mapped_column(StringUUID, default=gen_uuidv4_string)
-    app_id = mapped_column(StringUUID, nullable=False)
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=gen_uuidv4_string, default_factory=gen_uuidv4_string, init=False
+    )
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    trial_limit: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=3)
 
     @property
     def app(self) -> App | None:
         return db.session.scalar(select(App).where(App.id == self.app_id))
 
 
-class AccountTrialAppRecord(Base):
+class AccountTrialAppRecord(TypeBase):
     __tablename__ = "account_trial_app_records"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
@@ -930,11 +949,15 @@ class AccountTrialAppRecord(Base):
         sa.Index("account_trial_app_record_app_id_idx", "app_id"),
         sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
     )
-    id = mapped_column(StringUUID, default=gen_uuidv4_string)
-    account_id = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=False)
-    count = mapped_column(sa.Integer, nullable=False, default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=gen_uuidv4_string, default_factory=gen_uuidv4_string, init=False
+    )
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def app(self) -> App | None:
@@ -986,7 +1009,7 @@ class OAuthProviderApp(TypeBase):
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
+    app_label: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
@@ -1057,7 +1080,7 @@ class Conversation(Base):
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
-        "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
+        lambda: MessageAnnotation, backref="conversation", lazy="select", passive_deletes="all"
     )
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -1816,7 +1839,7 @@ class MessageFile(TypeBase):
     )
 
 
-class MessageAnnotation(Base):
+class MessageAnnotation(TypeBase):
     __tablename__ = "message_annotations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1825,17 +1848,25 @@ class MessageAnnotation(Base):
         sa.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID)
-    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
-    message_id: Mapped[str | None] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), default=None)
+    message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -2466,7 +2497,7 @@ class TraceAppConfig(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    tracing_config: Mapped[dict[str, Any] | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

@@ -1,8 +1,8 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
-import { toast } from '@/app/components/base/ui/toast'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -61,13 +61,15 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
-      const errorData = await response.clone()
-        .json()
-        .then(data => data as ResponseError)
-        .catch(() => null)
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError)
+      if (shouldNotifyError && errorData)
         toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')

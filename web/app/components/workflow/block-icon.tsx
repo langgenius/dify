@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import {
@@ -28,7 +29,6 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { API_PREFIX } from '@/config'
-import { cn } from '@/utils/classnames'
 import { BlockEnum } from './types'
 
 type BlockIconProps = {

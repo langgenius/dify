@@ -1,23 +1,42 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
 from graphon.runtime import GraphRuntimeState
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-
 
 class TestListOperatorNode:
     """Comprehensive tests for ListOperatorNode."""
+
+    @staticmethod
+    def _build_node(*, config, graph_init_params, graph_runtime_state):
+        return ListOperatorNode(
+            node_id="test",
+            config=config if isinstance(config, ListOperatorNodeData) else ListOperatorNodeData.model_validate(config),
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
+    @staticmethod
+    def _filter_by(comparison_operator: str, value: str) -> dict[str, object]:
+        return {
+            "enabled": True,
+            "conditions": [{"comparison_operator": comparison_operator, "value": value}],
+        }
 
     @pytest.fixture
     def mock_graph_runtime_state(self):
         """Create mock GraphRuntimeState."""
         mock_state = MagicMock(spec=GraphRuntimeState)
         mock_variable_pool = MagicMock()
+        mock_variable_pool.convert_template.side_effect = lambda value: SimpleNamespace(text=value)
         mock_state.variable_pool = mock_variable_pool
         return mock_state
 
@@ -45,9 +64,8 @@ class TestListOperatorNode:
 
         def _create_node(config, mock_variable):
             mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
-            return ListOperatorNode(
-                id="test",
-                config={"id": "test", "data": config},
+            return self._build_node(
+                config=config,
                 graph_init_params=graph_init_params,
                 graph_runtime_state=mock_graph_runtime_state,
             )
@@ -64,9 +82,8 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -109,9 +126,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=[])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -128,11 +144,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "items"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "contains",
-                "value": "app",
-            },
+            "filter_by": self._filter_by("contains", "app"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -140,9 +152,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -157,11 +168,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "items"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "not contains",
-                "value": "app",
-            },
+            "filter_by": self._filter_by("not contains", "app"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -169,9 +176,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -186,11 +192,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "numbers"],
-            "filter_by": {
-                "enabled": True,
-                "condition": ">",
-                "value": "5",
-            },
+            "filter_by": self._filter_by(">", "5"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -198,9 +200,8 @@ class TestListOperatorNode:
         mock_var = ArrayNumberSegment(value=[1, 3, 5, 7, 9, 11])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -226,9 +227,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["cherry", "apple", "banana"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -254,9 +254,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["cherry", "apple", "banana"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -282,9 +281,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["apple", "banana", "cherry", "date"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -299,11 +297,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "numbers"],
-            "filter_by": {
-                "enabled": True,
-                "condition": ">",
-                "value": "3",
-            },
+            "filter_by": self._filter_by(">", "3"),
             "order_by": {
                 "enabled": True,
                 "value": "desc",
@@ -317,9 +311,8 @@ class TestListOperatorNode:
         mock_var = ArrayNumberSegment(value=[1, 2, 3, 4, 5, 6, 7, 8, 9])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -341,9 +334,8 @@ class TestListOperatorNode:
 
         mock_graph_runtime_state.variable_pool.get.return_value = None
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -366,9 +358,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["first", "middle", "last"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -384,11 +375,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "items"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "start with",
-                "value": "app",
-            },
+            "filter_by": self._filter_by("start with", "app"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -396,9 +383,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["apple", "application", "banana", "apricot"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -413,11 +399,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "items"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "end with",
-                "value": "le",
-            },
+            "filter_by": self._filter_by("end with", "le"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -425,9 +407,8 @@ class TestListOperatorNode:
         mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "table"])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -442,11 +423,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "numbers"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "=",
-                "value": "5",
-            },
+            "filter_by": self._filter_by("=", "5"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -454,9 +431,8 @@ class TestListOperatorNode:
         mock_var = ArrayNumberSegment(value=[1, 3, 5, 5, 7, 9])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -471,11 +447,7 @@ class TestListOperatorNode:
         config = {
             "title": "Test",
             "variable": ["sys", "numbers"],
-            "filter_by": {
-                "enabled": True,
-                "condition": "≠",
-                "value": "5",
-            },
+            "filter_by": self._filter_by("≠", "5"),
             "order_by": {"enabled": False},
             "limit": {"enabled": False},
         }
@@ -483,9 +455,8 @@ class TestListOperatorNode:
         mock_var = ArrayNumberSegment(value=[1, 3, 5, 7, 9])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -511,9 +482,8 @@ class TestListOperatorNode:
         mock_var = ArrayNumberSegment(value=[9, 3, 7, 1, 5])
         mock_graph_runtime_state.variable_pool.get.return_value = mock_var
 
-        node = ListOperatorNode(
-            id="test",
-            config={"id": "test", "data": config},
+        node = self._build_node(
+            config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )

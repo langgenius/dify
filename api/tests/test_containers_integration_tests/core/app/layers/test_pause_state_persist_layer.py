@@ -22,13 +22,6 @@ import uuid
 from time import time
 
 import pytest
-from graphon.entities.pause_reason import SchedulingPause
-from graphon.enums import WorkflowExecutionStatus
-from graphon.graph_engine.entities.commands import GraphEngineCommand
-from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from graphon.graph_events import GraphRunPausedEvent
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
@@ -40,6 +33,13 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.entities.commands import GraphEngineCommand
+from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from graphon.graph_events import GraphRunPausedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account, AccountStatus, TenantStatus
 from models import WorkflowPause as WorkflowPauseModel
@@ -88,7 +88,7 @@ class TestPauseStatePersistenceLayerTestContainers:
     def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
-        from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+        from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
         tenant = Tenant(
             name="Test Tenant",
@@ -557,11 +557,9 @@ class TestPauseStatePersistenceLayerTestContainers:
         self.session.refresh(self.test_workflow_run)
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
-        pause_states = (
-            self.session.query(WorkflowPauseModel)
-            .filter(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
-            .all()
-        )
+        pause_states = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
+        ).all()
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers):

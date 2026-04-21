@@ -6,7 +6,6 @@ from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx
-from graphon.file.file_manager import download
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -14,6 +13,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
+from graphon.file.file_manager import download
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),

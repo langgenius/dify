@@ -234,6 +234,35 @@ class TestAppEndpoints:
                 }
             )
 
+    def test_app_icon_post_should_forward_icon_type(self, app, monkeypatch):
+        api = app_module.AppIconApi()
+        method = _unwrap(api.post)
+        payload = {
+            "icon": "https://example.com/icon.png",
+            "icon_type": "image",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app_icon.return_value = SimpleNamespace()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
+
+        with (
+            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+        ):
+            response = method(app_model=SimpleNamespace())
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app_icon.call_args.args[1:] == (
+            payload["icon"],
+            payload["icon_background"],
+            app_module.IconType.IMAGE,
+        )
+
 
 class TestOpsTraceEndpoints:
     @pytest.fixture
@@ -313,6 +342,21 @@ class TestSiteEndpoints:
         method = _unwrap(api.post)
 
         site = MagicMock()
+        site.app_id = "app-1"
+        site.code = "test-code"
+        site.title = "My Site"
+        site.icon = None
+        site.icon_background = None
+        site.description = "Test site"
+        site.default_language = "en-US"
+        site.customize_domain = None
+        site.copyright = None
+        site.privacy_policy = None
+        site.custom_disclaimer = ""
+        site.customize_token_strategy = "not_allow"
+        site.prompt_public = False
+        site.show_workflow_steps = True
+        site.use_icon_as_answer_icon = False
         monkeypatch.setattr(
             site_module.db,
             "session",
@@ -328,13 +372,29 @@ class TestSiteEndpoints:
         with app.test_request_context("/", json={"title": "My Site"}):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is site
+        assert isinstance(result, dict)
+        assert result["title"] == "My Site"
 
     def test_app_site_access_token_reset(self, app, monkeypatch):
         api = site_module.AppSiteAccessTokenReset()
         method = _unwrap(api.post)
 
         site = MagicMock()
+        site.app_id = "app-1"
+        site.code = "old-code"
+        site.title = "My Site"
+        site.icon = None
+        site.icon_background = None
+        site.description = None
+        site.default_language = "en-US"
+        site.customize_domain = None
+        site.copyright = None
+        site.privacy_policy = None
+        site.custom_disclaimer = ""
+        site.customize_token_strategy = "not_allow"
+        site.prompt_public = False
+        site.show_workflow_steps = True
+        site.use_icon_as_answer_icon = False
         monkeypatch.setattr(
             site_module.db,
             "session",
@@ -351,7 +411,8 @@ class TestSiteEndpoints:
         with app.test_request_context("/"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is site
+        assert isinstance(result, dict)
+        assert result["access_token"] == "code"
 
 
 class TestWorkflowEndpoints:
@@ -400,7 +461,7 @@ class TestWorkflowAppLogEndpoints:
         monkeypatch.setattr(workflow_app_log_module, "sessionmaker", DummySessionMaker)
 
         def fake_get_paginate(self, **_kwargs):
-            return {"items": [], "total": 0}
+            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
         monkeypatch.setattr(
             workflow_app_log_module.WorkflowAppService,
@@ -411,7 +472,7 @@ class TestWorkflowAppLogEndpoints:
         with app.test_request_context("/?page=1&limit=20"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result == {"items": [], "total": 0}
+        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
 class TestWorkflowDraftVariableEndpoints:
@@ -576,7 +637,8 @@ class TestWorkflowTriggerEndpoints:
         with app.test_request_context("/?node_id=node-1"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is trigger
+        assert isinstance(result, dict)
+        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
 
 
 class TestWrapsEndpoints:

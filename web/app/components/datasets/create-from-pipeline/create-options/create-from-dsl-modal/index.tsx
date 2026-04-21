@@ -1,8 +1,8 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import DSLConfirmModal from './dsl-confirm-modal'
@@ -78,7 +78,7 @@ const CreateFromDSLModal = ({
           )}
           {currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
-              <div className="system-md-semibold leading6 mb-1 text-text-secondary">
+              <div className="leading6 mb-1 system-md-semibold text-text-secondary">
                 DSL URL
               </div>
               <Input

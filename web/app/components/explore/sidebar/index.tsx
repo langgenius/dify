@@ -1,9 +1,4 @@
 'use client'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,14 +7,19 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { ScrollArea } from '@/app/components/base/ui/scroll-area'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { useSelectedLayoutSegments } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
-import { cn } from '@/utils/classnames'
 import Item from './app-nav-item'
 import NoApps from './no-apps'
 
@@ -96,7 +96,7 @@ const SideBar = () => {
           <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
             <span aria-hidden="true" className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
           </div>
-          {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-regular')}>{t('sidebar.title', { ns: 'explore' })}</div>}
+          {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
         </Link>
       </div>
 
@@ -109,7 +109,7 @@ const SideBar = () => {
 
       {installedApps.length > 0 && (
         <div className="mt-5 flex min-h-0 flex-1 flex-col">
-          {!isMobile && !isFold && <p id={webAppsLabelId} className="mb-1.5 break-all pl-2 uppercase text-text-tertiary system-xs-medium-uppercase mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
+          {!isMobile && !isFold && <p id={webAppsLabelId} className="mb-1.5 pl-2 system-xs-medium-uppercase break-all text-text-tertiary uppercase mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
           {shouldUseExpandedScrollArea
             ? (
                 <div className="min-h-0 flex-1">
@@ -124,7 +124,7 @@ const SideBar = () => {
               )
             : (
                 <div
-                  className="h-full min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden"
+                  className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto"
                 >
                   {installedAppItems}
                 </div>
@@ -133,11 +133,11 @@ const SideBar = () => {
       )}
 
       {!isMobile && (
-        <div className="mt-auto flex pb-3 pt-3">
+        <div className="mt-auto flex pt-3 pb-3">
           <button
             type="button"
             aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover"
+            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
             onClick={toggleIsFold}
           >
             {isFold
@@ -151,11 +151,11 @@ const SideBar = () => {
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
-          <div className="flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6">
-            <AlertDialogTitle className="w-full text-text-primary title-2xl-semi-bold">
+          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+            <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
               {t('sidebar.delete.title', { ns: 'explore' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t('sidebar.delete.content', { ns: 'explore' })}
             </AlertDialogDescription>
           </div>

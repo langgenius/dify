@@ -26,7 +26,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -68,7 +68,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -110,7 +110,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             data = json_response.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
