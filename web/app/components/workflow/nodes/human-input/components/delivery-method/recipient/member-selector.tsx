@@ -5,11 +5,15 @@ import type { Member } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiContactsBookLine,
 } from '@remixicon/react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -31,39 +35,42 @@ const MemberSelector: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
+  const handleSelect = useCallback((memberId: string) => {
+    onSelect(memberId)
+    setOpen(false)
+  }, [onSelect])
+
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 35,
-      }}
-    >
-      <PortalToFollowElemTrigger
-        className="w-full"
-        onClick={() => setOpen(v => !v)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <Button
+            className={cn('w-full justify-between', open && 'bg-state-accent-hover')}
+            variant="ghost-accent"
+          >
+            <RiContactsBookLine className="mr-1 h-4 w-4" />
+            <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={35}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{ style: { zIndex: 1000 } }}
       >
-        <Button
-          className={cn('w-full justify-between', open && 'bg-state-accent-hover')}
-          variant="ghost-accent"
-        >
-          <RiContactsBookLine className="mr-1 h-4 w-4" />
-          <div className="">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1000">
         <MemberList
           searchValue={searchValue}
           list={list}
           value={value}
           onSearchChange={setSearchValue}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           email={email}
         />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
+
 export default MemberSelector
