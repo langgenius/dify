@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import ItemOperation from '../index'
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
 
   const useDropdownMenuContext = () => {

@@ -151,6 +151,7 @@
   "common.branch": "ブランチ",
   "common.chooseDSL": "DSL(yml) ファイルを選択",
   "common.chooseStartNodeToRun": "実行する開始ノードを選択",
+  "common.clipboardVersionCompatibilityWarning": "このコンテンツは別の Dify アプリバージョンからコピーされました。一部が互換性のない可能性があります。",
   "common.commentMode": "コメントモード",
   "common.configure": "設定",
   "common.configureRequired": "設定が必要",

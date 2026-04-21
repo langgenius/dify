@@ -2,9 +2,10 @@ import type { TextGenerationCustomConfig } from '../types'
 import type { MoreLikeThisConfig, PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -30,6 +31,44 @@ type ShareAppParams = {
     image_file_size_limit?: number
   }
 }
+
+const coerceWorkflowUrlDefault = (
+  promptVariable: NonNullable<PromptConfig['prompt_variables']>[number],
+  rawValue: unknown,
+) => {
+  if (rawValue === undefined || rawValue === null)
+    return undefined
+
+  if (promptVariable.type === 'checkbox') {
+    if (typeof rawValue === 'boolean')
+      return rawValue
+
+    const normalized = String(rawValue).toLowerCase()
+    if (normalized === 'true')
+      return true
+    if (normalized === 'false')
+      return false
+
+    return undefined
+  }
+
+  if (promptVariable.type === 'number') {
+    const numericValue = Number(rawValue)
+    return Number.isNaN(numericValue) ? undefined : numericValue
+  }
+
+  if (typeof rawValue !== 'string')
+    return undefined
+
+  if (promptVariable.type === 'select')
+    return promptVariable.options?.includes(rawValue) ? rawValue : undefined
+
+  if (promptVariable.max_length)
+    return rawValue.slice(0, promptVariable.max_length)
+
+  return rawValue
+}
+
 export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTextGenerationAppStateOptions) => {
   const { t } = useTranslation()
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
@@ -83,6 +122,15 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
       setCustomConfig((custom_config || null) as TextGenerationCustomConfig | null)
       await changeLanguage(site.default_language)
       const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams as unknown as ShareAppParams
+      const promptVariables = userInputsFormToPromptVariables(user_input_form)
+      if (isWorkflow && !isInstalledApp) {
+        const workflowUrlInputs = await getRawInputsFromUrlParams()
+        promptVariables.forEach((promptVariable) => {
+          const workflowDefault = coerceWorkflowUrlDefault(promptVariable, workflowUrlInputs[promptVariable.key])
+          if (workflowDefault !== undefined)
+            promptVariable.default = workflowDefault
+        })
+      }
       if (cancelled)
         return
       setVisionConfig({
@@ -93,7 +141,7 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
       } as VisionSettings)
       setPromptConfig({
         prompt_template: '',
-        prompt_variables: userInputsFormToPromptVariables(user_input_form),
+        prompt_variables: promptVariables,
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
@@ -104,7 +152,7 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
     return () => {
       cancelled = true
     }
-  }, [appData, appParams, fetchSavedMessages, isWorkflow])
+  }, [appData, appParams, fetchSavedMessages, isInstalledApp, isWorkflow])
   useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
   useAppFavicon({
     enable: !isInstalledApp,

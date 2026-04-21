@@ -1,9 +1,17 @@
 import type { AppDetailResponse } from '@/models/app'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { getAppCardDisplayState, getAppCardOperationKeys, hasWorkflowStartNode, isAppAccessConfigured } from '../app-card-utils'
+import {
+  createWorkflowLaunchInitialValues,
+  getAppCardDisplayState,
+  getAppCardOperationKeys,
+  getAppHiddenLaunchVariables,
+  getWorkflowHiddenStartVariables,
+  hasWorkflowStartNode,
+  isAppAccessConfigured,
+} from '../app-card-utils'
 
 describe('app-card-utils', () => {
   const baseAppInfo = {
@@ -31,6 +39,108 @@ describe('app-card-utils', () => {
         nodes: [{ data: { type: BlockEnum.Answer } }],
       },
     })).toBe(false)
+  })
+
+  it('should return hidden workflow start variables and their initial launch values', () => {
+    const hiddenVariables = getWorkflowHiddenStartVariables({
+      graph: {
+        nodes: [{
+          data: {
+            type: BlockEnum.Start,
+            variables: [
+              {
+                variable: 'visible',
+                label: 'Visible',
+                type: InputVarType.textInput,
+                hide: false,
+                required: false,
+              },
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                default: 'prefilled',
+                required: false,
+              },
+              {
+                variable: 'enabled',
+                label: 'Enabled',
+                type: InputVarType.checkbox,
+                hide: true,
+                default: true,
+                required: false,
+              },
+            ],
+          },
+        }],
+      },
+    })
+
+    expect(hiddenVariables.map(variable => variable.variable)).toEqual(['secret', 'enabled'])
+    expect(createWorkflowLaunchInitialValues(hiddenVariables)).toEqual({
+      secret: 'prefilled',
+      enabled: true,
+    })
+  })
+
+  it('should return hidden advanced-chat launch variables from the workflow start node first', () => {
+    const hiddenVariables = getAppHiddenLaunchVariables({
+      appInfo: {
+        ...baseAppInfo,
+        mode: AppModeEnum.ADVANCED_CHAT,
+        model_config: {
+          user_input_form: [
+            {
+              'text-input': {
+                label: 'Visible',
+                variable: 'visible',
+                required: true,
+                max_length: 48,
+                default: '',
+                hide: false,
+              },
+            },
+            {
+              checkbox: {
+                label: 'Hidden Toggle',
+                variable: 'hidden_toggle',
+                required: false,
+                default: true,
+                hide: true,
+              },
+            },
+          ],
+        },
+      } as AppDetailResponse,
+      currentWorkflow: {
+        graph: {
+          nodes: [{
+            data: {
+              type: BlockEnum.Start,
+              variables: [
+                {
+                  variable: 'start_secret',
+                  label: 'Start Secret',
+                  type: InputVarType.textInput,
+                  hide: true,
+                  default: 'from-start',
+                  required: false,
+                },
+              ],
+            },
+          }],
+        },
+      },
+    })
+
+    expect(hiddenVariables).toEqual([
+      expect.objectContaining({
+        variable: 'start_secret',
+        type: InputVarType.textInput,
+        default: 'from-start',
+      }),
+    ])
   })
 
   it('should build the display state for a published web app', () => {

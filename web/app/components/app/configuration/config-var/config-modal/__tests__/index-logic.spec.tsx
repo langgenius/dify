@@ -1,10 +1,10 @@
 /* eslint-disable ts/no-explicit-any */
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
@@ -25,6 +25,7 @@ vi.mock('../form-fields', () => ({
     return (
       <div data-testid="config-form-fields">
         <div data-testid="payload-type">{String(props.tempPayload.type)}</div>
+        <div data-testid="payload-hide">{String(props.tempPayload.hide)}</div>
         <div data-testid="payload-label">{String(props.tempPayload.label ?? '')}</div>
         <div data-testid="payload-schema">{String(props.tempPayload.json_schema ?? '')}</div>
         <div data-testid="payload-default">{String(props.tempPayload.default ?? '')}</div>
@@ -115,7 +116,7 @@ describe('ConfigModal logic', () => {
   })
 
   it('should derive payload fields from mocked form-field callbacks', async () => {
-    renderConfigModal()
+    renderConfigModal(createPayload({ hide: true }))
 
     fireEvent.click(screen.getByTestId('valid-key-blur'))
     await waitFor(() => {
@@ -138,6 +139,7 @@ describe('ConfigModal logic', () => {
     fireEvent.click(screen.getByTestId('type-change'))
     await waitFor(() => {
       expect(screen.getByTestId('payload-type')).toHaveTextContent(InputVarType.singleFile)
+      expect(screen.getByTestId('payload-hide')).toHaveTextContent('false')
     })
 
     fireEvent.click(screen.getByTestId('file-payload-change'))

@@ -6,7 +6,7 @@ import pytest
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.human_input.entities import HumanInputNodeData
 
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,

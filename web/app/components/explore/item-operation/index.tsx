@@ -2,6 +2,12 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
@@ -9,12 +15,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
@@ -8,7 +9,6 @@ import {
   useCSVDownloader,
 } from 'react-papaparse'
 import ActionButton from '@/app/components/base/action-button'
-import { Button } from '@/app/components/base/ui/button'
 
 type IResDownloadProps = {
   isMobile: boolean

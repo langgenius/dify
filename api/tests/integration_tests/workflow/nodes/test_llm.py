@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.file_saver import LLMFileSaver
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
@@ -76,8 +77,8 @@ def init_llm_node(config: dict) -> LLMNode:
     llm_file_saver = MagicMock(spec=LLMFileSaver)
 
     node = LLMNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=LLMNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),

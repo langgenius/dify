@@ -5,12 +5,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
-import { Avatar } from '@/app/components/base/ui/avatar'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 

@@ -2,6 +2,12 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   RiDeleteBinLine,
   RiEditLine,
   RiMoreFill,
@@ -10,12 +16,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 
 type Props = {
   inCard?: boolean

@@ -17,21 +17,18 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
-        result: dict[str, Any] | None
         try:
-            result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
+            return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
 
     def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         try:
-            result = self.fetch_pipeline_templates_from_dify_official(language)
+            return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
 
     def get_type(self) -> str:
         return PipelineTemplateType.REMOTE

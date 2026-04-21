@@ -32,7 +32,7 @@ vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   __esModule: true,
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),

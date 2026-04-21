@@ -6,6 +6,39 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import and_, exists, or_, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from configs import dify_config
+from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.file_access import DatabaseFileAccessController
+from core.entities import PluginCredentialType
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
+from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
+from core.trigger.constants import TRIGGER_NODE_TYPES, is_trigger_node_type
+from core.workflow.human_input_adapter import (
+    DeliveryChannelConfig,
+    adapt_human_input_node_data_for_graph,
+    parse_human_input_delivery_methods,
+)
+from core.workflow.node_factory import (
+    LATEST_VERSION,
+    DifyGraphInitContext,
+    get_node_type_classes_mapping,
+    is_start_node_type,
+)
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from enums.cloud_plan import CloudPlan
+from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.entities.pause_reason import HumanInputRequired
@@ -31,40 +64,6 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
-from sqlalchemy import and_, exists, or_, select
-from sqlalchemy.orm import Session, sessionmaker
-
-from configs import dify_config
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.app.file_access import DatabaseFileAccessController
-from core.entities import PluginCredentialType
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import TRIGGER_NODE_TYPES, is_trigger_node_type
-from core.workflow.human_input_compat import (
-    DeliveryChannelConfig,
-    normalize_human_input_node_data_for_graph,
-    parse_human_input_delivery_methods,
-)
-from core.workflow.node_factory import (
-    LATEST_VERSION,
-    DifyGraphInitContext,
-    get_node_type_classes_mapping,
-    is_start_node_type,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
-from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
-from enums.cloud_plan import CloudPlan
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from extensions.ext_database import db
-from extensions.ext_storage import storage
-from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from models import Account
@@ -119,7 +118,8 @@ class WorkflowService:
     def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            session_maker = sessionmaker(
+                bind=db.engine, expire_on_commit=False)
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
@@ -223,7 +223,8 @@ class WorkflowService:
         if not app_ids:
             return set()
 
-        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
+        stmt = select(App.id).where(App.id.in_(
+            app_ids), App.tenant_id == tenant_id)
         return {str(app_id) for app_id in db.session.scalars(stmt).all()}
 
     def get_all_published_workflow(
@@ -307,7 +308,8 @@ class WorkflowService:
                 )
             )
 
-        stmt = stmt.order_by(Workflow.created_at.desc()).limit(limit + 1).offset((page - 1) * limit)
+        stmt = stmt.order_by(Workflow.created_at.desc()).limit(
+            limit + 1).offset((page - 1) * limit)
 
         workflows = session.scalars(stmt).all()
 
@@ -339,7 +341,8 @@ class WorkflowService:
             raise WorkflowHashNotEqualError()
 
         # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
+        self.validate_features_structure(
+            app_model=app_model, features=features)
 
         # validate graph structure
         self.validate_graph_structure(graph=graph)
@@ -374,7 +377,8 @@ class WorkflowService:
         db.session.commit()
 
         # trigger app workflow events
-        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+        app_draft_workflow_was_synced.send(
+            app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
         return workflow
@@ -442,7 +446,8 @@ class WorkflowService:
             raise ValueError("No draft workflow found.")
 
         # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
+        self.validate_features_structure(
+            app_model=app_model, features=features)
 
         workflow.features = json.dumps(features)
         workflow.updated_by = account.id
@@ -463,11 +468,13 @@ class WorkflowService:
         Secret environment variables are copied server-side from the selected
         published workflow so the normal draft sync flow stays stateless.
         """
-        source_workflow = self.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
+        source_workflow = self.get_published_workflow_by_id(
+            app_model=app_model, workflow_id=workflow_id)
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
 
-        self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
+        self.validate_features_structure(
+            app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
         draft_workflow = self.get_draft_workflow(app_model=app_model)
@@ -484,7 +491,8 @@ class WorkflowService:
             db.session.add(draft_workflow)
 
         db.session.commit()
-        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
+        app_draft_workflow_was_synced.send(
+            app_model, synced_draft_workflow=draft_workflow)
 
         return draft_workflow
 
@@ -528,7 +536,8 @@ class WorkflowService:
                     and is_trigger_node_type(node_type_str)
                 )
                 if trigger_node_count > 2:
-                    raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
+                    raise TriggerNodeLimitExceededError(
+                        count=trigger_node_count, limit=2)
 
         # create new workflow
         workflow = Workflow.new(
@@ -544,14 +553,14 @@ class WorkflowService:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
-            kind=draft_workflow.kind_or_standard,
         )
 
         # commit db session changes
         session.add(workflow)
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(
+            app_model, published_workflow=workflow)
 
         # return new workflow
         return workflow
@@ -609,7 +618,8 @@ class WorkflowService:
         session.add(workflow)
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(
+            app_model, published_workflow=workflow)
 
         return workflow
 
@@ -642,7 +652,8 @@ class WorkflowService:
             raise WorkflowNotFoundError("Published workflow not found")
 
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise IsDraftWorkflowError("Current effective workflow cannot be a draft version.")
+            raise IsDraftWorkflowError(
+                "Current effective workflow cannot be a draft version.")
 
         if workflow.resolved_kind == target_type:
             return workflow
@@ -654,7 +665,8 @@ class WorkflowService:
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
 
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(
+            app_model, published_workflow=workflow)
 
         return workflow
 
@@ -672,7 +684,8 @@ class WorkflowService:
         if not disallowed_nodes:
             return
 
-        formatted_nodes = ", ".join(f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
+        formatted_nodes = ", ".join(
+            f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
         raise ValueError(
             "Evaluation workflow cannot contain trigger or human-input nodes. "
             f"Found disallowed nodes: {formatted_nodes}"
@@ -710,12 +723,14 @@ class WorkflowService:
                             )
                         else:
                             # Check default workspace credential for this provider
-                            self._check_default_tool_credential(workflow.tenant_id, provider)
+                            self._check_default_tool_credential(
+                                workflow.tenant_id, provider)
 
                 elif node_type == "agent":
                     agent_params = node_data.get("agent_parameters", {})
 
-                    model_config = agent_params.get("model", {}).get("value", {})
+                    model_config = agent_params.get(
+                        "model", {}).get("value", {})
                     if model_config.get("provider") and model_config.get("model"):
                         self._validate_llm_model_config(
                             workflow.tenant_id, model_config["provider"], model_config["model"]
@@ -723,7 +738,8 @@ class WorkflowService:
 
                         # Validate load balancing credentials for agent model if load balancing is enabled
                         agent_model_node_data = {"model": model_config}
-                        self._validate_load_balancing_credentials(workflow, agent_model_node_data, node_id)
+                        self._validate_load_balancing_credentials(
+                            workflow, agent_model_node_data, node_id)
 
                     # Validate agent tools
                     tools = agent_params.get("tools", {}).get("value", [])
@@ -735,9 +751,11 @@ class WorkflowService:
                             if credential_id:
                                 from core.helper.credential_utils import check_credential_policy_compliance
 
-                                check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
+                                check_credential_policy_compliance(
+                                    credential_id, provider, PluginCredentialType.TOOL)
                             else:
-                                self._check_default_tool_credential(workflow.tenant_id, provider)
+                                self._check_default_tool_credential(
+                                    workflow.tenant_id, provider)
 
                 elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
                     model_config = node_data.get("model", {})
@@ -746,11 +764,14 @@ class WorkflowService:
 
                     if provider and model_name:
                         # Validate that the provider+model combination can fetch valid credentials
-                        self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
+                        self._validate_llm_model_config(
+                            workflow.tenant_id, provider, model_name)
                         # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(workflow, node_data, node_id)
+                        self._validate_load_balancing_credentials(
+                            workflow, node_data, node_id)
                     else:
-                        raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+                        raise ValueError(
+                            f"Node {node_id} ({node_type}): Missing provider or model configuration")
 
             except Exception as e:
                 if isinstance(e, ValueError):
@@ -792,8 +813,10 @@ class WorkflowService:
             # If it fails, an exception will be raised
 
             # Additionally, check the model status to ensure it's ACTIVE
-            provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
-            models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
+            provider_configurations = assembly.provider_manager.get_configurations(
+                tenant_id)
+            models = provider_configurations.get_models(
+                provider=provider, model_type=ModelType.LLM)
 
             target_model = None
             for model in models:
@@ -804,7 +827,8 @@ class WorkflowService:
             if target_model:
                 target_model.raise_for_status()
             else:
-                raise ValueError(f"Model {model_name} not found for provider {provider}")
+                raise ValueError(
+                    f"Model {model_name} not found for provider {provider}")
 
         except Exception as e:
             raise ValueError(
@@ -852,7 +876,8 @@ class WorkflowService:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
+            raise ValueError(
+                f"Failed to validate default credential for tool provider {provider}: {str(e)}")
 
     def _validate_load_balancing_credentials(self, workflow: Workflow, node_data: dict[str, Any], node_id: str) -> None:
         """
@@ -874,7 +899,8 @@ class WorkflowService:
         # Check if this model has load balancing enabled
         if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
             # Get all load balancing configurations for this model
-            load_balancing_configs = self._get_load_balancing_configs(workflow.tenant_id, provider, model_name)
+            load_balancing_configs = self._get_load_balancing_configs(
+                workflow.tenant_id, provider, model_name)
             # Validate each load balancing configuration
             try:
                 for config in load_balancing_configs:
@@ -885,7 +911,8 @@ class WorkflowService:
                             config["credential_id"], provider, PluginCredentialType.MODEL
                         )
             except Exception as e:
-                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
+                raise ValueError(
+                    f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
 
     def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
         """
@@ -900,8 +927,10 @@ class WorkflowService:
             from graphon.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
-            provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
-            provider_configurations = provider_manager.get_configurations(tenant_id)
+            provider_manager = create_plugin_provider_manager(
+                tenant_id=tenant_id)
+            provider_configurations = provider_manager.get_configurations(
+                tenant_id)
             provider_configuration = provider_configurations.get(provider)
 
             if not provider_configuration:
@@ -942,7 +971,8 @@ class WorkflowService:
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-            all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
+            all_configs = cast(list[dict[str, Any]], configs) + \
+                cast(list[dict[str, Any]], custom_configs)
 
             return [config for config in all_configs if config.get("credential_id")]
 
@@ -987,7 +1017,7 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum = NodeType(node_type)
+        node_type_enum: NodeType = node_type
         node_mapping = get_node_type_classes_mapping()
 
         # return default block config
@@ -1006,7 +1036,8 @@ class WorkflowService:
                 ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
                 ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
             )
-        default_config = node_class.get_default_config(filters=resolved_filters or None)
+        default_config = node_class.get_default_config(
+            filters=resolved_filters or None)
         if not default_config:
             return {}
 
@@ -1029,7 +1060,8 @@ class WorkflowService:
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
+            draft_var_srv.prefill_conversation_variable_default_values(
+                draft_workflow, user_id=account.id)
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
@@ -1043,7 +1075,8 @@ class WorkflowService:
                     workflow=draft_workflow,
                 )
                 if node_type == BuiltinNodeTypes.START:
-                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
+                    start_data = StartNodeData.model_validate(
+                        node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                     )
@@ -1078,7 +1111,8 @@ class WorkflowService:
             user_id=account.id,
         )
 
-        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(
+            node_config)
         if enclosing_node_type_and_id:
             _, enclosing_node_id = enclosing_node_type_and_id
         else:
@@ -1113,12 +1147,15 @@ class WorkflowService:
         )
         repository.save(node_execution)
 
-        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
+        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(
+            node_execution.id)
         if workflow_node_execution is None:
-            raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
+            raise ValueError(
+                f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
         with sessionmaker(db.engine).begin() as session:
-            outputs = workflow_node_execution.load_full_outputs(session, storage)
+            outputs = workflow_node_execution.load_full_outputs(
+                session, storage)
 
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
@@ -1130,7 +1167,8 @@ class WorkflowService:
                 node_execution_id=node_execution.id,
                 user=account,
             )
-            draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
+            draft_var_saver.save(
+                process_data=node_execution.process_data, outputs=outputs)
 
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution,
@@ -1257,7 +1295,8 @@ class WorkflowService:
             rendered_content, outputs, node_data.outputs_field_names()
         )
 
-        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(
+            node_config)
         enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
@@ -1292,7 +1331,7 @@ class WorkflowService:
             raise ValueError("Node type must be human-input.")
 
         node_data = HumanInputNodeData.model_validate(
-            normalize_human_input_node_data_for_graph(node_config["data"]),
+            adapt_human_input_node_data_for_graph(node_config["data"]),
             from_attributes=True,
         )
         delivery_method = self._resolve_human_input_delivery_method(
@@ -1344,7 +1383,8 @@ class WorkflowService:
         try:
             test_service.send_test(context=context, method=delivery_method)
         except DeliveryTestUnsupportedError as exc:
-            raise ValueError("Delivery method does not support test send.") from exc
+            raise ValueError(
+                "Delivery method does not support test send.") from exc
         except DeliveryTestError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -1369,7 +1409,8 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id, app_id=app_model.id)
+        repo = HumanInputFormRepositoryImpl(
+            tenant_id=app_model.tenant_id, app_id=app_model.id)
         params = FormCreateParams(
             workflow_execution_id=None,
             node_id=node_id,
@@ -1389,7 +1430,8 @@ class WorkflowService:
 
         with Session(bind=db.engine) as session:
             recipients = session.scalars(
-                select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_id)
+                select(HumanInputFormRecipient).where(
+                    HumanInputFormRecipient.form_id == form_id)
             ).all()
         recipients_data: list[DeliveryTestEmailRecipient] = []
         for recipient in recipients:
@@ -1400,11 +1442,13 @@ class WorkflowService:
             try:
                 payload = json.loads(recipient.recipient_payload)
             except (json.JSONDecodeError, ValueError):
-                logger.exception("Failed to parse human input recipient payload for delivery test.")
+                logger.exception(
+                    "Failed to parse human input recipient payload for delivery test.")
                 continue
             email = payload.get("email")
             if email:
-                recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
+                recipients_data.append(DeliveryTestEmailRecipient(
+                    email=email, form_token=recipient.access_token))
         return recipients_data
 
     def _build_human_input_node(
@@ -1433,9 +1477,11 @@ class WorkflowService:
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
         )
+        node_data = HumanInputNode.validate_node_data(
+            adapt_human_input_node_data_for_graph(node_config["data"]))
         node = HumanInputNode(
-            id=node_config["id"],
-            config=node_config,
+            node_id=node_config["id"],
+            config=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
@@ -1453,7 +1499,8 @@ class WorkflowService:
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user_id)
+            draft_var_srv.prefill_conversation_variable_default_values(
+                workflow, user_id=user_id)
 
         variable_pool = VariablePool()
         add_variables_to_pool(
@@ -1531,7 +1578,8 @@ class WorkflowService:
         Returns:
             WorkflowNodeExecution: The execution result
         """
-        node, node_run_result, run_succeeded, error = self._execute_node_safely(invoke_node_fn)
+        node, node_run_result, run_succeeded, error = self._execute_node_safely(
+            invoke_node_fn)
 
         # Create base node execution
         node_execution = WorkflowNodeExecution(
@@ -1547,7 +1595,8 @@ class WorkflowService:
         )
 
         # Populate execution result data
-        self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)
+        self._populate_execution_result(
+            node_execution, node_run_result, run_succeeded, error)
 
         return node_execution
 
@@ -1576,7 +1625,8 @@ class WorkflowService:
 
             # Apply error strategy if node failed
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.error_strategy:
-                node_run_result = self._apply_error_strategy(node, node_run_result)
+                node_run_result = self._apply_error_strategy(
+                    node, node_run_result)
 
             run_succeeded = node_run_result.status in (
                 WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -1607,7 +1657,8 @@ class WorkflowService:
             status=WorkflowNodeExecutionStatus.EXCEPTION,
             error=node_run_result.error,
             inputs=node_run_result.inputs,
-            metadata={WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy},
+            metadata={
+                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy},
             outputs=error_outputs,
         )
 
@@ -1621,10 +1672,12 @@ class WorkflowService:
         """Populate node execution with result data."""
         if run_succeeded and node_run_result:
             node_execution.inputs = (
-                WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
+                WorkflowEntry.handle_special_values(
+                    node_run_result.inputs) if node_run_result.inputs else None
             )
             node_execution.process_data = (
-                WorkflowEntry.handle_special_values(node_run_result.process_data)
+                WorkflowEntry.handle_special_values(
+                    node_run_result.process_data)
                 if node_run_result.process_data
                 else None
             )
@@ -1653,7 +1706,8 @@ class WorkflowService:
         workflow_converter = WorkflowConverter()
 
         if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
-            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
+            raise ValueError(
+                f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
         new_app: App = workflow_converter.convert_to_workflow(
@@ -1690,7 +1744,8 @@ class WorkflowService:
         # start node and trigger node cannot coexist
         if BuiltinNodeTypes.START in node_types:
             if any(is_trigger_node_type(nt) for nt in node_types):
-                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
+                raise ValueError(
+                    "Start node and trigger nodes cannot coexist in the same workflow")
 
         for node in node_configs:
             node_data = node.get("data", {})
@@ -1725,7 +1780,8 @@ class WorkflowService:
         from graphon.nodes.human_input.entities import HumanInputNodeData
 
         try:
-            HumanInputNodeData.model_validate(normalize_human_input_node_data_for_graph(node_data))
+            HumanInputNodeData.model_validate(
+                adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
@@ -1742,7 +1798,8 @@ class WorkflowService:
         :param data: Dictionary containing fields to update
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(Workflow.id == workflow_id,
+                                      Workflow.tenant_id == tenant_id)
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1771,7 +1828,8 @@ class WorkflowService:
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(Workflow.id == workflow_id,
+                                      Workflow.tenant_id == tenant_id)
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1779,14 +1837,16 @@ class WorkflowService:
 
         # Check if workflow is a draft version
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
+            raise DraftWorkflowDeletionError(
+                "Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
         app_stmt = select(App).where(App.workflow_id == workflow_id)
         app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app
-            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.id}'")
+            raise WorkflowInUseError(
+                f"Cannot delete workflow that is currently in use by app '{app.id}'")
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version
@@ -1800,7 +1860,8 @@ class WorkflowService:
 
         if tool_provider:
             # Cannot delete a workflow that's published as a tool
-            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
+            raise WorkflowInUseError(
+                "Cannot delete workflow that is published as a tool")
 
         session.delete(workflow)
         return True
@@ -1849,11 +1910,13 @@ def _setup_variable_pool(
         build_bootstrap_variables(
             system_variables=system_variable,
             environment_variables=workflow.environment_variables,
-            conversation_variables=cast(list[Variable], conversation_variables),
+            conversation_variables=cast(
+                list[Variable], conversation_variables),
         ),
     )
     if is_start_node_type(node_type):
-        add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
+        add_node_inputs_to_pool(
+            variable_pool, node_id=node_id, inputs=user_inputs)
 
     return variable_pool
 
@@ -1869,7 +1932,8 @@ def _rebuild_file_for_user_inputs_in_start_node(
         if variable.variable not in user_inputs:
             continue
         value = user_inputs[variable.variable]
-        file = _rebuild_single_file(tenant_id=tenant_id, value=value, variable_entity_type=variable.type)
+        file = _rebuild_single_file(
+            tenant_id=tenant_id, value=value, variable_entity_type=variable.type)
         inputs_copy[variable.variable] = file
     return inputs_copy
 
@@ -1877,15 +1941,18 @@ def _rebuild_file_for_user_inputs_in_start_node(
 def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: VariableEntityType) -> File | Sequence[File]:
     if variable_entity_type == VariableEntityType.FILE:
         if not isinstance(value, dict):
-            raise ValueError(f"expected dict for file object, got {type(value)}")
+            raise ValueError(
+                f"expected dict for file object, got {type(value)}")
         return build_from_mapping(mapping=value, tenant_id=tenant_id, access_controller=_file_access_controller)
     elif variable_entity_type == VariableEntityType.FILE_LIST:
         if not isinstance(value, list):
-            raise ValueError(f"expected list for file list object, got {type(value)}")
+            raise ValueError(
+                f"expected list for file list object, got {type(value)}")
         if len(value) == 0:
             return []
         if not isinstance(value[0], dict):
-            raise ValueError(f"expected dict for first element in the file list, got {type(value)}")
+            raise ValueError(
+                f"expected dict for first element in the file list, got {type(value)}")
         return build_from_mappings(mappings=value, tenant_id=tenant_id, access_controller=_file_access_controller)
     else:
         raise Exception("unreachable")

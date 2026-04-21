@@ -66,7 +66,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     info: (...args: unknown[]) => mockToastInfo(...args),
   },

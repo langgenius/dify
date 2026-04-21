@@ -20,11 +20,11 @@
 ```typescript
 // ❌ WRONG: Don't mock base components
 vi.mock('@/app/components/base/loading', () => () => <div>Loading</div>)
-vi.mock('@/app/components/base/ui/button', () => ({ children }: any) => <button>{children}</button>)
+vi.mock('@langgenius/dify-ui/button', () => ({ children }: any) => <button>{children}</button>)
 
 // ✅ CORRECT: Import and use real base components
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 // They will render normally in tests
 ```
 

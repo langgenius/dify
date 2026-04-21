@@ -8,10 +8,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { Dialog, DialogCloseButton, DialogContent, DialogPortal, DialogTitle } from '@/app/components/base/ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import ShortcutsName from './shortcuts-name'
 
 export type CreateSnippetDialogPayload = {

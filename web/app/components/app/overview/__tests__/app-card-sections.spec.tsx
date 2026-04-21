@@ -52,6 +52,7 @@ describe('app-card-sections', () => {
 
   it('should render operation buttons and execute enabled actions', () => {
     const onLaunch = vi.fn()
+    const onLaunchConfig = vi.fn()
     const operations = createAppCardOperations({
       operationKeys: ['launch', 'embedded'],
       t: t as never,
@@ -68,12 +69,19 @@ describe('app-card-sections', () => {
       <AppCardOperations
         t={t as never}
         operations={operations}
+        launchConfigAction={{
+          label: 'operation.config',
+          disabled: false,
+          onClick: onLaunchConfig,
+        }}
       />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /overview\.appInfo\.launch/i }))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.config/i }))
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
+    expect(onLaunchConfig).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
   })
 

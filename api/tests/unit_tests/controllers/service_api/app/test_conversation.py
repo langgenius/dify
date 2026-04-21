@@ -20,7 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from graphon.variables.types import SegmentType
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -38,6 +37,9 @@ from controllers.service_api.app.conversation import (
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
+from fields._value_type_serializer import serialize_value_type
+from graphon.variables import StringSegment
+from graphon.variables.types import SegmentType
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import (
@@ -283,6 +285,32 @@ class TestConversationVariableResponseModels:
         assert response.value == "1"
         assert response.created_at == int(created_at.timestamp())
         assert response.updated_at == int(created_at.timestamp())
+
+    def test_variable_response_normalizes_string_value_type_alias(self):
+        response = ConversationVariableResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SegmentType.INTEGER.value,
+            }
+        )
+
+        assert response.value_type == "number"
+
+    def test_variable_response_normalizes_callable_exposed_type(self):
+        response = ConversationVariableResponse.model_validate(
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "foo",
+                "value_type": SimpleNamespace(exposed_type=lambda: SegmentType.STRING.exposed_type()),
+            }
+        )
+
+        assert response.value_type == "string"
+
+    def test_serialize_value_type_supports_segments_and_mappings(self):
+        assert serialize_value_type(StringSegment(value="hello")) == "string"
+        assert serialize_value_type({"value_type": SegmentType.INTEGER}) == "number"
 
     def test_variable_pagination_response(self):
         response = ConversationVariableInfiniteScrollPaginationResponse.model_validate(

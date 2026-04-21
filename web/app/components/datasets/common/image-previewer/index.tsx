@@ -1,9 +1,9 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
 import { formatFileSize } from '@/utils/format'
 
 type CachedImage = {

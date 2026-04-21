@@ -3,7 +3,7 @@
 import type { EvaluationResourceProps } from '../../types'
 import type { InputField } from '../batch-test-panel/input-fields/input-fields-utils'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource } from '../../store'
 import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'

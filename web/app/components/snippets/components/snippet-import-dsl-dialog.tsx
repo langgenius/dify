@@ -5,9 +5,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   DSLImportMode,
   DSLImportStatus,

@@ -5,7 +5,7 @@ from graphon.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 
 from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,

@@ -21,7 +21,7 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
 
   const useDropdownMenuContext = () => {

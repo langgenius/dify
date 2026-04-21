@@ -71,8 +71,8 @@ describe('UsageInfo', () => {
       expect(screen.getByText('billing.plansCommon.unlimited')).toBeInTheDocument()
     })
 
-    it('applies distinct styling when usage is close to or exceeds the limit', () => {
-      const { rerender } = render(
+    it('applies the neutral / warning / error tone as usage crosses thresholds', () => {
+      const { rerender, container } = render(
         <UsageInfo
           Icon={TestIcon}
           name="Storage"
@@ -81,7 +81,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const normalBarClass = screen.getByTestId('billing-progress-bar').className
+      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
 
       rerender(
         <UsageInfo
@@ -92,8 +92,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const warningBarClass = screen.getByTestId('billing-progress-bar').className
-      expect(warningBarClass).not.toBe(normalBarClass)
+      expect(container.querySelector('.bg-components-progress-warning-progress')).toBeInTheDocument()
 
       rerender(
         <UsageInfo
@@ -104,9 +103,7 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const errorBarClass = screen.getByTestId('billing-progress-bar').className
-      expect(errorBarClass).not.toBe(normalBarClass)
-      expect(errorBarClass).not.toBe(warningBarClass)
+      expect(container.querySelector('.bg-components-progress-error-progress')).toBeInTheDocument()
     })
 
     it('does not render the icon when hideIcon is true', () => {
@@ -126,8 +123,8 @@ describe('UsageInfo', () => {
 
   describe('Storage Mode', () => {
     describe('Below Threshold', () => {
-      it('should render indeterminate progress bar when usage is below threshold', () => {
-        render(
+      it('should render the redacted placeholder when usage is below threshold', () => {
+        const { container } = render(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -139,8 +136,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar')).not.toBeInTheDocument()
+        expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+        expect(screen.queryByRole('meter')).not.toBeInTheDocument()
       })
 
       it('should display "< threshold" format when usage is below threshold (non-sandbox)', () => {
@@ -183,8 +180,8 @@ describe('UsageInfo', () => {
         expect(screen.getAllByText('MB').length).toBeGreaterThanOrEqual(1)
       })
 
-      it('should render different indeterminate bar widths for sandbox vs non-sandbox', () => {
-        const { rerender } = render(
+      it('should render different placeholder widths for sandbox vs non-sandbox', () => {
+        const { rerender, container } = render(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -197,7 +194,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const sandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
+        const sandboxBarClass = container.querySelector('.bg-progress-bar-indeterminate-stripe')!.className
 
         rerender(
           <UsageInfo
@@ -212,14 +209,14 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const nonSandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
+        const nonSandboxBarClass = container.querySelector('.bg-progress-bar-indeterminate-stripe')!.className
         expect(sandboxBarClass).not.toBe(nonSandboxBarClass)
       })
     })
 
     describe('Sandbox Full Capacity', () => {
-      it('should render determinate progress bar when sandbox usage >= threshold', () => {
-        render(
+      it('should render the Meter when sandbox usage >= threshold', () => {
+        const { container } = render(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -232,8 +229,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+        expect(screen.getByRole('meter')).toBeInTheDocument()
+        expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
       })
 
       it('should display "threshold / threshold unit" format when sandbox is at full capacity', () => {
@@ -258,8 +255,8 @@ describe('UsageInfo', () => {
     })
 
     describe('Pro/Team Users Above Threshold', () => {
-      it('should render normal progress bar when usage >= threshold', () => {
-        render(
+      it('should render the Meter when usage >= threshold', () => {
+        const { container } = render(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -273,8 +270,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
-        expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
+        expect(screen.getByRole('meter')).toBeInTheDocument()
+        expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
       })
 
       it('should display actual usage when usage >= threshold', () => {

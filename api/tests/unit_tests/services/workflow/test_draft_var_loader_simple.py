@@ -239,8 +239,8 @@ class TestDraftVarLoaderSimple:
         draft_var.variable_file = variable_file
 
         persisted_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference=build_file_reference(record_id="upload-1", storage_key="legacy-storage-key"),
             filename="test.txt",
@@ -249,8 +249,8 @@ class TestDraftVarLoaderSimple:
             size=12,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference=build_file_reference(record_id="upload-1"),
             filename="test.txt",

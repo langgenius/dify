@@ -3,7 +3,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
 import {

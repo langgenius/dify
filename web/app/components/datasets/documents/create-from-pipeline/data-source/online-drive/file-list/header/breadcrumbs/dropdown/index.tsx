@@ -1,11 +1,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import Menu from './menu'
 
 type DropdownProps = {

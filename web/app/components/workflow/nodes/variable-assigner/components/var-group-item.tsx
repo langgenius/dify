@@ -2,6 +2,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -11,7 +12,6 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
