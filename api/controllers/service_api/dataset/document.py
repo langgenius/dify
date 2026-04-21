@@ -193,9 +193,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
     return documents_and_batch_fields, 200
 
 
-def _update_document_by_text(
-    tenant_id: str, dataset_id: UUID, document_id: UUID
-) -> tuple[Mapping[str, object], int]:
+def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
     """Update a document from text for both canonical and legacy routes."""
     payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
     dataset = db.session.scalar(
