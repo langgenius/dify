@@ -76,7 +76,7 @@ def init_http_node(config: dict):
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
-        config=HttpRequestNodeData.model_validate(config["data"]),
+        data=HttpRequestNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
@@ -724,7 +724,7 @@ def test_nested_object_variable_selector(setup_http_mock):
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
-        config=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
+        data=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,

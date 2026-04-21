@@ -15,7 +15,7 @@ from core.app.llm.model_access import (
 )
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
@@ -187,7 +187,7 @@ def graph_init_params() -> GraphInitParams:
 
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
         user_inputs={},
     )
@@ -208,7 +208,7 @@ def llm_node(
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
-        config=llm_node_data,
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -241,9 +241,10 @@ def model_config(monkeypatch: pytest.MonkeyPatch):
     )
 
     # Create actual provider and model type instances
-    model_provider_factory = ModelProviderFactory(model_runtime=create_plugin_model_runtime(tenant_id="test"))
+    model_assembly = create_plugin_model_assembly(tenant_id="test")
+    model_provider_factory = model_assembly.model_provider_factory
     provider_instance = model_provider_factory.get_model_provider("openai")
-    model_type_instance = model_provider_factory.get_model_type_instance("openai", ModelType.LLM)
+    model_type_instance = model_assembly.create_model_type_instance(provider="openai", model_type=ModelType.LLM)
 
     # Create a ProviderModelBundle
     provider_model_bundle = ProviderModelBundle(
@@ -1173,7 +1174,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
-        config=llm_node_data,
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,

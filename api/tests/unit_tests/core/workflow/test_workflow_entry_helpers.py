@@ -165,7 +165,7 @@ class TestWorkflowChildEngineBuilder:
             _ = graph_config
             node = node_cls(
                 node_id=root_node_id,
-                config=BaseNodeData(
+                data=BaseNodeData(
                     type=node_cls.node_type,
                     title="Child Model",
                 ),
@@ -334,7 +334,7 @@ class TestWorkflowEntrySingleStepRun:
             def extract_variable_selector_to_variable_mapping(**_kwargs):
                 return {}
 
-        variable_pool = VariablePool(system_variables=default_system_variables(), user_inputs={})
+        variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
         variable_loader = MagicMock()
         variable_loader.load_variables.return_value = [
             StringVariable(

@@ -20,7 +20,7 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelTy
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
-from graphon.model_runtime.runtime import ModelRuntime
+from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)

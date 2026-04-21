@@ -48,7 +48,7 @@ def test_execute_answer():
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -71,7 +71,7 @@ def test_execute_answer():
         node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        config=AnswerNodeData(
+        data=AnswerNodeData(
             title="123",
             type="answer",
             answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",

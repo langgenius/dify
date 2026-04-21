@@ -41,7 +41,7 @@ def mock_graph_init_params():
 @pytest.fixture
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
@@ -103,7 +103,7 @@ def _build_node(
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
-        config=(
+        data=(
             node_data
             if isinstance(node_data, KnowledgeIndexNodeData)
             else KnowledgeIndexNodeData.model_validate(node_data)

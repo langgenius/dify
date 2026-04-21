@@ -88,7 +88,7 @@ def test_execute_template_transform():
 
     node = TemplateTransformNode(
         node_id=str(uuid.uuid4()),
-        config=TemplateTransformNodeData.model_validate(config["data"]),
+        data=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         jinja2_template_renderer=_SimpleJinja2Renderer(),
