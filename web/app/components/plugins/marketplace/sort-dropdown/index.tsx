@@ -1,15 +1,12 @@
 'use client'
 import { useTranslation } from '#i18n'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {
@@ -38,50 +35,44 @@ const SortDropdown = () => {
   ]
   const [sort, handleSortChange] = useMarketplaceSort()
   const [open, setOpen] = useState(false)
-  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]
+  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]!
 
   return (
-    <PortalToFollowElem
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
-          <span className="system-sm-regular mr-1 text-text-secondary">
-            {t('marketplace.sortBy', { ns: 'plugin' })}
-          </span>
-          <span className="system-sm-medium mr-1 text-text-primary">
-            {selectedOption.text}
-          </span>
-          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs">
-          {
-            options.map(option => (
-              <div
-                key={`${option.value}-${option.order}`}
-                className="system-md-regular flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 pr-2 text-text-primary hover:bg-components-panel-on-panel-item-bg-hover"
-                onClick={() => handleSortChange({ sortBy: option.value, sortOrder: option.order })}
-              >
-                {option.text}
-                {
-                  sort.sortBy === option.value && sort.sortOrder === option.order && (
-                    <RiCheckLine className="ml-2 h-4 w-4 text-text-accent" />
-                  )
-                }
-              </div>
-            ))
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
+        <span className="mr-1 system-sm-regular text-text-secondary">
+          {t('marketplace.sortBy', { ns: 'plugin' })}
+        </span>
+        <span className="mr-1 system-sm-medium text-text-primary">
+          {selectedOption.text}
+        </span>
+        <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 text-text-tertiary" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="p-1"
+      >
+        {options.map(option => (
+          <DropdownMenuItem
+            key={`${option.value}-${option.order}`}
+            className="justify-between px-3 pr-2 system-md-regular text-text-primary"
+            onClick={() => {
+              handleSortChange({ sortBy: option.value, sortOrder: option.order })
+              setOpen(false)
+            }}
+          >
+            {option.text}
+            {sort.sortBy === option.value && sort.sortOrder === option.order && (
+              <span aria-hidden className="ml-2 i-ri-check-line h-4 w-4 text-text-accent" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

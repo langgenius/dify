@@ -2,12 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
 from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
 from models.provider_ids import ModelProviderID
 
@@ -370,6 +370,78 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
         manager.get_configurations("tenant-id")
 
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
+def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerFixture, mock_provider_entity):
+    manager = _build_provider_manager(mocker)
+    provider_configuration = Mock()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory) as mock_factory_cls,
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            return_value=provider_configuration,
+        ) as mock_provider_configuration,
+    ):
+        first = manager.get_configurations("tenant-id")
+        second = manager.get_configurations("tenant-id")
+
+    assert first is second
+    mock_get_all_providers.assert_called_once_with("tenant-id")
+    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_provider_configuration.assert_called_once()
+    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
+def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixture, mock_provider_entity):
+    manager = _build_provider_manager(mocker)
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+    provider_configuration_first = Mock()
+    provider_configuration_second = Mock()
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            side_effect=[provider_configuration_first, provider_configuration_second],
+        ) as mock_provider_configuration,
+    ):
+        first = manager.get_configurations("tenant-id")
+        manager.clear_configurations_cache("tenant-id")
+        second = manager.get_configurations("tenant-id")
+
+    assert first is not second
+    assert mock_get_all_providers.call_count == 2
+    assert mock_provider_configuration.call_count == 2
+    provider_configuration_first.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    provider_configuration_second.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
 def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: MockerFixture):

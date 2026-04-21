@@ -2,13 +2,13 @@
 import type { Emoji } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine, RiHammerLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Indicator from '@/app/components/header/indicator'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
-import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import { useConfigureButton } from './hooks/use-configure-button'
 
@@ -85,12 +85,12 @@ const WorkflowToolConfigureButton = ({
                   <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className={cn('shrink grow basis-0 truncate text-text-secondary system-sm-medium', !disabled && !published && 'group-hover:text-text-accent')}
+                    className={cn('shrink grow basis-0 truncate system-sm-medium text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
                   >
                     {t('common.workflowAsTool', { ns: 'workflow' })}
                   </div>
                   {!published && (
-                    <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary system-2xs-medium-uppercase">
+                    <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                       {t('common.configureRequired', { ns: 'workflow' })}
                     </span>
                   )}
@@ -103,7 +103,7 @@ const WorkflowToolConfigureButton = ({
                   <RiHammerLine className="h-4 w-4 text-text-tertiary" />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className="shrink grow basis-0 truncate text-text-tertiary system-sm-medium"
+                    className="shrink grow basis-0 truncate system-sm-medium text-text-tertiary"
                   >
                     {t('common.workflowAsTool', { ns: 'workflow' })}
                   </div>

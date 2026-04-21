@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
@@ -6,7 +7,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Button from '@/app/components/base/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
@@ -51,7 +51,7 @@ const InputsPanel = ({ onRun }: Props) => {
         if (variable.default)
           result[variable.variable] = variable.default
         if (inputs[variable.variable] !== undefined)
-          result[variable.variable] = inputs[variable.variable]
+          result[variable.variable] = inputs[variable.variable]!
       })
     }
     return result
@@ -105,7 +105,7 @@ const InputsPanel = ({ onRun }: Props) => {
 
   return (
     <>
-      <div className="px-4 pb-2 pt-3">
+      <div className="px-4 pt-3 pb-2">
         {
           variables.map((variable, index) => (
             <div

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiClipboardLine,
 } from '@remixicon/react'
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { cn } from '@/utils/classnames'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
 
@@ -49,9 +49,9 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     <div className="flex items-center gap-1">
-      <span className={cn('system-xs-medium flex flex-col items-start justify-center text-text-tertiary', labelWidthClassName)}>{label}</span>
+      <span className={cn('flex flex-col items-start justify-center system-xs-medium text-text-tertiary', labelWidthClassName)}>{label}</span>
       <div className="flex items-center justify-center gap-0.5">
-        <span className={cn(valueMaxWidthClassName, ' system-xs-medium truncate text-text-secondary')}>
+        <span className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}>
           {maskedValue || value}
         </span>
         <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">

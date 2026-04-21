@@ -18,7 +18,7 @@ const PublishToast = () => {
     return null
 
   return (
-    <div className="pointer-events-none absolute bottom-[45px] left-0 right-0 z-10 flex justify-center">
+    <div className="pointer-events-none absolute right-0 bottom-[45px] left-0 z-10 flex justify-center">
       <div
         className="relative flex w-[420px] space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg"
       >
@@ -28,7 +28,7 @@ const PublishToast = () => {
           <RiInformation2Fill className="text-text-accent" />
         </div>
         <div className="p-1">
-          <div className="system-sm-semibold mb-1 text-text-primary">{t('publishToast.title', { ns: 'pipeline' })}</div>
+          <div className="mb-1 system-sm-semibold text-text-primary">{t('publishToast.title', { ns: 'pipeline' })}</div>
           <div className="system-xs-regular text-text-secondary">
             {t('publishToast.desc', { ns: 'pipeline' })}
           </div>

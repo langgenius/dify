@@ -6,6 +6,8 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -15,7 +17,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -28,7 +29,6 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { cn } from '@/utils/classnames'
 import {
   createPickerProps,
   getFieldFlags,
@@ -137,7 +137,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         asChild={false}
       />
     ))
-    const varInput = value[variable].value
+    const varInput = value[variable]!.value
     const {
       isString,
       isNumber,
@@ -159,14 +159,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
 
     return (
       <div key={variable} className="space-y-0.5">
-        <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+        <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('code-sm-semibold max-w-[140px] truncate text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
+            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
-            <span className="system-xs-regular mx-1 text-text-quaternary">·</span>
+            <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
             <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type)}</span>
             {isShowJSONEditor && (
               <Tooltip
@@ -178,8 +178,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 asChild={false}
               >
                 <div
-                  className="ml-0.5 cursor-pointer radius-xs p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle)}
+                  className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                 >
                   <RiBracesLine className="size-3.5" />
                 </div>
@@ -187,12 +187,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
 
           </div>
-          <div className="flex cursor-pointer items-center gap-1 radius-sm border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+          <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
             <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
               size="xs"
-              value={!!auto}
-              onChange={val => handleAutomatic(variable, val, type)}
+              checked={!!auto}
+              onCheckedChange={val => handleAutomatic(variable, val, type)}
             />
           </div>
         </div>

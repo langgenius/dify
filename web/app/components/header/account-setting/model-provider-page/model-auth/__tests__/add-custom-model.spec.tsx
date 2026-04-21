@@ -34,33 +34,17 @@ vi.mock('@remixicon/react', () => ({
   RiAddLine: () => <div data-testid="add-line-icon" />,
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="tooltip-mock">
       {children}
-      <div>{popupContent}</div>
     </div>
   ),
+  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-// Mock portal components to avoid async test DOM issues (consistent with sibling tests)
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => (
-    <div data-testid="portal" data-open={open}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode, open?: boolean }) => {
-    // In many tests, we need to find elements inside the content even if "closed" in state
-    // but not yet "removed" from DOM. However, to avoid multiple elements issues,
-    // we should be careful.
-    // For AddCustomModel, we need the content to be present when we click a model.
-    return <div data-testid="portal-content" style={{ display: 'block' }}>{children}</div>
-  },
-}))
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 describe('AddCustomModel', () => {
   const mockProvider = {
@@ -94,7 +78,7 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
   })
 
@@ -107,10 +91,10 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByTestId('popover-trigger'))
 
     // The portal should be "open"
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'true')
+    expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
     expect(screen.getByText('gpt-4')).toBeInTheDocument()
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
   })
@@ -125,7 +109,7 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByTestId('popover-trigger'))
     fireEvent.click(screen.getByText('gpt-4'))
 
     expect(mockHandleOpenModalForAddCustomModelToModelList).toHaveBeenCalledWith(undefined, model)
@@ -140,7 +124,7 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByTestId('popover-trigger'))
     fireEvent.click(screen.getByText(/modelProvider.auth.addNewModel/))
 
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
@@ -159,7 +143,7 @@ describe('AddCustomModel', () => {
     expect(screen.getByTestId('tooltip-mock')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.credentialUnavailable')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
     expect(mockHandleOpenModalForAddNewCustomModel).not.toHaveBeenCalled()
   })
 })

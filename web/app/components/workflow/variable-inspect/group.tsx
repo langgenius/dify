@@ -1,5 +1,6 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightSLine,
   RiDeleteBinLine,
@@ -9,13 +10,12 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// import Button from '@/app/components/base/button'
+// import { Button } from '@langgenius/dify-ui/button'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import { useToolIcon } from '../hooks'
 
 type Props = {
@@ -117,11 +117,11 @@ const Group = ({
                 toolIcon={toolIcon || ''}
                 size="xs"
               />
-              <div className="system-xs-medium-uppercase truncate text-text-tertiary">{nodeData.title}</div>
+              <div className="truncate system-xs-medium-uppercase text-text-tertiary">{nodeData.title}</div>
             </>
           )}
           {!nodeData && (
-            <div className="system-xs-medium-uppercase truncate text-text-tertiary">
+            <div className="truncate system-xs-medium-uppercase text-text-tertiary">
               {isEnv && t('debug.variableInspect.envNode', { ns: 'workflow' })}
               {isChatVar && t('debug.variableInspect.chatNode', { ns: 'workflow' })}
               {isSystem && t('debug.variableInspect.systemNode', { ns: 'workflow' })}
@@ -160,8 +160,8 @@ const Group = ({
                 isExceptionVariable={['error_type', 'error_message'].includes(varItem.name)}
                 className="size-4"
               />
-              <div className="system-sm-medium grow truncate text-text-secondary">{varItem.name}</div>
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{varItem.value_type}</div>
+              <div className="grow truncate system-sm-medium text-text-secondary">{varItem.name}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">{varItem.value_type}</div>
             </div>
           ))}
         </div>

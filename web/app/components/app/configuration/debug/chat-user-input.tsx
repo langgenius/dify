@@ -1,4 +1,5 @@
 import type { Inputs } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   inputs: Inputs
@@ -67,7 +67,7 @@ const ChatUserInput = ({
 
   return (
     <div className={cn('z-1 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs')}>
-      <div className="px-4 pb-4 pt-3">
+      <div className="px-4 pt-3 pb-4">
         {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
           <div
             key={key}
@@ -75,7 +75,7 @@ const ChatUserInput = ({
           >
             <div>
               {type !== 'checkbox' && (
-                <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+                <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                   <div className="truncate">{name || key}</div>
                   {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                 </div>

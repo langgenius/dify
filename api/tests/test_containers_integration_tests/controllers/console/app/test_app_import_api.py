@@ -96,6 +96,56 @@ class TestAppImportApi:
         assert status == 200
         assert response["status"] == ImportStatus.COMPLETED
 
+    def test_import_post_commits_session_on_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = app_import_module.AppImportApi()
+        method = _unwrap(api.post)
+
+        _install_features(monkeypatch, enabled=False)
+        monkeypatch.setattr(
+            app_import_module.AppDslService,
+            "import_app",
+            lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
+        )
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
+
+        fake_session = MagicMock()
+        fake_session.__enter__.return_value = fake_session
+        fake_session.__exit__.return_value = None
+        monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
+
+        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
+            response, status = method()
+
+        fake_session.commit.assert_called_once_with()
+        fake_session.rollback.assert_not_called()
+        assert status == 200
+        assert response["status"] == ImportStatus.COMPLETED
+
+    def test_import_post_rolls_back_session_on_failure(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = app_import_module.AppImportApi()
+        method = _unwrap(api.post)
+
+        _install_features(monkeypatch, enabled=False)
+        monkeypatch.setattr(
+            app_import_module.AppDslService,
+            "import_app",
+            lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
+        )
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
+
+        fake_session = MagicMock()
+        fake_session.__enter__.return_value = fake_session
+        fake_session.__exit__.return_value = None
+        monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
+
+        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
+            response, status = method()
+
+        fake_session.rollback.assert_called_once_with()
+        fake_session.commit.assert_not_called()
+        assert status == 400
+        assert response["status"] == ImportStatus.FAILED
+
 
 class TestAppImportConfirmApi:
     @pytest.fixture

@@ -5,6 +5,7 @@ import type { CredentialFormSchema, FormOption, FormTypeEnum } from '@/app/compo
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
@@ -19,7 +20,6 @@ import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/compone
 import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import {

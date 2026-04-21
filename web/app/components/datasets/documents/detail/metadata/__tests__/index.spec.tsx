@@ -34,7 +34,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 
@@ -181,24 +181,55 @@ describe('Metadata', () => {
     it('should render without crashing', () => {
       const { container } = render(<Metadata {...defaultProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render metadata title', () => {
       render(<Metadata {...defaultProps} />)
 
-      expect(screen.getByText(/metadata\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/metadata\.title/i))!.toBeInTheDocument()
     })
 
     it('should render edit button', () => {
       render(<Metadata {...defaultProps} />)
 
-      expect(screen.getByText(/operation\.edit/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
     })
 
     it('should show loading state', () => {
       render(<Metadata {...defaultProps} loading={true} />)
 
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
+      // Assert - Loading component should be rendered, title should not
       // Assert - Loading component should be rendered, title should not
       expect(screen.queryByText(/metadata\.title/i)).not.toBeInTheDocument()
     })
@@ -206,7 +237,7 @@ describe('Metadata', () => {
     it('should display document type icon and text', () => {
       render(<Metadata {...defaultProps} />)
 
-      expect(screen.getByText('Book')).toBeInTheDocument()
+      expect(screen.getByText('Book'))!.toBeInTheDocument()
     })
   })
 
@@ -217,8 +248,8 @@ describe('Metadata', () => {
 
       fireEvent.click(screen.getByText(/operation\.edit/i))
 
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
 
     it('should show change link in edit mode', () => {
@@ -226,7 +257,7 @@ describe('Metadata', () => {
 
       fireEvent.click(screen.getByText(/operation\.edit/i))
 
-      expect(screen.getByText(/operation\.change/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.change/i))!.toBeInTheDocument()
     })
 
     it('should cancel edit and restore values when cancel is clicked', () => {
@@ -238,7 +269,8 @@ describe('Metadata', () => {
       fireEvent.click(screen.getByText(/operation\.cancel/i))
 
       // Assert - should be back to view mode
-      expect(screen.getByText(/operation\.edit/i)).toBeInTheDocument()
+      // Assert - should be back to view mode
+      expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
     })
 
     it('should save metadata when save button is clicked', async () => {
@@ -299,7 +331,7 @@ describe('Metadata', () => {
 
       render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
-      expect(screen.getByText(/metadata\.docTypeSelectTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
     })
 
     it('should show description when no doc_type exists', () => {
@@ -307,7 +339,7 @@ describe('Metadata', () => {
 
       render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
-      expect(screen.getByText(/metadata\.desc/i)).toBeInTheDocument()
+      expect(screen.getByText(/metadata\.desc/i))!.toBeInTheDocument()
     })
 
     it('should show change link in edit mode when doc_type exists', () => {
@@ -316,7 +348,7 @@ describe('Metadata', () => {
       // Enter edit mode
       fireEvent.click(screen.getByText(/operation\.edit/i))
 
-      expect(screen.getByText(/operation\.change/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.change/i))!.toBeInTheDocument()
     })
 
     it('should show doc type change title after clicking change', () => {
@@ -327,7 +359,7 @@ describe('Metadata', () => {
 
       fireEvent.click(screen.getByText(/operation\.change/i))
 
-      expect(screen.getByText(/metadata\.docTypeChangeTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/metadata\.docTypeChangeTitle/i))!.toBeInTheDocument()
     })
   })
 
@@ -337,14 +369,15 @@ describe('Metadata', () => {
       render(<Metadata {...defaultProps} />)
 
       // Assert
-      expect(screen.getByText('Data Source Type')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Data Source Type'))!.toBeInTheDocument()
     })
 
     it('should render technical parameters fields', () => {
       render(<Metadata {...defaultProps} />)
 
-      expect(screen.getByText('Segment Count')).toBeInTheDocument()
-      expect(screen.getByText('Hit Count')).toBeInTheDocument()
+      expect(screen.getByText('Segment Count'))!.toBeInTheDocument()
+      expect(screen.getByText('Hit Count'))!.toBeInTheDocument()
     })
   })
 
@@ -355,27 +388,30 @@ describe('Metadata', () => {
       const { container } = render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
       // Assert
-      expect(container.firstChild).toBeInTheDocument()
+      // Assert
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle undefined docDetail gracefully', () => {
       const { container } = render(<Metadata {...defaultProps} docDetail={undefined} loading={false} />)
 
       // Assert
-      expect(container.firstChild).toBeInTheDocument()
+      // Assert
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should update document type display when docDetail changes', () => {
       const { rerender } = render(<Metadata {...defaultProps} />)
 
       // Act - verify initial state shows Book
-      expect(screen.getByText('Book')).toBeInTheDocument()
+      // Act - verify initial state shows Book
+      expect(screen.getByText('Book'))!.toBeInTheDocument()
 
       // Update with new doc type
       const updatedDocDetail = createMockDocDetail({ doc_type: 'paper' })
       rerender(<Metadata {...defaultProps} docDetail={updatedDocDetail} />)
 
-      expect(screen.getByText('Paper')).toBeInTheDocument()
+      expect(screen.getByText('Paper'))!.toBeInTheDocument()
     })
   })
 
@@ -386,7 +422,7 @@ describe('Metadata', () => {
 
       render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
-      expect(screen.getByText(/metadata\.firstMetaAction/i)).toBeInTheDocument()
+      expect(screen.getByText(/metadata\.firstMetaAction/i))!.toBeInTheDocument()
     })
   })
 })
@@ -407,19 +443,19 @@ describe('FieldInfo', () => {
     it('should render without crashing', () => {
       const { container } = render(<FieldInfo {...defaultFieldInfoProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render label', () => {
       render(<FieldInfo {...defaultFieldInfoProps} />)
 
-      expect(screen.getByText('Test Label')).toBeInTheDocument()
+      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
     })
 
     it('should render displayed value in view mode', () => {
       render(<FieldInfo {...defaultFieldInfoProps} showEdit={false} />)
 
-      expect(screen.getByText('Test Display Value')).toBeInTheDocument()
+      expect(screen.getByText('Test Display Value'))!.toBeInTheDocument()
     })
   })
 
@@ -428,7 +464,7 @@ describe('FieldInfo', () => {
     it('should render input when showEdit is true and inputType is input', () => {
       render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="input" onUpdate={vi.fn()} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should render select when showEdit is true and inputType is select', () => {
@@ -443,13 +479,14 @@ describe('FieldInfo', () => {
       )
 
       // Assert - SimpleSelect should be rendered
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      // Assert - SimpleSelect should be rendered
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render textarea when showEdit is true and inputType is textarea', () => {
       render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="textarea" onUpdate={vi.fn()} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should call onUpdate when input value changes', () => {
@@ -476,14 +513,14 @@ describe('FieldInfo', () => {
     it('should render value icon when provided', () => {
       render(<FieldInfo {...defaultFieldInfoProps} valueIcon={<span data-testid="value-icon">Icon</span>} />)
 
-      expect(screen.getByTestId('value-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('value-icon'))!.toBeInTheDocument()
     })
 
     it('should use defaultValue when provided', () => {
       render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="input" defaultValue="Default" onUpdate={vi.fn()} />)
 
       const input = screen.getByRole('textbox')
-      expect(input).toHaveAttribute('placeholder')
+      expect(input)!.toHaveAttribute('placeholder')
     })
   })
 })
@@ -510,13 +547,15 @@ describe('useMetadataState coverage', () => {
       fireEvent.click(screen.getByText(/operation\.change/i))
 
       // Now in doc type selector mode — should show cancel button
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+      // Now in doc type selector mode — should show cancel button
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
 
       // Act — cancel the doc type change
       fireEvent.click(screen.getByText(/operation\.cancel/i))
 
       // Assert — should be back to edit mode (cancel + save buttons visible)
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      // Assert — should be back to edit mode (cancel + save buttons visible)
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
 
@@ -530,14 +569,16 @@ describe('useMetadataState coverage', () => {
       fireEvent.click(screen.getByText(/operation\.change/i))
 
       // DocTypeSelector shows save/cancel buttons
-      expect(screen.getByText(/metadata\.docTypeChangeTitle/i)).toBeInTheDocument()
+      // DocTypeSelector shows save/cancel buttons
+      expect(screen.getByText(/metadata\.docTypeChangeTitle/i))!.toBeInTheDocument()
 
       // Act — click save to confirm same doc type (tempDocType='book')
       fireEvent.click(screen.getByText(/operation\.save/i))
 
       // Assert — should return to edit mode with metadata fields visible
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      // Assert — should return to edit mode with metadata fields visible
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
 
@@ -551,17 +592,20 @@ describe('useMetadataState coverage', () => {
 
       // 'others' is normalized to '' → useEffect fires (doc_type truthy) → view mode
       // The rendered type uses default 'book' fallback for display
-      expect(screen.getByText(/operation\.edit/i)).toBeInTheDocument()
+      // 'others' is normalized to '' → useEffect fires (doc_type truthy) → view mode
+      // The rendered type uses default 'book' fallback for display
+      expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
 
       // Enter edit mode
       fireEvent.click(screen.getByText(/operation\.edit/i))
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
 
       // Act — cancel edit; internally docType is '' so cancelEdit goes to showDocTypes
       fireEvent.click(screen.getByText(/operation\.cancel/i))
 
       // Assert — should show doc type selection since normalized docType was ''
-      expect(screen.getByText(/metadata\.docTypeSelectTitle/i)).toBeInTheDocument()
+      // Assert — should show doc type selection since normalized docType was ''
+      expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
     })
   })
 
@@ -576,10 +620,11 @@ describe('useMetadataState coverage', () => {
       // Act — find an input and change its value (Title field)
       const inputs = screen.getAllByRole('textbox')
       expect(inputs.length).toBeGreaterThan(0)
-      fireEvent.change(inputs[0], { target: { value: 'Updated Title' } })
+      fireEvent.change(inputs[0]!, { target: { value: 'Updated Title' } })
 
       // Assert — the input should have the new value
-      expect(inputs[0]).toHaveValue('Updated Title')
+      // Assert — the input should have the new value
+      expect(inputs[0])!.toHaveValue('Updated Title')
     })
   })
 
@@ -629,7 +674,8 @@ describe('useMetadataState coverage', () => {
       )
 
       // Assert — should render without crashing, showing Paper type
-      expect(screen.getByText('Paper')).toBeInTheDocument()
+      // Assert — should render without crashing, showing Paper type
+      expect(screen.getByText('Paper'))!.toBeInTheDocument()
     })
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TryAppSelection } from '@/types/try-app'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import AppListContext from '@/context/app-list-context'
@@ -10,6 +10,7 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { fetchAppDetail } from '@/service/explore'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import List from './list'
 
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
@@ -23,6 +24,7 @@ const Apps = () => {
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<TryAppSelection['app']['app']['mode'] | null>(null)
   const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
@@ -39,6 +41,12 @@ const Apps = () => {
 
   const handleShowFromTryApp = useCallback(() => {
     setIsShowCreateModal(true)
+  }, [])
+  const trackCurrentCreateApp = useCallback(() => {
+    if (!currentCreateAppModeRef.current)
+      return
+
+    trackCreateApp({ appMode: currentCreateAppModeRef.current })
   }, [])
 
   const [controlRefreshList, setControlRefreshList] = useState(0)
@@ -59,11 +67,14 @@ const Apps = () => {
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess,
+      onSuccess: () => {
+        trackCurrentCreateApp()
+        onSuccess()
+      },
     })
-  }, [handleImportDSLConfirm, onSuccess])
+  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
     icon,
@@ -72,9 +83,10 @@ const Apps = () => {
   }) => {
     hideTryAppPanel()
 
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
+    currentCreateAppModeRef.current = mode
     const payload = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: export_data,
@@ -86,13 +98,14 @@ const Apps = () => {
     }
     await handleImportDSL(payload, {
       onSuccess: () => {
+        trackCurrentCreateApp()
         setIsShowCreateModal(false)
       },
       onPending: () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }
+  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   return (
     <AppListContext.Provider value={{

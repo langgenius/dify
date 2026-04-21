@@ -1,7 +1,7 @@
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -22,9 +22,9 @@ const UserInfo = () => {
   }
 
   return (
-    <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pb-6 pl-6 pr-8 pt-9 shadow-shadow-shadow-5">
-      <div className="absolute left-0 top-0 flex items-center">
-        <div className="system-2xs-semibold-uppercase flex h-[22px] items-center bg-components-panel-on-panel-item-bg pl-2 pt-1 text-text-accent-light-mode-only">
+    <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pt-9 pr-8 pb-6 pl-6 shadow-shadow-shadow-5">
+      <div className="absolute top-0 left-0 flex items-center">
+        <div className="flex h-[22px] items-center bg-components-panel-on-panel-item-bg pt-1 pl-2 system-2xs-semibold-uppercase text-text-accent-light-mode-only">
           {t('currentSigned', { ns: 'education' })}
         </div>
         <Triangle className="h-[22px] w-4 text-components-panel-on-panel-item-bg" />

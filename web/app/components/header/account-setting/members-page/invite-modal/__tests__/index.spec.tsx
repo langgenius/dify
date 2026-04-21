@@ -1,8 +1,8 @@
 import type { InvitationResponse } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
 import InviteModal from '../index'
@@ -18,7 +18,7 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

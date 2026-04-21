@@ -16,7 +16,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -35,6 +34,7 @@ from controllers.service_api.app.error import (
     NotChatAppError,
 )
 from core.errors.error import QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService

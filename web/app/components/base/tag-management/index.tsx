@@ -1,8 +1,8 @@
 'use client'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import { createTag, fetchTagList } from '@/service/tag'
 import { useStore as useTagStore } from './store'
 import TagItemEditor from './tag-item-editor'
@@ -48,8 +48,8 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   }, [type])
   return (
     <Modal className="!w-[600px] !max-w-[600px] rounded-xl px-8 py-6" isShow={show} onClose={() => setShowTagManagementModal(false)}>
-      <div className="relative pb-2 text-xl font-semibold leading-[30px] text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
-      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={() => setShowTagManagementModal(false)}>
+      <div className="relative pb-2 text-xl leading-[30px] font-semibold text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
+      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={() => setShowTagManagementModal(false)}>
         <span className="i-ri-close-line h-4 w-4 text-text-tertiary" data-testid="tag-management-modal-close-button" />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">

@@ -1,31 +1,31 @@
 import type { ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
-import { toast } from '@/app/components/base/ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
 import Soc2 from '../../base/icons/src/public/common/Soc2'
 import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
-import Spinner from '../../base/spinner'
 import { MenuItemContent } from './menu-item-content'
 
-enum DocName {
-  SOC2_Type_I = 'SOC2_Type_I',
-  SOC2_Type_II = 'SOC2_Type_II',
-  ISO_27001 = 'ISO_27001',
-  GDPR = 'GDPR',
-}
+const DocName = {
+  SOC2_Type_I: 'SOC2_Type_I',
+  SOC2_Type_II: 'SOC2_Type_II',
+  ISO_27001: 'ISO_27001',
+  GDPR: 'GDPR',
+} as const
+type DocName = typeof DocName[keyof typeof DocName]
 
 type ComplianceDocActionVisualProps = {
   isCurrentPlanCanDownload: boolean
@@ -44,18 +44,16 @@ function ComplianceDocActionVisual({
 }: ComplianceDocActionVisualProps) {
   if (isCurrentPlanCanDownload) {
     return (
-      <div
+      <Button
+        size="small"
+        disabled={isPending}
+        loading={isPending}
         aria-hidden
-        data-disabled={isPending || undefined}
-        className={cn(
-          'btn btn-small btn-secondary pointer-events-none flex items-center gap-px',
-          isPending && 'cursor-not-allowed',
-        )}
+        className="pointer-events-none flex items-center gap-px"
       >
         <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="px-[3px] text-components-button-secondary-text system-xs-medium">{downloadText}</span>
-        {isPending && <Spinner loading={true} className="ml-1! h-3! w-3! border-2! text-text-tertiary!" />}
-      </div>
+        <span className="px-[3px] system-xs-medium text-components-button-secondary-text">{downloadText}</span>
+      </Button>
     )
   }
 
@@ -64,7 +62,6 @@ function ComplianceDocActionVisual({
   return (
     <Tooltip>
       <TooltipTrigger
-        delay={0}
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>
@@ -146,12 +143,12 @@ function ComplianceDocRowItem({
 
   return (
     <DropdownMenuItem
-      className="h-10 justify-between py-1 pl-1 pr-2"
+      className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
       onClick={handleSelect}
     >
       {icon}
-      <div className="grow truncate px-1 text-text-secondary system-md-regular">{label}</div>
+      <div className="grow truncate px-1 system-md-regular text-text-secondary">{label}</div>
       <ComplianceDocActionVisual
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}

@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type ContentWrapperProps = {
   nodeTitle: string
@@ -34,7 +34,7 @@ const ContentWrapper = ({
         <BlockIcon type={BlockEnum.HumanInput} className="shrink-0" />
         {/* node name */}
         <div
-          className="grow truncate text-text-primary system-sm-semibold-uppercase"
+          className="grow truncate system-sm-semibold-uppercase text-text-primary"
           title={nodeTitle}
         >
           {nodeTitle}
