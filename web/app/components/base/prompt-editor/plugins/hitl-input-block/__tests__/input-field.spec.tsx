@@ -18,6 +18,26 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   },
 }))
 
+vi.mock('@/app/components/app/configuration/config-var/config-modal/type-select', () => ({
+  __esModule: true,
+  default: ({ onSelect }: { onSelect: (item: { value: InputVarType }) => void }) => (
+    <div>
+      <button type="button" onClick={() => onSelect({ value: InputVarType.paragraph })}>
+        select-paragraph
+      </button>
+      <button type="button" onClick={() => onSelect({ value: InputVarType.select })}>
+        select-select
+      </button>
+      <button type="button" onClick={() => onSelect({ value: InputVarType.singleFile })}>
+        select-file
+      </button>
+      <button type="button" onClick={() => onSelect({ value: InputVarType.multiFiles })}>
+        select-file-list
+      </button>
+    </div>
+  ),
+}))
+
 const createPayload = (overrides?: Partial<FormInputItem>): FormInputItem => ({
   type: InputVarType.paragraph,
   output_variable_name: 'valid_name',
@@ -273,5 +293,35 @@ describe('InputField', () => {
       selector: [],
       value: '',
     })
+  })
+
+  it('should switch to select payload when field type changes', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-7"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-select' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.select,
+      output_variable_name: 'valid_name',
+      option_source: {
+        type: 'constant',
+        selector: [],
+        value: [],
+      },
+    })
+    expect(screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).not.toBeInTheDocument()
   })
 })

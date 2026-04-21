@@ -156,3 +156,53 @@ export const createDefaultParagraphFormInput = (
     value: '',
   },
 })
+
+export const createDefaultSelectFormInput = (
+  output_variable_name = '',
+): SelectFormInput => ({
+  type: InputVarType.select,
+  output_variable_name,
+  option_source: {
+    type: 'constant',
+    selector: [],
+    value: [],
+  },
+})
+
+export const createDefaultFileFormInput = (
+  output_variable_name = '',
+): FileFormInput => ({
+  type: InputVarType.singleFile,
+  output_variable_name,
+  allowed_file_extensions: [],
+  allowed_file_types: ['image'],
+  allowed_file_upload_methods: ['local_file', 'remote_url'],
+})
+
+export const createDefaultFileListFormInput = (
+  output_variable_name = '',
+): FileListFormInput => ({
+  type: InputVarType.multiFiles,
+  output_variable_name,
+  allowed_file_extensions: [],
+  allowed_file_types: ['image'],
+  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  max_upload_count: 5,
+})
+
+export const createDefaultFormInputByType = (
+  type: FormInputItem['type'],
+  output_variable_name = '',
+): FormInputItem => {
+  switch (type) {
+    case InputVarType.select:
+      return createDefaultSelectFormInput(output_variable_name)
+    case InputVarType.singleFile:
+      return createDefaultFileFormInput(output_variable_name)
+    case InputVarType.multiFiles:
+      return createDefaultFileListFormInput(output_variable_name)
+    case InputVarType.paragraph:
+    default:
+      return createDefaultParagraphFormInput(output_variable_name)
+  }
+}

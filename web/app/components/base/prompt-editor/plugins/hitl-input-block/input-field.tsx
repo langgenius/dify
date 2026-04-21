@@ -1,3 +1,4 @@
+import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -5,11 +6,14 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import Input from '@/app/components/base/input'
 import {
+  createDefaultFormInputByType,
   createDefaultParagraphFormInput,
   isParagraphFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import PrePopulate from './pre-populate'
 
@@ -31,9 +35,33 @@ const InputField: React.FC<InputFieldProps> = ({
 }) => {
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<FormInputItem>(() => payload || createDefaultParagraphFormInput())
+  const fieldTypeItems = useMemo<TypeSelectItem[]>(() => {
+    return [
+      {
+        name: t('variableConfig.paragraph', { ns: 'appDebug' }),
+        value: InputVarType.paragraph,
+      },
+      {
+        name: t('variableConfig.select', { ns: 'appDebug' }),
+        value: InputVarType.select,
+      },
+      {
+        name: t('variableConfig.single-file', { ns: 'appDebug' }),
+        value: InputVarType.singleFile,
+      },
+      {
+        name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+        value: InputVarType.multiFiles,
+      },
+    ]
+  }, [t])
   const paragraphPayload = useMemo<ParagraphFormInput>(() => {
-    if (isParagraphFormInput(tempPayload))
-      return tempPayload
+    if (isParagraphFormInput(tempPayload)) {
+      return {
+        ...tempPayload,
+        default: tempPayload.default || createDefaultParagraphFormInput().default,
+      }
+    }
 
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
@@ -50,6 +78,9 @@ const InputField: React.FC<InputFieldProps> = ({
       return
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
+  const handleTypeChange = useCallback((item: TypeSelectItem) => {
+    setTempPayload(prev => createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name))
+  }, [])
   const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
     return (value: ValueSelector | string) => {
       const nextValue = produce(paragraphPayload, (draft) => {
@@ -87,6 +118,18 @@ const InputField: React.FC<InputFieldProps> = ({
       <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       <div className="mt-3">
         <div className="system-xs-medium text-text-secondary">
+          {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
+        </div>
+        <div className="mt-1.5">
+          <TypeSelector
+            value={tempPayload.type}
+            items={fieldTypeItems}
+            onSelect={handleTypeChange}
+          />
+        </div>
+      </div>
+      <div className="mt-3">
+        <div className="system-xs-medium text-text-secondary">
           {t(`${i18nPrefix}.saveResponseAs`, { ns: 'workflow' })}
           <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
         </div>
@@ -105,22 +148,24 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
         )}
       </div>
-      <div className="mt-4">
-        <div className="mb-1.5 system-xs-medium text-text-secondary">
-          {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
+      {isParagraphFormInput(tempPayload) && (
+        <div className="mt-4">
+          <div className="mb-1.5 system-xs-medium text-text-secondary">
+            {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
+          </div>
+          <PrePopulate
+            isVariable={paragraphPayload.default.type === 'variable'}
+            onIsVariableChange={(isVariable) => {
+              handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
+            }}
+            nodeId={nodeId}
+            valueSelector={paragraphPayload.default.selector}
+            onValueSelectorChange={handleDefaultValueChange('selector')}
+            value={paragraphPayload.default.value}
+            onValueChange={handleDefaultValueChange('value')}
+          />
         </div>
-        <PrePopulate
-          isVariable={paragraphPayload.default.type === 'variable'}
-          onIsVariableChange={(isVariable) => {
-            handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
-          }}
-          nodeId={nodeId}
-          valueSelector={paragraphPayload.default.selector}
-          onValueSelectorChange={handleDefaultValueChange('selector')}
-          value={paragraphPayload.default.value}
-          onValueChange={handleDefaultValueChange('value')}
-        />
-      </div>
+      )}
       <div className="mt-4 flex justify-end space-x-2">
         <Button data-testid="hitl-input-cancel-btn" onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
