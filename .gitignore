@@ -245,3 +245,9 @@ scripts/stress-test/reports/
 .qoder/*
 
 .eslintcache
+
+docker/.codex/
+docker/.claude/
+docker/defaults
+docker/openspec
+docker/AGENTS.md

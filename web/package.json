@@ -30,6 +30,7 @@
     "dev:inspect": "next dev --inspect",
     "dev:proxy": "tsx ./scripts/dev-hono-proxy.ts",
     "dev:vinext": "vinext dev",
+    "env:reference": "node ./scripts/env-reference.mjs",
     "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
     "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "i18n:check": "tsx ./scripts/check-i18n.js",

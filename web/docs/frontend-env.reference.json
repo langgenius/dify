@@ -1,0 +1,655 @@
+{
+  "schema_version": "1",
+  "artifact_policy": "committed-generated-artifact",
+  "authority": {
+    "kind": "frontend-env-schema",
+    "source_root": "web",
+    "model": "web/env.ts"
+  },
+  "variables": [
+    {
+      "name": "NEXT_PUBLIC_ALLOW_EMBED",
+      "accepted_names": [
+        "NEXT_PUBLIC_ALLOW_EMBED"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "Default is not allow to embed into iframe to prevent Clickjacking: https://owasp.org/www-community/attacks/Clickjacking",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "allowEmbed"
+    },
+    {
+      "name": "NEXT_PUBLIC_ALLOW_INLINE_STYLES",
+      "accepted_names": [
+        "NEXT_PUBLIC_ALLOW_INLINE_STYLES"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "Allow inline style attributes in Markdown rendering. Self-hosted opt-in for workflows using styled Jinja2 templates.",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "allowInlineStyles"
+    },
+    {
+      "name": "NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME",
+      "accepted_names": [
+        "NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "Allow rendering unsafe URLs which have \"data:\" scheme.",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "allowUnsafeDataScheme"
+    },
+    {
+      "name": "NEXT_PUBLIC_AMPLITUDE_API_KEY",
+      "accepted_names": [
+        "NEXT_PUBLIC_AMPLITUDE_API_KEY"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The API key of amplitude",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "amplitudeApiKey"
+    },
+    {
+      "name": "NEXT_PUBLIC_API_PREFIX",
+      "accepted_names": [
+        "NEXT_PUBLIC_API_PREFIX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The base URL of console application, refers to the Console base URL of WEB service if console domain is different from api or web app domain. example: http://cloud.dify.ai/console/api",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "apiPrefix"
+    },
+    {
+      "name": "NEXT_PUBLIC_BASE_PATH",
+      "accepted_names": [
+        "NEXT_PUBLIC_BASE_PATH"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The base path for the application",
+      "code_default": "",
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "basePath"
+    },
+    {
+      "name": "NEXT_PUBLIC_BATCH_CONCURRENCY",
+      "accepted_names": [
+        "NEXT_PUBLIC_BATCH_CONCURRENCY"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "number of concurrency",
+      "code_default": 5,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "batchConcurrency"
+    },
+    {
+      "name": "NEXT_PUBLIC_COOKIE_DOMAIN",
+      "accepted_names": [
+        "NEXT_PUBLIC_COOKIE_DOMAIN"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1.",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "cookieDomain"
+    },
+    {
+      "name": "NEXT_PUBLIC_CSP_WHITELIST",
+      "accepted_names": [
+        "NEXT_PUBLIC_CSP_WHITELIST"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "CSP https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "cspWhitelist"
+    },
+    {
+      "name": "NEXT_PUBLIC_DEPLOY_ENV",
+      "accepted_names": [
+        "NEXT_PUBLIC_DEPLOY_ENV"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "literal[\"DEVELOPMENT\", \"PRODUCTION\", \"TESTING\"]",
+      "description": "For production release, change this to PRODUCTION",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "deployEnv"
+    },
+    {
+      "name": "NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON",
+      "accepted_names": [
+        "NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "disableUploadImageAsIcon"
+    },
+    {
+      "name": "NEXT_PUBLIC_EDITION",
+      "accepted_names": [
+        "NEXT_PUBLIC_EDITION"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "literal[\"SELF_HOSTED\", \"CLOUD\"]",
+      "description": "The deployment edition, SELF_HOSTED",
+      "code_default": "SELF_HOSTED",
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "edition"
+    },
+    {
+      "name": "NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX",
+      "accepted_names": [
+        "NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "Enable inline LaTeX rendering with single dollar signs ($...$) Default is false for security reasons to prevent conflicts with regular text",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "enableSingleDollarLatex"
+    },
+    {
+      "name": "NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL",
+      "accepted_names": [
+        "NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": true,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "enableWebsiteFirecrawl"
+    },
+    {
+      "name": "NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER",
+      "accepted_names": [
+        "NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": true,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "enableWebsiteJinareader"
+    },
+    {
+      "name": "NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL",
+      "accepted_names": [
+        "NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "enableWebsiteWatercrawl"
+    },
+    {
+      "name": "NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH",
+      "accepted_names": [
+        "NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "The maximum number of tokens for segmentation",
+      "code_default": 4000,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "indexingMaxSegmentationTokensLength"
+    },
+    {
+      "name": "NEXT_PUBLIC_IS_MARKETPLACE",
+      "accepted_names": [
+        "NEXT_PUBLIC_IS_MARKETPLACE"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "isMarketplace"
+    },
+    {
+      "name": "NEXT_PUBLIC_LOOP_NODE_MAX_COUNT",
+      "accepted_names": [
+        "NEXT_PUBLIC_LOOP_NODE_MAX_COUNT"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "Maximum loop count in the workflow",
+      "code_default": 100,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "loopNodeMaxCount"
+    },
+    {
+      "name": "NEXT_PUBLIC_MAINTENANCE_NOTICE",
+      "accepted_names": [
+        "NEXT_PUBLIC_MAINTENANCE_NOTICE"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "maintenanceNotice"
+    },
+    {
+      "name": "NEXT_PUBLIC_MARKETPLACE_API_PREFIX",
+      "accepted_names": [
+        "NEXT_PUBLIC_MARKETPLACE_API_PREFIX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The API PREFIX for MARKETPLACE",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "marketplaceApiPrefix"
+    },
+    {
+      "name": "NEXT_PUBLIC_MARKETPLACE_URL_PREFIX",
+      "accepted_names": [
+        "NEXT_PUBLIC_MARKETPLACE_URL_PREFIX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The URL for MARKETPLACE",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "marketplaceUrlPrefix"
+    },
+    {
+      "name": "NEXT_PUBLIC_MAX_ITERATIONS_NUM",
+      "accepted_names": [
+        "NEXT_PUBLIC_MAX_ITERATIONS_NUM"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "The maximum number of iterations for agent setting",
+      "code_default": 99,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "maxIterationsNum"
+    },
+    {
+      "name": "NEXT_PUBLIC_MAX_PARALLEL_LIMIT",
+      "accepted_names": [
+        "NEXT_PUBLIC_MAX_PARALLEL_LIMIT"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "Maximum number of Parallelism branches in the workflow",
+      "code_default": 10,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "maxParallelLimit"
+    },
+    {
+      "name": "NEXT_PUBLIC_MAX_TOOLS_NUM",
+      "accepted_names": [
+        "NEXT_PUBLIC_MAX_TOOLS_NUM"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "Maximum number of tools in the agent/workflow",
+      "code_default": 10,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "maxToolsNum"
+    },
+    {
+      "name": "NEXT_PUBLIC_MAX_TREE_DEPTH",
+      "accepted_names": [
+        "NEXT_PUBLIC_MAX_TREE_DEPTH"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "The maximum number of tree node depth for workflow",
+      "code_default": 50,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "maxTreeDepth"
+    },
+    {
+      "name": "NEXT_PUBLIC_PUBLIC_API_PREFIX",
+      "accepted_names": [
+        "NEXT_PUBLIC_PUBLIC_API_PREFIX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from console or api domain. example: http://udify.app/api",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "publicApiPrefix"
+    },
+    {
+      "name": "NEXT_PUBLIC_SENTRY_DSN",
+      "accepted_names": [
+        "NEXT_PUBLIC_SENTRY_DSN"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "SENTRY",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "sentryDsn"
+    },
+    {
+      "name": "NEXT_PUBLIC_SITE_ABOUT",
+      "accepted_names": [
+        "NEXT_PUBLIC_SITE_ABOUT"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "siteAbout"
+    },
+    {
+      "name": "NEXT_PUBLIC_SOCKET_URL",
+      "accepted_names": [
+        "NEXT_PUBLIC_SOCKET_URL"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "socketUrl"
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS",
+      "accepted_names": [
+        "NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "supportEmailAddress"
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPPORT_MAIL_LOGIN",
+      "accepted_names": [
+        "NEXT_PUBLIC_SUPPORT_MAIL_LOGIN"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "supportMailLogin"
+    },
+    {
+      "name": "NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS",
+      "accepted_names": [
+        "NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "The timeout for the text generation in millisecond",
+      "code_default": 60000,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "textGenerationTimeoutMs"
+    },
+    {
+      "name": "NEXT_PUBLIC_TOP_K_MAX_VALUE",
+      "accepted_names": [
+        "NEXT_PUBLIC_TOP_K_MAX_VALUE"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "integer",
+      "description": "The maximum number of top-k value for RAG.",
+      "code_default": 10,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "topKMaxValue"
+    },
+    {
+      "name": "NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON",
+      "accepted_names": [
+        "NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "boolean",
+      "description": "Disable Upload Image as WebApp icon default is false",
+      "code_default": false,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "uploadImageAsIcon"
+    },
+    {
+      "name": "NEXT_PUBLIC_WEB_PREFIX",
+      "accepted_names": [
+        "NEXT_PUBLIC_WEB_PREFIX"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "webPrefix"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskFieldIdEmail"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskFieldIdEnvironment"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskFieldIdPlan"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskFieldIdVersion"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskFieldIdWorkspaceId"
+    },
+    {
+      "name": "NEXT_PUBLIC_ZENDESK_WIDGET_KEY",
+      "accepted_names": [
+        "NEXT_PUBLIC_ZENDESK_WIDGET_KEY"
+      ],
+      "runtime": "client",
+      "visibility": "browser-public",
+      "type": "string",
+      "description": "",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "body-dataset",
+      "dataset_key": "zendeskWidgetKey"
+    },
+    {
+      "name": "INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH",
+      "accepted_names": [
+        "INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH"
+      ],
+      "runtime": "server",
+      "visibility": "server-only",
+      "type": "integer",
+      "description": "Maximum length of segmentation tokens for indexing",
+      "code_default": 4000,
+      "required": false,
+      "injection_mode": "process-env",
+      "dataset_key": null
+    },
+    {
+      "name": "NEXT_TELEMETRY_DISABLED",
+      "accepted_names": [
+        "NEXT_TELEMETRY_DISABLED"
+      ],
+      "runtime": "server",
+      "visibility": "server-only",
+      "type": "boolean",
+      "description": "Disable Next.js Telemetry (https://nextjs.org/telemetry)",
+      "code_default": null,
+      "required": false,
+      "injection_mode": "process-env",
+      "dataset_key": null
+    },
+    {
+      "name": "PORT",
+      "accepted_names": [
+        "PORT"
+      ],
+      "runtime": "server",
+      "visibility": "server-only",
+      "type": "integer",
+      "description": "",
+      "code_default": 3000,
+      "required": false,
+      "injection_mode": "process-env",
+      "dataset_key": null
+    },
+    {
+      "name": "TEXT_GENERATION_TIMEOUT_MS",
+      "accepted_names": [
+        "TEXT_GENERATION_TIMEOUT_MS"
+      ],
+      "runtime": "server",
+      "visibility": "server-only",
+      "type": "integer",
+      "description": "The timeout for the text generation in millisecond",
+      "code_default": 60000,
+      "required": false,
+      "injection_mode": "process-env",
+      "dataset_key": null
+    }
+  ]
+}
