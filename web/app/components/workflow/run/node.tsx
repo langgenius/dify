@@ -8,6 +8,7 @@ import type {
   NodeTracing,
 } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAlertFill,
   RiArrowRightSLine,
@@ -16,9 +17,8 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -68,6 +68,16 @@ const NodePanel: FC<Props> = ({
       return
     doSetCollapseState(state)
   }, [hideProcessDetail])
+  const titleRef = useRef<HTMLDivElement>(null)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
+  const handleTooltipOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      const el = titleRef.current
+      if (!el || el.scrollWidth <= el.clientWidth)
+        return
+    }
+    setIsTooltipOpen(open)
+  }, [])
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -132,18 +142,23 @@ const NodePanel: FC<Props> = ({
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <Tooltip
-            popupContent={
+          <Tooltip open={isTooltipOpen} onOpenChange={handleTooltipOpenChange}>
+            <TooltipTrigger
+              render={(
+                <div
+                  ref={titleRef}
+                  className={cn(
+                    'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
+                    hideInfo && 'text-xs!',
+                  )}
+                >
+                  {nodeInfo.title}
+                </div>
+              )}
+            />
+            <TooltipContent>
               <div className="max-w-xs">{nodeInfo.title}</div>
-            }
-          >
-            <div className={cn(
-              'grow truncate system-xs-semibold-uppercase text-text-secondary',
-              hideInfo && 'text-xs!',
-            )}
-            >
-              {nodeInfo.title}
-            </div>
+            </TooltipContent>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="shrink-0 system-xs-regular text-text-tertiary">

@@ -45,7 +45,7 @@ class ConversationVariableResponse(ResponseModel):
     def _normalize_value_type(cls, value: Any) -> str:
         exposed_type = getattr(value, "exposed_type", None)
         if callable(exposed_type):
-            return str(exposed_type().value)
+            return str(exposed_type())
         if isinstance(value, str):
             return value
         try:

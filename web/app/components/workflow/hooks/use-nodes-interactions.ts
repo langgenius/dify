@@ -14,6 +14,7 @@ import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +23,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -144,7 +145,10 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
+  const { data: appDslVersion } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.app_dsl_version,
+  })
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -1547,7 +1551,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: newCurrentNode.data.type,
                 targetType: targetNodeForEdge.data.type,
                 isInIteration,
@@ -1587,7 +1591,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: sourceNode.data.type,
                 targetType: newCurrentNode.data.type,
                 isInIteration: newNodeIsInIteration,

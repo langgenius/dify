@@ -1,5 +1,7 @@
+import gc
 import logging
-from unittest.mock import MagicMock, patch
+import warnings
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dify_trace_tencent.config import TencentConfig
@@ -632,13 +634,38 @@ class TestTencentDataTrace:
         with patch("dify_trace_tencent.tencent_trace.logger.debug") as mock_log:
             tencent_data_trace._record_message_trace_duration(trace_info)
 
-    def test_del(self, tencent_data_trace):
+    def test_close(self, tencent_data_trace):
         client = tencent_data_trace.trace_client
-        tencent_data_trace.__del__()
+        tencent_data_trace.close()
         client.shutdown.assert_called_once()
 
-    def test_del_exception(self, tencent_data_trace):
+    def test_close_is_idempotent(self, tencent_data_trace):
+        client = tencent_data_trace.trace_client
+
+        tencent_data_trace.close()
+        tencent_data_trace.close()
+
+        client.shutdown.assert_called_once()
+
+    def test_close_exception(self, tencent_data_trace):
         tencent_data_trace.trace_client.shutdown.side_effect = Exception("error")
         with patch("dify_trace_tencent.tencent_trace.logger.exception") as mock_log:
-            tencent_data_trace.__del__()
+            tencent_data_trace.close()
             mock_log.assert_called_once_with("[Tencent APM] Failed to shutdown trace client during cleanup")
+
+    def test_close_handles_async_shutdown_mock(self, tencent_data_trace):
+        shutdown = AsyncMock()
+        tencent_data_trace.trace_client.shutdown = shutdown
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            tencent_data_trace.close()
+            gc.collect()
+
+        shutdown.assert_called_once()
+        assert not [
+            warning
+            for warning in caught
+            if issubclass(warning.category, RuntimeWarning)
+            and "AsyncMockMixin._execute_mock_call" in str(warning.message)
+        ]

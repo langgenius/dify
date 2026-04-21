@@ -7,15 +7,16 @@ import type {
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -60,8 +61,8 @@ const Popup: FC<PopupProps> = ({
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
-  const { data: systemFeatures } = useSystemFeaturesQuery()
-  const trialModels = systemFeatures?.trial_models
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const trialModels = systemFeatures.trial_models
   const installedProviderMap = useMemo(() => new Map(
     modelProviders.map(provider => [provider.provider, provider]),
   ), [modelProviders])
@@ -224,7 +225,7 @@ const Popup: FC<PopupProps> = ({
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
-      <div className="px-1 pb-1">
+      <div className="pr-1 pb-1 pl-3">
         {
           filteredModelList.map(model => (
             <PopupItem

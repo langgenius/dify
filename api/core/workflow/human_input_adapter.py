@@ -1,8 +1,8 @@
-"""Workflow-layer adapters for legacy human-input payload keys.
+"""Workflow-to-Graphon adapters for persisted node payloads.
 
-Stored workflow graphs and editor payloads may still use Dify-specific human
-input recipient keys. Normalize them here before handing configs to
-`graphon` so graph-owned models only see graph-neutral field names.
+Stored workflow graphs and editor payloads still contain a small set of
+Dify-owned field spellings and value shapes. Adapt them here before handing the
+payload to Graphon so Graphon-owned models only see current contracts.
 """
 
 from __future__ import annotations
@@ -185,7 +185,7 @@ def _copy_mapping(value: object) -> dict[str, Any] | None:
     return None
 
 
-def normalize_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
+def adapt_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
     normalized = _copy_mapping(node_data)
     if normalized is None:
         raise TypeError(f"human-input node data must be a mapping, got {type(node_data).__name__}")
@@ -215,7 +215,7 @@ def normalize_human_input_node_data_for_graph(node_data: Mapping[str, Any] | Bas
 
 
 def parse_human_input_delivery_methods(node_data: Mapping[str, Any] | BaseModel) -> list[DeliveryChannelConfig]:
-    normalized = normalize_human_input_node_data_for_graph(node_data)
+    normalized = adapt_human_input_node_data_for_graph(node_data)
     raw_delivery_methods = normalized.get("delivery_methods")
     if not isinstance(raw_delivery_methods, list):
         return []
@@ -229,17 +229,20 @@ def is_human_input_webapp_enabled(node_data: Mapping[str, Any] | BaseModel) -> b
     return False
 
 
-def normalize_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
+def adapt_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
     normalized = _copy_mapping(node_data)
     if normalized is None:
         raise TypeError(f"node data must be a mapping, got {type(node_data).__name__}")
 
-    if normalized.get("type") != BuiltinNodeTypes.HUMAN_INPUT:
-        return normalized
-    return normalize_human_input_node_data_for_graph(normalized)
+    node_type = normalized.get("type")
+    if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+        return adapt_human_input_node_data_for_graph(normalized)
+    if node_type == BuiltinNodeTypes.TOOL:
+        return _adapt_tool_node_data_for_graph(normalized)
+    return normalized
 
 
-def normalize_node_config_for_graph(node_config: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
+def adapt_node_config_for_graph(node_config: Mapping[str, Any] | BaseModel) -> dict[str, Any]:
     normalized = _copy_mapping(node_config)
     if normalized is None:
         raise TypeError(f"node config must be a mapping, got {type(node_config).__name__}")
@@ -248,8 +251,63 @@ def normalize_node_config_for_graph(node_config: Mapping[str, Any] | BaseModel) 
     if data_mapping is None:
         return normalized
 
-    normalized["data"] = normalize_node_data_for_graph(data_mapping)
+    normalized["data"] = adapt_node_data_for_graph(data_mapping)
     return normalized
+
+
+def _adapt_tool_node_data_for_graph(node_data: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(node_data)
+
+    raw_tool_configurations = normalized.get("tool_configurations")
+    if not isinstance(raw_tool_configurations, Mapping):
+        return normalized
+
+    existing_tool_parameters = normalized.get("tool_parameters")
+    normalized_tool_parameters = dict(existing_tool_parameters) if isinstance(existing_tool_parameters, Mapping) else {}
+    normalized_tool_configurations: dict[str, Any] = {}
+    found_legacy_tool_inputs = False
+
+    for name, value in raw_tool_configurations.items():
+        if not isinstance(value, Mapping):
+            normalized_tool_configurations[name] = value
+            continue
+
+        input_type = value.get("type")
+        input_value = value.get("value")
+        if input_type not in {"mixed", "variable", "constant"}:
+            normalized_tool_configurations[name] = value
+            continue
+
+        found_legacy_tool_inputs = True
+        normalized_tool_parameters.setdefault(name, dict(value))
+
+        flattened_value = _flatten_legacy_tool_configuration_value(
+            input_type=input_type,
+            input_value=input_value,
+        )
+        if flattened_value is not None:
+            normalized_tool_configurations[name] = flattened_value
+
+    if not found_legacy_tool_inputs:
+        return normalized
+
+    normalized["tool_parameters"] = normalized_tool_parameters
+    normalized["tool_configurations"] = normalized_tool_configurations
+    return normalized
+
+
+def _flatten_legacy_tool_configuration_value(*, input_type: Any, input_value: Any) -> str | int | float | bool | None:
+    if input_type in {"mixed", "constant"} and isinstance(input_value, str | int | float | bool):
+        return input_value
+
+    if (
+        input_type == "variable"
+        and isinstance(input_value, list)
+        and all(isinstance(item, str) for item in input_value)
+    ):
+        return "{{#" + ".".join(input_value) + "#}}"
+
+    return None
 
 
 def _normalize_email_recipients(recipients: Mapping[str, Any]) -> dict[str, Any]:
@@ -291,9 +349,9 @@ __all__ = [
     "MemberRecipient",
     "WebAppDeliveryMethod",
     "_WebAppDeliveryConfig",
+    "adapt_human_input_node_data_for_graph",
+    "adapt_node_config_for_graph",
+    "adapt_node_data_for_graph",
     "is_human_input_webapp_enabled",
-    "normalize_human_input_node_data_for_graph",
-    "normalize_node_config_for_graph",
-    "normalize_node_data_for_graph",
     "parse_human_input_delivery_methods",
 ]

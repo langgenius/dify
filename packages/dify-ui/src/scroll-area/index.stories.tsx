@@ -174,7 +174,7 @@ const StickyListPane = () => (
             <div className="mt-1 flex items-center justify-between gap-3">
               <div>
                 <div className="system-md-semibold text-text-primary">Operational queue</div>
-                <p className="mt-1 system-xs-regular text-text-secondary">The scrollbar is still the shared base/ui primitive, while the pane adds sticky structure and a viewport mask.</p>
+                <p className="mt-1 system-xs-regular text-text-secondary">The scrollbar is still the shared dify-ui primitive, while the pane adds sticky structure and a viewport mask.</p>
               </div>
               <span className="rounded-lg border border-divider-subtle bg-components-panel-bg-alt px-2.5 py-1 system-xs-medium text-text-secondary">
                 24 items
