@@ -37,7 +37,7 @@ const createPayload = (overrides: Partial<HumanInputNodeType> = {}): HumanInputN
   delivery_methods: [],
   form_content: 'Summary: {{#start.topic#}}',
   inputs: [{
-    type: InputVarType.textInput,
+    type: InputVarType.paragraph,
     output_variable_name: 'summary',
     default: {
       type: 'variable',

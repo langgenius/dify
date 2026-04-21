@@ -15,7 +15,7 @@ const createInput = (overrides: Partial<FormInputItem>): FormInputItem => ({
   variable: 'field',
   required: false,
   max_length: 128,
-  type: InputVarType.textInput,
+  type: InputVarType.paragraph,
   default: {
     type: 'constant' as const,
     value: '',
@@ -57,7 +57,7 @@ describe('human-input utils', () => {
     it('should initialize text fields with constants and variable defaults', () => {
       const formInputs = [
         createInput({
-          type: InputVarType.textInput,
+          type: InputVarType.paragraph,
           output_variable_name: 'name',
           default: { type: 'constant', value: 'John', selector: [] },
         }),
@@ -90,7 +90,7 @@ describe('human-input utils', () => {
     it('should fallback to empty string when variable default is missing', () => {
       const formInputs = [
         createInput({
-          type: InputVarType.textInput,
+          type: InputVarType.paragraph,
           output_variable_name: 'summary',
           default: { type: 'variable', value: '', selector: [] },
         }),

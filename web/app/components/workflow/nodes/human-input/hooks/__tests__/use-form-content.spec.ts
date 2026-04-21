@@ -16,7 +16,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
 }))
 
 const createFormInput = (overrides: Partial<FormInputItem> = {}): FormInputItem => ({
-  type: InputVarType.textInput,
+  type: InputVarType.paragraph,
   output_variable_name: 'old_name',
   default: {
     selector: [],

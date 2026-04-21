@@ -4,7 +4,10 @@ import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
-import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import {
+  isParagraphFormInput,
+  UserActionButtonType,
+} from '@/app/components/workflow/nodes/human-input/types'
 import 'dayjs/locale/en'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/ja'
@@ -32,9 +35,9 @@ export const splitByOutputVar = (content: string): string[] => {
 }
 
 export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, string> = {}) => {
-  const initialInputs: Record<string, any> = {}
+  const initialInputs: Record<string, string | undefined> = {}
   formInputs.forEach((item) => {
-    if (item.type === 'text-input' || item.type === 'paragraph')
+    if (isParagraphFormInput(item))
       initialInputs[item.output_variable_name] = item.default.type === 'variable' ? defaultValues[item.output_variable_name] || '' : item.default.value
     else
       initialInputs[item.output_variable_name] = undefined

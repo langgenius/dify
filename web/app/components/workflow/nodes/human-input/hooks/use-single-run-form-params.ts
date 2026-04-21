@@ -8,6 +8,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
+import { isParagraphFormInput } from '../types'
 import { isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -33,7 +34,7 @@ const useSingleRunFormParams = ({
   const [requiredInputs, setRequiredInputs] = useState<Record<string, string>>({})
   const generatedInputs = useMemo(() => {
     const defaultInputs = inputs.inputs.reduce((acc, input) => {
-      if (input.default.type === 'variable') {
+      if (isParagraphFormInput(input) && input.default.type === 'variable') {
         acc.push(`{{#${input.default.selector.join('.')}#}}`)
       }
       return acc

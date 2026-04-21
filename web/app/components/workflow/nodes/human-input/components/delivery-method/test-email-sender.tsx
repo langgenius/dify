@@ -25,6 +25,7 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
+import { isParagraphFormInput } from '../../types'
 import { isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
@@ -92,7 +93,7 @@ const EmailSenderModal = ({
 
   const generatedInputs = useMemo(() => {
     const defaultValueSelectors = (formInputs || []).reduce((acc, input) => {
-      if (input.default.type === 'variable') {
+      if (isParagraphFormInput(input) && input.default.type === 'variable') {
         acc.push(input.default.selector)
       }
       return acc

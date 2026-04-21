@@ -77,7 +77,7 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
 })
 
 const formInputs: FormInputItem[] = [{
-  type: InputVarType.textInput,
+  type: InputVarType.paragraph,
   output_variable_name: 'name',
   default: {
     selector: ['start', 'name'],

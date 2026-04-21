@@ -1,5 +1,6 @@
 import type * as React from 'react'
-import type { FormInputItemDefault } from '../types'
+import type { FormInputItem } from '../types'
+import { isParagraphFormInput } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
@@ -132,13 +133,21 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
   )
 }
 
-export const Note: React.FC<{ defaultInput: FormInputItemDefault, nodeName: (nodeId: string) => string }> = ({ defaultInput, nodeName }) => {
-  const isVariable = defaultInput.type === 'variable'
-  const path = `{{#${defaultInput.selector.join('.')}#}}`
+export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) => string }> = ({ input, nodeName }) => {
+  if (!isParagraphFormInput(input)) {
+    return (
+      <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
+        <span>{input.type}</span>
+      </div>
+    )
+  }
+
+  const isVariable = input.default.type === 'variable'
+  const path = `{{#${input.default.selector.join('.')}#}}`
   const newPath = path ? replaceNodeIdsWithNames(path, nodeName) : path
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-      {isVariable ? <Variable path={newPath} /> : <span>{defaultInput.value}</span>}
+      {isVariable ? <Variable path={newPath} /> : <span>{input.default.value}</span>}
     </div>
   )
 }

@@ -103,7 +103,7 @@ vi.mock('../components/form-content', () => ({
         <button
           type="button"
           onClick={() => props.onFormInputsChange([{
-            type: InputVarType.textInput,
+            type: InputVarType.paragraph,
             output_variable_name: 'email',
             default: {
               selector: [],
@@ -230,7 +230,7 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
   }],
   form_content: 'Please review this request',
   inputs: [{
-    type: InputVarType.textInput,
+    type: InputVarType.paragraph,
     output_variable_name: 'review_result',
     default: {
       selector: [],

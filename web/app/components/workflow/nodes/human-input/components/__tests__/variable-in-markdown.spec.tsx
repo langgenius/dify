@@ -86,10 +86,14 @@ describe('variable-in-markdown', () => {
     it('should render note values and replace node ids with labels for variable defaults', () => {
       const { rerender } = render(
         <Note
-          defaultInput={{
-            type: 'variable',
-            selector: ['node-1', 'output'],
-            value: '',
+          input={{
+            type: 'paragraph',
+            output_variable_name: 'approval',
+            default: {
+              type: 'variable',
+              selector: ['node-1', 'output'],
+              value: '',
+            },
           }}
           nodeName={nodeId => nodeId === 'node-1' ? 'Start Node' : nodeId}
         />,
@@ -99,10 +103,14 @@ describe('variable-in-markdown', () => {
 
       rerender(
         <Note
-          defaultInput={{
-            type: 'constant',
-            value: 'Plain value',
-            selector: [],
+          input={{
+            type: 'paragraph',
+            output_variable_name: 'approval',
+            default: {
+              type: 'constant',
+              value: 'Plain value',
+              selector: [],
+            },
           }}
           nodeName={nodeId => nodeId}
         />,

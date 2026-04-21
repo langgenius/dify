@@ -1,4 +1,4 @@
-import type { FormInputItem, FormInputItemDefault } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { produce } from 'immer'
@@ -6,7 +6,10 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { InputVarType } from '@/app/components/workflow/types'
+import {
+  createDefaultParagraphFormInput,
+  isParagraphFormInput,
+} from '@/app/components/workflow/nodes/human-input/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import PrePopulate from './pre-populate'
 
@@ -19,11 +22,6 @@ type InputFieldProps = {
   onChange: (newPayload: FormInputItem) => void
   onCancel: () => void
 }
-const defaultPayload: FormInputItem = {
-  type: InputVarType.paragraph,
-  output_variable_name: '',
-  default: { type: 'constant', selector: [], value: '' },
-}
 const InputField: React.FC<InputFieldProps> = ({
   nodeId,
   isEdit,
@@ -32,7 +30,13 @@ const InputField: React.FC<InputFieldProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState(payload || defaultPayload)
+  const [tempPayload, setTempPayload] = useState<FormInputItem>(() => payload || createDefaultParagraphFormInput())
+  const paragraphPayload = useMemo<ParagraphFormInput>(() => {
+    if (isParagraphFormInput(tempPayload))
+      return tempPayload
+
+    return createDefaultParagraphFormInput(tempPayload.output_variable_name)
+  }, [tempPayload])
   const nameValid = useMemo(() => {
     const name = tempPayload.output_variable_name.trim()
     if (!name)
@@ -46,12 +50,9 @@ const InputField: React.FC<InputFieldProps> = ({
       return
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
-  const defaultValueConfig = tempPayload.default
   const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
     return (value: ValueSelector | string) => {
-      const nextValue = produce(tempPayload, (draft) => {
-        if (!draft.default)
-          draft.default = { type: 'constant', selector: [], value: '' }
+      const nextValue = produce(paragraphPayload, (draft) => {
         if (key === 'selector') {
           draft.default.type = 'variable'
           draft.default.selector = value as ValueSelector
@@ -66,7 +67,7 @@ const InputField: React.FC<InputFieldProps> = ({
       })
       setTempPayload(nextValue)
     }
-  }, [tempPayload])
+  }, [paragraphPayload])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -109,14 +110,14 @@ const InputField: React.FC<InputFieldProps> = ({
           {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
         </div>
         <PrePopulate
-          isVariable={defaultValueConfig?.type === 'variable'}
+          isVariable={paragraphPayload.default.type === 'variable'}
           onIsVariableChange={(isVariable) => {
             handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
           }}
           nodeId={nodeId}
-          valueSelector={defaultValueConfig?.selector}
+          valueSelector={paragraphPayload.default.selector}
           onValueSelectorChange={handleDefaultValueChange('selector')}
-          value={defaultValueConfig?.value}
+          value={paragraphPayload.default.value}
           onValueChange={handleDefaultValueChange('value')}
         />
       </div>
