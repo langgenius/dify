@@ -159,7 +159,7 @@ class LLMGenerator:
         histories: str,
         *,
         instruction_prompt: str | None = None,
-        model_config: SuggestedQuestionsModelConfig | None = None,
+        model_config: object | None = None,
     ) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
         format_instructions = output_parser.get_format_instructions()
@@ -170,12 +170,12 @@ class LLMGenerator:
 
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-
-            provider = model_config.get("provider") if model_config else None
-            model_name = model_config.get("name") if model_config else None
+            configured_model = cast(dict[str, object], model_config) if isinstance(model_config, dict) else {}
+            provider = configured_model.get("provider")
+            model_name = configured_model.get("name")
             use_configured_model = False
 
-            if provider and model_name:
+            if isinstance(provider, str) and provider and isinstance(model_name, str) and model_name:
                 try:
                     model_instance = model_manager.get_model_instance(
                         tenant_id=tenant_id,
@@ -208,7 +208,7 @@ class LLMGenerator:
         questions: Sequence[str] = []
 
         try:
-            configured_completion_params = model_config.get("completion_params") if model_config else None
+            configured_completion_params = configured_model.get("completion_params")
             if use_configured_model and isinstance(configured_completion_params, dict):
                 model_parameters, stop = _normalize_completion_params(configured_completion_params)
             elif use_configured_model:

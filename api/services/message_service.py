@@ -28,7 +28,6 @@ from models.model import (
     Message,
     MessageFeedback,
     SuggestedQuestionsAfterAnswerConfig,
-    SuggestedQuestionsAfterAnswerModelConfig,
 )
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
@@ -65,31 +64,6 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
 
 class MessageService:
-    @staticmethod
-    def _extract_suggested_questions_model_config(
-        config: SuggestedQuestionsAfterAnswerConfig,
-    ) -> SuggestedQuestionsAfterAnswerModelConfig | None:
-        model_config = config.get("model")
-        if not isinstance(model_config, dict):
-            return None
-
-        provider = model_config.get("provider")
-        model_name = model_config.get("name")
-        if not isinstance(provider, str) or not provider:
-            return None
-        if not isinstance(model_name, str) or not model_name:
-            return None
-
-        normalized_model_config: SuggestedQuestionsAfterAnswerModelConfig = {
-            "provider": provider,
-            "name": model_name,
-        }
-        completion_params = model_config.get("completion_params")
-        if isinstance(completion_params, dict):
-            normalized_model_config["completion_params"] = completion_params
-
-        return normalized_model_config
-
     @classmethod
     def pagination_by_first_id(
         cls,
@@ -338,31 +312,10 @@ class MessageService:
             if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-        configured_model = cls._extract_suggested_questions_model_config(suggested_questions_after_answer_config)
-        if configured_model:
-            try:
-                model_instance = model_manager.get_model_instance(
-                    tenant_id=app_model.tenant_id,
-                    provider=configured_model["provider"],
-                    model_type=ModelType.LLM,
-                    model=configured_model["name"],
-                )
-            except Exception:
-                logger.warning(
-                    "Failed to use configured suggested-questions model %s/%s, fallback to default model",
-                    configured_model["provider"],
-                    configured_model["name"],
-                    exc_info=True,
-                )
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=app_model.tenant_id,
-                    model_type=ModelType.LLM,
-                )
-        else:
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=app_model.tenant_id,
-                model_type=ModelType.LLM,
-            )
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=app_model.tenant_id,
+            model_type=ModelType.LLM,
+        )
 
         # get memory of conversation (read-only)
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
@@ -376,6 +329,7 @@ class MessageService:
         if not isinstance(instruction_prompt, str) or not instruction_prompt.strip():
             instruction_prompt = None
 
+        configured_model = suggested_questions_after_answer_config.get("model")
         with measure_time() as timer:
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,

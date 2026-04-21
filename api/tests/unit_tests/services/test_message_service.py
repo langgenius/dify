@@ -986,11 +986,13 @@ class TestMessageServiceSuggestedQuestions:
         )
 
         assert result == ["Q1?"]
-        mock_model_manager.return_value.get_model_instance.assert_called_once_with(
+        mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
             tenant_id="tenant-123",
-            provider="openai",
             model_type=ModelType.LLM,
-            model="gpt-4o-mini",
+        )
+        mock_memory.assert_called_once_with(
+            conversation=conversation,
+            model_instance=mock_model_manager.return_value.get_default_model_instance.return_value,
         )
         mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once_with(
             tenant_id="tenant-123",
@@ -1052,6 +1054,7 @@ class TestMessageServiceSuggestedQuestions:
             tenant_id="tenant-123",
             model_type=ModelType.LLM,
         )
+        mock_model_manager.return_value.get_model_instance.assert_not_called()
 
     # Test 30: get_suggested_questions_after_answer - Disabled Error
     @patch("services.message_service.WorkflowService")
