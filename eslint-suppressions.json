@@ -3892,22 +3892,9 @@
       "count": 1
     }
   },
-  "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "react/set-state-in-effect": {
       "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/tools/mcp/create-card.tsx": {
@@ -3969,14 +3956,6 @@
   "web/app/components/tools/setting/build-in/config-credentials.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/tools/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/tools/workflow-tool/confirm-modal/index.tsx": {
