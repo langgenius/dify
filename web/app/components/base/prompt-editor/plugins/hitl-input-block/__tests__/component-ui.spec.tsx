@@ -111,6 +111,36 @@ describe('HITLInputComponentUI', () => {
 
       expect(queryAllByTestId(/action-btn-/)).toHaveLength(0)
     })
+
+    it('should render select option summary for constant options', () => {
+      const { getByText } = renderComponent({
+        formInput: createFormInput({
+          type: InputVarType.select,
+          option_source: {
+            type: 'constant',
+            selector: [],
+            value: ['alpha', 'beta'],
+          },
+        }),
+      })
+
+      expect(getByText('alpha, beta')).toBeInTheDocument()
+    })
+
+    it('should render file-list summary with max uploads', () => {
+      const { getByText } = renderComponent({
+        formInput: createFormInput({
+          type: InputVarType.multiFiles,
+          allowed_file_extensions: ['.pdf'],
+          allowed_file_types: ['document'],
+          allowed_file_upload_methods: ['local_file'],
+          max_upload_count: 4,
+        }),
+      })
+
+      expect(getByText(/document/)).toBeInTheDocument()
+      expect(getByText(/4/)).toBeInTheDocument()
+    })
   })
 
   describe('Remove action', () => {

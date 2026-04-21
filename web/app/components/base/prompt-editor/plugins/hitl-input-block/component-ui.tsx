@@ -10,7 +10,10 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   createDefaultParagraphFormInput,
+  isFileFormInput,
+  isFileListFormInput,
   isParagraphFormInput,
+  isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import ActionButton from '../../../action-button'
 import { VariableX } from '../../../icons/src/vender/workflow'
@@ -97,6 +100,38 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   const isDefaultValueVariable = useMemo(() => {
     return paragraphDefault?.type === 'variable'
   }, [paragraphDefault])
+  const inputTypeLabel = useMemo(() => {
+    if (isParagraphFormInput(resolvedFormInput))
+      return t('variableConfig.paragraph', { ns: 'appDebug' })
+    if (isSelectFormInput(resolvedFormInput))
+      return t('variableConfig.select', { ns: 'appDebug' })
+    if (isFileFormInput(resolvedFormInput))
+      return t('variableConfig.single-file', { ns: 'appDebug' })
+    return t('variableConfig.multi-files', { ns: 'appDebug' })
+  }, [resolvedFormInput, t])
+  const variableSelector = useMemo(() => {
+    if (isDefaultValueVariable)
+      return paragraphDefault?.selector || []
+    if (isSelectFormInput(resolvedFormInput) && resolvedFormInput.option_source.type === 'variable')
+      return resolvedFormInput.option_source.selector
+    return null
+  }, [isDefaultValueVariable, paragraphDefault?.selector, resolvedFormInput])
+  const summaryText = useMemo(() => {
+    if (isParagraphFormInput(resolvedFormInput))
+      return paragraphDefault?.value || inputTypeLabel
+
+    if (isSelectFormInput(resolvedFormInput)) {
+      if (resolvedFormInput.option_source.type === 'variable')
+        return t(`${i18nPrefix}.variable`, { ns: 'workflow' })
+      return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
+    }
+
+    const fileTypes = resolvedFormInput.allowed_file_types.join(', ')
+    if (isFileListFormInput(resolvedFormInput))
+      return [fileTypes, resolvedFormInput.max_upload_count ? `${t('feature.fileUpload.numberLimit', { ns: 'appDebug' })}: ${resolvedFormInput.max_upload_count}` : null].filter(Boolean).join(' · ') || inputTypeLabel
+
+    return fileTypes || inputTypeLabel
+  }, [inputTypeLabel, paragraphDefault?.value, resolvedFormInput, t])
 
   return (
     <div
@@ -112,22 +147,25 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
       <div className="flex w-full items-center gap-x-0.5 pr-5">
         <div className="min-w-0 grow">
-          {/* Default Value Info */}
-          {isDefaultValueVariable && (
-            <VariableBlock
-              variables={paragraphDefault?.selector || []}
-              workflowNodesMap={workflowNodesMap}
-              getVarType={getVarType}
-              environmentVariables={environmentVariables}
-              conversationVariables={conversationVariables}
-              ragVariables={ragVariables}
-            />
-          )}
-          {!isDefaultValueVariable && (
-            <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">
-              {paragraphDefault?.value ?? resolvedFormInput.type}
-            </div>
-          )}
+          <div className="max-w-full truncate system-2xs-medium text-text-tertiary uppercase">
+            {inputTypeLabel}
+          </div>
+          {variableSelector
+            ? (
+                <VariableBlock
+                  variables={variableSelector}
+                  workflowNodesMap={workflowNodesMap}
+                  getVarType={getVarType}
+                  environmentVariables={environmentVariables}
+                  conversationVariables={conversationVariables}
+                  ragVariables={ragVariables}
+                />
+              )
+            : (
+                <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">
+                  {summaryText}
+                </div>
+              )}
         </div>
 
         {/* Actions */}
