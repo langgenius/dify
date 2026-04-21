@@ -4,10 +4,10 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Res from '@/app/components/share/text-generation/result'
-import { cn } from '@/utils/classnames'
 import ResDownload from './run-batch/res-download'
 import { TaskStatus } from './types'
 
@@ -125,7 +125,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute left-0 top-0 z-10 flex w-full items-center justify-center px-2 pb-[57px] pt-[3px]',
+              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
           )}
           onClick={() => {
             if (isShowResultPanel)
@@ -151,11 +151,11 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
         {isCallBatchAPI && (
           <div
             className={cn(
-              'flex shrink-0 items-center justify-between px-14 pb-2 pt-9',
-              !isPC && 'px-4 pb-1 pt-3',
+              'flex shrink-0 items-center justify-between px-14 pt-9 pb-2',
+              !isPC && 'px-4 pt-3 pb-1',
             )}
           >
-            <div className="text-text-primary system-md-semibold-uppercase">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
+            <div className="system-md-semibold-uppercase text-text-primary">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
             {allSuccessTaskList.length > 0 && (
               <ResDownload
                 isMobile={!isPC}
@@ -182,9 +182,9 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
           <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
             <span aria-hidden className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
-            <div className="text-text-secondary system-sm-medium">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
+            <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
             <div className="h-3.5 w-px bg-divider-regular"></div>
-            <div onClick={handleRetryAllFailedTask} className="cursor-pointer text-text-accent system-sm-semibold-uppercase">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
+            <div onClick={handleRetryAllFailedTask} className="cursor-pointer system-sm-semibold-uppercase text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
           </div>
         )}
       </div>

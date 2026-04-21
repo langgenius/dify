@@ -51,7 +51,7 @@ class ExternalDatasetTestDataFactory:
         tenant_id: str = "tenant-1",
         name: str = "Test API",
         description: str = "Description",
-        settings: dict | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> ExternalKnowledgeApis:
         """
         Create a concrete ``ExternalKnowledgeApis`` instance with minimal fields.
@@ -220,7 +220,7 @@ class TestExternalDatasetServiceValidateApiList:
             ({"endpoint": "https://example.com"}, "api_key is required"),
         ],
     )
-    def test_validate_api_list_failures(self, config: dict, expected_message: str):
+    def test_validate_api_list_failures(self, config: dict[str, Any], expected_message: str):
         """
         Invalid configs should raise ``ValueError`` with a clear message.
         """

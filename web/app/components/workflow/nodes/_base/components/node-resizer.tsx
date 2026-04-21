@@ -1,11 +1,11 @@
 import type { OnResize } from 'reactflow'
 import type { CommonNodeType } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
 } from 'react'
 import { NodeResizeControl } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import { useNodesInteractions } from '../../../hooks'
 
 const Icon = () => {
@@ -52,7 +52,7 @@ const NodeResizer = ({
         minHeight={minHeight}
         maxWidth={maxWidth}
       >
-        <div className="absolute bottom-px right-px">{icon}</div>
+        <div className="absolute right-px bottom-px">{icon}</div>
       </NodeResizeControl>
     </div>
   )

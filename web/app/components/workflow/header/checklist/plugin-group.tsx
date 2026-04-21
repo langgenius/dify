@@ -1,17 +1,17 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
 import type { Dependency } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { PopoverClose } from '@/app/components/base/ui/popover'
 import BlockIcon from '../../block-icon'
 import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
 import { ItemIndicator } from './item-indicator'
 
 function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
   const withoutHash = identifier.split('@')[0]
-  const [, version] = withoutHash.split(':')
+  const [, version] = withoutHash!.split(':')
   return version || undefined
 }
 
@@ -54,12 +54,12 @@ export const ChecklistPluginGroup = memo(({
   }
 
   return (
-    <div className="overflow-clip radius-lg bg-components-panel-on-panel-item-bg">
+    <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">
       <div className="flex items-center gap-2 px-2 pt-2">
         <div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-icon-bg-midnight-solid shadow-xs">
           <span className="i-ri-download-line size-3.5 text-white" />
         </div>
-        <span className="min-w-0 grow truncate text-sm font-medium leading-5 text-text-primary">
+        <span className="min-w-0 grow truncate text-sm leading-5 font-medium text-text-primary">
           {t('nodes.common.pluginsNotInstalled', { ns: 'workflow', count: items.length })}
         </span>
         <PopoverClose

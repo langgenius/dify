@@ -1,8 +1,8 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 
 type SetURLProps = {
   repoUrl: string
@@ -27,9 +27,9 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
         name="repoUrl"
         value={repoUrl}
         onChange={e => onChange(e.target.value)}
-        className="shadows-shadow-xs system-sm-regular flex grow items-center gap-[2px]
-          self-stretch overflow-hidden text-ellipsis rounded-lg border border-components-input-border-active
-          bg-components-input-bg-active p-2 text-components-input-text-filled"
+        className="shadows-shadow-xs flex grow items-center gap-[2px] self-stretch
+          overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-active p-2
+          system-sm-regular text-ellipsis text-components-input-text-filled"
         placeholder="Please enter GitHub repo URL"
       />
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">

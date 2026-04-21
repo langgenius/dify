@@ -1,8 +1,8 @@
 import type { CredentialSelectorProps } from './credential-selector'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import CredentialSelector from './credential-selector'
@@ -47,7 +47,7 @@ const Header = ({
         </Tooltip>
       </div>
       <a
-        className="system-xs-medium flex shrink-0 items-center gap-x-1 text-text-accent"
+        className="flex shrink-0 items-center gap-x-1 system-xs-medium text-text-accent"
         href={docLink}
         target="_blank"
         rel="noopener noreferrer"

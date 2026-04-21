@@ -2,9 +2,9 @@ import type {
   IterationDurationMap,
   NodeTracing,
 } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -145,7 +145,7 @@ const IterationLogTrigger = ({
     >
       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
       <Iteration className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
-      <div className="system-sm-medium flex-1 text-left text-components-button-tertiary-text">
+      <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
         {t('nodes.iteration.iteration', { ns: 'workflow', count: displayIterationCount })}
         {errorCount > 0 && (
           <>

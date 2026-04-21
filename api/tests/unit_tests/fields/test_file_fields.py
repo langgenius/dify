@@ -4,11 +4,11 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.workflow.file_reference import build_file_reference
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
+from graphon.file import File, FileTransferMethod, FileType
 
 
 def test_file_response_serializes_datetime() -> None:
@@ -95,7 +95,7 @@ def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPat
     reference = build_file_reference(record_id="upload-1", storage_key="files/source.pdf")
 
     file = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         remote_url="https://storage.example/source.pdf",
         reference=reference,

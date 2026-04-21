@@ -4,15 +4,16 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
+from typing import Any
 from uuid import UUID
 
 import numpy as np
 import pytz
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 
@@ -40,6 +41,10 @@ def safe_json_value(v):
             return v.hex()
     elif isinstance(v, memoryview):
         return v.tobytes().hex()
+    elif isinstance(v, np.integer):
+        return int(v)
+    elif isinstance(v, np.floating):
+        return float(v)
     elif isinstance(v, np.ndarray):
         return v.tolist()
     elif isinstance(v, dict):
@@ -50,7 +55,7 @@ def safe_json_value(v):
         return v
 
 
-def safe_json_dict(d: dict):
+def safe_json_dict(d: dict[str, Any]):
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
@@ -196,11 +201,11 @@ class ToolFileMessageTransformer:
 
     @staticmethod
     def _with_tool_file_meta(
-        meta: dict | None,
+        meta: dict[str, Any] | None,
         *,
         tool_file_id: str | None = None,
         url: str | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         normalized_meta = meta.copy() if meta is not None else {}
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)
         if resolved_tool_file_id and "tool_file_id" not in normalized_meta:

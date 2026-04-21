@@ -11,7 +11,7 @@ type DialogProps = {
 
 let latestOnOpenChange: DialogProps['onOpenChange']
 
-vi.mock('@/app/components/base/ui/dialog', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
     latestOnOpenChange = onOpenChange
     return <div data-testid="dialog">{children}</div>

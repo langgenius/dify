@@ -2,7 +2,10 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
+
+from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
+from graphon.nodes.iteration.entities import IterationNodeData
 from graphon.nodes.iteration.exc import IterationGraphNotFoundError
 from graphon.nodes.iteration.iteration_node import IterationNode
 from graphon.runtime import (
@@ -11,8 +14,6 @@ from graphon.runtime import (
     GraphRuntimeState,
     VariablePool,
 )
-
-from core.workflow.system_variables import default_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -44,17 +45,14 @@ def _build_iteration_node(
 ) -> IterationNode:
     init_params = build_test_graph_init_params(graph_config=graph_config)
     return IterationNode(
-        id="iteration-node",
-        config={
-            "id": "iteration-node",
-            "data": {
-                "type": "iteration",
-                "title": "Iteration",
-                "iterator_selector": ["start", "items"],
-                "output_selector": ["iteration-node", "output"],
-                "start_node_id": start_node_id,
-            },
-        },
+        node_id="iteration-node",
+        config=IterationNodeData(
+            type="iteration",
+            title="Iteration",
+            iterator_selector=["start", "items"],
+            output_selector=["iteration-node", "output"],
+            start_node_id=start_node_id,
+        ),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )

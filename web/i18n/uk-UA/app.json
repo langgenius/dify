@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Команди",
   "gotoAnything.groups.knowledgeBases": "Бази знань",
   "gotoAnything.groups.plugins": "Плагіни",
+  "gotoAnything.groups.recent": "Нещодавні",
   "gotoAnything.groups.workflowNodes": "Вузли документообігу",
   "gotoAnything.inScope": "у {{scope}}s",
   "gotoAnything.noMatchingCommands": "Відповідних команд не знайдено",
