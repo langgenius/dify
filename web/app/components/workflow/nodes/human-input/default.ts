@@ -1,5 +1,5 @@
 import type { NodeDefault, Var } from '../../types'
-import type { HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
@@ -12,11 +12,21 @@ const metaData = genNodeMetaData({
   type: BlockEnum.HumanInput,
 })
 
-const buildOutputVars = (variables: string[]): Var[] => {
-  return variables.map((variable) => {
+const getFormInputVarType = (input: FormInputItem): VarType => {
+  if (input.type === 'file')
+    return VarType.file
+
+  if (input.type === 'file-list')
+    return VarType.arrayFile
+
+  return VarType.string
+}
+
+const buildOutputVars = (inputs: FormInputItem[]): Var[] => {
+  return inputs.map((input) => {
     return {
-      variable,
-      type: VarType.string,
+      variable: input.output_variable_name,
+      type: getFormInputVarType(input),
     }
   })
 }
@@ -67,8 +77,7 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     }
   },
   getOutputVars(payload, _allPluginInfoList, _ragVars) {
-    const variables = payload.inputs.map(input => input.output_variable_name)
-    return buildOutputVars(variables)
+    return buildOutputVars(payload.inputs)
   },
 }
 

@@ -503,8 +503,10 @@ describe('DSL Import with Human Input Node', () => {
       const payload = {
         ...humanInputDefault.defaultValue,
         inputs: [
-          { type: 'text-input', output_variable_name: 'review_result', default: { selector: [], type: 'constant' as const, value: '' } },
-          { type: 'text-input', output_variable_name: 'comment', default: { selector: [], type: 'constant' as const, value: '' } },
+          { type: 'paragraph', output_variable_name: 'review_result', default: { selector: [], type: 'constant' as const, value: '' } },
+          { type: 'file', output_variable_name: 'attachment', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [] },
+          { type: 'file-list', output_variable_name: 'attachments', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [], max_upload_count: 3 },
+          { type: 'select', output_variable_name: 'comment', option_source: { type: 'constant', selector: [], value: ['A', 'B'] } },
         ],
       } as HumanInputNodeType
 
@@ -512,6 +514,8 @@ describe('DSL Import with Human Input Node', () => {
 
       expect(outputVars).toEqual([
         { variable: 'review_result', type: 'string' },
+        { variable: 'attachment', type: 'file' },
+        { variable: 'attachments', type: 'array[file]' },
         { variable: 'comment', type: 'string' },
       ])
     })
