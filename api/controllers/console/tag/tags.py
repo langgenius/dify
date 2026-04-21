@@ -1,48 +1,68 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Namespace, Resource, fields, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
-from services.tag_service import TagService
-
-dataset_tag_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "type": fields.String,
-    "binding_count": fields.String,
-}
-
-
-def build_dataset_tag_fields(api_or_ns: Namespace):
-    return api_or_ns.model("DataSetTag", dataset_tag_fields)
+from models.enums import TagType
+from services.tag_service import (
+    SaveTagPayload,
+    TagBindingCreatePayload,
+    TagBindingDeletePayload,
+    TagService,
+    UpdateTagPayload,
+)
 
 
 class TagBasePayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagBindingPayload(BaseModel):
     tag_ids: list[str] = Field(description="Tag IDs to bind")
     target_id: str = Field(description="Target ID to bind tags to")
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagBindingRemovePayload(BaseModel):
     tag_id: str = Field(description="Tag ID to remove")
     target_id: str = Field(description="Target ID to unbind tag from")
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagListQueryParam(BaseModel):
     type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
+
+
+class TagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str | None = None
+    binding_count: str | None = None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def normalize_type(cls, value: TagType | str | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, TagType):
+            return value.value
+        return value
+
+    @field_validator("binding_count", mode="before")
+    @classmethod
+    def normalize_binding_count(cls, value: int | str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value)
 
 
 register_schema_models(
@@ -51,6 +71,7 @@ register_schema_models(
     TagBindingPayload,
     TagBindingRemovePayload,
     TagListQueryParam,
+    TagResponse,
 )
 
 
@@ -62,14 +83,18 @@ class TagListApi(Resource):
     @console_ns.doc(
         params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
     )
-    @marshal_with(dataset_tag_fields)
+    @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
         tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
 
-        return tags, 200
+        serialized_tags = [
+            TagResponse.model_validate(tag, from_attributes=True).model_dump(mode="json") for tag in tags
+        ]
+
+        return serialized_tags, 200
 
     @console_ns.expect(console_ns.models[TagBasePayload.__name__])
     @setup_required
@@ -82,9 +107,11 @@ class TagListApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.save_tags(payload.model_dump())
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type))
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        response = TagResponse.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        ).model_dump(mode="json")
 
         return response, 200
 
@@ -103,11 +130,13 @@ class TagUpdateDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(payload.model_dump(), tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=payload.type), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
+        response = TagResponse.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
+        ).model_dump(mode="json")
 
         return response, 200
 
@@ -136,7 +165,9 @@ class TagBindingCreateApi(Resource):
             raise Forbidden()
 
         payload = TagBindingPayload.model_validate(console_ns.payload or {})
-        TagService.save_tag_binding(payload.model_dump())
+        TagService.save_tag_binding(
+            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=payload.type)
+        )
 
         return {"result": "success"}, 200
 
@@ -154,6 +185,8 @@ class TagBindingDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
-        TagService.delete_tag_binding(payload.model_dump())
+        TagService.delete_tag_binding(
+            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=payload.type)
+        )
 
         return {"result": "success"}, 200

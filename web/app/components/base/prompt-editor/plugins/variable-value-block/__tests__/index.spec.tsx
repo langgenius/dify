@@ -62,7 +62,7 @@ describe('VariableValueBlock', () => {
   it('should return match offsets when placeholder exists and null when not present', () => {
     renderWithLexicalContext(<VariableValueBlock />)
 
-    const getMatch = vi.mocked(useLexicalTextEntity).mock.calls[0][0] as (text: string) => EntityMatch | null
+    const getMatch = vi.mocked(useLexicalTextEntity).mock.calls[0]![0] as (text: string) => EntityMatch | null
 
     const match = getMatch('prefix {{foo_1}} suffix')
     expect(match).toEqual({ start: 7, end: 16 })
@@ -73,7 +73,7 @@ describe('VariableValueBlock', () => {
   it('should create variable node from text node content in create callback', () => {
     renderWithLexicalContext(<VariableValueBlock />)
 
-    const createNode = vi.mocked(useLexicalTextEntity).mock.calls[0][2] as (
+    const createNode = vi.mocked(useLexicalTextEntity).mock.calls[0]![2] as (
       textNode: { getTextContent: () => string },
     ) => VariableValueBlockNode
 

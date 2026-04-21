@@ -1,17 +1,17 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useMount } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import { fetchTagList } from '@/service/tag'
-import { cn } from '@/utils/classnames'
 
 import { useStore as useTagStore } from './store'
 
@@ -66,7 +66,7 @@ const TagFilter: FC<TagFilterProps> = ({
             <button
               type="button"
               className={cn(
-                'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left',
+                'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left select-none',
                 !!value.length && 'pr-6 shadow-xs',
               )}
             >
@@ -78,7 +78,7 @@ const TagFilter: FC<TagFilterProps> = ({
                 {!!value.length && currentTag?.name}
               </div>
               {value.length > 1 && (
-                <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
+                <div className="shrink-0 text-xs leading-[18px] font-medium text-text-tertiary">{`+${value.length - 1}`}</div>
               )}
               {!value.length && (
                 <div className="shrink-0 p-px">
@@ -91,7 +91,7 @@ const TagFilter: FC<TagFilterProps> = ({
         {!!value.length && (
           <button
             type="button"
-            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-px"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
             onClick={() => onChange([])}
             data-testid="tag-filter-clear-button"
           >
@@ -117,7 +117,7 @@ const TagFilter: FC<TagFilterProps> = ({
               {filteredTagList.map(tag => (
                 <div
                   key={tag.id}
-                  className="flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 select-none hover:bg-state-base-hover"
                   onClick={() => selectTag(tag)}
                 >
                   <div title={tag.name} className="grow truncate text-sm leading-5 text-text-tertiary">{tag.name}</div>
@@ -134,7 +134,7 @@ const TagFilter: FC<TagFilterProps> = ({
             <div className="border-t-[0.5px] border-divider-regular" />
             <div className="p-1">
               <div
-                className="flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
+                className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 select-none hover:bg-state-base-hover"
                 onClick={() => {
                   setShowTagManagementModal(true)
                   setOpen(false)

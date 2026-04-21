@@ -209,7 +209,7 @@ export class ComponentAnalyzer {
         new RegExp(`from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
         new RegExp(`import\\s*\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
         new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
-        new RegExp(`require\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
+        new RegExp(`require\\s*\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['"/]|$)`),
       ]
 
       const visited = new Set()

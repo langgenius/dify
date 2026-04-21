@@ -4,7 +4,6 @@ import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
 const mockUseExploreAppList = vi.fn()
-const mockTrackEvent = vi.fn()
 const mockImportDSL = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -12,6 +11,7 @@ const mockGetRedirection = vi.fn()
 const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
+const mockTrackCreateApp = vi.fn()
 let latestDebounceFn = () => {}
 
 vi.mock('ahooks', () => ({
@@ -86,14 +86,14 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
       )
     : null,
 }))
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 vi.mock('@/service/apps', () => ({
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
@@ -183,15 +183,15 @@ describe('Apps', () => {
     render(<Apps />)
 
     expect(screen.getAllByTestId('app-card')).toHaveLength(6)
-    expect(screen.getByText('Alpha')).toBeInTheDocument()
-    expect(screen.getByText('Bravo')).toBeInTheDocument()
+    expect(screen.getByText('Alpha'))!.toBeInTheDocument()
+    expect(screen.getByText('Bravo'))!.toBeInTheDocument()
   })
 
   it('opens create modal when a template card is clicked', () => {
     render(<Apps />)
 
-    fireEvent.click(screen.getAllByTestId('app-card')[0])
-    expect(screen.getByTestId('create-from-template-modal')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
+    expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
   })
 
   it('shows no template message when list is empty', () => {
@@ -202,8 +202,8 @@ describe('Apps', () => {
 
     render(<Apps />)
 
-    expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
-    expect(screen.getByText('app.newApp.noTemplateFoundTip')).toBeInTheDocument()
+    expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
+    expect(screen.getByText('app.newApp.noTemplateFoundTip'))!.toBeInTheDocument()
   })
 
   it('filters templates by keyword and selected app type', async () => {
@@ -214,7 +214,7 @@ describe('Apps', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Bravo')).toBeInTheDocument()
+      expect(screen.getByText('Bravo'))!.toBeInTheDocument()
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
     })
 
@@ -224,8 +224,8 @@ describe('Apps', () => {
     fireEvent.click(screen.getByTestId('type-selector-chat'))
 
     await waitFor(() => {
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Bravo')).toBeInTheDocument()
+      expect(screen.getByText('Alpha'))!.toBeInTheDocument()
+      expect(screen.getByText('Bravo'))!.toBeInTheDocument()
       expect(screen.queryByText('Charlie')).not.toBeInTheDocument()
     })
   })
@@ -235,7 +235,7 @@ describe('Apps', () => {
 
     render(<Apps onSuccess={onSuccess} />)
 
-    fireEvent.click(screen.getAllByTestId('app-card')[0])
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
 
     await waitFor(() => {
@@ -246,10 +246,9 @@ describe('Apps', () => {
       }))
     })
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_template', expect.objectContaining({
-      template_id: 'Alpha',
-      template_name: 'Alpha',
-    }))
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      appMode: AppModeEnum.CHAT,
+    })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
@@ -265,7 +264,7 @@ describe('Apps', () => {
 
     render(<Apps />)
 
-    fireEvent.click(screen.getAllByTestId('app-card')[0])
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
 
     await waitFor(() => {
@@ -291,7 +290,7 @@ describe('Apps', () => {
 
     render(<Apps />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('status'))!.toBeInTheDocument()
   })
 
   it('should handle an undefined template payload by falling back to the empty state', () => {
@@ -302,7 +301,7 @@ describe('Apps', () => {
 
     render(<Apps />)
 
-    expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
+    expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
   })
 
   it('should filter templates by category and the remaining app modes', async () => {
@@ -310,8 +309,8 @@ describe('Apps', () => {
 
     fireEvent.click(screen.getByText('Cat C'))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-    expect(screen.getByText('Echo')).toBeInTheDocument()
-    expect(screen.getByText('Foxtrot')).toBeInTheDocument()
+    expect(screen.getByText('Echo'))!.toBeInTheDocument()
+    expect(screen.getByText('Foxtrot'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('type-selector-advanced'))
     await waitFor(() => {
@@ -323,13 +322,13 @@ describe('Apps', () => {
     fireEvent.click(screen.getByText('Cat C'))
     fireEvent.click(screen.getByTestId('type-selector-agent'))
     await waitFor(() => {
-      expect(screen.getByText('Echo')).toBeInTheDocument()
+      expect(screen.getByText('Echo'))!.toBeInTheDocument()
       expect(screen.queryByText('Foxtrot')).not.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('type-selector-workflow'))
     await waitFor(() => {
-      expect(screen.getByText('Foxtrot')).toBeInTheDocument()
+      expect(screen.getByText('Foxtrot'))!.toBeInTheDocument()
       expect(screen.queryByText('Echo')).not.toBeInTheDocument()
     })
 
@@ -357,11 +356,11 @@ describe('Apps', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Cat A')).toBeInTheDocument()
+      expect(screen.getByText('Cat A'))!.toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByTestId('app-card')[0])
-    expect(screen.getByTestId('create-from-template-modal')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
+    expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('hide-create-modal'))
 

@@ -2,7 +2,6 @@ from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -11,10 +10,7 @@ import services
 from configs import dify_config
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import (
-    api_key_item_model,
-    api_key_list_model,
-)
+from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -52,7 +48,9 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_account_with_tenant, login_required
+from libs.url_utils import normalize_api_base_url
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.enums import ApiTokenType, SegmentStatus
@@ -785,23 +783,23 @@ class DatasetApiKeyApi(Resource):
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
+    @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @marshal_with(api_key_item_model)
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -828,7 +826,7 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 200
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
@@ -892,7 +890,8 @@ class DatasetApiBaseUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        return {"api_base_url": (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"}
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return {"api_base_url": normalize_api_base_url(base)}
 
 
 @console_ns.route("/datasets/retrieval-setting")

@@ -38,7 +38,7 @@ Treat this as an escape hatch—fix these errors when time permits.
 ### The Auto-Fix Workflow and Suppression Strategy
 
 To streamline your development process, we recommend configuring your editor to automatically fix lint errors on save.
-As a fallback, any remaining autofixable errors will be corrected automatically when you commit.
+As a fallback, the commit hook runs `vp staged`, which applies autofixable ESLint changes to staged files before the commit continues.
 To prevent workflow disruptions, these commit hooks are intentionally bypassed when you are merging branches, rebasing, or cherry-picking.
 
 Additionally, we currently track many existing legacy errors in eslint-suppressions.json.

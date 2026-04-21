@@ -1,11 +1,11 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { toast } from '@/app/components/base/ui/toast'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'

@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import * as curlParser from '../curl-parser'
@@ -19,7 +19,7 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

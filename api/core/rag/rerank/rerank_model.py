@@ -1,8 +1,5 @@
 import base64
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
-
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -10,6 +7,8 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
 
 
@@ -123,7 +122,7 @@ class RerankModelRunner(BaseRerankRunner):
         :param query_type: query type
         :return: rerank result
         """
-        docs = []
+        docs: list[MultimodalRerankInput] = []
         doc_ids = set()
         unique_documents = []
         for document in documents:
@@ -138,26 +137,28 @@ class RerankModelRunner(BaseRerankRunner):
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
-                        document_file_dict = {
-                            "content": document_file_base64,
-                            "content_type": document.metadata["doc_type"],
-                        }
-                        docs.append(document_file_dict)
+                        docs.append(
+                            MultimodalRerankInput(
+                                content=document_file_base64,
+                                content_type=document.metadata["doc_type"],
+                            )
+                        )
                 else:
-                    document_text_dict = {
-                        "content": document.page_content,
-                        "content_type": document.metadata.get("doc_type") or DocType.TEXT,
-                    }
-                    docs.append(document_text_dict)
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
+                    )
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
                     docs.append(
-                        {
-                            "content": document.page_content,
-                            "content_type": document.metadata.get("doc_type") or DocType.TEXT,
-                        }
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
                     )
                     unique_documents.append(document)
 
@@ -171,12 +172,12 @@ class RerankModelRunner(BaseRerankRunner):
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()
-                file_query_dict = {
-                    "content": file_query,
-                    "content_type": DocType.IMAGE,
-                }
+                file_query_input = MultimodalRerankInput(
+                    content=file_query,
+                    content_type=DocType.IMAGE,
+                )
                 rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n
+                    query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
                 )
                 return rerank_result, unique_documents
             else:

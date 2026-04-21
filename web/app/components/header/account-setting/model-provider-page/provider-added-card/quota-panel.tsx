@@ -2,16 +2,18 @@ import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
@@ -32,8 +34,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
-  const { data: systemFeatures } = useSystemFeaturesQuery()
-  const trialModels = systemFeatures?.trial_models ?? []
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const trialModels = systemFeatures.trial_models
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -89,7 +91,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 
   return (
     <div className={cn(
-      'relative my-2 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs',
+      'relative my-2 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
       isExhausted
         ? 'border-state-destructive-border hover:bg-state-destructive-hover'
         : 'border-components-panel-border bg-third-party-model-bg-default',
@@ -97,28 +99,17 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     >
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
-        <div className="mb-2 flex h-4 items-center text-text-tertiary system-xs-medium-uppercase">
+        <div className="mb-2 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
           {t('modelProvider.quota', { ns: 'common' })}
-          <Tooltip>
-            <TooltipTrigger
-              aria-label={tipText}
-              delay={0}
-              render={(
-                <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {tipText}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={tipText} className="ml-0.5">
+            {tipText}
+          </Infotip>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs text-text-tertiary">
             {credits > 0
-              ? <span className="mr-0.5 text-text-secondary system-xl-semibold">{formatNumber(credits)}</span>
-              : <span className="mr-0.5 text-text-destructive system-xl-semibold">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
+              ? <span className="mr-0.5 system-xl-semibold text-text-secondary">{formatNumber(credits)}</span>
+              : <span className="mr-0.5 system-xl-semibold text-text-destructive">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
             {nextCreditResetDate
               ? (
                   <>
@@ -150,7 +141,6 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                 <Tooltip key={key}>
                   <TooltipTrigger
                     aria-label={tooltipText}
-                    delay={0}
                     render={(
                       <div
                         className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}

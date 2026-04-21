@@ -1,13 +1,7 @@
 import json
 import logging
-from typing import Any, Union
+from typing import Any, TypedDict
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
@@ -18,11 +12,34 @@ from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
+
+
+class LoadBalancingConfigDetailDict(TypedDict):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    enabled: bool
+
+
+class LoadBalancingConfigSummaryDict(TypedDict):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    credential_id: str | None
+    enabled: bool
+    in_cooldown: bool
+    ttl: int
 
 
 class ModelLoadBalancingService:
@@ -74,7 +91,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
-    ) -> tuple[bool, list[dict]]:
+    ) -> tuple[bool, list[LoadBalancingConfigSummaryDict]]:
         """
         Get load balancing configurations.
         :param tenant_id: workspace id
@@ -156,7 +173,7 @@ class ModelLoadBalancingService:
         decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
 
         # fetch status and ttl for each config
-        datas = []
+        datas: list[LoadBalancingConfigSummaryDict] = []
         for load_balancing_config in load_balancing_configs:
             in_cooldown, ttl = LBModelManager.get_config_in_cooldown_and_ttl(
                 tenant_id=tenant_id,
@@ -214,7 +231,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_config(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
-    ) -> dict | None:
+    ) -> LoadBalancingConfigDetailDict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
@@ -267,12 +284,13 @@ class ModelLoadBalancingService:
             credentials=credentials, credential_form_schemas=credential_schemas.credential_form_schemas
         )
 
-        return {
+        result: LoadBalancingConfigDetailDict = {
             "id": load_balancing_model_config.id,
             "name": load_balancing_model_config.name,
             "credentials": credentials,
             "enabled": load_balancing_model_config.enabled,
         }
+        return result
 
     def _init_inherit_config(
         self, tenant_id: str, provider: str, model: str, model_type: ModelType
@@ -484,7 +502,7 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         config_id: str | None = None,
     ):
         """
@@ -543,7 +561,7 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
@@ -608,7 +626,7 @@ class ModelLoadBalancingService:
 
     def _get_credential_schema(
         self, provider_configuration: ProviderConfiguration
-    ) -> Union[ModelCredentialSchema, ProviderCredentialSchema]:
+    ) -> ModelCredentialSchema | ProviderCredentialSchema:
         """Get form schemas."""
         if provider_configuration.provider.model_credential_schema:
             return provider_configuration.provider.model_credential_schema

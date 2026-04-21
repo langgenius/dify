@@ -181,7 +181,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),

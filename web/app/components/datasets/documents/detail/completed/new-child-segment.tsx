@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
 import { useAddChildSegment } from '@/service/knowledge/use-segment'
-import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../context'
 import ActionButtons from './common/action-buttons'
@@ -88,13 +88,13 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
+      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}>
         <div className="flex flex-col">
-          <div className="text-text-primary system-xl-semibold">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
+          <div className="system-xl-semibold text-text-primary">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag label={t('segment.newChildChunk', { ns: 'datasetDocuments' }) as string} />
             <Dot />
-            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
+            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">
@@ -108,7 +108,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
                 actionType="add"
                 isChildChunk={true}
               />
-              <Divider type="vertical" className="ml-4 mr-2 h-3.5 bg-divider-regular" />
+              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
             </>
           )}
           <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
@@ -120,7 +120,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         </div>
       </div>
       <div className={cn('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>
-        <div className={cn('h-full overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'w-full')}>
+        <div className={cn('h-full overflow-hidden break-all whitespace-pre-line', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={ChunkingMode.parentChild}
             question={content}

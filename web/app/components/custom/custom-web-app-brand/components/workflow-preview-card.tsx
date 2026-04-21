@@ -1,5 +1,5 @@
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import PoweredByBrand from './powered-by-brand'
 
 type WorkflowPreviewCardProps = {
@@ -22,14 +22,14 @@ const WorkflowPreviewCard = ({
           <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
             <span className="i-ri-exchange-2-fill h-4 w-4 text-components-avatar-shape-fill-stop-100" />
           </div>
-          <div className="grow text-text-secondary system-md-semibold">Workflow App</div>
+          <div className="grow system-md-semibold text-text-secondary">Workflow App</div>
           <div className="p-1.5">
             <span className="i-ri-layout-left-2-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex h-10 shrink-0 items-center border-b-2 border-components-tab-active text-text-primary system-md-semibold-uppercase">RUN ONCE</div>
-          <div className="flex h-10 grow items-center border-b-2 border-transparent text-text-tertiary system-md-semibold-uppercase">RUN BATCH</div>
+          <div className="flex h-10 shrink-0 items-center border-b-2 border-components-tab-active system-md-semibold-uppercase text-text-primary">RUN ONCE</div>
+          <div className="flex h-10 grow items-center border-b-2 border-transparent system-md-semibold-uppercase text-text-tertiary">RUN BATCH</div>
         </div>
       </div>
       <div className="grow bg-components-panel-bg">
@@ -44,7 +44,7 @@ const WorkflowPreviewCard = ({
             <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
           </Button>
           <Button variant="primary" size="small" disabled>
-            <span className="i-ri-play-large-line mr-1 h-4 w-4" />
+            <span className="mr-1 i-ri-play-large-line h-4 w-4" />
             <span>Execute</span>
           </Button>
         </div>

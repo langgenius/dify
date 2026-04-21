@@ -27,7 +27,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,

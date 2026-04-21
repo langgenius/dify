@@ -74,6 +74,18 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   }
 }
 
+// Mock global fetch to prevent happy-dom from making real network calls
+// (which would cause ECONNREFUSED errors against localhost:5001).
+// Individual tests can still override via vi.spyOn(globalThis, 'fetch') or reassignment.
+globalThis.fetch = vi.fn(() =>
+  Promise.resolve(
+    new Response(JSON.stringify({}), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  ),
+) as unknown as typeof fetch
+
 afterEach(async () => {
   // Wrap cleanup in act() to flush pending React scheduler work
   // This prevents "window is not defined" errors from React 19's scheduler
@@ -83,11 +95,12 @@ afterEach(async () => {
   })
 })
 
-// mock foxact/use-clipboard - not available in test environment
-vi.mock('foxact/use-clipboard', () => ({
+// mock custom clipboard hook - wraps writeTextToClipboard with fallback
+vi.mock('@/hooks/use-clipboard', () => ({
   useClipboard: () => ({
     copy: vi.fn(),
     copied: false,
+    reset: vi.fn(),
   }),
 }))
 

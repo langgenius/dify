@@ -4,9 +4,14 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import graphon.nodes.human_input.entities  # noqa: F401
+from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
+from core.app.apps.workflow import app_generator as wf_app_gen_module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow import node_factory as node_factory_module
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
 from graphon.graph import Graph
@@ -25,12 +30,6 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
-
-from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
-from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -56,8 +55,21 @@ class _StubToolNode(Node[_StubToolNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def init_node_data(self, data):
-        self._node_data = _StubToolNodeData.model_validate(data)
+    def __init__(
+        self,
+        node_id: str,
+        config: _StubToolNodeData,
+        *,
+        graph_init_params,
+        graph_runtime_state,
+        **_kwargs: Any,
+    ) -> None:
+        super().__init__(
+            node_id=node_id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
 
     def _get_error_strategy(self):
         return self._node_data.error_strategy
@@ -90,21 +102,14 @@ class _StubToolNode(Node[_StubToolNodeData]):
 
 
 def _patch_tool_node(mocker):
-    original_create_node = DifyNodeFactory.create_node
+    original_resolve_node_class = node_factory_module.resolve_workflow_node_class
 
-    def _patched_create_node(self, node_config: dict[str, object] | NodeConfigDict) -> Node:
-        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
-        node_data = typed_node_config["data"]
-        if node_data.type == BuiltinNodeTypes.TOOL:
-            return _StubToolNode(
-                id=str(typed_node_config["id"]),
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-            )
-        return original_create_node(self, typed_node_config)
+    def _patched_resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+        if node_type == BuiltinNodeTypes.TOOL:
+            return _StubToolNode
+        return original_resolve_node_class(node_type=node_type, node_version=node_version)
 
-    mocker.patch.object(DifyNodeFactory, "create_node", _patched_create_node)
+    mocker.patch.object(node_factory_module, "resolve_workflow_node_class", side_effect=_patched_resolve_node_class)
 
 
 def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:

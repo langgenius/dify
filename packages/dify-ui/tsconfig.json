@@ -1,0 +1,6 @@
+{
+  "extends": "@dify/tsconfig/react.json",
+  "compilerOptions": {
+    "types": ["vite-plus/test/globals"]
+  }
+}

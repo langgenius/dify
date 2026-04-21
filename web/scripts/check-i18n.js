@@ -264,7 +264,7 @@ async function main() {
           const i18nFolder = path.resolve(__dirname, '../i18n', language)
           const files = fs.readdirSync(i18nFolder)
             .filter(file => file.endsWith('.json'))
-            .map(file => file.endsWith('.json') ? file.slice(0, -5) : file)
+            .map(file => file.replace(/\.json$/, ''))
             .filter(f => targetFiles.length === 0 || targetFiles.includes(f))
 
           let totalRemoved = 0

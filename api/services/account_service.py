@@ -9,7 +9,8 @@ from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+
+from core.db.session_factory import session_factory
 
 
 class InvitationData(TypedDict):
@@ -83,6 +84,12 @@ from tasks.mail_reset_password_task import (
 logger = logging.getLogger(__name__)
 
 
+class InvitationDetailDict(TypedDict):
+    account: Account
+    data: InvitationData
+    tenant: Tenant
+
+
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
     if not dify_config.ENTERPRISE_ENABLED:
@@ -105,6 +112,14 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
+    # Phase-bound token metadata for the change-email flow. Tokens carry the
+    # current phase so that downstream endpoints can enforce proper progression
+    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
+    CHANGE_EMAIL_PHASE_OLD = "old_email"
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
+    CHANGE_EMAIL_PHASE_NEW = "new_email"
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
@@ -569,13 +584,20 @@ class AccountService:
             raise ValueError("Email must be provided.")
         if not phase:
             raise ValueError("phase must be provided.")
+        if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
+            raise ValueError("phase must be one of old_email or new_email.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(account_email, account, old_email=old_email)
+        code, token = cls.generate_change_email_token(
+            account_email,
+            account,
+            old_email=old_email,
+            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
+        )
 
         send_change_mail_task.delay(
             language=language,
@@ -794,19 +816,19 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(email: str, session: Session | None = None) -> Account | None:
+    def get_account_by_email_with_case_fallback(email: str) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        query_session = session or db.session
-        account = query_session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-        if account or email == email.lower():
-            return account
+        with session_factory.create_session() as session:
+            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+            if account or email == email.lower():
+                return account
 
-        return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
+            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1510,8 +1532,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email)
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
@@ -1585,7 +1606,7 @@ class RegisterService:
     @classmethod
     def get_invitation_if_token_valid(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
@@ -1647,7 +1668,7 @@ class RegisterService:
     @classmethod
     def get_invitation_with_case_fallback(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
         if invitation or not email or email == email.lower():
             return invitation

@@ -9,14 +9,15 @@ type MetadataItem = {
   type: DataType
 }
 
-type PortalProps = {
+type PopoverProps = {
   children: React.ReactNode
   open: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 type TriggerProps = {
-  children: React.ReactNode
-  onClick: () => void
+  children?: React.ReactNode
+  render?: React.ReactNode
 }
 
 type ContentProps = {
@@ -49,18 +50,37 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-// Mock PortalToFollowElem components
-vi.mock('../../../../base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: PortalProps) => (
-    <div data-testid="portal-wrapper" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: TriggerProps) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: ContentProps) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
-}))
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
+
+  return {
+    Popover: ({ children, open, onOpenChange }: PopoverProps) => (
+      <PopoverContext.Provider value={{ open, onOpenChange }}>
+        <div data-testid="popover-root" data-open={String(open)}>{children}</div>
+      </PopoverContext.Provider>
+    ),
+    PopoverTrigger: ({ children, render }: TriggerProps) => {
+      const context = React.useContext(PopoverContext)
+      const content = render ?? children
+      const handleClick = () => context?.onOpenChange?.(!context.open)
+
+      if (React.isValidElement(content)) {
+        const element = content as React.ReactElement<{ onClick?: () => void }>
+        return React.cloneElement(element, { onClick: handleClick })
+      }
+
+      return <button type="button" data-testid="popover-trigger" onClick={handleClick}>{content}</button>
+    },
+    PopoverContent: ({ children }: ContentProps) => {
+      const context = React.useContext(PopoverContext)
+      if (!context?.open)
+        return null
+
+      return <div data-testid="popover-content">{children}</div>
+    },
+  }
+})
 
 // Mock SelectMetadata component
 vi.mock('../select-metadata', () => ({
@@ -99,7 +119,7 @@ describe('SelectMetadataModal', () => {
           onManage={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
     })
 
     it('should render trigger element', () => {
@@ -115,7 +135,7 @@ describe('SelectMetadataModal', () => {
       expect(screen.getByTestId('trigger-button')).toBeInTheDocument()
     })
 
-    it('should render SelectMetadata by default', () => {
+    it('should not render SelectMetadata before opening', () => {
       render(
         <SelectMetadataModal
           datasetId="dataset-1"
@@ -125,7 +145,7 @@ describe('SelectMetadataModal', () => {
           onManage={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('select-metadata')).toBeInTheDocument()
+      expect(screen.queryByTestId('select-metadata')).not.toBeInTheDocument()
     })
 
     it('should pass dataset metadata to SelectMetadata', () => {
@@ -138,6 +158,7 @@ describe('SelectMetadataModal', () => {
           onManage={vi.fn()}
         />,
       )
+      fireEvent.click(screen.getByTestId('trigger-button'))
       expect(screen.getByTestId('list-count')).toHaveTextContent('2')
     })
   })
@@ -154,10 +175,10 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger-button'))
 
-      // State should toggle
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByTestId('select-metadata')).toBeInTheDocument()
     })
 
     it('should call onSelect and close when item is selected', () => {
@@ -172,6 +193,7 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
+      fireEvent.click(screen.getByTestId('trigger-button'))
       fireEvent.click(screen.getByTestId('select-item'))
 
       expect(handleSelect).toHaveBeenCalledWith({
@@ -192,6 +214,7 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
+      fireEvent.click(screen.getByTestId('trigger-button'))
       fireEvent.click(screen.getByTestId('new-btn'))
 
       await waitFor(() => {
@@ -211,6 +234,7 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
+      fireEvent.click(screen.getByTestId('trigger-button'))
       fireEvent.click(screen.getByTestId('manage-btn'))
 
       expect(handleManage).toHaveBeenCalled()
@@ -230,6 +254,7 @@ describe('SelectMetadataModal', () => {
       )
 
       // Go to create step
+      fireEvent.click(screen.getByTestId('trigger-button'))
       fireEvent.click(screen.getByTestId('new-btn'))
 
       await waitFor(() => {
@@ -257,6 +282,7 @@ describe('SelectMetadataModal', () => {
       )
 
       // Go to create step
+      fireEvent.click(screen.getByTestId('trigger-button'))
       fireEvent.click(screen.getByTestId('new-btn'))
 
       await waitFor(() => {
@@ -287,7 +313,7 @@ describe('SelectMetadataModal', () => {
           popupPlacement="bottom-start"
         />,
       )
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
     })
 
     it('should accept custom popupOffset', () => {
@@ -301,7 +327,7 @@ describe('SelectMetadataModal', () => {
           popupOffset={{ mainAxis: 10, crossAxis: 5 }}
         />,
       )
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
     })
   })
 
@@ -317,7 +343,7 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
 
       rerender(
         <SelectMetadataModal
@@ -329,7 +355,7 @@ describe('SelectMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-root')).toBeInTheDocument()
     })
 
     it('should handle empty trigger', () => {

@@ -1,17 +1,17 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import TenantPluginAutoUpgradeStrategy
 
 
 class PluginAutoUpgradeService:
     @staticmethod
     def get_strategy(tenant_id: str) -> TenantPluginAutoUpgradeStrategy | None:
-        with Session(db.engine) as session:
-            return (
-                session.query(TenantPluginAutoUpgradeStrategy)
+        with session_factory.create_session() as session:
+            return session.scalar(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
+                .limit(1)
             )
 
     @staticmethod
@@ -23,11 +23,11 @@ class PluginAutoUpgradeService:
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> bool:
-        with Session(db.engine) as session:
-            exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy)
+        with session_factory.create_session() as session:
+            exist_strategy = session.scalar(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
+                .limit(1)
             )
             if not exist_strategy:
                 strategy = TenantPluginAutoUpgradeStrategy(
@@ -46,16 +46,15 @@ class PluginAutoUpgradeService:
                 exist_strategy.exclude_plugins = exclude_plugins
                 exist_strategy.include_plugins = include_plugins
 
-            session.commit()
             return True
 
     @staticmethod
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
-        with Session(db.engine) as session:
-            exist_strategy = (
-                session.query(TenantPluginAutoUpgradeStrategy)
+        with session_factory.create_session() as session:
+            exist_strategy = session.scalar(
+                select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
-                .first()
+                .limit(1)
             )
             if not exist_strategy:
                 # create for this tenant
@@ -83,5 +82,4 @@ class PluginAutoUpgradeService:
                     exist_strategy.upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
                     exist_strategy.exclude_plugins = [plugin_id]
 
-                session.commit()
                 return True

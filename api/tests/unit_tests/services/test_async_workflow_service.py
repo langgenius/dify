@@ -73,11 +73,6 @@ class TestAsyncWorkflowService:
 
         mock_dispatcher = MagicMock()
         quota_workflow = MagicMock()
-        mock_get_workflow = MagicMock()
-
-        mock_professional_task = MagicMock()
-        mock_team_task = MagicMock()
-        mock_sandbox_task = MagicMock()
 
         with (
             patch.object(
@@ -357,11 +352,12 @@ class TestAsyncWorkflowService:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = mock_session_context
+
         with (
             patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(
-                async_workflow_service_module, "Session", return_value=mock_session_context
-            ) as mock_session_class,
+            patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
                 "SQLAlchemyWorkflowTriggerLogRepository",
@@ -373,7 +369,7 @@ class TestAsyncWorkflowService:
 
         # Assert
         assert result == expected
-        mock_session_class.assert_called_once_with(fake_engine)
+        mock_sessionmaker.assert_called_once_with(fake_engine)
         mock_repo.get_by_id.assert_called_once_with("trigger-log-123", "tenant-123")
 
     def test_should_return_recent_logs_as_dict_list(self):
@@ -391,9 +387,12 @@ class TestAsyncWorkflowService:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = mock_session_context
+
         with (
             patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=MagicMock())),
-            patch.object(async_workflow_service_module, "Session", return_value=mock_session_context),
+            patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
                 "SQLAlchemyWorkflowTriggerLogRepository",
@@ -432,9 +431,12 @@ class TestAsyncWorkflowService:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = mock_session_context
+
         with (
             patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=MagicMock())),
-            patch.object(async_workflow_service_module, "Session", return_value=mock_session_context),
+            patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
                 "SQLAlchemyWorkflowTriggerLogRepository",

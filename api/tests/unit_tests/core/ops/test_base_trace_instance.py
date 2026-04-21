@@ -76,10 +76,7 @@ def test_get_service_account_with_tenant_tenant_not_found(mock_db_session):
     mock_account = MagicMock(spec=Account)
     mock_account.id = "creator_id"
 
-    mock_db_session.scalar.side_effect = [mock_app, mock_account]
-
-    # session.query(TenantAccountJoin).filter_by(...).first() returns None
-    mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db_session.scalar.side_effect = [mock_app, mock_account, None]
 
     config = MagicMock(spec=BaseTracingConfig)
     instance = ConcreteTraceInstance(config)
@@ -97,11 +94,10 @@ def test_get_service_account_with_tenant_success(mock_db_session):
     mock_account.id = "creator_id"
     mock_account.set_tenant_id = MagicMock()
 
-    mock_db_session.scalar.side_effect = [mock_app, mock_account]
-
     mock_tenant_join = MagicMock(spec=TenantAccountJoin)
     mock_tenant_join.tenant_id = "tenant_id"
-    mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_tenant_join
+
+    mock_db_session.scalar.side_effect = [mock_app, mock_account, mock_tenant_join]
 
     config = MagicMock(spec=BaseTracingConfig)
     instance = ConcreteTraceInstance(config)

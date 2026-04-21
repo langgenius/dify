@@ -9,7 +9,7 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Lightweight modal wrapper with optional header/description, close icon, and high-priority stacking for dropdown overlays.',
+        component: 'Lightweight modal wrapper with optional header/description and close icon.',
       },
     },
   },
@@ -42,10 +42,6 @@ const meta = {
     overflowVisible: {
       control: 'boolean',
       description: 'Allows content to overflow the modal panel.',
-    },
-    highPriority: {
-      control: 'boolean',
-      description: 'Lifts the modal above other high z-index elements like dropdowns.',
     },
     onClose: {
       control: false,
@@ -115,18 +111,17 @@ export const Default: Story = {
   render: args => <ModalDemo {...args} />,
 }
 
-export const HighPriorityOverflow: Story = {
+export const OverflowVisible: Story = {
   render: args => <ModalDemo {...args} />,
   args: {
-    highPriority: true,
     overflowVisible: true,
-    description: 'Demonstrates the modal configured to sit above dropdowns while letting the body content overflow.',
+    description: 'Demonstrates the modal configured to let the body content overflow.',
     className: 'max-w-[540px]',
   },
   parameters: {
     docs: {
       description: {
-        story: 'Shows the modal with `highPriority` and `overflowVisible` enabled, useful when nested within complex surfaces.',
+        story: 'Shows the modal with `overflowVisible` enabled for content that needs to escape the panel bounds.',
       },
     },
   },

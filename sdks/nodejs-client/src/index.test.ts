@@ -99,7 +99,7 @@ describe("File uploads", () => {
         super();
       }
 
-      _read() {}
+      override _read() {}
 
       append() {}
 
