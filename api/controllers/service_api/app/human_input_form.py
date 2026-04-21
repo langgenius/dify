@@ -13,7 +13,7 @@ from typing import Any
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import NotFound,BadRequest
 
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
@@ -127,7 +127,7 @@ class WorkflowHumanInputFormApi(Resource):
         recipient_type = form.recipient_type
         if recipient_type is None:
             logger.warning("Recipient type is None for form, form_id=%s", form.id)
-            raise InternalServerError("Form recipient type is invalid")
+            raise BadRequest("Form recipient type is invalid")
 
         try:
             service.submit_form_by_token(
