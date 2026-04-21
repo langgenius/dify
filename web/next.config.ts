@@ -3,6 +3,8 @@ import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
+import './scripts/ensure-claude-md.mjs'
+
 const isDev = process.env.NODE_ENV === 'development'
 const withMDX = createMDX()
 

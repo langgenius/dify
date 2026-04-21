@@ -18,6 +18,8 @@ import {
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
+import './scripts/ensure-claude-md.mjs'
+
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
 process.env.TAILWIND_MODE ??= 'ESLINT'
