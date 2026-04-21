@@ -6554,9 +6554,6 @@
   "web/models/debug.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/models/log.ts": {
