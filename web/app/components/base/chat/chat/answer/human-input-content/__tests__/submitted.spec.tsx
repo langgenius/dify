@@ -44,4 +44,18 @@ describe('SubmittedHumanInputContent Integration', () => {
     expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
     expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
   })
+
+  it('should fallback to rendered markdown when structured form data is empty', () => {
+    render(
+      <SubmittedHumanInputContent formData={{
+        ...mockFormData,
+        form_data: {},
+      }}
+      />,
+    )
+
+    expect(screen.getByTestId('submitted-content')).toBeInTheDocument()
+    expect(screen.getByTestId('mock-markdown')).toHaveTextContent('Rendered **Markdown** content')
+    expect(screen.queryByTestId('submitted-field-values')).not.toBeInTheDocument()
+  })
 })
