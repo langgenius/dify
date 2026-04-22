@@ -100,6 +100,14 @@ const LinkEditorComponent = ({
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          if (url)
+                            handleSaveLink(url)
+                          return
+                        }
+
                         if (e.key === 'Escape') {
                           e.preventDefault()
                           e.stopPropagation()

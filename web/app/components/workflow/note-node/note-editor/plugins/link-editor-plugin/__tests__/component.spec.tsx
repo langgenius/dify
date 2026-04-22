@@ -95,4 +95,27 @@ describe('link editor component', () => {
 
     expect(mockHandleSaveLink).toHaveBeenCalledWith('https://example.com')
   })
+
+  it('saves the edited url when pressing Enter', () => {
+    const store = createNoteEditorStore()
+    const anchor = document.createElement('button')
+    const portalRoot = document.createElement('div')
+    document.body.appendChild(anchor)
+    document.body.appendChild(portalRoot)
+    store.setState({
+      linkAnchorElement: anchor,
+      linkOperatorShow: false,
+      selectedLinkUrl: 'https://example.com',
+    })
+
+    render(
+      <NoteEditorContext.Provider value={store}>
+        <LinkEditorComponent containerElement={portalRoot} />
+      </NoteEditorContext.Provider>,
+    )
+
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
+
+    expect(mockHandleSaveLink).toHaveBeenCalledWith('https://example.com')
+  })
 })
