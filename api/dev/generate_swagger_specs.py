@@ -93,7 +93,7 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
     def register_field_with_inline_dict_support(self: Swagger, field: object) -> None:
         nested = getattr(field, "nested", None)
         if isinstance(nested, dict):
-            field.model = get_or_create_inline_model(self, nested) # type: ignore
+            field.model = get_or_create_inline_model(self, nested)  # type: ignore
 
         _ORIGINAL_REGISTER_FIELD(self, field)
 
