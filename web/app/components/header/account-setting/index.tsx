@@ -22,6 +22,7 @@ import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import PermissionsPage from './permissions-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -49,7 +50,7 @@ export default function AccountSetting({
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const activeMenu = activeTab
   const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
+  const { enableBilling, enableReplaceWebAppLogo, enableAccessControl } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const workplaceGroupItems: GroupItem[] = (() => {
@@ -70,6 +71,23 @@ export default function AccountSetting({
         activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
       },
     ]
+
+    if (enableAccessControl) {
+      items.push(
+        {
+          key: ACCOUNT_SETTING_TAB.PERMISSIONS,
+          name: t('settings.permissions', { ns: 'common' }),
+          icon: <span className={cn('i-ri-user-settings-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+        },
+        {
+          key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
+          name: t('settings.accessRules', { ns: 'common' }),
+          icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+        },
+      )
+    }
 
     if (enableBilling) {
       items.push({
@@ -228,6 +246,7 @@ export default function AccountSetting({
             <div className="px-4 pt-2 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
