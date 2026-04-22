@@ -9,7 +9,7 @@ import {
 } from '@/app/components/workflow/nodes/human-input/types'
 
 type SubmittedFieldValuesProps = {
-  fields: FormInputItem[]
+  fields?: FormInputItem[]
   values: Record<string, HumanInputFormValue>
 }
 
@@ -17,20 +17,36 @@ const SubmittedFieldValues = ({
   fields,
   values,
 }: SubmittedFieldValuesProps) => {
+  const fieldNames = fields?.map(field => field.output_variable_name) ?? Object.keys(values)
+  const fieldMap = new Map(fields?.map(field => [field.output_variable_name, field]) ?? [])
+
   return (
     <div className="flex flex-col gap-3" data-testid="submitted-field-values">
-      {fields.map((field) => {
-        const value = values[field.output_variable_name]
+      {fieldNames.map((fieldName) => {
+        const field = fieldMap.get(fieldName)
+        const value = values[fieldName]
 
         if (value == null)
           return null
 
-        if (isFileFormInput(field)) {
+        let valueKind: 'text' | 'file' | 'file-list' = 'text'
+        if (field && isFileFormInput(field))
+          valueKind = 'file'
+        else if (field && isFileListFormInput(field))
+          valueKind = 'file-list'
+        else if (typeof value === 'string')
+          valueKind = 'text'
+        else if (Array.isArray(value))
+          valueKind = 'file-list'
+        else
+          valueKind = 'file'
+
+        if (valueKind === 'file') {
           if (typeof value === 'string' || Array.isArray(value))
             return null
 
           return (
-            <div key={field.output_variable_name} data-testid={`submitted-field-${field.output_variable_name}`}>
+            <div key={fieldName} data-testid={`submitted-field-${fieldName}`}>
               <FileList
                 files={getProcessedFilesFromResponse([value])}
                 showDeleteAction={false}
@@ -40,12 +56,12 @@ const SubmittedFieldValues = ({
           )
         }
 
-        if (isFileListFormInput(field)) {
+        if (valueKind === 'file-list') {
           if (typeof value === 'string' || !Array.isArray(value))
             return null
 
           return (
-            <div key={field.output_variable_name} data-testid={`submitted-field-${field.output_variable_name}`}>
+            <div key={fieldName} data-testid={`submitted-field-${fieldName}`}>
               <FileList
                 files={getProcessedFilesFromResponse(value)}
                 showDeleteAction={false}
@@ -57,9 +73,9 @@ const SubmittedFieldValues = ({
 
         return (
           <div
-            key={field.output_variable_name}
+            key={fieldName}
             className="body-md-regular break-words text-text-primary"
-            data-testid={`submitted-field-${field.output_variable_name}`}
+            data-testid={`submitted-field-${fieldName}`}
           >
             {String(value)}
           </div>

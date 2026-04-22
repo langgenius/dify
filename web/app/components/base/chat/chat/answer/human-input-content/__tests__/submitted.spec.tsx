@@ -28,4 +28,20 @@ describe('SubmittedHumanInputContent Integration', () => {
     // Trans component for triggered action. The mock usually renders the key.
     expect(screen.getByText('nodes.humanInput.userActions.triggered')).toBeInTheDocument()
   })
+
+  it('should prefer structured form data over rendered markdown when available', () => {
+    render(
+      <SubmittedHumanInputContent formData={{
+        ...mockFormData,
+        form_data: {
+          answer: 'approved',
+        },
+      }}
+      />,
+    )
+
+    expect(screen.getByTestId('submitted-field-values')).toBeInTheDocument()
+    expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
+    expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
+  })
 })
