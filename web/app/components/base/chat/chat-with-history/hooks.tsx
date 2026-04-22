@@ -147,18 +147,21 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
-      let prevValue = conversationIdInfo?.[appId || '']
-      if (typeof prevValue === 'string')
-        prevValue = {}
-      setConversationIdInfo({
-        ...conversationIdInfo,
-        [appId || '']: {
-          ...prevValue,
-          [userId || 'DEFAULT']: changeConversationId,
-        },
+      setConversationIdInfo((prev) => {
+        const prevAppConversations = prev?.[appId || '']
+        const base = (typeof prevAppConversations === 'object' && prevAppConversations)
+          ? prevAppConversations
+          : {}
+        return {
+          ...prev,
+          [appId || '']: {
+            ...base,
+            [userId || 'DEFAULT']: changeConversationId,
+          },
+        }
       })
     }
-  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
+  }, [appId, setConversationIdInfo, userId])
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)

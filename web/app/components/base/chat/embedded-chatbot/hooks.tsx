@@ -116,18 +116,21 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
-      let prevValue = conversationIdInfo?.[appId || '']
-      if (typeof prevValue === 'string')
-        prevValue = {}
-      setConversationIdInfo({
-        ...conversationIdInfo,
-        [appId || '']: {
-          ...prevValue,
-          [userId || 'DEFAULT']: changeConversationId,
-        },
+      setConversationIdInfo((prev) => {
+        const prevAppConversations = prev?.[appId || '']
+        const base = (typeof prevAppConversations === 'object' && prevAppConversations)
+          ? prevAppConversations
+          : {}
+        return {
+          ...prev,
+          [appId || '']: {
+            ...base,
+            [userId || 'DEFAULT']: changeConversationId,
+          },
+        }
       })
     }
-  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
+  }, [appId, setConversationIdInfo, userId])
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)
@@ -369,7 +372,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleChangeConversation, handleNewConversationInputsChange, setClearChatList])
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
