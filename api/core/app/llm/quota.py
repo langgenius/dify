@@ -1,8 +1,8 @@
-"""Tenant-scoped helpers for checking and deducting LLM provider quota.
+"""Tenant-scoped helpers for checking and deducting provider model quota.
 
-Workflow callers now bill quota from public model identity instead of passing a
-fully prepared ``ModelInstance``. Keep the model-instance helpers as thin,
-deprecated adapters so non-workflow code can move independently.
+The public billing identity is ``tenant_id + provider + model_type + model``.
+LLM callers still use thin adapters that compute quota usage from ``LLMUsage``
+so the workflow layer does not need to know generic billing details.
 """
 
 import warnings
@@ -33,28 +33,22 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     return provider_configuration
 
 
-def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
+def ensure_model_quota_available(*, tenant_id: str, provider: str, model_type: ModelType, model: str) -> None:
     """Raise when a tenant-bound system provider model is already out of quota."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
     provider_model = provider_configuration.get_provider_model(
-        model_type=ModelType.LLM,
+        model_type=model_type,
         model=model,
     )
     if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
         raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
 
 
-def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usage: LLMUsage) -> None:
-    """Deduct tenant-bound quota for the resolved LLM model identity."""
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
-    if provider_configuration.using_provider_type != ProviderType.SYSTEM:
-        return
-
-    system_configuration = provider_configuration.system_configuration
-
+def _resolve_llm_used_quota(*, system_configuration, model: str, usage: LLMUsage) -> int | None:
+    """Compute the quota impact for an LLM invocation under the current quota mode."""
     quota_unit = None
     for quota_configuration in system_configuration.quota_configurations:
         if quota_configuration.quota_type == system_configuration.current_quota_type:
@@ -74,6 +68,21 @@ def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usa
         else:
             used_quota = 1
 
+    return used_quota
+
+
+def _deduct_model_quota_with_configuration(
+    *,
+    tenant_id: str,
+    provider: str,
+    provider_configuration,
+    used_quota: int | None,
+) -> None:
+    """Apply a resolved quota charge against the current provider quota bucket."""
+    if provider_configuration.using_provider_type != ProviderType.SYSTEM:
+        return
+
+    system_configuration = provider_configuration.system_configuration
     if used_quota is not None and system_configuration.current_quota_type is not None:
         match system_configuration.current_quota_type:
             case ProviderQuotaType.TRIAL:
@@ -111,6 +120,53 @@ def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usa
                     session.execute(stmt)
 
 
+def deduct_model_quota(
+    *,
+    tenant_id: str,
+    provider: str,
+    model_type: ModelType,
+    model: str,
+    used_quota: int | None,
+) -> None:
+    """Deduct quota for the resolved tenant/provider/model identity."""
+    _ = model_type
+    _ = model
+    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    _deduct_model_quota_with_configuration(
+        tenant_id=tenant_id,
+        provider=provider,
+        provider_configuration=provider_configuration,
+        used_quota=used_quota,
+    )
+
+
+def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
+    """Raise when a tenant-bound LLM model is already out of quota."""
+    ensure_model_quota_available(
+        tenant_id=tenant_id,
+        provider=provider,
+        model_type=ModelType.LLM,
+        model=model,
+    )
+
+
+def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usage: LLMUsage) -> None:
+    """Deduct tenant-bound quota for the resolved LLM model identity."""
+    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    used_quota = _resolve_llm_used_quota(
+        system_configuration=provider_configuration.system_configuration,
+        model=model,
+        usage=usage,
+    )
+    deduct_model_quota(
+        tenant_id=tenant_id,
+        provider=provider,
+        model_type=ModelType.LLM,
+        model=model,
+        used_quota=used_quota,
+    )
+
+
 def ensure_llm_quota_available(*, model_instance: ModelInstance) -> None:
     """Deprecated compatibility wrapper for callers that still pass ModelInstance."""
     warnings.warn(
@@ -119,9 +175,10 @@ def ensure_llm_quota_available(*, model_instance: ModelInstance) -> None:
         DeprecationWarning,
         stacklevel=2,
     )
-    ensure_llm_quota_available_for_model(
+    ensure_model_quota_available(
         tenant_id=model_instance.provider_model_bundle.configuration.tenant_id,
         provider=model_instance.provider,
+        model_type=model_instance.model_type_instance.model_type,
         model=model_instance.model_name,
     )
 
@@ -134,9 +191,14 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
         DeprecationWarning,
         stacklevel=2,
     )
-    deduct_llm_quota_for_model(
+    deduct_model_quota(
         tenant_id=tenant_id,
         provider=model_instance.provider,
+        model_type=model_instance.model_type_instance.model_type,
         model=model_instance.model_name,
-        usage=usage,
+        used_quota=_resolve_llm_used_quota(
+            system_configuration=model_instance.provider_model_bundle.configuration.system_configuration,
+            model=model_instance.model_name,
+            usage=usage,
+        ),
     )
