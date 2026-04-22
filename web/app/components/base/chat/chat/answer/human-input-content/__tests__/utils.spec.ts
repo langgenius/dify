@@ -147,6 +147,78 @@ describe('human-input utils', () => {
         summary: '',
       })
     })
+
+    it('should fallback to default paragraph values when resolved defaults are not strings', () => {
+      const formInputs: FormInputItem[] = [
+        paragraphInput({
+          output_variable_name: 'summary',
+          default: { type: 'variable', value: '', selector: [] },
+        }),
+      ]
+
+      expect(initializeInputs(formInputs, {
+        summary: {
+          related_id: 'file-1',
+          size: 128,
+          extension: '.pdf',
+          filename: 'brief.pdf',
+          mime_type: 'application/pdf',
+          transfer_method: TransferMethod.local_file,
+          type: 'document',
+          url: 'https://example.com/brief.pdf',
+          upload_file_id: 'upload-file-1',
+          remote_url: '',
+        },
+      })).toEqual({
+        summary: '',
+      })
+    })
+
+    it('should ignore resolved defaults for non-paragraph fields', () => {
+      const formInputs: FormInputItem[] = [
+        selectInput({
+          output_variable_name: 'role',
+        }),
+        fileInput({
+          output_variable_name: 'avatar',
+        }),
+        fileListInput({
+          output_variable_name: 'attachments',
+        }),
+      ]
+
+      expect(initializeInputs(formInputs, {
+        role: 'maintainer',
+        avatar: {
+          related_id: 'file-2',
+          size: 64,
+          extension: '.png',
+          filename: 'avatar.png',
+          mime_type: 'image/png',
+          transfer_method: TransferMethod.local_file,
+          type: 'image',
+          url: 'https://example.com/avatar.png',
+          upload_file_id: 'upload-file-2',
+          remote_url: '',
+        },
+        attachments: [{
+          related_id: 'file-3',
+          size: 16,
+          extension: '.txt',
+          filename: 'notes.txt',
+          mime_type: 'text/plain',
+          transfer_method: TransferMethod.local_file,
+          type: 'document',
+          url: 'https://example.com/notes.txt',
+          upload_file_id: 'upload-file-3',
+          remote_url: '',
+        }],
+      })).toEqual({
+        role: '',
+        avatar: null,
+        attachments: [],
+      })
+    })
   })
 
   describe('time helpers', () => {
