@@ -206,7 +206,7 @@ const TimePicker = ({
     >
       <PopoverTrigger
         nativeButton={false}
-        className={triggerFullWidth ? 'block! w-full' : undefined}
+        className={triggerFullWidth ? 'flex! w-full' : undefined}
         render={renderTrigger
           ? renderTrigger({
               inputElem,
