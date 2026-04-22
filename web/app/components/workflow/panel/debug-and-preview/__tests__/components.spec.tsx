@@ -1,4 +1,5 @@
 import type { ChatWrapperRefType } from '../index'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -78,7 +79,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onSend?: (message: string, files: unknown[]) => void
     onRegenerate?: (chatItem: { id: string, parentMessageId?: string, content?: string, message_files?: unknown[] }) => void
     switchSibling?: (siblingMessageId: string) => void
-    onHumanInputFormSubmit?: (formToken: string, formData: Record<string, string>) => Promise<void>
+    onHumanInputFormSubmit?: (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
     onFeatureBarClick?: (state: boolean) => void
   }) => {
     mockChatRender({
@@ -101,7 +102,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           regenerate-chat
         </button>
         <button type="button" onClick={() => switchSibling?.('sibling-2')}>switch-sibling</button>
-        <button type="button" onClick={() => onHumanInputFormSubmit?.('token-1', { answer: 'ok' })}>submit-human-input</button>
+        <button type="button" onClick={() => onHumanInputFormSubmit?.('token-1', { inputs: { answer: 'ok' }, action: 'approve' })}>submit-human-input</button>
         <button type="button" onClick={() => onFeatureBarClick?.(true)}>open-feature-panel</button>
         {chatNode}
       </div>
@@ -593,7 +594,7 @@ describe('debug-and-preview components', () => {
 
       await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
       await waitFor(() => {
-        expect(handleSubmitHumanInputForm).toHaveBeenCalledWith('token-1', { answer: 'ok' })
+        expect(handleSubmitHumanInputForm).toHaveBeenCalledWith('token-1', { inputs: { answer: 'ok' }, action: 'approve' })
       })
 
       const stopResponding = mockUseChat.mock.calls[0]?.[3] as (taskId: string) => void
