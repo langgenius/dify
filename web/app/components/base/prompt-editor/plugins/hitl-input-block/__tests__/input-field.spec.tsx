@@ -523,6 +523,33 @@ describe('InputField', () => {
     })
   })
 
+  it('should clear paragraph default state when switching to single file', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-13-1"
+        isEdit={false}
+        payload={createPayload({
+          default: {
+            type: 'constant',
+            selector: [],
+            value: 'paragraph-default',
+          },
+        })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
+  })
+
   it('should save file-list upload settings and max upload count', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -550,5 +577,32 @@ describe('InputField', () => {
       allowed_file_upload_methods: ['local_file'],
       max_upload_count: 4,
     })
+  })
+
+  it('should clear paragraph default state when switching to file-list', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-14-1"
+        isEdit={false}
+        payload={createPayload({
+          default: {
+            type: 'constant',
+            selector: [],
+            value: 'paragraph-default',
+          },
+        })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file-list' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
   })
 })
