@@ -1,16 +1,19 @@
 """
 LLM quota deduction layer for GraphEngine.
 
-This layer centralizes model-quota deduction outside node implementations.
+This layer centralizes model-quota handling outside node implementations.
+
+Graphon LLM-backed nodes expose provider/model identity through public node
+configuration and, after execution, through ``node_run_result.inputs``. Resolve
+quota billing from that public identity instead of depending on
+``ModelInstance`` reconstruction inside the workflow layer.
 """
 
 import logging
 from typing import final, override
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
+from core.app.llm import deduct_llm_quota_for_model, ensure_llm_quota_available_for_model
 from core.errors.error import QuotaExceededError
-from core.model_manager import ModelInstance
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_engine.entities.commands import AbortCommand, CommandType
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -18,14 +21,25 @@ from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, NodeRunSu
 from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
+_QUOTA_NODE_TYPES = frozenset(
+    [
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+    ]
+)
 
 
 @final
 class LLMQuotaLayer(GraphEngineLayer):
-    """Graph layer that applies LLM quota deduction after node execution."""
+    """Graph layer that applies tenant-scoped quota checks to LLM-backed nodes."""
 
-    def __init__(self) -> None:
+    tenant_id: str
+    _abort_sent: bool
+
+    def __init__(self, tenant_id: str) -> None:
         super().__init__()
+        self.tenant_id = tenant_id
         self._abort_sent = False
 
     @override
@@ -45,12 +59,20 @@ class LLMQuotaLayer(GraphEngineLayer):
         if self._abort_sent:
             return
 
-        model_instance = self._extract_model_instance(node)
-        if model_instance is None:
+        if not self._supports_quota(node):
             return
 
+        model_identity = self._extract_model_identity_from_node(node)
+        if model_identity is None:
+            return
+
+        provider, model_name = model_identity
         try:
-            ensure_llm_quota_available(model_instance=model_instance)
+            ensure_llm_quota_available_for_model(
+                tenant_id=self.tenant_id,
+                provider=provider,
+                model=model_name,
+            )
         except QuotaExceededError as exc:
             self._set_stop_event(node)
             self._send_abort_command(reason=str(exc))
@@ -60,18 +82,20 @@ class LLMQuotaLayer(GraphEngineLayer):
     def on_node_run_end(
         self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
     ) -> None:
-        if error is not None or not isinstance(result_event, NodeRunSucceededEvent):
+        if error is not None or not isinstance(result_event, NodeRunSucceededEvent) or not self._supports_quota(node):
             return
 
-        model_instance = self._extract_model_instance(node)
-        if model_instance is None:
+        model_identity = self._extract_model_identity_from_result_event(result_event)
+        if model_identity is None:
             return
+
+        provider, model_name = model_identity
 
         try:
-            dify_ctx = DifyRunContext.model_validate(node.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-            deduct_llm_quota(
-                tenant_id=dify_ctx.tenant_id,
-                model_instance=model_instance,
+            deduct_llm_quota_for_model(
+                tenant_id=self.tenant_id,
+                provider=provider,
+                model=model_name,
                 usage=result_event.node_run_result.llm_usage,
             )
         except QuotaExceededError as exc:
@@ -103,35 +127,38 @@ class LLMQuotaLayer(GraphEngineLayer):
             logger.exception("Failed to send quota abort command")
 
     @staticmethod
-    def _extract_model_instance(node: Node) -> ModelInstance | None:
-        match node.node_type:
-            case BuiltinNodeTypes.LLM | BuiltinNodeTypes.PARAMETER_EXTRACTOR | BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                pass
-            case _:
-                return None
+    def _supports_quota(node: Node) -> bool:
+        return node.node_type in _QUOTA_NODE_TYPES
 
-        try:
-            model_instance = getattr(node, "model_instance", None)
-        except AttributeError:
+    @staticmethod
+    def _extract_model_identity_from_result_event(result_event: NodeRunSucceededEvent) -> tuple[str, str] | None:
+        provider = result_event.node_run_result.inputs.get("model_provider")
+        model_name = result_event.node_run_result.inputs.get("model_name")
+        if isinstance(provider, str) and provider and isinstance(model_name, str) and model_name:
+            return provider, model_name
+        return None
+
+    @staticmethod
+    def _extract_model_identity_from_node(node: Node) -> tuple[str, str] | None:
+        node_data = getattr(node, "node_data", None)
+        if node_data is None:
+            node_data = getattr(node, "data", None)
+
+        model_config = getattr(node_data, "model", None)
+        if model_config is None:
             logger.warning(
-                "LLMQuotaLayer skipped quota deduction because node does not expose a model instance, node_id=%s",
+                "LLMQuotaLayer skipped quota handling because node model config is missing, node_id=%s",
                 node.id,
             )
             return None
 
-        if isinstance(model_instance, ModelInstance):
-            return model_instance
+        provider = getattr(model_config, "provider", None)
+        model_name = getattr(model_config, "name", None)
+        if isinstance(provider, str) and provider and isinstance(model_name, str) and model_name:
+            return provider, model_name
 
-        raw_model_instance = getattr(model_instance, "_model_instance", None)
-        if isinstance(raw_model_instance, ModelInstance):
-            return raw_model_instance
-
-        private_model_instance = getattr(node, "_model_instance", None)
-        if isinstance(private_model_instance, ModelInstance):
-            return private_model_instance
-
-        wrapped_private_model_instance = getattr(private_model_instance, "_model_instance", None)
-        if isinstance(wrapped_private_model_instance, ModelInstance):
-            return wrapped_private_model_instance
-
+        logger.warning(
+            "LLMQuotaLayer skipped quota handling because node model identity is invalid, node_id=%s",
+            node.id,
+        )
         return None
