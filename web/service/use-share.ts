@@ -1,4 +1,5 @@
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -197,7 +198,7 @@ export const useGetHumanInputForm = (token: string, options: ShareQueryOptions =
 type SubmitHumanInputFormParams = {
   token: string
   data: {
-    inputs: Record<string, string>
+    inputs: Record<string, HumanInputFieldValue>
     action: string
   }
 }

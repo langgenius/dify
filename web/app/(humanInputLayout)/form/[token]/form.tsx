@@ -4,6 +4,7 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
+import type { HumanInputResolvedValue } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -18,10 +19,9 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
-import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { getButtonStyle, initializeInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { isParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
@@ -30,7 +30,7 @@ export type FormData = {
   site: { site: SiteInfo }
   form_content: string
   inputs: FormInputItem[]
-  resolved_default_values: Record<string, string>
+  resolved_default_values: Record<string, HumanInputResolvedValue>
   user_actions: UserAction[]
   expiration_time: number
 }
@@ -41,7 +41,7 @@ const FormContent = () => {
   const { token } = useParams<{ token: string }>()
   useDocumentTitle('')
 
-  const [inputs, setInputs] = useState<Record<string, string>>({})
+  const [inputs, setInputs] = useState<Record<string, HumanInputFieldValue>>({})
   const [success, setSuccess] = useState(false)
 
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
@@ -67,24 +67,12 @@ const FormContent = () => {
   useEffect(() => {
     if (!formData?.inputs)
       return
-    const initialInputs: Record<string, string> = {}
-    formData.inputs.forEach((item) => {
-      if (isParagraphFormInput(item)) {
-        initialInputs[item.output_variable_name] = item.default.type === 'variable'
-          ? formData.resolved_default_values[item.output_variable_name] || ''
-          : item.default.value
-        return
-      }
-
-      initialInputs[item.output_variable_name] = ''
-    })
-    setInputs(initialInputs)
+    setInputs(initializeInputs(formData.inputs, formData.resolved_default_values))
   }, [formData?.inputs, formData?.resolved_default_values])
 
-  // use immer
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
     const newInputs = produce(inputs, (draft) => {
-      draft[name] = typeof value === 'string' ? value : ''
+      draft[name] = value
     })
     setInputs(newInputs)
   }
