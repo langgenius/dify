@@ -18,13 +18,27 @@ describe('useWorkflowFinished', () => {
     expect(state.resultText).toBe('hello')
   })
 
-  it('does not activate the result tab for multi-key outputs', () => {
+  it('joins multi-key text outputs with blank lines and activates the result tab', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowFinished(), {
       initialStoreState: { workflowRunningData: baseRunningData() },
     })
 
     result.current.handleWorkflowFinished({
       data: { status: 'succeeded', outputs: { a: 'hello', b: 'world' } },
+    } as WorkflowFinishedResponse)
+
+    const state = store.getState().workflowRunningData!
+    expect(state.resultTabActive).toBe(true)
+    expect(state.resultText).toBe('hello\n\nworld')
+  })
+
+  it('keeps non-text multi-key outputs in detail view', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowFinished(), {
+      initialStoreState: { workflowRunningData: baseRunningData() },
+    })
+
+    result.current.handleWorkflowFinished({
+      data: { status: 'succeeded', outputs: { a: { foo: 'bar' }, b: 1 } },
     } as WorkflowFinishedResponse)
 
     expect(store.getState().workflowRunningData!.resultTabActive).toBeFalsy()

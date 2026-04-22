@@ -340,6 +340,7 @@
   "error.startNodeRequired": "Пожалуйста, сначала добавьте начальный узел перед {{operation}}",
   "errorMsg.authRequired": "Требуется авторизация",
   "errorMsg.configureModel": "Настройте модель",
+  "errorMsg.duplicateOutputVariable": "Повторяющаяся переменная узла вывода \"{{variable}}\". Имена переменных узла вывода должны быть уникальными.",
   "errorMsg.fieldRequired": "{{field}} обязательно для заполнения",
   "errorMsg.fields.code": "Код",
   "errorMsg.fields.model": "Модель",

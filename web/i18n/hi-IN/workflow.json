@@ -340,6 +340,7 @@
   "error.startNodeRequired": "कृपया {{operation}} से पहले एक प्रारंभ नोड जोड़ें",
   "errorMsg.authRequired": "प्राधिकरण आवश्यक है",
   "errorMsg.configureModel": "एक मॉडल कॉन्फ़िगर करें",
+  "errorMsg.duplicateOutputVariable": "आउटपुट नोड वेरिएबल \"{{variable}}\" डुप्लिकेट है। आउटपुट नोड वेरिएबल के नाम यूनिक होने चाहिए।",
   "errorMsg.fieldRequired": "{{field}} आवश्यक है",
   "errorMsg.fields.code": "कोड",
   "errorMsg.fields.model": "मॉडल",

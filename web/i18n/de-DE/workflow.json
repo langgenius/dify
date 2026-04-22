@@ -340,6 +340,7 @@
   "error.startNodeRequired": "Bitte füge zuerst einen Startknoten hinzu, bevor du {{operation}}.",
   "errorMsg.authRequired": "Autorisierung ist erforderlich",
   "errorMsg.configureModel": "Modell konfigurieren",
+  "errorMsg.duplicateOutputVariable": "Doppelte Variable des Output-Knotens \"{{variable}}\". Variablennamen von Output-Knoten müssen eindeutig sein.",
   "errorMsg.fieldRequired": "{{field}} ist erforderlich",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Modell",

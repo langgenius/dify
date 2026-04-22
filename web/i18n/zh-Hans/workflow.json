@@ -340,6 +340,7 @@
   "error.startNodeRequired": "请先添加开始节点，然后再{{operation}}",
   "errorMsg.authRequired": "请先授权",
   "errorMsg.configureModel": "请配置模型",
+  "errorMsg.duplicateOutputVariable": "输出节点变量“{{variable}}”重复。输出节点变量名必须唯一。",
   "errorMsg.fieldRequired": "{{field}} 不能为空",
   "errorMsg.fields.code": "代码",
   "errorMsg.fields.model": "模型",

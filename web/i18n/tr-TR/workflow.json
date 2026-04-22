@@ -340,6 +340,7 @@
   "error.startNodeRequired": "Lütfen {{operation}} işleminden önce önce bir başlangıç düğümü ekleyin",
   "errorMsg.authRequired": "Yetkilendirme gereklidir",
   "errorMsg.configureModel": "Bir model yapılandırın",
+  "errorMsg.duplicateOutputVariable": "Yinelenen çıktı düğümü değişkeni \"{{variable}}\". Çıktı düğümü değişken adları benzersiz olmalıdır.",
   "errorMsg.fieldRequired": "{{field}} gereklidir",
   "errorMsg.fields.code": "Kod",
   "errorMsg.fields.model": "Model",

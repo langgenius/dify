@@ -11,7 +11,10 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<EndNodeType> = {
   metaData,
   defaultValue: {
-    outputs: [],
+    outputs: [{
+      variable: 'workflow_id',
+      value_selector: ['sys', 'workflow_id'],
+    }],
   },
   checkValid(payload: EndNodeType, t: any) {
     const outputs = payload.outputs || []
