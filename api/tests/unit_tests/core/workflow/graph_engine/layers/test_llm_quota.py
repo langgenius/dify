@@ -170,22 +170,42 @@ def test_quota_precheck_passes_without_abort() -> None:
 
 def test_precheck_requires_public_node_model_config() -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
     node = _build_node(node_type=BuiltinNodeTypes.LLM)
     node.node_data = SimpleNamespace()
+    node.graph_runtime_state = MagicMock()
+    node.graph_runtime_state.stop_event = stop_event
 
     with patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model", autospec=True) as mock_check:
         layer.on_node_run_start(node)
 
+    assert stop_event.is_set()
     mock_check.assert_not_called()
+    layer.command_channel.send_command.assert_called_once()
+    abort_command = layer.command_channel.send_command.call_args.args[0]
+    assert abort_command.command_type == CommandType.ABORT
+    assert abort_command.reason == "LLM quota check requires public node model identity before execution."
 
 
 def test_deduction_requires_public_event_model_identity() -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
     node = _build_node(node_type=BuiltinNodeTypes.LLM)
+    node.graph_runtime_state = MagicMock()
+    node.graph_runtime_state.stop_event = stop_event
     result_event = _build_succeeded_event()
     result_event.node_run_result.inputs = {"question": "hello"}
 
     with patch("core.app.workflow.layers.llm_quota.deduct_llm_quota_for_model", autospec=True) as mock_deduct:
         layer.on_node_run_end(node=node, error=None, result_event=result_event)
 
+    assert stop_event.is_set()
     mock_deduct.assert_not_called()
+    layer.command_channel.send_command.assert_called_once()
+    abort_command = layer.command_channel.send_command.call_args.args[0]
+    assert abort_command.command_type == CommandType.ABORT
+    assert abort_command.reason == "LLM quota deduction requires model identity in the node result event."

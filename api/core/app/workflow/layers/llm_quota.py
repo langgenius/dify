@@ -6,7 +6,9 @@ This layer centralizes model-quota handling outside node implementations.
 Graphon LLM-backed nodes expose provider/model identity through public node
 configuration and, after execution, through ``node_run_result.inputs``. Resolve
 quota billing from that public identity instead of depending on
-``ModelInstance`` reconstruction inside the workflow layer.
+``ModelInstance`` reconstruction inside the workflow layer. Missing identity on
+quota-tracked nodes is treated as a workflow bug and aborts execution so quota
+handling is never silently skipped.
 """
 
 import logging
@@ -64,6 +66,10 @@ class LLMQuotaLayer(GraphEngineLayer):
 
         model_identity = self._extract_model_identity_from_node(node)
         if model_identity is None:
+            self._abort_for_missing_model_identity(
+                node=node,
+                reason="LLM quota check requires public node model identity before execution.",
+            )
             return
 
         provider, model_name = model_identity
@@ -87,6 +93,10 @@ class LLMQuotaLayer(GraphEngineLayer):
 
         model_identity = self._extract_model_identity_from_result_event(result_event)
         if model_identity is None:
+            self._abort_for_missing_model_identity(
+                node=node,
+                reason="LLM quota deduction requires model identity in the node result event.",
+            )
             return
 
         provider, model_name = model_identity
@@ -110,6 +120,11 @@ class LLMQuotaLayer(GraphEngineLayer):
         stop_event = getattr(node.graph_runtime_state, "stop_event", None)
         if stop_event is not None:
             stop_event.set()
+
+    def _abort_for_missing_model_identity(self, *, node: Node, reason: str) -> None:
+        self._set_stop_event(node)
+        self._send_abort_command(reason=reason)
+        logger.error("LLM quota handling aborted, node_id=%s, reason=%s", node.id, reason)
 
     def _send_abort_command(self, *, reason: str) -> None:
         if not self.command_channel or self._abort_sent:
