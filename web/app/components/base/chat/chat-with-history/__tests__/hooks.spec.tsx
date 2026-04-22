@@ -1076,6 +1076,10 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(answerNode?.workflow_run_id).toBe('wf-run-1')
     })
 
     it('should set workflow_run_id for normal messages with submitted human_input', async () => {
@@ -1114,6 +1118,9 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
     })
 
     it('should return empty appPrevChatTree when there is no currentConversationId', async () => {
@@ -1835,6 +1842,15 @@ describe('useChatWithHistory', () => {
       expect(messageWithFiles?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files).toHaveLength(1)
+
+      const normalAnswerNode = messageWithFiles?.children?.[0]
+      const pausedAnswerNode = result!.current.appPrevChatTree.find(item => item.id === 'question-msg-paused-branch')?.children?.[0]
+
+      expect(normalAnswerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(normalAnswerNode?.humanInputFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(pausedAnswerNode?.humanInputFilledFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.workflow_run_id).toBe('wf-run-branch')
     })
   })
 

@@ -36,21 +36,22 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    if (item.status === 'paused') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && !content.submitted) {
-          humanInputFormDataList.push(content.form_definition)
-          workflowRunId = content.workflow_run_id
-        }
-      })
-    }
-    else if (item.status === 'normal') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && content.submitted) {
-          humanInputFilledFormDataList.push(content.form_submission_data)
-        }
-      })
-    }
+    item.extra_contents?.forEach((content: ExtraContent) => {
+      if (content.type !== 'human_input')
+        return
+
+      if (!content.submitted) {
+        if (!('form_definition' in content) || !content.form_definition)
+          return
+        humanInputFormDataList.push(content.form_definition)
+        workflowRunId = content.workflow_run_id || workflowRunId
+        return
+      }
+
+      if (!('form_submission_data' in content) || !content.form_submission_data)
+        return
+      humanInputFilledFormDataList.push(content.form_submission_data)
+    })
     newChatList.push({
       id: item.id,
       content: item.answer,
