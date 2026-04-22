@@ -1,3 +1,4 @@
+import hmac
 import json
 from typing import cast
 
@@ -55,7 +56,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
     # Check for admin API key authentication first
     if dify_config.ADMIN_API_KEY_ENABLE and auth_token:
         admin_api_key = dify_config.ADMIN_API_KEY
-        if admin_api_key and admin_api_key == auth_token:
+        if admin_api_key and hmac.compare_digest(admin_api_key, auth_token):
             workspace_id = request.headers.get("X-WORKSPACE-ID")
             if workspace_id:
                 tenant_account_join = db.session.execute(
