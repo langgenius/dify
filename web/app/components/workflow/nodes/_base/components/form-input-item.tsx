@@ -197,21 +197,24 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleValueChange = (newValue: FormInputValue) => {
+    const nextType = varInput?.type ?? getVarKindType(formState) ?? VarKindType.constant
     onChange({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(formState),
+        type: nextType,
         value: isNumber ? Number.parseFloat(String(newValue ?? '')) : newValue,
       },
     })
   }
 
   const handleAppOrModelSelect = (newValue: Record<string, unknown>) => {
+    const nextType = varInput?.type ?? getVarKindType(formState) ?? VarKindType.constant
     onChange({
       ...value,
       [variable]: {
         ...varInput,
+        type: nextType,
         value: newValue,
       },
     })

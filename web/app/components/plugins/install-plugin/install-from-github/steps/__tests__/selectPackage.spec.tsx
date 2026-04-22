@@ -147,10 +147,10 @@ describe('SelectPackage', () => {
     return render(<SelectPackage {...(props as Parameters<typeof SelectPackage>[0])} />)
   }
 
-  const getSection = (label: string) => {
+  const getSection = (label: string): HTMLElement => {
     const labelElement = screen.getByText(label)
     const section = labelElement.closest('label')?.nextElementSibling
-    if (!section)
+    if (!(section instanceof HTMLElement))
       throw new Error(`Missing section for ${label}`)
     return section
   }

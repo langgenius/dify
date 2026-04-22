@@ -28,7 +28,7 @@ const {
   mockHandleResponseBodyChange: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockCopy: vi.fn(),
-  mockIsPrivateOrLocalAddress: vi.fn(() => false),
+  mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
 }))
 
 vi.mock('@langgenius/dify-ui/select', async () => {
@@ -156,7 +156,7 @@ vi.mock('../utils/render-output-vars', () => ({
 }))
 
 vi.mock('@/utils/urlValidation', () => ({
-  isPrivateOrLocalAddress: (...args: unknown[]) => mockIsPrivateOrLocalAddress(...args),
+  isPrivateOrLocalAddress: (url: string) => mockIsPrivateOrLocalAddress(url),
 }))
 
 const mockConfigState = {

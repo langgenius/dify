@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -81,7 +82,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ onChange, placeholder }: { onChange: (value: string) => void, placeholder?: unknown }) => (
+  default: ({ onChange, placeholder }: { onChange: (value: string) => void, placeholder?: ReactNode }) => (
     <div>
       <div data-testid="code-editor-placeholder">{placeholder}</div>
       <button data-testid="code-editor" onClick={() => onChange('{"foo":"bar"}')}>
