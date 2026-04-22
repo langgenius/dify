@@ -118,8 +118,8 @@ const MembersPage = () => {
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
             <div className="grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="w-[104px] shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="w-[96px] shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="w-[120px] shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-[215px] shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-[480px]">
             {
@@ -136,8 +136,10 @@ const MembersPage = () => {
                       <div className="system-xs-regular text-text-tertiary">{account.email}</div>
                     </div>
                   </div>
-                  <div className="flex w-[104px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
-                  <div className="flex w-[96px] shrink-0 items-center">
+                  <div className="flex w-[120px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">
+                    {formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}
+                  </div>
+                  <div className="flex w-[215px] shrink-0 items-center">
                     {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
                     )}
