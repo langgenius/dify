@@ -1,4 +1,5 @@
 import type { HumanInputNodeType } from '../types'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
@@ -94,8 +95,8 @@ const useSingleRunFormParams = ({
   }, [fetchURL])
 
   const handleSubmitHumanInputForm = useCallback(async (formData: {
-    inputs: Record<string, string> | undefined
-    form_inputs: Record<string, string> | undefined
+    inputs: Record<string, HumanInputFieldValue> | undefined
+    form_inputs: Record<string, HumanInputFieldValue> | undefined
     action: string
   }) => {
     await submitHumanInputNodeStepRunForm(fetchURL, {

@@ -1,9 +1,10 @@
 import type { HumanInputNodeType } from '../../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -114,6 +115,16 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     mockSubmitHumanInputNodeStepRunForm.mockResolvedValue({})
   })
 
+  const uploadedFile: FileEntity = {
+    id: 'file-1',
+    name: 'decision.pdf',
+    size: 128,
+    type: 'application/pdf',
+    progress: 100,
+    transferMethod: TransferMethod.local_file,
+    supportFileType: 'document',
+  }
+
   it('should build a single before-run form, filter output vars, and expose dependent vars', () => {
     const { result } = renderHook(() => useSingleRunFormParams({
       id: 'node-1',
@@ -174,7 +185,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm({
-        inputs: { answer: 'approved' },
+        inputs: { answer: 'approved', attachment: [uploadedFile] },
         form_inputs: { ignored: 'value' },
         action: 'approve',
       })
@@ -184,7 +195,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       '/apps/app-1/workflows/draft/human-input/nodes/node-1/form',
       {
         inputs: { topic: 'AI' },
-        form_inputs: { answer: 'approved' },
+        form_inputs: { answer: 'approved', attachment: [uploadedFile] },
         action: 'approve',
       },
     )
