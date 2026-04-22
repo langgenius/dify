@@ -103,11 +103,11 @@ export const NodeTargetHandle = memo(({
               asChild
               placement="left"
               triggerClassName={open => `
-                hidden absolute left-0 top-0 pointer-events-none
+                absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
-                group-hover:flex!
-                ${data.selected && 'flex!'}
-                ${open && 'flex!'}
+                group-hover:opacity-100 group-hover:pointer-events-auto
+                ${data.selected && 'opacity-100 pointer-events-auto'}
+                ${open && 'opacity-100 pointer-events-auto'}
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -170,7 +170,9 @@ export const NodeSourceHandle = memo(({
     }
 
     if (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) {
-      setOpen(true)
+      const timer = window.setTimeout(() => {
+        setOpen(true)
+      }, 0)
       if (setShouldAutoOpenStartNodeSelector)
         setShouldAutoOpenStartNodeSelector(false)
       else
@@ -180,6 +182,10 @@ export const NodeSourceHandle = memo(({
         setHasSelectedStartNode(false)
       else
         workflowStoreApi?.setState?.({ hasSelectedStartNode: false })
+
+      return () => {
+        window.clearTimeout(timer)
+      }
     }
   }, [shouldAutoOpenStartNodeSelector, data.type, isChatMode, setShouldAutoOpenStartNodeSelector, setHasSelectedStartNode, workflowStoreApi])
 
@@ -221,11 +227,11 @@ export const NodeSourceHandle = memo(({
             onSelect={handleSelect}
             asChild
             triggerClassName={open => `
-              hidden absolute top-0 left-0 pointer-events-none
+              absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
-              group-hover:flex!
-              ${data.selected && 'flex!'}
-              ${open && 'flex!'}
+              group-hover:opacity-100 group-hover:pointer-events-auto
+              ${data.selected && 'opacity-100 pointer-events-auto'}
+              ${open && 'opacity-100 pointer-events-auto'}
             `}
             availableBlocksTypes={availableNextBlocks}
           />
