@@ -1,10 +1,10 @@
 import logging
 
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, field_validator
 
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.credential_permission import CredentialType as CredPermType
 from models.enums import PermissionEnum
@@ -94,9 +94,7 @@ class CredentialVisibilityApi(Resource):
         visibility = getattr(credential, "visibility", PermissionEnum.ALL_TEAM)
         partial_members: list[str] = []
         if visibility == PermissionEnum.PARTIAL_TEAM:
-            partial_members = list(
-                CredentialPermissionService.get_partial_member_list(credential_id, credential_type)
-            )
+            partial_members = list(CredentialPermissionService.get_partial_member_list(credential_id, credential_type))
 
         return jsonable_encoder(
             {

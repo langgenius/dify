@@ -3312,14 +3312,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-auth/authorize/api-key-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorize/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3334,14 +3326,6 @@
     }
   },
   "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-auth/authorized/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3370,9 +3354,6 @@
     },
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/utils.ts": {
@@ -6207,7 +6188,7 @@
   },
   "web/models/datasets.ts": {
     "erasable-syntax-only/enums": {
-      "count": 8
+      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 5

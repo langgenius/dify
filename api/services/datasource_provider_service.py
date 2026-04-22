@@ -764,9 +764,7 @@ class DatasourceProviderService:
                 user_id=user_id,
                 is_admin=is_admin,
             )
-        datasource_providers: list[DatasourceProvider] = list(
-            db.session.scalars(query).all()
-        )
+        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(query).all())
         if not datasource_providers:
             return []
         copy_credentials_list = []

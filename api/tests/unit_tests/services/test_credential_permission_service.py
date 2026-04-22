@@ -86,9 +86,7 @@ class TestUpdatePartialMemberList:
 class TestClearPartialMemberList:
     def test_clears_and_commits(self, credential_id):
         with patch("services.credential_permission_service.db") as mock_db:
-            CredentialPermissionService.clear_partial_member_list(
-                credential_id, CredentialType.BUILTIN_TOOL_PROVIDER
-            )
+            CredentialPermissionService.clear_partial_member_list(credential_id, CredentialType.BUILTIN_TOOL_PROVIDER)
             mock_db.session.execute.assert_called_once()
             mock_db.session.commit.assert_called_once()
 
