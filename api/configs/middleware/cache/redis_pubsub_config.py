@@ -160,10 +160,7 @@ class RedisPubSubConfig(BaseSettings):
                 # misused REDIS_CLUSTERS by pasting a full DSN like
                 # "pw@host" would leak the password into startup logs. The
                 # 1-based position is enough to locate the offending entry.
-                raise ValueError(
-                    f"REDIS_CLUSTERS entry at position {index} is malformed; "
-                    "expected 'host:port' format"
-                )
+                raise ValueError(f"REDIS_CLUSTERS entry at position {index} is malformed; expected 'host:port' format")
             return host, int(port_str)
         # REDIS_CLUSTERS was set but contained only whitespace / empty segments
         # (e.g. "   ,   "). Distinct from the unset case so operators can tell

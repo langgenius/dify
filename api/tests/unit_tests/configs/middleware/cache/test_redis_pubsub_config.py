@@ -5,7 +5,6 @@ duck-typed stand-in for the full pydantic-settings config so each branch
 (standalone, cluster, error cases) can be exercised in isolation.
 """
 
-from types import SimpleNamespace
 from typing import cast
 
 import pytest
