@@ -10,14 +10,13 @@ Refactor workflow quota handling so `LLMQuotaLayer` no longer depends on
 The new design narrows quota APIs around the actual billing identity:
 
 - `tenant_id`
-- `user_id`
 - `provider`
 - `model`
 - `usage` for post-run deduction
 
-`LLMQuotaLayer` will be initialized with graph-scoped `tenant_id` and `user_id`
-when the engine is built. It will read `provider` and `model` from public node
-data before execution and from Graphon result events after execution.
+`LLMQuotaLayer` will be initialized with graph-scoped `tenant_id` when the
+engine is built. It will read `provider` and `model` from public node data
+before execution and from Graphon result events after execution.
 
 Existing `ModelInstance`-based quota helpers will remain temporarily as thin
 deprecated wrappers so non-workflow callers do not need to move in the same
@@ -27,10 +26,10 @@ change.
 
 The current workflow quota path has the wrong dependency shape.
 
-`LLMQuotaLayer` naturally has model identity plus graph-scoped run context, but
-the quota helpers currently require a full `ModelInstance`. That forces the
-layer to depend on runtime assembly details or reconstruct a rich object only to
-answer a billing question.
+`LLMQuotaLayer` naturally has model identity plus graph-scoped tenant context,
+but the quota helpers currently require a full `ModelInstance`. That forces the
+layer to depend on runtime assembly details or reconstruct a rich object only
+to answer a billing question.
 
 This is unfriendly Python for two reasons:
 
@@ -44,8 +43,7 @@ This is unfriendly Python for two reasons:
 - Remove `ModelInstance` from `LLMQuotaLayer` entirely.
 - Keep pre-run quota checks and post-run quota deduction behavior unchanged.
 - Make the post-run billing API explicit and identity-based.
-- Pass graph-scoped `tenant_id` and `user_id` into the quota layer at
-  construction time.
+- Pass graph-scoped `tenant_id` into the quota layer at construction time.
 - Mark `ModelInstance`-based quota helpers as deprecated.
 
 ## Non-Goals
@@ -61,7 +59,7 @@ The workflow quota layer should not depend on `ModelInstance` at all.
 
 For this workflow path:
 
-- graph-scoped `tenant_id` and `user_id` are stable for the whole graph run
+- graph-scoped `tenant_id` is stable for the whole graph run
 - Graphon success events provide `model_provider` and `model_name`
 - pre-run checks must still happen in `on_node_run_start`, before any event is
   emitted
@@ -75,19 +73,16 @@ event inputs for post-run model identity.
 ```python
 layer = LLMQuotaLayer(
     tenant_id=run_context.tenant_id,
-    user_id=run_context.user_id,
 )
 
 ensure_llm_quota_available_for_model(
     tenant_id=self.tenant_id,
-    user_id=self.user_id,
     provider=provider,
     model=model,
 )
 
 deduct_llm_quota_for_model(
     tenant_id=self.tenant_id,
-    user_id=self.user_id,
     provider=result_event.node_run_result.inputs["model_provider"],
     model=result_event.node_run_result.inputs["model_name"],
     usage=result_event.node_run_result.llm_usage,
@@ -105,7 +100,6 @@ In `api/core/app/llm/quota.py`, add two narrow helpers:
 def ensure_llm_quota_available_for_model(
     *,
     tenant_id: str,
-    user_id: str | None,
     provider: str,
     model: str,
 ) -> None:
@@ -115,7 +109,6 @@ def ensure_llm_quota_available_for_model(
 def deduct_llm_quota_for_model(
     *,
     tenant_id: str,
-    user_id: str | None,
     provider: str,
     model: str,
     usage: LLMUsage,
@@ -149,7 +142,6 @@ Their behavior:
 - emit `DeprecationWarning`
 - delegate immediately to the new identity-based helpers
 - contain no quota logic of their own
-- pass `user_id=None` because `ModelInstance` does not carry caller scope today
 
 Recommended warning shape:
 
@@ -177,10 +169,10 @@ LLMQuotaLayer()
 to:
 
 ```python
-LLMQuotaLayer(tenant_id: str, user_id: str | None)
+LLMQuotaLayer(tenant_id: str)
 ```
 
-The layer stores graph-scoped run context directly and no longer fetches it
+The layer stores graph-scoped tenant context directly and no longer fetches it
 during execution.
 
 ### Pre-Run Check
@@ -226,7 +218,7 @@ def _extract_model_identity_from_result_event(
     ...
 ```
 
-This path depends only on public event payloads and graph-scoped run context.
+This path depends only on public event payloads and graph-scoped tenant context.
 
 ## Quota Resolution Logic
 
@@ -246,24 +238,21 @@ For deduction:
 - compute used quota exactly as the current implementation does
 - apply the same trial, paid, and free quota branches
 
-The `user_id` parameter is included because it belongs to graph-scoped identity
-and keeps the new API stable if provider resolution needs caller scope for
-plugin-backed lookups. If the current implementation does not need `user_id`,
-the helper should still accept it and ignore it for now rather than forcing
-another signature change later.
+The narrow quota API intentionally excludes `user_id`.
 
-When the deprecated `ModelInstance` wrappers delegate, they will pass
-`user_id=None`. That preserves current behavior for existing callers while
-keeping the narrow API stable for the workflow path, which does have a
-graph-scoped `user_id`.
+Model and credential resolution for quota is tenant-scoped in the current code:
+provider configurations are cached and resolved by `tenant_id`, and current
+credentials are selected from tenant-bound provider configuration. Request
+`user_id` still matters in other request-scoped model runtime flows, but it is
+not needed for quota lookup or billing.
 
 ## Engine Assembly Changes
 
 Every workflow engine builder that constructs `LLMQuotaLayer` must pass
-`tenant_id` and `user_id` explicitly.
+`tenant_id` explicitly.
 
 This includes normal workflow entry and child engine creation paths that inherit
-the same run context.
+the same graph-scoped tenant context.
 
 The layer should begin execution fully initialized:
 
@@ -319,7 +308,7 @@ Add unit tests for:
 
 Update layer tests to assert:
 
-- the layer is initialized with `tenant_id` and `user_id`
+- the layer is initialized with `tenant_id`
 - pre-run checks use public node model identity
 - post-run deduction uses event input model identity
 - no `ModelInstance` reconstruction is involved
@@ -329,8 +318,8 @@ Update layer tests to assert:
 
 Update workflow entry tests to assert:
 
-- `LLMQuotaLayer(tenant_id=..., user_id=...)` is constructed explicitly
-- child engine paths pass the same graph-scoped run context into the layer
+- `LLMQuotaLayer(tenant_id=...)` is constructed explicitly
+- child engine paths pass the same graph-scoped tenant context into the layer
 
 ## Migration Plan
 
