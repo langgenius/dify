@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-import logging
+
 from flask import Flask
 from flask_restx.swagger import Swagger
 
@@ -52,7 +53,7 @@ def _apply_runtime_defaults() -> None:
     from configs import dify_config
 
     dify_config.SECRET_KEY = os.environ["SECRET_KEY"]
-    dify_config.STORAGE_TYPE = 'local'
+    dify_config.STORAGE_TYPE = "local"
     dify_config.STORAGE_LOCAL_PATH = os.environ["STORAGE_LOCAL_PATH"]
     dify_config.SWAGGER_UI_ENABLED = os.environ["SWAGGER_UI_ENABLED"].lower() == "true"
 
@@ -73,7 +74,7 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
         anonymous_models = getattr(self, "_anonymous_inline_models", None)
         if anonymous_models is None:
             anonymous_models = {}
-            setattr(self, "_anonymous_inline_models", anonymous_models)
+            self._anonymous_inline_models = anonymous_models
 
         anonymous_name = anonymous_models.get(id(nested_fields))
         if anonymous_name is None:
