@@ -7,7 +7,10 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
 import {
+  isFileFormInput,
+  isFileListFormInput,
   isParagraphFormInput,
+  isSelectFormInput,
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import 'dayjs/locale/en'
@@ -47,7 +50,19 @@ export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Rec
       return
     }
 
-    initialInputs[item.output_variable_name] = ''
+    if (isSelectFormInput(item)) {
+      initialInputs[item.output_variable_name] = ''
+      return
+    }
+
+    if (isFileFormInput(item)) {
+      initialInputs[item.output_variable_name] = null
+      return
+    }
+
+    if (isFileListFormInput(item)) {
+      initialInputs[item.output_variable_name] = []
+    }
   })
   return initialInputs
 }
