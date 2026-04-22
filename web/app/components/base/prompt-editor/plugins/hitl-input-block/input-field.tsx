@@ -1,6 +1,6 @@
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { UploadFileSetting, ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
@@ -151,36 +151,27 @@ const InputField: React.FC<InputFieldProps> = ({
       }
     })
   }, [])
-  const handleFilePayloadChange = useCallback((payload: {
-    allowed_file_extensions: string[]
-    allowed_file_types: string[]
-    allowed_file_upload_methods: string[]
-  }) => {
+  const handleFilePayloadChange = useCallback((payload: UploadFileSetting) => {
     setTempPayload((prev) => {
       if (!isFileFormInput(prev))
         return prev
 
       return {
         ...prev,
-        allowed_file_extensions: payload.allowed_file_extensions,
+        allowed_file_extensions: payload.allowed_file_extensions || [],
         allowed_file_types: payload.allowed_file_types,
         allowed_file_upload_methods: payload.allowed_file_upload_methods,
       }
     })
   }, [])
-  const handleFileListPayloadChange = useCallback((payload: {
-    allowed_file_extensions: string[]
-    allowed_file_types: string[]
-    allowed_file_upload_methods: string[]
-    max_length?: number
-  }) => {
+  const handleFileListPayloadChange = useCallback((payload: UploadFileSetting) => {
     setTempPayload((prev) => {
       if (!isFileListFormInput(prev))
         return prev
 
       return {
         ...prev,
-        allowed_file_extensions: payload.allowed_file_extensions,
+        allowed_file_extensions: payload.allowed_file_extensions || [],
         allowed_file_types: payload.allowed_file_types,
         allowed_file_upload_methods: payload.allowed_file_upload_methods,
         max_upload_count: payload.max_length,
@@ -296,7 +287,10 @@ const InputField: React.FC<InputFieldProps> = ({
       {isFileFormInput(tempPayload) && (
         <div className="mt-4">
           <FileUploadSetting
-            payload={tempPayload}
+            payload={{
+              ...tempPayload,
+              max_length: 1,
+            }}
             isMultiple={false}
             onChange={handleFilePayloadChange}
           />
@@ -307,7 +301,7 @@ const InputField: React.FC<InputFieldProps> = ({
           <FileUploadSetting
             payload={{
               ...tempPayload,
-              max_length: tempPayload.max_upload_count,
+              max_length: tempPayload.max_upload_count || 5,
             }}
             isMultiple
             onChange={handleFileListPayloadChange}

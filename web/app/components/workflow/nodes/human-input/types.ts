@@ -3,7 +3,11 @@ import type {
   UploadFileSetting,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import {
+  InputVarType,
+  SupportUploadFileTypes,
+} from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
@@ -175,8 +179,8 @@ export const createDefaultFileFormInput = (
   type: InputVarType.singleFile,
   output_variable_name,
   allowed_file_extensions: [],
-  allowed_file_types: ['image'],
-  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  allowed_file_types: [SupportUploadFileTypes.image],
+  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
 })
 
 export const createDefaultFileListFormInput = (
@@ -185,8 +189,8 @@ export const createDefaultFileListFormInput = (
   type: InputVarType.multiFiles,
   output_variable_name,
   allowed_file_extensions: [],
-  allowed_file_types: ['image'],
-  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  allowed_file_types: [SupportUploadFileTypes.image],
+  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
   max_upload_count: 5,
 })
 

@@ -91,12 +91,12 @@ describe('ContentItem', () => {
         content="{{#$output.user_bio#}}"
         formInputFields={[
           {
-            type: 'text-input',
+            type: 'select',
             output_variable_name: 'user_bio',
-            default: {
+            option_source: {
               type: 'constant',
-              value: '',
               selector: [],
+              value: [],
             },
           } as FormInputItem,
         ]}

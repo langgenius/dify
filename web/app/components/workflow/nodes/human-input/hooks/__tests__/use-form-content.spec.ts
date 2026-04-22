@@ -1,4 +1,4 @@
-import type { FormInputItem, HumanInputNodeType } from '../../types'
+import type { HumanInputNodeType, ParagraphFormInput } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import useFormContent from '../use-form-content'
@@ -15,7 +15,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-const createFormInput = (overrides: Partial<FormInputItem> = {}): FormInputItem => ({
+const createFormInput = (overrides: Partial<ParagraphFormInput> = {}): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name: 'old_name',
   default: {

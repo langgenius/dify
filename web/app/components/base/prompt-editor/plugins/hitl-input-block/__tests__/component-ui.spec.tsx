@@ -1,15 +1,16 @@
 import type { ComponentProps } from 'react'
 import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import HITLInputComponentUI from '../component-ui'
 import { HITLInputNode } from '../node'
 
-const createFormInput = (overrides?: Partial<FormInputItem>): FormInputItem => ({
+const createParagraphFormInput = (overrides?: Partial<ParagraphFormInput>): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name: 'customer_name',
   default: {
@@ -93,7 +94,7 @@ describe('HITLInputComponentUI', () => {
       const selector = ['node-2', 'answer'] as ValueSelector
 
       const { getByText } = renderComponent({
-        formInput: createFormInput({
+        formInput: createParagraphFormInput({
           default: {
             type: 'variable',
             selector,
@@ -114,14 +115,15 @@ describe('HITLInputComponentUI', () => {
 
     it('should render select option summary for constant options', () => {
       const { getByText } = renderComponent({
-        formInput: createFormInput({
+        formInput: {
           type: InputVarType.select,
+          output_variable_name: 'customer_name',
           option_source: {
             type: 'constant',
             selector: [],
             value: ['alpha', 'beta'],
           },
-        }),
+        } satisfies FormInputItem,
       })
 
       expect(getByText('alpha, beta')).toBeInTheDocument()
@@ -129,13 +131,14 @@ describe('HITLInputComponentUI', () => {
 
     it('should render file-list summary with max uploads', () => {
       const { getByText } = renderComponent({
-        formInput: createFormInput({
+        formInput: {
           type: InputVarType.multiFiles,
+          output_variable_name: 'customer_name',
           allowed_file_extensions: ['.pdf'],
-          allowed_file_types: ['document'],
-          allowed_file_upload_methods: ['local_file'],
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_upload_methods: [TransferMethod.local_file],
           max_upload_count: 4,
-        }),
+        } satisfies FormInputItem,
       })
 
       expect(getByText(/document/)).toBeInTheDocument()
@@ -240,7 +243,7 @@ describe('HITLInputComponentUI', () => {
     it('should render variable selector when workflowNodesMap fallback is used', () => {
       const { getByText } = renderComponent({
         workflowNodesMap: undefined as unknown as WorkflowNodesMap,
-        formInput: createFormInput({
+        formInput: createParagraphFormInput({
           default: {
             type: 'variable',
             selector: ['node-2', 'answer'] as ValueSelector,

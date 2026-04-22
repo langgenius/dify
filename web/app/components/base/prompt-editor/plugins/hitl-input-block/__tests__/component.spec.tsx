@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -15,15 +15,17 @@ vi.mock('../../../hooks', () => ({
 
 vi.mock('../component-ui', () => ({
   default: ({ formInput, onChange }: { formInput?: FormInputItem, onChange: (payload: FormInputItem) => void }) => {
-    const basePayload: FormInputItem = formInput ?? {
-      type: InputVarType.paragraph,
-      output_variable_name: 'user_name',
-      default: {
-        type: 'constant',
-        selector: [],
-        value: 'hello',
-      },
-    }
+    const basePayload: ParagraphFormInput = (formInput && formInput.type === InputVarType.paragraph
+      ? formInput
+      : {
+          type: InputVarType.paragraph,
+          output_variable_name: 'user_name',
+          default: {
+            type: 'constant',
+            selector: [],
+            value: 'hello',
+          },
+        }) satisfies ParagraphFormInput
     return (
       <div>
         <button
@@ -63,7 +65,7 @@ const createHookReturn = (): [RefObject<HTMLDivElement | null>, boolean] => {
   return [{ current: null }, false]
 }
 
-const createInput = (overrides?: Partial<FormInputItem>): FormInputItem => ({
+const createInput = (overrides?: Partial<ParagraphFormInput>): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name: 'user_name',
   default: {

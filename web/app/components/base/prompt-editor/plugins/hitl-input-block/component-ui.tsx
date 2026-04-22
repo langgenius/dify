@@ -21,6 +21,8 @@ import Modal from '../../../modal'
 import InputField from './input-field'
 import VariableBlock from './variable-block'
 
+const i18nPrefix = 'nodes.humanInput.insertInputField'
+
 type HITLInputComponentUIProps = {
   nodeId: string
   varName: string

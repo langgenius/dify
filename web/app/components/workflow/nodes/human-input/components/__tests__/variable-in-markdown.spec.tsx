@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { InputVarType } from '@/app/components/workflow/types'
 import { Note, rehypeNotes, rehypeVariable, Variable } from '../variable-in-markdown'
 
 describe('variable-in-markdown', () => {
@@ -87,7 +88,7 @@ describe('variable-in-markdown', () => {
       const { rerender } = render(
         <Note
           input={{
-            type: 'paragraph',
+            type: InputVarType.paragraph,
             output_variable_name: 'approval',
             default: {
               type: 'variable',
@@ -104,7 +105,7 @@ describe('variable-in-markdown', () => {
       rerender(
         <Note
           input={{
-            type: 'paragraph',
+            type: InputVarType.paragraph,
             output_variable_name: 'approval',
             default: {
               type: 'constant',

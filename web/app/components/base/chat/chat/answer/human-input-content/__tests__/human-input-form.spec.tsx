@@ -114,14 +114,16 @@ describe('HumanInputForm', () => {
       ...mockFormData,
       inputs: [
         {
-          type: 'text-input',
+          type: 'select',
           output_variable_name: 'field2',
-          default: { type: 'variable', value: '', selector: [] },
+          option_source: { type: 'variable', value: [], selector: [] },
         } as FormInputItem,
         {
-          type: 'number',
+          type: 'file',
           output_variable_name: 'field3',
-          default: { type: 'constant', value: '0', selector: [] },
+          allowed_file_extensions: [],
+          allowed_file_types: [],
+          allowed_file_upload_methods: [],
         } as FormInputItem,
       ],
       resolved_default_values: { field2: 'default value' },

@@ -1,5 +1,6 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n-config'
+import type { HumanInputResolvedValue } from '@/types/workflow'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -34,13 +35,18 @@ export const splitByOutputVar = (content: string): string[] => {
   return parts.filter(part => part.length > 0)
 }
 
-export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, string> = {}) => {
-  const initialInputs: Record<string, string | undefined> = {}
+export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, HumanInputResolvedValue> = {}) => {
+  const initialInputs: Record<string, string> = {}
   formInputs.forEach((item) => {
-    if (isParagraphFormInput(item))
-      initialInputs[item.output_variable_name] = item.default.type === 'variable' ? defaultValues[item.output_variable_name] || '' : item.default.value
-    else
-      initialInputs[item.output_variable_name] = undefined
+    if (isParagraphFormInput(item)) {
+      const resolvedValue = defaultValues[item.output_variable_name]
+      initialInputs[item.output_variable_name] = item.default.type === 'variable' && typeof resolvedValue === 'string'
+        ? resolvedValue
+        : item.default.value
+      return
+    }
+
+    initialInputs[item.output_variable_name] = ''
   })
   return initialInputs
 }

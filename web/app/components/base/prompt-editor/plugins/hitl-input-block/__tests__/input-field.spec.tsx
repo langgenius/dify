@@ -1,7 +1,8 @@
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import InputField from '../input-field'
 
 type VarReferencePickerProps = {
@@ -55,16 +56,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
   __esModule: true,
   default: ({ onChange }: { onChange: (payload: {
     allowed_file_extensions: string[]
-    allowed_file_types: string[]
-    allowed_file_upload_methods: string[]
+    allowed_file_types: SupportUploadFileTypes[]
+    allowed_file_upload_methods: TransferMethod[]
     max_length?: number
   }) => void }) => (
     <button
       type="button"
       onClick={() => onChange({
         allowed_file_extensions: ['.pdf'],
-        allowed_file_types: ['document'],
-        allowed_file_upload_methods: ['local_file'],
+        allowed_file_types: [SupportUploadFileTypes.document],
+        allowed_file_upload_methods: [TransferMethod.local_file],
         max_length: 4,
       })}
     >
@@ -73,7 +74,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
   ),
 }))
 
-const createPayload = (overrides?: Partial<FormInputItem>): FormInputItem => ({
+const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name: 'valid_name',
   default: {

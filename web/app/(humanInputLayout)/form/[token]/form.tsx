@@ -20,6 +20,7 @@ import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-c
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { isParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
@@ -67,7 +68,14 @@ const FormContent = () => {
       return
     const initialInputs: Record<string, string> = {}
     formData.inputs.forEach((item) => {
-      initialInputs[item.output_variable_name] = item.default.type === 'variable' ? formData.resolved_default_values[item.output_variable_name] || '' : item.default.value
+      if (isParagraphFormInput(item)) {
+        initialInputs[item.output_variable_name] = item.default.type === 'variable'
+          ? formData.resolved_default_values[item.output_variable_name] || ''
+          : item.default.value
+        return
+      }
+
+      initialInputs[item.output_variable_name] = ''
     })
     setInputs(initialInputs)
   }, [formData?.inputs, formData?.resolved_default_values])
