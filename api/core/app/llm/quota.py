@@ -56,7 +56,7 @@ def _resolve_llm_used_quota(*, system_configuration, model: str, usage: LLMUsage
             quota_unit = quota_configuration.quota_unit
 
             if quota_configuration.quota_limit == -1:
-                return
+                return None
 
             break
 
@@ -113,6 +113,8 @@ def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configurat
                         )
                     )
                     session.execute(stmt)
+            case _:
+                return
 
 
 def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usage: LLMUsage) -> None:
