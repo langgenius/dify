@@ -1123,6 +1123,74 @@ describe('useChatWithHistory', () => {
       expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
     })
 
+    it('should parse human input payloads regardless of message status', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      const chatListData = {
+        data: [
+          {
+            id: 'msg-status-agnostic',
+            query: 'Needs review',
+            answer: 'Pending follow-up',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'error',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: false,
+                form_definition: {
+                  form_id: 'form-1',
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  form_content: '{{#$output.summary#}}',
+                  inputs: [],
+                  actions: [],
+                  form_token: 'token-1',
+                  resolved_default_values: {},
+                  display_in_ui: true,
+                  expiration_time: 0,
+                },
+                workflow_run_id: 'wf-run-status-agnostic',
+              },
+              {
+                type: 'human_input',
+                submitted: true,
+                form_submission_data: {
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  rendered_content: 'Submitted summary',
+                  action_id: 'submit',
+                  action_text: 'Submit',
+                  form_data: {
+                    summary: 'approved',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue(chatListData)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(answerNode?.workflow_run_id).toBe('wf-run-status-agnostic')
+    })
+
     it('should return empty appPrevChatTree when there is no currentConversationId', async () => {
       // Arrange
       localStorage.removeItem(CONVERSATION_ID_INFO) // clear so no conversation selected
