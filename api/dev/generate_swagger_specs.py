@@ -14,9 +14,11 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-
+import logging
 from flask import Flask
 from flask_restx.swagger import Swagger
+
+logger = logging.getLogger(__name__)
 
 API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
@@ -50,7 +52,7 @@ def _apply_runtime_defaults() -> None:
     from configs import dify_config
 
     dify_config.SECRET_KEY = os.environ["SECRET_KEY"]
-    dify_config.STORAGE_TYPE = os.environ["STORAGE_TYPE"]
+    dify_config.STORAGE_TYPE = 'local'
     dify_config.STORAGE_LOCAL_PATH = os.environ["STORAGE_LOCAL_PATH"]
     dify_config.SWAGGER_UI_ENABLED = os.environ["SWAGGER_UI_ENABLED"].lower() == "true"
 
@@ -160,7 +162,7 @@ def main() -> int:
     written_paths = generate_specs(args.output_dir)
 
     for path in written_paths:
-        print(path)
+        logger.debug(path)
 
     return 0
 
