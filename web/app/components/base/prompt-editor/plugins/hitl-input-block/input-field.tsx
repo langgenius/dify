@@ -248,7 +248,7 @@ const InputField: React.FC<InputFieldProps> = ({
       {isSelectFormInput(tempPayload) && (
         <div className="mt-4">
           <div className="mb-1.5 system-xs-medium text-text-secondary">
-            {t('variableConfig.options', { ns: 'appDebug' })}
+            {t(`${i18nPrefix}.options`, { ns: 'workflow' })}
           </div>
           {tempPayload.option_source.type === 'variable'
             ? (

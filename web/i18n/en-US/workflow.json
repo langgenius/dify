@@ -622,6 +622,8 @@
   "nodes.humanInput.formContent.tooltip": "What users will see after opening the form. Supports Markdown formatting.",
   "nodes.humanInput.insertInputField.fieldType": "Field Type",
   "nodes.humanInput.insertInputField.insert": "Insert",
+  "nodes.humanInput.insertInputField.maxUploads": "Max uploads",
+  "nodes.humanInput.insertInputField.options": "Options",
   "nodes.humanInput.insertInputField.prePopulateField": "Pre-populate Field",
   "nodes.humanInput.insertInputField.prePopulateFieldPlaceholder": "Add <staticContent/> or <variable/> users will see this content initially, or leave empty.",
   "nodes.humanInput.insertInputField.saveResponseAs": "Save Response As",

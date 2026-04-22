@@ -130,7 +130,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
     const fileTypes = resolvedFormInput.allowed_file_types.join(', ')
     if (isFileListFormInput(resolvedFormInput))
-      return [fileTypes, resolvedFormInput.max_upload_count ? `${t('feature.fileUpload.numberLimit', { ns: 'appDebug' })}: ${resolvedFormInput.max_upload_count}` : null].filter(Boolean).join(' · ') || inputTypeLabel
+      return [fileTypes, resolvedFormInput.max_upload_count ? `${t(`${i18nPrefix}.maxUploads`, { ns: 'workflow' })}: ${resolvedFormInput.max_upload_count}` : null].filter(Boolean).join(' · ') || inputTypeLabel
 
     return fileTypes || inputTypeLabel
   }, [inputTypeLabel, paragraphDefault?.value, resolvedFormInput, t])

@@ -1,5 +1,6 @@
 import type * as React from 'react'
 import type { FormInputItem } from '../types'
+import { useTranslation } from 'react-i18next'
 import { isFileFormInput, isFileListFormInput, isSelectFormInput } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
@@ -134,6 +135,7 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
 }
 
 export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) => string }> = ({ input, nodeName }) => {
+  const { t } = useTranslation()
   if (isSelectFormInput(input)) {
     const isVariable = input.option_source.type === 'variable'
     const path = `{{#${input.option_source.selector.join('.')}#}}`
@@ -156,7 +158,7 @@ export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) =
   if (isFileListFormInput(input)) {
     const summary = [
       input.allowed_file_types.join(', '),
-      input.max_upload_count ? `max ${input.max_upload_count}` : null,
+      input.max_upload_count ? `${t('nodes.humanInput.insertInputField.maxUploads', { ns: 'workflow' })}: ${input.max_upload_count}` : null,
     ].filter(Boolean).join(' · ')
 
     return (
