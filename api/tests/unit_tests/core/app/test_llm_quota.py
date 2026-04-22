@@ -61,7 +61,7 @@ def test_ensure_llm_quota_available_for_model_delegates_with_llm_model_type() ->
 
 
 def test_deduct_model_quota_uses_identity_based_trial_billing() -> None:
-    
+
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SimpleNamespace(
