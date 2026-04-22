@@ -1,8 +1,9 @@
-"""Tenant-scoped helpers for checking and deducting provider model quota.
+"""Tenant-scoped helpers for checking and deducting LLM provider quota.
 
-The public billing identity is ``tenant_id + provider + model_type + model``.
-LLM callers still use thin adapters that compute quota usage from ``LLMUsage``
-so the workflow layer does not need to know generic billing details.
+System-hosted quota accounting is currently defined only for LLM models. Keep
+the public helpers LLM-specific so callers do not carry unused model-type
+plumbing, and fail loudly if the deprecated ``ModelInstance`` wrappers are used
+with a non-LLM model.
 """
 
 import warnings
@@ -33,14 +34,14 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     return provider_configuration
 
 
-def ensure_model_quota_available(*, tenant_id: str, provider: str, model_type: ModelType, model: str) -> None:
-    """Raise when a tenant-bound system provider model is already out of quota."""
+def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
+    """Raise when a tenant-bound LLM model is already out of quota."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
     provider_model = provider_configuration.get_provider_model(
-        model_type=model_type,
+        model_type=ModelType.LLM,
         model=model,
     )
     if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
@@ -71,14 +72,8 @@ def _resolve_llm_used_quota(*, system_configuration, model: str, usage: LLMUsage
     return used_quota
 
 
-def _deduct_model_quota_with_configuration(
-    *,
-    tenant_id: str,
-    provider: str,
-    provider_configuration,
-    used_quota: int | None,
-) -> None:
-    """Apply a resolved quota charge against the current provider quota bucket."""
+def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configuration, used_quota: int | None) -> None:
+    """Apply a resolved LLM quota charge against the current provider quota bucket."""
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
@@ -120,36 +115,6 @@ def _deduct_model_quota_with_configuration(
                     session.execute(stmt)
 
 
-def deduct_model_quota(
-    *,
-    tenant_id: str,
-    provider: str,
-    model_type: ModelType,
-    model: str,
-    used_quota: int | None,
-) -> None:
-    """Deduct quota for the resolved tenant/provider/model identity."""
-    _ = model_type
-    _ = model
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
-    _deduct_model_quota_with_configuration(
-        tenant_id=tenant_id,
-        provider=provider,
-        provider_configuration=provider_configuration,
-        used_quota=used_quota,
-    )
-
-
-def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
-    """Raise when a tenant-bound LLM model is already out of quota."""
-    ensure_model_quota_available(
-        tenant_id=tenant_id,
-        provider=provider,
-        model_type=ModelType.LLM,
-        model=model,
-    )
-
-
 def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usage: LLMUsage) -> None:
     """Deduct tenant-bound quota for the resolved LLM model identity."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
@@ -158,13 +123,18 @@ def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usa
         model=model,
         usage=usage,
     )
-    deduct_model_quota(
+    _deduct_used_llm_quota(
         tenant_id=tenant_id,
         provider=provider,
-        model_type=ModelType.LLM,
-        model=model,
+        provider_configuration=provider_configuration,
         used_quota=used_quota,
     )
+
+
+def _require_llm_model_instance(model_instance: ModelInstance) -> None:
+    """Reject deprecated wrapper calls that pass a non-LLM model instance."""
+    if model_instance.model_type_instance.model_type != ModelType.LLM:
+        raise ValueError("LLM quota helpers only support LLM model instances.")
 
 
 def ensure_llm_quota_available(*, model_instance: ModelInstance) -> None:
@@ -175,10 +145,10 @@ def ensure_llm_quota_available(*, model_instance: ModelInstance) -> None:
         DeprecationWarning,
         stacklevel=2,
     )
-    ensure_model_quota_available(
+    _require_llm_model_instance(model_instance)
+    ensure_llm_quota_available_for_model(
         tenant_id=model_instance.provider_model_bundle.configuration.tenant_id,
         provider=model_instance.provider,
-        model_type=model_instance.model_type_instance.model_type,
         model=model_instance.model_name,
     )
 
@@ -191,14 +161,10 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
         DeprecationWarning,
         stacklevel=2,
     )
-    deduct_model_quota(
+    _require_llm_model_instance(model_instance)
+    deduct_llm_quota_for_model(
         tenant_id=tenant_id,
         provider=model_instance.provider,
-        model_type=model_instance.model_type_instance.model_type,
         model=model_instance.model_name,
-        used_quota=_resolve_llm_used_quota(
-            system_configuration=model_instance.provider_model_bundle.configuration.system_configuration,
-            model=model_instance.model_name,
-            usage=usage,
-        ),
+        usage=usage,
     )
