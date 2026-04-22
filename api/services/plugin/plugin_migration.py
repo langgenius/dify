@@ -89,6 +89,7 @@ class PluginMigration:
 
                     # Use lock when updating counter
                     with counter_lock:
+                        # pyrefly: ignore [unknown-name]
                         nonlocal handled_tenant_count
                         handled_tenant_count += 1
                         click.echo(

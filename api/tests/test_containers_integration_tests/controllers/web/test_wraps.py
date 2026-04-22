@@ -71,6 +71,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=SimpleNamespace(access_mode="internal"),
             )
 
@@ -94,6 +95,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=settings,
             )
 
@@ -106,6 +108,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=settings,
             )
 
@@ -124,6 +127,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=settings,
             )
 
@@ -142,6 +146,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=settings,
             )
 
@@ -159,6 +164,7 @@ class TestValidateUserAccessibility:
             app_code="code",
             app_web_auth_enabled=True,
             system_webapp_auth_enabled=True,
+            # pyrefly: ignore [bad-argument-type]
             webapp_settings=settings,
         )
 
@@ -176,6 +182,7 @@ class TestValidateUserAccessibility:
                 app_code="code",
                 app_web_auth_enabled=True,
                 system_webapp_auth_enabled=True,
+                # pyrefly: ignore [bad-argument-type]
                 webapp_settings=settings,
             )
 

@@ -92,6 +92,7 @@ def mock_http_head():
     def _mock_response(filename, size, content_type):
         return Response(
             status_code=200,
+            # pyrefly: ignore [bad-argument-type]
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "Content-Length": str(size),
@@ -129,6 +130,7 @@ def test_build_from_mapping_backward_compatibility(mock_upload_file):
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
     assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+    # pyrefly: ignore [missing-attribute]
     assert parse_file_reference(file.reference).storage_key is None
     assert file.storage_key == "test_key"
 
@@ -161,6 +163,7 @@ def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_fi
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.type == FileType.DOCUMENT
     assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
+    # pyrefly: ignore [missing-attribute]
     assert parse_file_reference(file.reference).storage_key is None
     assert file.storage_key == "tool_file.pdf"
 

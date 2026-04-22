@@ -19,6 +19,7 @@ def _build_fake_relyt_modules():
         def __init__(self, dim):
             self.dim = dim
 
+    # pyrefly: ignore [missing-attribute]
     pgvecto_rs_sqlalchemy.VECTOR = VECTOR
     return {
         "pgvecto_rs": pgvecto_rs,

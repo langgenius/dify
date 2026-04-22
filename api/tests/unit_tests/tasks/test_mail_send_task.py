@@ -643,6 +643,7 @@ class TestSendGridIntegration:
 
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
+        # pyrefly: ignore [no-matching-overload]
         mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(
             MagicMock(status_code=401), "Unauthorized"
         )
@@ -665,6 +666,7 @@ class TestSendGridIntegration:
 
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
+        # pyrefly: ignore [no-matching-overload]
         mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(MagicMock(status_code=403), "Forbidden")
 
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="invalid@example.com")
@@ -1276,6 +1278,7 @@ class TestTemplateContextValidation:
 
         # Act
         with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
+            # pyrefly: ignore [bad-argument-type]
             result = _render_template_with_strategy(body, substitutions)
 
         # Assert
@@ -1296,7 +1299,9 @@ class TestTemplateContextValidation:
 
         # Act - Test with premium user
         with patch.object(dify_config, "MAIL_TEMPLATING_MODE", TemplateMode.SANDBOX):
+            # pyrefly: ignore [bad-argument-type]
             result_premium = _render_template_with_strategy(body, {"is_premium": True})
+            # pyrefly: ignore [bad-argument-type]
             result_free = _render_template_with_strategy(body, {"is_premium": False})
 
         # Assert

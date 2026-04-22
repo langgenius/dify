@@ -3,6 +3,8 @@ from hashlib import sha256
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
@@ -527,6 +529,7 @@ class TestAccountService:
             .filter_by(account_id=account.id, provider="exists-google")
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         assert integration.open_id == "google_open_id_456"
 
     def test_close_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -1431,6 +1434,7 @@ class TestTenantService:
 
         assert current_tenant.id == tenant.id
         assert current_tenant.name == tenant.name
+        # pyrefly: ignore [missing-attribute]
         assert current_tenant.role == "owner"
 
     def test_get_current_tenant_by_account_not_found(
@@ -1940,6 +1944,7 @@ class TestTenantService:
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         assert member_join.role == "admin"
 
     def test_update_member_role_to_owner(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -1994,7 +1999,9 @@ class TestTenantService:
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         assert owner_join.role == "admin"
+        # pyrefly: ignore [missing-attribute]
         assert member_join.role == "owner"
 
     def test_update_member_role_already_assigned(
@@ -2141,6 +2148,7 @@ class TestTenantService:
         # Verify no new tenant was created
         tenant_joins = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).all()
         assert len(tenant_joins) == 1
+        # pyrefly: ignore [missing-attribute]
         assert account.current_tenant.id == existing_tenant.id
 
     def test_create_owner_tenant_if_not_exist_workspace_disabled(

@@ -51,15 +51,18 @@ def _raise_runtime_error(*_args: object, **_kwargs: object) -> None:
 
 def test_current_time_tool():
     current_tool = _build_builtin_tool(CurrentTimeTool)
+    # pyrefly: ignore [missing-attribute]
     utc_text = list(current_tool.invoke(user_id="u", tool_parameters={"timezone": "UTC"}))[0].message.text
     assert utc_text
 
+    # pyrefly: ignore [missing-attribute]
     invalid_tz = list(current_tool.invoke(user_id="u", tool_parameters={"timezone": "Invalid/TZ"}))[0].message.text
     assert "Invalid timezone" in invalid_tz
 
 
 def test_localtime_to_timestamp_tool():
     localtime_tool = _build_builtin_tool(LocaltimeToTimestampTool)
+    # pyrefly: ignore [missing-attribute]
     ts_message = list(
         localtime_tool.invoke(user_id="u", tool_parameters={"localtime": "2024-01-01 10:00:00", "timezone": "UTC"})
     )[0].message.text
@@ -72,6 +75,7 @@ def test_localtime_to_timestamp_tool():
 
 def test_timestamp_to_localtime_tool():
     to_local_tool = _build_builtin_tool(TimestampToLocaltimeTool)
+    # pyrefly: ignore [missing-attribute]
     local_text = list(to_local_tool.invoke(user_id="u", tool_parameters={"timestamp": 1704067200, "timezone": "UTC"}))[
         0
     ].message.text
@@ -82,6 +86,7 @@ def test_timestamp_to_localtime_tool():
 
 def test_timezone_conversion_tool():
     timezone_tool = _build_builtin_tool(TimezoneConversionTool)
+    # pyrefly: ignore [missing-attribute]
     converted = list(
         timezone_tool.invoke(
             user_id="u",
@@ -99,6 +104,7 @@ def test_timezone_conversion_tool():
 
 def test_weekday_tool():
     weekday_tool = _build_builtin_tool(WeekdayTool)
+    # pyrefly: ignore [missing-attribute]
     valid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1}))[0].message.text
     expected_date = date(2024, 1, 1)
     expected_message = (
@@ -107,6 +113,7 @@ def test_weekday_tool():
         f"is {calendar.day_name[expected_date.weekday()]}."
     )
     assert valid == expected_message
+    # pyrefly: ignore [missing-attribute]
     invalid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 2, "day": 31}))[
         0
     ].message.text
@@ -122,6 +129,7 @@ def test_simple_code_valid_execution(monkeypatch):
         "core.tools.builtin_tool.providers.code.tools.simple_code.CodeExecutor.execute_code",
         lambda *a: "ok",
     )
+    # pyrefly: ignore [missing-attribute]
     result = list(
         simple_code.invoke(
             user_id="u",
@@ -151,6 +159,7 @@ def test_simple_code_execution_error(monkeypatch):
 
 def test_webscraper_empty_url():
     webscraper = _build_builtin_tool(WebscraperTool)
+    # pyrefly: ignore [missing-attribute]
     empty = list(webscraper.invoke(user_id="u", tool_parameters={"url": ""}))[0].message.text
     assert empty == "Please input url"
 
@@ -158,6 +167,7 @@ def test_webscraper_empty_url():
 def test_webscraper_fetch(monkeypatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
+    # pyrefly: ignore [missing-attribute]
     full = list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))[0].message.text
     assert full == "page"
 
@@ -166,6 +176,7 @@ def test_webscraper_summary(monkeypatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     monkeypatch.setattr(webscraper, "summary", lambda user_id, content: "summary")
+    # pyrefly: ignore [missing-attribute]
     summarized = list(
         webscraper.invoke(
             user_id="u",
@@ -188,6 +199,7 @@ def test_webscraper_fetch_error(monkeypatch):
 def test_asr_invalid_file():
     asr = _build_builtin_tool(ASRTool)
     file_obj = SimpleNamespace(type=FileType.DOCUMENT)
+    # pyrefly: ignore [missing-attribute]
     invalid_file = list(asr.invoke(user_id="u", tool_parameters={"audio_file": file_obj}))[0].message.text
     assert "not a valid audio file" in invalid_file
 
@@ -204,6 +216,7 @@ def test_asr_valid_file_invocation(monkeypatch):
         lambda **kwargs: captured_manager_kwargs.update(kwargs) or model_manager,
     )
     audio_file = SimpleNamespace(type=FileType.AUDIO)
+    # pyrefly: ignore [missing-attribute]
     ok = list(asr.invoke(user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"}))[0].message.text
     assert ok == "transcript"
     assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
@@ -216,6 +229,7 @@ def test_asr_available_models_and_runtime_parameters(monkeypatch):
         "core.tools.builtin_tool.providers.audio.tools.asr.ModelProviderService.get_models_by_model_type",
         lambda *a, **k: [provider_model],
     )
+    # pyrefly: ignore [missing-attribute]
     assert asr.get_available_models() == [("p", "m")]
     assert asr.get_runtime_parameters()[0].name == "model"
 
@@ -245,13 +259,16 @@ def test_tts_invoke_returns_messages(monkeypatch):
 
 def test_tts_get_available_models_requires_runtime():
     tts = _build_builtin_tool(TTSTool)
+    # pyrefly: ignore [bad-assignment]
     tts.runtime = None
     with pytest.raises(ValueError, match="Runtime is required"):
+        # pyrefly: ignore [missing-attribute]
         tts.get_available_models()
 
 
 def test_tts_tool_raises_when_runtime_missing():
     tts = _build_builtin_tool(TTSTool)
+    # pyrefly: ignore [bad-assignment]
     tts.runtime = None
     with pytest.raises(ValueError, match="Runtime is required"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
@@ -294,6 +311,7 @@ def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
         lambda *args, **kwargs: provider_models,
     )
 
+    # pyrefly: ignore [missing-attribute]
     available_models = tts.get_available_models()
     assert available_models == [
         ("provider-a", "model-a", [{"mode": "v1", "name": "Voice 1"}]),
@@ -325,5 +343,6 @@ def test_provider_classes_and_builtin_sort(monkeypatch):
         "core.tools.builtin_tool.providers._positions.sort_by_position_map",
         lambda position, values, name_func: sorted(values, key=lambda x: name_func(x)),
     )
+    # pyrefly: ignore [bad-argument-type]
     sorted_providers = BuiltinToolProviderSort.sort(providers)
     assert [p.name for p in sorted_providers] == ["a", "b"]

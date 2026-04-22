@@ -87,6 +87,7 @@ class MockModelClass(PluginModelClient):
             )
         ]
 
+    # pyrefly: ignore [bad-override]
     def get_model_schema(
         self,
         tenant_id: str,
@@ -232,6 +233,7 @@ class MockModelClass(PluginModelClient):
                     ),
                 )
 
+    # pyrefly: ignore [bad-override]
     def invoke_llm(
         self: PluginModelClient,
         *,

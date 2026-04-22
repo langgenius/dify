@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from tasks.mail_inner_task import send_inner_email_task

@@ -17,18 +17,22 @@ from graphon.variables.variables import VariableBase
 def test_frozen_variables():
     var = StringVariable(name="text", value="text")
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [read-only]
         var.value = "new value"
 
     int_var = IntegerVariable(name="integer", value=42)
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [read-only]
         int_var.value = 100
 
     float_var = FloatVariable(name="float", value=3.14)
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [read-only]
         float_var.value = 2.718
 
     secret_var = SecretVariable(name="secret", value="secret_value")
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [read-only]
         secret_var.value = "new_secret_value"
 
 

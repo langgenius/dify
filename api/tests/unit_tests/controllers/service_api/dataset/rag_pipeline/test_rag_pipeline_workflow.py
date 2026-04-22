@@ -324,6 +324,7 @@ class TestPipelineRunApiEntity:
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [missing-argument]
             PipelineRunApiEntity(
                 inputs={},
                 datasource_type="online_document",

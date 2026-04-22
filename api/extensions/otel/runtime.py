@@ -93,6 +93,7 @@ def init_celery_worker(*args, **kwargs):
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
+        # pyrefly: ignore [missing-attribute]
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
         setup_celery_sqlcommenter()
 

@@ -31,8 +31,11 @@ def _build_fake_clickhouse_connect_module():
     def get_client(**_kwargs):
         return client
 
+    # pyrefly: ignore [missing-attribute]
     clickhouse_connect.get_client = get_client
+    # pyrefly: ignore [missing-attribute]
     clickhouse_connect.QueryResult = QueryResult
+    # pyrefly: ignore [missing-attribute]
     clickhouse_connect._fake_client = client
     return clickhouse_connect
 

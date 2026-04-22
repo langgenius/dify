@@ -11,5 +11,7 @@ class DuplicateDocumentIndexingTaskProxy(BatchDocumentIndexingProxy):
     """Proxy for duplicate document indexing tasks."""
 
     QUEUE_NAME: ClassVar[str] = "duplicate_document_indexing"
+    # pyrefly: ignore [bad-override]
     NORMAL_TASK_FUNC = normal_duplicate_document_indexing_task
+    # pyrefly: ignore [bad-override]
     PRIORITY_TASK_FUNC = priority_duplicate_document_indexing_task

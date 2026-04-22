@@ -337,7 +337,9 @@ class TestPluginModelClient:
             provider="provider-a",
             model="rerank-a",
             credentials={},
+            # pyrefly: ignore [bad-typed-dict-key]
             query={"type": "text", "value": "q"},
+            # pyrefly: ignore [bad-typed-dict-key]
             docs=[{"type": "image", "value": "doc"}],
             score_threshold=0.1,
             top_n=3,
@@ -357,7 +359,9 @@ class TestPluginModelClient:
                 "provider-a",
                 "rerank-a",
                 {},
+                # pyrefly: ignore [bad-typed-dict-key]
                 {"type": "text"},
+                # pyrefly: ignore [bad-typed-dict-key]
                 [{"type": "image"}],
             )
 

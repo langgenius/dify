@@ -642,6 +642,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -661,6 +662,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -682,6 +684,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -703,6 +706,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -724,6 +728,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -745,6 +750,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -766,6 +772,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -783,6 +790,7 @@ class TestTrialChatAudioApi:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -1008,6 +1016,7 @@ class TestTrialChatAudioApiExceptionHandlers:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -1029,6 +1038,7 @@ class TestTrialChatAudioApiExceptionHandlers:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (
@@ -1050,6 +1060,7 @@ class TestTrialChatAudioApiExceptionHandlers:
         method = unwrap(api.post)
 
         file_data = BytesIO(b"fake audio data")
+        # pyrefly: ignore [missing-attribute]
         file_data.filename = "test.wav"
 
         with (

@@ -201,7 +201,9 @@ class TestFormInput:
 
         assert form_input.type == FormInputType.TEXT_INPUT
         assert form_input.output_variable_name == "user_input"
+        # pyrefly: ignore [missing-attribute]
         assert form_input.default.type == PlaceholderType.CONSTANT
+        # pyrefly: ignore [missing-attribute]
         assert form_input.default.value == "Enter your response here..."
 
     def test_text_input_with_variable_default(self):
@@ -210,7 +212,9 @@ class TestFormInput:
 
         form_input = FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default)
 
+        # pyrefly: ignore [missing-attribute]
         assert form_input.default.type == PlaceholderType.VARIABLE
+        # pyrefly: ignore [missing-attribute]
         assert form_input.default.selector == ["node_123", "output_var"]
 
     def test_form_input_without_default(self):
@@ -295,6 +299,7 @@ class TestHumanInputNodeData:
 
         assert node_data.title == "Human Input Test"
         assert node_data.desc == "Test node description"
+        # pyrefly: ignore [missing-attribute]
         assert len(node_data.delivery_methods) == 1
         assert node_data.form_content.startswith("# Test Form")
         assert len(node_data.inputs) == 1
@@ -318,6 +323,7 @@ class TestHumanInputNodeData:
             title="Test Node", delivery_methods=delivery_methods, timeout=1, timeout_unit=TimeoutUnit.DAY
         )
 
+        # pyrefly: ignore [missing-attribute]
         assert len(node_data.delivery_methods) == 2
         assert node_data.timeout == 1
         assert node_data.timeout_unit == TimeoutUnit.DAY
@@ -411,13 +417,17 @@ class TestRecipients:
 
         assert recipients.include_bound_group is False
         assert len(recipients.items) == 2
+        # pyrefly: ignore [missing-attribute]
         assert recipients.items[0].reference_id == "user-123"
+        # pyrefly: ignore [missing-attribute]
         assert recipients.items[1].email == "external@example.com"
 
     def test_legacy_recipient_keys_are_rejected(self):
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument, unexpected-keyword]
             MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")
 
+        # pyrefly: ignore [unexpected-keyword]
         recipients = EmailRecipients(whole_workspace=True, items=[])
         assert recipients.include_bound_group is True
         assert recipients.items == []
@@ -498,6 +508,7 @@ class TestHumanInputNodeVariableResolution:
 
         assert isinstance(pause_event, PauseRequestedEvent)
         expected_values = {"user_name": "Jane Doe"}
+        # pyrefly: ignore [missing-attribute]
         assert pause_event.reason.resolved_default_values == expected_values
 
         params = mock_repo.create_form.call_args.args[0]

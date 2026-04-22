@@ -20,6 +20,7 @@ def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
+    # pyrefly: ignore [missing-attribute]
     app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return app
 

@@ -156,6 +156,7 @@ class Jieba(BaseKeyword):
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict
             if keyword_table_dict:
+                # pyrefly: ignore [bad-index]
                 return dict(keyword_table_dict["__data__"]["table"])
         else:
             keyword_data_source_type = dify_config.KEYWORD_DATA_SOURCE_TYPE

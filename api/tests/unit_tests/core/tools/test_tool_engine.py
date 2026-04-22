@@ -135,6 +135,7 @@ def test_create_message_files_and_invoke_generator():
         with patch("core.tools.tool_engine.db") as mock_db:
             ids = ToolEngine._create_message_files(
                 tool_messages=binaries,
+                # pyrefly: ignore [bad-argument-type]
                 agent_message=SimpleNamespace(id="msg-1"),
                 invoke_from=InvokeFrom.DEBUGGER,
                 user_id="user-1",
@@ -146,6 +147,7 @@ def test_create_message_files_and_invoke_generator():
 
     tool = _build_tool()
     invoked = list(ToolEngine._invoke(tool, {"a": 1}, user_id="u"))
+    # pyrefly: ignore [missing-attribute]
     assert invoked[0].type == ToolInvokeMessage.MessageType.TEXT
     assert isinstance(invoked[-1], ToolInvokeMeta)
     assert invoked[-1].error is None
@@ -167,6 +169,7 @@ def test_generic_invoke_success_and_error_paths():
             message_id="m1",
         )
     )
+    # pyrefly: ignore [missing-attribute]
     assert response[0].message.text == "ok"
     callback.on_tool_start.assert_called_once()
     callback.on_tool_execution.assert_called_once()
@@ -205,6 +208,7 @@ def test_agent_invoke_success():
                         tool_parameters="hello",
                         user_id="u1",
                         tenant_id="tenant-1",
+                        # pyrefly: ignore [bad-argument-type]
                         message=message,
                         invoke_from=InvokeFrom.DEBUGGER,
                         agent_tool_callback=callback,
@@ -228,6 +232,7 @@ def test_agent_invoke_param_validation_error():
             tool_parameters={"a": 1},
             user_id="u1",
             tenant_id="tenant-1",
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
@@ -250,6 +255,7 @@ def test_agent_invoke_engine_meta_error():
             tool_parameters={"a": 1},
             user_id="u1",
             tenant_id="tenant-1",
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
@@ -293,6 +299,7 @@ def test_agent_invoke_tool_invoke_error():
             tool_parameters={"a": 1},
             user_id="u1",
             tenant_id="tenant-1",
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,

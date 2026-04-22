@@ -26,7 +26,9 @@ def _build_fake_mo_vector_modules():
             self.query = MagicMock(return_value=[])
             self.full_text_query = MagicMock(return_value=[])
 
+    # pyrefly: ignore [missing-attribute]
     mo_vector_client.MoVectorClient = MoVectorClient
+    # pyrefly: ignore [missing-attribute]
     mo_vector.client = mo_vector_client
     return {"mo_vector": mo_vector, "mo_vector.client": mo_vector_client}
 

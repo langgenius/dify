@@ -83,6 +83,7 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
             return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
                 ignore_subscribe_messages=False,
                 timeout=1,
+                # pyrefly: ignore [unexpected-keyword]
                 target_node=node,
             )
         elif isinstance(self._client, Redis):

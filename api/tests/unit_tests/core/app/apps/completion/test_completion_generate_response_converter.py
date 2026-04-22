@@ -77,12 +77,19 @@ class TestCompletionAppGenerateResponseConverter:
 
         assert "annotation_reply" not in result["metadata"]
         assert "usage" not in result["metadata"]
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["dataset_id"] == "dataset-1"
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["document_id"] == "document-1"
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["segment_id"] == "s"
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["data_source_type"] == "file"
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["segment_position"] == 3
+        # pyrefly: ignore [bad-index]
         assert result["metadata"]["retriever_resources"][0]["index_node_hash"] == "abc1234"
+        # pyrefly: ignore [bad-index]
         assert "extra" not in result["metadata"]["retriever_resources"][0]
 
     def test_convert_blocking_simple_response_metadata_not_dict(self):
@@ -121,8 +128,11 @@ class TestCompletionAppGenerateResponseConverter:
         result = list(CompletionAppGenerateResponseConverter.convert_stream_full_response(stream()))
 
         assert result[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert result[1]["event"] == "error"
+        # pyrefly: ignore [bad-index]
         assert result[1]["code"] == "invalid_param"
+        # pyrefly: ignore [bad-index]
         assert result[2]["event"] == "message"
 
     def test_convert_stream_simple_response(self):
@@ -163,7 +173,11 @@ class TestCompletionAppGenerateResponseConverter:
         result = list(CompletionAppGenerateResponseConverter.convert_stream_simple_response(stream()))
 
         assert result[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert result[1]["event"] == "message_end"
+        # pyrefly: ignore [bad-index]
         assert "annotation_reply" not in result[1]["metadata"]
+        # pyrefly: ignore [bad-index]
         assert "usage" not in result[1]["metadata"]
+        # pyrefly: ignore [bad-index]
         assert result[2]["event"] == "error"

@@ -23,7 +23,9 @@ class TestDataPostProcessor:
                 processor = DataPostProcessor(
                     tenant_id="tenant-1",
                     reranking_mode=RerankMode.WEIGHTED_SCORE,
+                    # pyrefly: ignore [bad-argument-type]
                     reranking_model={"config": "value"},
+                    # pyrefly: ignore [bad-argument-type]
                     weights={"weight": "value"},
                     reorder_enabled=True,
                 )
@@ -178,6 +180,7 @@ class TestDataPostProcessor:
         with patch("core.rag.data_post_processor.data_post_processor.ModelManager.for_tenant") as for_tenant_mock:
             result = processor._get_rerank_model_instance(
                 tenant_id="tenant-1",
+                # pyrefly: ignore [bad-argument-type]
                 reranking_model={"reranking_provider_name": "provider-x"},
             )
 

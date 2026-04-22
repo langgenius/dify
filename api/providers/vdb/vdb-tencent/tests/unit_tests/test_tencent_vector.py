@@ -94,34 +94,53 @@ def _build_fake_tencent_modules():
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_enum.IndexType = SimpleNamespace(
         __members__={"HNSW": "HNSW", "PRIMARY_KEY": "PRIMARY_KEY", "FILTER": "FILTER", "SPARSE_INVERTED": "SPARSE"},
         PRIMARY_KEY="PRIMARY_KEY",
         FILTER="FILTER",
         SPARSE_INVERTED="SPARSE",
     )
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_enum.MetricType = SimpleNamespace(__members__={"IP": "IP"}, IP="IP")
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_enum.FieldType = SimpleNamespace(String="String", Json="Json", SparseVector="SparseVector")
 
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.Document = _Document
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.HNSWSearchParams = _HNSWSearchParams
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.AnnSearch = _AnnSearch
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.Filter = _Filter
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.KeywordSearch = _KeywordSearch
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_document.WeightedRerank = _WeightedRerank
 
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_index.HNSWParams = _HNSWParams
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_index.FilterIndex = _FilterIndex
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_index.VectorIndex = _VectorIndex
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_index.SparseIndex = _SparseIndex
 
+    # pyrefly: ignore [missing-attribute]
     tcvdb_text_encoder.BM25Encoder = _BM25Encoder
 
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_model.document = tcvectordb_document
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_model.enum = tcvectordb_enum
+    # pyrefly: ignore [missing-attribute]
     tcvectordb_model.index = tcvectordb_index
 
+    # pyrefly: ignore [missing-attribute]
     tcvectordb.RPCVectorDBClient = RPCVectorDBClient
+    # pyrefly: ignore [missing-attribute]
     tcvectordb.VectorDBException = VectorDBError
 
     return {

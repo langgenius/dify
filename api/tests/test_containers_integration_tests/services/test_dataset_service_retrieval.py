@@ -42,10 +42,12 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add_all([account, tenant])
@@ -72,6 +74,7 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -153,6 +156,7 @@ class DatasetRetrievalTestDataFactory:
             content=content,
             source=DatasetQuerySource.APP,
             source_app_id=None,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=created_by,
         )
@@ -176,6 +180,7 @@ class DatasetRetrievalTestDataFactory:
         """Create a knowledge tag and bind it to the target dataset."""
         tag = Tag(
             tenant_id=tenant_id,
+            # pyrefly: ignore [bad-argument-type]
             type="knowledge",
             name=f"tag-{uuid4()}",
             created_by=created_by,

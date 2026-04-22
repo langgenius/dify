@@ -10,6 +10,7 @@ are deleted from the dataset.
 import logging
 from unittest.mock import MagicMock, patch
 
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -49,6 +50,7 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
+        # pyrefly: ignore [bad-argument-type]
         tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="normal")
         tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
@@ -75,6 +77,7 @@ class TestDeleteSegmentFromIndexTask:
             name=fake.name(),
             email=fake.email(),
             avatar=fake.url(),
+            # pyrefly: ignore [bad-argument-type]
             status="active",
             interface_language="en-US",
         )
@@ -106,6 +109,7 @@ class TestDeleteSegmentFromIndexTask:
         dataset.name = f"Test Dataset {fake.word()}"
         dataset.description = fake.text(max_nb_chars=200)
         dataset.provider = "vendor"
+        # pyrefly: ignore [bad-argument-type]
         dataset.permission = "only_me"
         dataset.data_source_type = DataSourceType.UPLOAD_FILE
         dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
@@ -144,6 +148,7 @@ class TestDeleteSegmentFromIndexTask:
         document.position = kwargs.get("position", 1)
         document.data_source_type = kwargs.get("data_source_type", "upload_file")
         document.data_source_info = kwargs.get("data_source_info", "{}")
+        # pyrefly: ignore [bad-argument-type]
         document.batch = kwargs.get("batch", fake.uuid4())
         document.name = kwargs.get("name", f"Test Document {fake.word()}")
         document.created_from = kwargs.get("created_from", DocumentCreatedFrom.API)

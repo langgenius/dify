@@ -37,6 +37,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
             app_model=app_model,
             app_model_config=app_model_config,
             conversation=None,
+            # pyrefly: ignore [bad-argument-type]
             override_config_dict=override_config,
         )
 

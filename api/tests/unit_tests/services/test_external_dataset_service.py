@@ -114,7 +114,9 @@ class ExternalDatasetServiceTestDataFactory:
         token_type: str = "bearer",
     ) -> Authorization:
         """Create an Authorization object."""
+        # pyrefly: ignore [bad-argument-type]
         config = AuthorizationConfig(api_key=api_key, type=token_type, header=header)
+        # pyrefly: ignore [bad-argument-type]
         return Authorization(type=auth_type, config=config)
 
     @staticmethod
@@ -399,6 +401,7 @@ class TestExternalDatasetServiceValidateAPIList:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api list is empty"):
+            # pyrefly: ignore [bad-argument-type]
             ExternalDatasetService.validate_api_list(api_settings)
 
     def test_validate_api_list_with_extra_fields(self, factory):
@@ -878,6 +881,7 @@ class TestExternalDatasetServiceUpdateAPI:
         result = ExternalDatasetService.update_external_knowledge_api(tenant_id, "user-123", api_id, args)
 
         # Assert
+        # pyrefly: ignore [bad-argument-type]
         settings = json.loads(result.settings)
         assert settings["api_key"] == "original-secret-key"
 
@@ -1419,7 +1423,9 @@ class TestExternalDatasetServiceGetSettings:
         assert isinstance(result, ExternalKnowledgeApiSetting)
         assert result.url == "https://api.example.com/v1"
         assert result.request_method == "post"
+        # pyrefly: ignore [unsupported-operation]
         assert result.headers["Content-Type"] == "application/json"
+        # pyrefly: ignore [unsupported-operation]
         assert result.params["key1"] == "value1"
 
 

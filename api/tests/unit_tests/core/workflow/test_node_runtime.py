@@ -85,6 +85,7 @@ def test_apply_dify_debug_email_recipient_rewrites_debug_target() -> None:
     assert isinstance(updated, EmailDeliveryMethod)
     assert updated.config.recipients.include_bound_group is False
     assert len(updated.config.recipients.items) == 1
+    # pyrefly: ignore [missing-attribute]
     assert updated.config.recipients.items[0].reference_id == "actor-id"
 
 
@@ -100,6 +101,7 @@ def test_apply_dify_debug_email_recipient_noops_when_override_is_not_needed(
     enabled: bool,
     method: object,
 ) -> None:
+    # pyrefly: ignore [bad-argument-type]
     assert apply_dify_debug_email_recipient(method, enabled=enabled, actor_id="actor-id") is method
 
 
@@ -132,6 +134,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         get_llm_num_tokens=Mock(return_value=32),
         invoke_llm=Mock(return_value=sentinel.result),
     )
+    # pyrefly: ignore [bad-argument-type]
     prepared = DifyPreparedLLM(model_instance)
 
     assert prepared.provider == "langgenius/openai/openai"
@@ -167,6 +170,7 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
         credentials={},
         model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=None)),
     )
+    # pyrefly: ignore [bad-argument-type]
     prepared = DifyPreparedLLM(model_instance)
 
     with pytest.raises(ValueError, match="Model schema not found"):
@@ -180,6 +184,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
         credentials={"api_key": "secret"},
         model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=_build_model_schema())),
     )
+    # pyrefly: ignore [bad-argument-type]
     prepared = DifyPreparedLLM(model_instance)
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
@@ -206,6 +211,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
 
 
 def test_dify_prepared_llm_identifies_structured_output_errors() -> None:
+    # pyrefly: ignore [bad-argument-type]
     prepared = DifyPreparedLLM(SimpleNamespace())
 
     assert prepared.is_structured_output_parse_error(OutputParserError("bad json")) is True
@@ -217,6 +223,7 @@ def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(node_runtime.PromptMessageUtil, "prompt_messages_to_prompt_for_saving", serialize)
 
     result = DifyPromptMessageSerializer().serialize(
+        # pyrefly: ignore [bad-argument-type]
         model_mode="chat",
         prompt_messages=[],
     )
@@ -252,6 +259,7 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
     monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_SessionContext()))
     loader = DifyRetrieverAttachmentLoader(
+        # pyrefly: ignore [bad-argument-type]
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
     )
 
@@ -263,6 +271,7 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
     assert mapping["id"] == "upload-file-id"
     assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
     assert mapping["type"] == FileType.IMAGE
+    # pyrefly: ignore [missing-attribute]
     assert parse_file_reference(mapping["reference"]).storage_key is None
 
 

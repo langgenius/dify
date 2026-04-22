@@ -129,6 +129,7 @@ def test_set_span_status():
             return "SilentErrorRepr"
 
     span.reset_mock()
+    # pyrefly: ignore [bad-argument-type]
     set_span_status(span, SilentError())
     assert span.add_event.call_args[1]["attributes"][OTELSpanAttributes.EXCEPTION_MESSAGE] == "SilentErrorRepr"
 

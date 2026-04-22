@@ -24,10 +24,12 @@ def mock_mcp_ns():
     fake_ns = types.SimpleNamespace()
     fake_ns.payload = None
     fake_ns.models = {}
+    # pyrefly: ignore [bad-assignment]
     module.mcp_ns = fake_ns
 
 
 def fake_payload(data):
+    # pyrefly: ignore [read-only]
     module.mcp_ns.payload = data
 
 
@@ -457,6 +459,7 @@ class TestMCPAppApi:
         server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
 
         # Should not raise an exception
+        # pyrefly: ignore [bad-argument-type]
         api._validate_server_status(server)
 
     def test_convert_user_input_form_empty(self):

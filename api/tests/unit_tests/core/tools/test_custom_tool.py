@@ -94,6 +94,7 @@ def test_assembling_request_auth_header_assembly():
 def test_assembling_request_runtime_auth_errors():
     tool = _build_tool()
 
+    # pyrefly: ignore [bad-assignment]
     tool.runtime = None
     with pytest.raises(ToolProviderCredentialValidationError, match="runtime not initialized"):
         tool.assembling_request(parameters={})
@@ -115,12 +116,14 @@ def test_assembling_request_parameter_validation_and_defaults():
     tool = _build_tool()
 
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "x"}
+    # pyrefly: ignore [bad-assignment]
     tool.api_bundle.parameters = [
         SimpleNamespace(required=True, name="required_param", default=None),
     ]
     with pytest.raises(ToolParameterValidationError, match="Missing required parameter required_param"):
         tool.assembling_request(parameters={})
 
+    # pyrefly: ignore [bad-assignment]
     tool.api_bundle.parameters = [
         SimpleNamespace(required=True, name="required_param", default="d"),
     ]
@@ -283,4 +286,5 @@ def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch):
     monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse("plain", False))
     messages = list(tool.invoke(user_id="u1", tool_parameters={}))
     assert len(messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert messages[0].message.text == "plain"

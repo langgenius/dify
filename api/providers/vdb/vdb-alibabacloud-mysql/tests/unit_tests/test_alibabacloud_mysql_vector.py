@@ -629,6 +629,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
                 password="test_password",
                 database="test_db",
                 max_connection=5,
+                # pyrefly: ignore [bad-argument-type]
                 distance_function="manhattan",  # Unsupported - not in Literal["cosine", "euclidean"]
             )
 

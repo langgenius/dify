@@ -51,6 +51,7 @@ class _KeywordForHelpers(BaseKeyword):
 
 
 def test_abstract_methods_raise_not_implemented():
+    # pyrefly: ignore [bad-argument-type]
     keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
 
     with pytest.raises(NotImplementedError):
@@ -80,6 +81,7 @@ def test_filter_duplicate_texts_removes_existing_doc_ids():
         SimpleNamespace(page_content="without-metadata", metadata=None),
     ]
 
+    # pyrefly: ignore [bad-argument-type]
     filtered = keyword._filter_duplicate_texts(texts)
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
@@ -94,4 +96,5 @@ def test_get_uuids_returns_only_docs_with_metadata():
         SimpleNamespace(page_content="doc-3", metadata=None),
     ]
 
+    # pyrefly: ignore [bad-argument-type]
     assert keyword._get_uuids(texts) == ["doc-1", "doc-2"]

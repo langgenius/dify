@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -89,6 +91,7 @@ class TestWebConversationService:
         }
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
@@ -213,12 +216,14 @@ class TestWebConversationService:
         pinned_conversation1 = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[0].id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )
         pinned_conversation2 = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[2].id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )
@@ -268,6 +273,7 @@ class TestWebConversationService:
         pinned_conversation = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[0].id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )

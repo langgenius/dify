@@ -91,12 +91,14 @@ class TestMessageListQuery:
         """Test query rejects limit < 1."""
         conversation_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             MessageListQuery(conversation_id=conversation_id, limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
         conversation_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             MessageListQuery(conversation_id=conversation_id, limit=101)
 
 
@@ -135,6 +137,7 @@ class TestMessageFeedbackPayload:
         """Test payload with long feedback content."""
         long_content = "A" * 1000
         payload = MessageFeedbackPayload(content=long_content)
+        # pyrefly: ignore [bad-argument-type]
         assert len(payload.content) == 1000
 
     def test_payload_with_unicode_content(self):
@@ -167,6 +170,7 @@ class TestFeedbackListQuery:
     def test_query_rejects_page_below_minimum(self):
         """Test query rejects page < 1."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             FeedbackListQuery(page=0)
 
     def test_query_limit_boundaries(self):
@@ -180,11 +184,13 @@ class TestFeedbackListQuery:
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             FeedbackListQuery(limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 101."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             FeedbackListQuery(limit=102)
 
 

@@ -84,6 +84,7 @@ class OpenSearchConfig(BaseModel):
         if self.auth_method == "basic":
             logger.info("Using basic authentication for OpenSearch Vector DB")
 
+            # pyrefly: ignore [bad-typed-dict-key]
             params["http_auth"] = (self.user, self.password)
         elif self.auth_method == "aws_managed_iam":
             logger.info("Using AWS managed IAM role for OpenSearch Vector DB")
@@ -107,6 +108,7 @@ class OpenSearchVector(BaseVector):
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         actions = []
         for i in range(len(documents)):
@@ -201,6 +203,7 @@ class OpenSearchVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
             query["query"] = {
+                # pyrefly: ignore [bad-typed-dict-key]
                 "script_score": {
                     "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID: document_ids_filter}}]}},
                     "script": {

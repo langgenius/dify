@@ -696,6 +696,7 @@ class TestRedisShardedSubscription:
     ) -> Generator[_RedisShardedSubscription, None, None]:
         """Create a _RedisShardedSubscription instance for testing."""
         subscription = _RedisShardedSubscription(
+            # pyrefly: ignore [bad-argument-type]
             client=mock_redis_client,
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
@@ -716,6 +717,7 @@ class TestRedisShardedSubscription:
     def test_sharded_subscription_initialization(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient):
         """Test that sharded subscription is properly initialized."""
         subscription = _RedisShardedSubscription(
+            # pyrefly: ignore [bad-argument-type]
             client=mock_redis_client,
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
@@ -900,6 +902,7 @@ class TestRedisShardedSubscription:
 
         client = DummyRedisCluster()
         subscription = _RedisShardedSubscription(
+            # pyrefly: ignore [bad-argument-type]
             client=client,
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
@@ -1030,6 +1033,7 @@ class TestRedisShardedSubscription:
     ):
         """Test various sharded subscription scenarios using table-driven approach."""
         subscription = _RedisShardedSubscription(
+            # pyrefly: ignore [bad-argument-type]
             client=mock_redis_client,
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
@@ -1128,6 +1132,7 @@ class TestRedisShardedSubscription:
 
         for channel_name in channel_names:
             subscription = _RedisShardedSubscription(
+                # pyrefly: ignore [bad-argument-type]
                 client=mock_redis_client,
                 pubsub=mock_pubsub,
                 topic=channel_name,

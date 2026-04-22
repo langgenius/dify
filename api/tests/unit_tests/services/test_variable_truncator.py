@@ -139,6 +139,7 @@ class TestCalculateJsonSize:
         nested: dict[str, Any] = {"level": 0}
         current = nested
         for i in range(105):  # Create deep nesting
+            # pyrefly: ignore [unsupported-operation]
             current["next"] = {"level": i + 1}
             current = current["next"]
 

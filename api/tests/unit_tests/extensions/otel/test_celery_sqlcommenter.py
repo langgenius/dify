@@ -22,6 +22,7 @@ class TestBuildCelerySqlcommenterTags:
             tags = _build_celery_sqlcommenter_tags(task)
 
         assert "framework" in tags
+        # pyrefly: ignore [missing-attribute]
         assert tags["framework"].startswith("celery:")
         assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
 
@@ -133,10 +134,15 @@ class TestTaskPrerunPostrunHandlers:
 
             tags = context.get_value(_SQLCOMMENTER_CONTEXT_KEY)
             assert tags is not None
+            # pyrefly: ignore [bad-index]
             assert tags["framework"].startswith("celery:")
+            # pyrefly: ignore [bad-index]
             assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
+            # pyrefly: ignore [bad-index]
             assert tags["celery_retries"] == 1
+            # pyrefly: ignore [bad-index]
             assert tags["routing_key"] == "workflow_based_app_execution"
+            # pyrefly: ignore [bad-index]
             assert tags["traceparent"] == "00-abc123-def456-00"
             assert hasattr(task, _TOKEN_ATTR)
 

@@ -39,6 +39,7 @@ def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HNSW_M", 6)
 
     with patch.object(alibaba_module, "AlibabaCloudMySQLVector", return_value="vector") as vector_cls:
+        # pyrefly: ignore [bad-argument-type]
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
 
     assert result == "vector"
@@ -65,6 +66,7 @@ def test_factory_init_vector_generates_collection_name_when_index_struct_is_miss
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HNSW_M", 12)
 
     with patch.object(alibaba_module, "AlibabaCloudMySQLVector", return_value="vector") as vector_cls:
+        # pyrefly: ignore [bad-argument-type]
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
 
     assert result == "vector"

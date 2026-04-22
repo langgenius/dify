@@ -59,6 +59,7 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
     source_workflow = _create_workflow(
         workflow_id="published-workflow-id",
         version="2026-03-19T00:00:00",
+        # pyrefly: ignore [bad-argument-type]
         features=LEGACY_FEATURES,
     )
 
@@ -67,6 +68,7 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
         app_id="app-id",
         source_workflow=source_workflow,
         draft_workflow=None,
+        # pyrefly: ignore [bad-argument-type]
         account=SimpleNamespace(id="account-id"),
         updated_at_factory=lambda: source_workflow.updated_at,
     )

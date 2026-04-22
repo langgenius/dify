@@ -1279,6 +1279,7 @@ class TestErrorHandlingAndRecovery:
         """Test that invalid config types are handled."""
         # Config can be None or dict, string will be accepted but cause issues later
         # The constructor doesn't validate config type, so we test runtime behavior
+        # pyrefly: ignore [bad-argument-type]
         moderation = KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config="invalid")
 
         # Should raise TypeError when trying to use string as dict

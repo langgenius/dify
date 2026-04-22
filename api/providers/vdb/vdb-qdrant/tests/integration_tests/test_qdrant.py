@@ -28,6 +28,7 @@ class QdrantVectorTest(AbstractVectorTest):
     def search_by_vector(self):
         super().search_by_vector()
         # only test for qdrant, may not work on other vector stores
+        # pyrefly: ignore [missing-attribute]
         hits_by_vector: list[Document] = self.vector.search_by_vector(
             query_vector=self.example_embedding, score_threshold=1
         )
@@ -58,22 +59,26 @@ class QdrantVectorTest(AbstractVectorTest):
         ]
         embeddings = [self.example_embedding] * len(documents)
 
+        # pyrefly: ignore [missing-attribute]
         self.vector.add_texts(documents=documents, embeddings=embeddings)
 
     def search_by_full_text_multi_keyword(self):
         """Test multi-keyword search returns docs matching ANY keyword (OR logic)."""
         # First verify single keyword searches work correctly
+        # pyrefly: ignore [missing-attribute]
         hits_apple = self.vector.search_by_full_text(query="apple", top_k=10)
         apple_ids = {doc.metadata["doc_id"] for doc in hits_apple}
         assert self.doc_apple_id in apple_ids, "Document with 'apple' should be found"
         assert self.doc_both_id in apple_ids, "Document with 'apple and banana' should be found"
 
+        # pyrefly: ignore [missing-attribute]
         hits_banana = self.vector.search_by_full_text(query="banana", top_k=10)
         banana_ids = {doc.metadata["doc_id"] for doc in hits_banana}
         assert self.doc_banana_id in banana_ids, "Document with 'banana' should be found"
         assert self.doc_both_id in banana_ids, "Document with 'apple and banana' should be found"
 
         # Test multi-keyword search returns all matching documents
+        # pyrefly: ignore [missing-attribute]
         hits = self.vector.search_by_full_text(query="apple banana", top_k=10)
         doc_ids = {doc.metadata["doc_id"] for doc in hits}
 
@@ -84,6 +89,7 @@ class QdrantVectorTest(AbstractVectorTest):
         assert len(hits) == 3, f"Expected 3 documents, got {len(hits)}"
 
         # Test keyword order independence
+        # pyrefly: ignore [missing-attribute]
         hits_ba = self.vector.search_by_full_text(query="banana apple", top_k=10)
         ids_ba = {doc.metadata["doc_id"] for doc in hits_ba}
         assert doc_ids == ids_ba, "Keyword order should not affect search results"

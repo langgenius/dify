@@ -122,6 +122,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
         return llm_utils.fetch_prompt_messages(
             sys_query=None,
             sys_files=[],
+            # pyrefly: ignore [bad-argument-type]
             context=None,
             memory=None,
             model_instance=model_instance,
@@ -603,12 +604,15 @@ def test_handle_completion_template_supports_basic_and_jinja2_templates():
 def test_combine_message_content_with_role_handles_all_supported_roles():
     contents = [TextPromptMessageContent(data="hello")]
 
+    # pyrefly: ignore [bad-argument-type]
     assert llm_utils.combine_message_content_with_role(contents=contents, role=PromptMessageRole.USER) == (
         UserPromptMessage(content=contents)
     )
+    # pyrefly: ignore [bad-argument-type]
     assert llm_utils.combine_message_content_with_role(contents=contents, role=PromptMessageRole.ASSISTANT) == (
         AssistantPromptMessage(content=contents)
     )
+    # pyrefly: ignore [bad-argument-type]
     assert llm_utils.combine_message_content_with_role(contents=contents, role=PromptMessageRole.SYSTEM) == (
         SystemPromptMessage(content=contents)
     )
@@ -725,6 +729,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
         return_value=file_prompt,
     ):
         llm_utils._append_file_prompts(
+            # pyrefly: ignore [bad-argument-type]
             prompt_messages=prompt_messages,
             files=[file],
             vision_enabled=True,
@@ -741,6 +746,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
         return_value=file_prompt,
     ):
         llm_utils._append_file_prompts(
+            # pyrefly: ignore [bad-argument-type]
             prompt_messages=prompt_messages,
             files=[file],
             vision_enabled=True,

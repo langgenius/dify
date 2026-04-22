@@ -44,6 +44,7 @@ from graphon.variables.variables import StringVariable
 
 class TestWorkflowBasedAppRunner:
     def test_resolve_user_from(self):
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
         assert runner._resolve_user_from(InvokeFrom.EXPLORE) == UserFrom.ACCOUNT
@@ -51,6 +52,7 @@ class TestWorkflowBasedAppRunner:
         assert runner._resolve_user_from(InvokeFrom.WEB_APP) == UserFrom.END_USER
 
     def test_init_graph_validates_graph_structure(self):
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
         runtime_state = GraphRuntimeState(
@@ -83,14 +85,17 @@ class TestWorkflowBasedAppRunner:
             )
 
     def test_prepare_single_node_execution_requires_run(self):
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
         workflow = SimpleNamespace(environment_variables=[], graph_dict={})
 
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
+            # pyrefly: ignore [bad-argument-type]
             runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
 
     def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch):
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(system_variables=default_system_variables()),
@@ -130,6 +135,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
             node_id="node-1",
             user_inputs={},
@@ -157,7 +163,9 @@ class TestWorkflowBasedAppRunner:
             )
         )
         runner = WorkflowBasedAppRunner(
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             variable_loader=variable_loader,
             app_id="app",
         )
@@ -221,6 +229,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
             node_id="loop-node",
             user_inputs={},
@@ -230,6 +239,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert graph is not None
+        # pyrefly: ignore [missing-attribute]
         assert variable_pool.get(["sys", "conversation_id"]).value == "conv-1"
 
     def test_handle_graph_run_events_and_pause_notifications(self, monkeypatch):
@@ -239,6 +249,7 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append((event, publish_from))
 
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(system_variables=default_system_variables()),
@@ -265,12 +276,18 @@ class TestWorkflowBasedAppRunner:
             node_title="Node",
         )
 
+        # pyrefly: ignore [bad-argument-type]
         runner._handle_event(workflow_entry, GraphRunStartedEvent())
+        # pyrefly: ignore [bad-argument-type]
         runner._handle_event(workflow_entry, GraphRunSucceededEvent(outputs={"ok": True}))
+        # pyrefly: ignore [bad-argument-type]
         runner._handle_event(workflow_entry, GraphRunPausedEvent(reasons=[reason], outputs={}))
 
+        # pyrefly: ignore [not-iterable]
         assert any(isinstance(event, QueueWorkflowStartedEvent) for event, _ in published)
+        # pyrefly: ignore [not-iterable]
         assert any(isinstance(event, QueueWorkflowSucceededEvent) for event, _ in published)
+        # pyrefly: ignore [not-iterable]
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
         assert emails
@@ -282,6 +299,7 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(system_variables=default_system_variables()),
@@ -290,6 +308,7 @@ class TestWorkflowBasedAppRunner:
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         runner._handle_event(
+            # pyrefly: ignore [bad-argument-type]
             workflow_entry,
             NodeRunStartedEvent(
                 id="exec",
@@ -300,6 +319,7 @@ class TestWorkflowBasedAppRunner:
             ),
         )
         runner._handle_event(
+            # pyrefly: ignore [bad-argument-type]
             workflow_entry,
             NodeRunStreamChunkEvent(
                 id="exec",
@@ -311,6 +331,7 @@ class TestWorkflowBasedAppRunner:
             ),
         )
         runner._handle_event(
+            # pyrefly: ignore [bad-argument-type]
             workflow_entry,
             NodeRunAgentLogEvent(
                 id="exec",
@@ -327,6 +348,7 @@ class TestWorkflowBasedAppRunner:
             ),
         )
         runner._handle_event(
+            # pyrefly: ignore [bad-argument-type]
             workflow_entry,
             NodeRunIterationSucceededEvent(
                 id="exec",
@@ -341,6 +363,7 @@ class TestWorkflowBasedAppRunner:
             ),
         )
         runner._handle_event(
+            # pyrefly: ignore [bad-argument-type]
             workflow_entry,
             NodeRunLoopFailedEvent(
                 id="exec",
@@ -421,6 +444,7 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
+        # pyrefly: ignore [bad-argument-type]
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(system_variables=default_system_variables()),
@@ -439,6 +463,7 @@ class TestWorkflowBasedAppRunner:
             },
         )
 
+        # pyrefly: ignore [bad-argument-type]
         runner._handle_event(workflow_entry, event_factory(result, started_at, finished_at))
 
         queue_event = published[-1]

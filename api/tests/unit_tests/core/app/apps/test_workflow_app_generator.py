@@ -34,10 +34,12 @@ def test_resume_delegates_to_generate(mocker):
         app_model=MagicMock(),
         workflow=MagicMock(),
         user=MagicMock(),
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=application_generate_entity,
         graph_runtime_state=runtime_state,
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        # pyrefly: ignore [bad-argument-type]
         graph_engine_layers=("layer",),
         pause_state_config=pause_config,
         variable_loader=MagicMock(),
@@ -106,21 +108,28 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker):
     graph_runtime_state = MagicMock()
 
     result = generator._generate(
+        # pyrefly: ignore [bad-argument-type]
         app_model=app_model,
         workflow=MagicMock(),
         user=MagicMock(),
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=application_generate_entity,
+        # pyrefly: ignore [bad-argument-type]
         invoke_from="service-api",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
         streaming=True,
+        # pyrefly: ignore [bad-argument-type]
         graph_engine_layers=("base-layer",),
         graph_runtime_state=graph_runtime_state,
+        # pyrefly: ignore [bad-argument-type]
         pause_state_config=SimpleNamespace(session_factory=MagicMock(), state_owner_user_id="owner"),
     )
 
     assert result == "converted"
+    # pyrefly: ignore [bad-index]
     assert worker_kwargs["kwargs"]["graph_engine_layers"] == ("base-layer", pause_layer)
+    # pyrefly: ignore [bad-index]
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
 
 
@@ -197,13 +206,17 @@ def test_resume_path_runs_worker_with_runtime_state(mocker):
     )
 
     result = generator.resume(
+        # pyrefly: ignore [bad-argument-type]
         app_model=app_model,
+        # pyrefly: ignore [bad-argument-type]
         workflow=workflow,
         user=MagicMock(),
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=application_generate_entity,
         graph_runtime_state=runtime_state,
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        # pyrefly: ignore [bad-argument-type]
         pause_state_config=pause_config,
     )
 

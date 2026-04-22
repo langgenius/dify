@@ -90,11 +90,13 @@ def test_get_db_provider_tool_builds_entity():
             return_value=outputs,
         ),
     ):
+        # pyrefly: ignore [bad-argument-type]
         tool = controller._get_db_provider_tool(db_provider, app, session=session, user=user)
 
     assert tool.entity.identity.name == "workflow_tool"
     # "json" output is reserved for ToolInvokeMessage.VariableMessage and filtered out.
     assert tool.entity.output_schema["properties"] == {"answer": {"type": "string", "description": ""}}
+    # pyrefly: ignore [not-iterable]
     assert "json" not in tool.entity.output_schema["properties"]
     assert tool.entity.parameters[0].type == ToolParameter.ToolParameterType.SELECT
     assert tool.entity.parameters[1].type == ToolParameter.ToolParameterType.SYSTEM_FILES
@@ -104,6 +106,7 @@ def test_get_db_provider_tool_builds_entity():
 def test_get_tool_returns_hit_or_none():
     controller = _controller()
     tool = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="workflow_tool")))
+    # pyrefly: ignore [bad-assignment]
     controller.tools = [tool]
 
     assert controller.get_tool("workflow_tool") is tool
@@ -150,6 +153,7 @@ def test_from_db_builds_controller():
             "_get_db_provider_tool",
             return_value=SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="wf"))),
         ):
+            # pyrefly: ignore [bad-argument-type]
             built = WorkflowToolProviderController.from_db(db_provider)
     assert isinstance(built, WorkflowToolProviderController)
     assert built.tools

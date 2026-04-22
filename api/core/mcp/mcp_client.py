@@ -87,6 +87,7 @@ class MCPClient:
 
         session_context = ClientSession(*streams)
         self._session = self._exit_stack.enter_context(session_context)
+        # pyrefly: ignore [missing-attribute]
         self._session.initialize()
 
     def list_tools(self) -> list[Tool]:

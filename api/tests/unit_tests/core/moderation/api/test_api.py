@@ -44,6 +44,7 @@ class TestApiModeration:
         assert params.text == "test text"
 
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             ModerationOutputParams()
 
     @patch("core.moderation.api.api.ApiModeration._get_api_based_extension")

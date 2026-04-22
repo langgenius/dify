@@ -968,12 +968,19 @@ class TestPluginResourceRequirements:
 
         # Assert: Verify all model permissions are set correctly
         assert resources.memory == 2048
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.enabled is True
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.llm is True
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.text_embedding is True
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.rerank is True
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.tts is False
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.speech2text is False
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.model.moderation is True
 
     def test_resource_requirements_with_storage_permission(self):
@@ -992,7 +999,9 @@ class TestPluginResourceRequirements:
         )
 
         # Assert: Verify storage permissions and size limits
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.storage.enabled is True
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.storage.size == 10485760
 
     def test_resource_requirements_with_endpoint_permission(self):
@@ -1010,6 +1019,7 @@ class TestPluginResourceRequirements:
         )
 
         # Assert: Verify endpoint permissions are enabled
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.endpoint.enabled is True
 
     def test_resource_requirements_with_node_permission(self):
@@ -1027,6 +1037,7 @@ class TestPluginResourceRequirements:
         )
 
         # Assert: Verify node permissions are enabled
+        # pyrefly: ignore [missing-attribute]
         assert resources.permission.node.enabled is True
 
 

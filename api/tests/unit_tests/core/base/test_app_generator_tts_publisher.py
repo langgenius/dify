@@ -163,6 +163,7 @@ class TestAppGeneratorTTSPublisher:
 
         result = publisher.check_and_get_audio()
 
+        # pyrefly: ignore [missing-attribute]
         assert result.status == "responding"
         assert publisher._last_audio_event == trunk
 
@@ -174,6 +175,7 @@ class TestAppGeneratorTTSPublisher:
 
         result = publisher.check_and_get_audio()
 
+        # pyrefly: ignore [missing-attribute]
         assert result.status == "finish"
         publisher.executor.shutdown.assert_called_once()
 
@@ -184,6 +186,7 @@ class TestAppGeneratorTTSPublisher:
 
         result = publisher.check_and_get_audio()
 
+        # pyrefly: ignore [missing-attribute]
         assert result.status == "finish"
         publisher.executor.shutdown.assert_called_once()
 

@@ -24,10 +24,12 @@ class HuaweiObsStorage(BaseStorage):
         self.client.putObject(bucketName=self.bucket_name, objectKey=filename, content=data)
 
     def load_once(self, filename: str) -> bytes:
+        # pyrefly: ignore [bad-index]
         data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response.read()
         return data
 
     def load_stream(self, filename: str) -> Generator:
+        # pyrefly: ignore [bad-index]
         response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
         while chunk := response.read(4096):
             yield chunk

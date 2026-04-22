@@ -142,6 +142,7 @@ class TestWorkflowEntry:
 
         # Act
         node, _ = WorkflowEntry.single_step_run(
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
             node_id=node_id,
             user_id="user",

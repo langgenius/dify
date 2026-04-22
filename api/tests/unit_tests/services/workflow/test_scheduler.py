@@ -37,6 +37,7 @@ class TestCFSPlanScheduler:
             granularity=10,
         )
         with pytest.raises(TypeError):
+            # pyrefly: ignore [bad-instantiation]
             CFSPlanScheduler(plan)
 
     def test_concrete_subclass_can_schedule(self):

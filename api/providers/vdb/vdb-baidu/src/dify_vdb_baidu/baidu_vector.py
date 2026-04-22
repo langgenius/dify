@@ -96,6 +96,7 @@ class BaiduVector(BaseVector):
         self._create_table(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         total_count = len(documents)
         batch_size = 1000
@@ -146,6 +147,7 @@ class BaiduVector(BaseVector):
             params=HNSWSearchParams(ef=kwargs.get("ef", 20), limit=kwargs.get("top_k", 4)),
             filter=filter,
         )
+        # pyrefly: ignore [not-callable]
         res = self._db.table(self._collection_name).search(
             anns=anns,
             projections=[VDBField.CONTENT_KEY, VDBField.METADATA_KEY],
@@ -298,8 +300,10 @@ class BaiduVector(BaseVector):
 
             # Filtering index
             indexes.append(
+                # pyrefly: ignore [bad-argument-type]
                 FilteringIndex(
                     index_name=self.filtering_index,
+                    # pyrefly: ignore [bad-argument-type]
                     fields=[VDBField.METADATA_KEY],
                 )
             )
@@ -319,6 +323,7 @@ class BaiduVector(BaseVector):
 
             # Inverted index
             indexes.append(
+                # pyrefly: ignore [bad-argument-type]
                 InvertedIndex(
                     index_name=self.inverted_index,
                     fields=[VDBField.CONTENT_KEY],

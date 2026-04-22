@@ -56,6 +56,7 @@ def test_from_db_model_maps_fields() -> None:
     )
 
     # Act
+    # pyrefly: ignore [bad-argument-type]
     entity = MCPProviderEntity.from_db_model(db_provider)
 
     # Assert

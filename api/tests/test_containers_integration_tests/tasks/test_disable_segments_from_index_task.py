@@ -8,6 +8,7 @@ The task is responsible for removing document segments from the search index whe
 
 from unittest.mock import MagicMock, patch
 
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -51,13 +52,17 @@ class TestDisableSegmentsFromIndexTask:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
+            # pyrefly: ignore [bad-argument-type]
             status="active",
             interface_language="en-US",
         )
         account.id = fake.uuid4()
         # monkey-patch attributes for test setup
+        # pyrefly: ignore [missing-attribute]
         account.tenant_id = fake.uuid4()
+        # pyrefly: ignore [missing-attribute]
         account.type = "normal"
+        # pyrefly: ignore [bad-assignment]
         account.role = "owner"
         account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
@@ -68,8 +73,10 @@ class TestDisableSegmentsFromIndexTask:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
+        # pyrefly: ignore [missing-attribute]
         tenant.id = account.tenant_id
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
@@ -231,6 +238,7 @@ class TestDisableSegmentsFromIndexTask:
         fake = fake or Faker()
         process_rule = DatasetProcessRule()
         process_rule.id = fake.uuid4()
+        # pyrefly: ignore [missing-attribute]
         process_rule.tenant_id = dataset.tenant_id
         process_rule.dataset_id = dataset.id
         process_rule.mode = ProcessRuleMode.AUTOMATIC
@@ -243,6 +251,7 @@ class TestDisableSegmentsFromIndexTask:
             "}"
         )
         process_rule.created_by = dataset.created_by
+        # pyrefly: ignore [missing-attribute]
         process_rule.updated_by = dataset.updated_by
 
         db_session_with_containers.add(process_rule)

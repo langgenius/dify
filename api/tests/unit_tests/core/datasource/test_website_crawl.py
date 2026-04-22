@@ -15,6 +15,8 @@ and ensure proper handling of crawl options, status checking, and data retrieval
 from unittest.mock import Mock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.datasource.entities.datasource_entities import (
@@ -989,6 +991,7 @@ class TestCrawlWorkflow:
 
         assert result["title"] == "Single Page"
         assert result["description"] == "A single page"
+        # pyrefly: ignore [not-iterable]
         assert "Single Page" in result["markdown"]
         assert result["source_url"] == "https://example.com/single-page"
 

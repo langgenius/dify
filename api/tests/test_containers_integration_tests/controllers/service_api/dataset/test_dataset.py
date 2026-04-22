@@ -115,6 +115,7 @@ class TestDatasetUpdatePayload:
             partial_member_list=[{"user_id": "user_123", "role": "editor"}],
         )
         assert payload.permission == DatasetPermissionEnum.PARTIAL_TEAM
+        # pyrefly: ignore [bad-argument-type]
         assert len(payload.partial_member_list) == 1
 
     def test_payload_name_length_validation(self):
@@ -180,6 +181,7 @@ class TestTagUpdatePayload:
 
     def test_payload_requires_tag_id(self):
         with pytest.raises(ValueError):
+            # pyrefly: ignore [missing-argument]
             TagUpdatePayload(name="Updated Tag")
 
 
@@ -192,6 +194,7 @@ class TestTagDeletePayload:
 
     def test_payload_requires_tag_id(self):
         with pytest.raises(ValueError):
+            # pyrefly: ignore [missing-argument]
             TagDeletePayload()
 
 

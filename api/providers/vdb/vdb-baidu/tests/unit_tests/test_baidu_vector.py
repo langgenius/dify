@@ -66,17 +66,28 @@ def _build_fake_pymochow_modules():
         JSON = "JSON"
         FLOAT_VECTOR = "FLOAT_VECTOR"
 
+    # pyrefly: ignore [missing-attribute]
     pymochow.MochowClient = _SimpleObject
+    # pyrefly: ignore [missing-attribute]
     pymochow_credentials.BceCredentials = _SimpleObject
+    # pyrefly: ignore [missing-attribute]
     pymochow_configuration.Configuration = _SimpleObject
+    # pyrefly: ignore [missing-attribute]
     pymochow_exception.ServerError = ServerError
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_database.Database = _SimpleObject
 
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.FieldType = FieldType
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.IndexState = IndexState
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.IndexType = IndexType
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.MetricType = MetricType
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.ServerErrCode = ServerErrCode
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_enum.TableState = TableState
 
     for cls_name in [
@@ -90,19 +101,29 @@ def _build_fake_pymochow_modules():
         "VectorIndex",
     ]:
         setattr(pymochow_model_schema, cls_name, _SimpleObject)
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_schema.InvertedIndexAnalyzer = InvertedIndexAnalyzer
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_schema.InvertedIndexFieldAttribute = InvertedIndexFieldAttribute
+    # pyrefly: ignore [missing-attribute]
     pymochow_model_schema.InvertedIndexParseMode = InvertedIndexParseMode
 
     for cls_name in ["AnnSearch", "BM25SearchRequest", "HNSWSearchParams", "Partition", "Row"]:
         setattr(pymochow_model_table, cls_name, _SimpleObject)
 
+    # pyrefly: ignore [missing-attribute]
     pymochow.auth = pymochow_auth
+    # pyrefly: ignore [missing-attribute]
     pymochow.model = pymochow_model
+    # pyrefly: ignore [missing-attribute]
     pymochow_auth.bce_credentials = pymochow_credentials
+    # pyrefly: ignore [missing-attribute]
     pymochow_model.database = pymochow_model_database
+    # pyrefly: ignore [missing-attribute]
     pymochow_model.enum = pymochow_model_enum
+    # pyrefly: ignore [missing-attribute]
     pymochow_model.schema = pymochow_model_schema
+    # pyrefly: ignore [missing-attribute]
     pymochow_model.table = pymochow_model_table
 
     modules = {

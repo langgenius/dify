@@ -155,6 +155,7 @@ class TestWorkflowTraceWithoutMessageId:
     def test_root_span_is_created(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
+        # pyrefly: ignore [missing-attribute]
         assert instance.add_span.called
 
     def test_root_span_id_matches_expected(self):
@@ -162,6 +163,7 @@ class TestWorkflowTraceWithoutMessageId:
         instance = self._run(trace_info)
 
         expected = self._expected_root_span_id(trace_info)
+        # pyrefly: ignore [missing-attribute]
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert root_span_kwargs["id"] == expected
 
@@ -169,6 +171,7 @@ class TestWorkflowTraceWithoutMessageId:
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
+        # pyrefly: ignore [missing-attribute]
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert root_span_kwargs["parent_span_id"] is None
 
@@ -177,6 +180,7 @@ class TestWorkflowTraceWithoutMessageId:
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
+        # pyrefly: ignore [missing-attribute]
         trace_kwargs = instance.add_trace.call_args_list[0][0][0]
         assert trace_kwargs["name"] == TraceTaskName.WORKFLOW_TRACE
 
@@ -184,6 +188,7 @@ class TestWorkflowTraceWithoutMessageId:
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
+        # pyrefly: ignore [missing-attribute]
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert root_span_kwargs["name"] == TraceTaskName.WORKFLOW_TRACE
 
@@ -191,6 +196,7 @@ class TestWorkflowTraceWithoutMessageId:
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
+        # pyrefly: ignore [missing-attribute]
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert "workflow" in root_span_kwargs["tags"]
 
@@ -214,7 +220,9 @@ class TestWorkflowTraceWithoutMessageId:
         instance = self._run(trace_info, node_executions=[node_exec])
 
         # call_args_list[0] = root span, [1] = node execution span
+        # pyrefly: ignore [missing-attribute]
         assert instance.add_span.call_count == 2
+        # pyrefly: ignore [missing-attribute]
         node_span_kwargs = instance.add_span.call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] == expected_root_span_id
 
@@ -240,6 +248,7 @@ class TestWorkflowTraceWithoutMessageId:
         instance = self._run(trace_info, node_executions=[node_exec])
 
         old_parent_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_app_log_id)
+        # pyrefly: ignore [missing-attribute]
         node_span_kwargs = instance.add_span.call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] != old_parent_id
 
@@ -283,6 +292,7 @@ class TestWorkflowTraceWithMessageId:
         trace_info = _make_workflow_trace_info(message_id=self._MESSAGE_ID)
         instance = self._run(trace_info)
 
+        # pyrefly: ignore [missing-attribute]
         trace_kwargs = instance.add_trace.call_args_list[0][0][0]
         assert trace_kwargs["name"] == TraceTaskName.MESSAGE_TRACE
 
@@ -292,6 +302,7 @@ class TestWorkflowTraceWithMessageId:
         instance = self._run(trace_info)
 
         expected_root_span_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_run_id)
+        # pyrefly: ignore [missing-attribute]
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert root_span_kwargs["id"] == expected_root_span_id
 
@@ -326,5 +337,6 @@ class TestWorkflowTraceWithMessageId:
 
         instance = self._run(trace_info, node_executions=[node_exec])
 
+        # pyrefly: ignore [missing-attribute]
         node_span_kwargs = instance.add_span.call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] == expected_root_span_id

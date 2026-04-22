@@ -681,6 +681,7 @@ class TestHandleSseEventNew:
         t._handle_sse_event(sse, q, original_request_id=999)
         item = q.get_nowait()
         assert isinstance(item, SessionMessage)
+        # pyrefly: ignore [missing-attribute]
         assert item.message.root.id == 999
 
     def test_message_event_calls_resumption_callback_when_sse_id_present(self):
@@ -1404,6 +1405,7 @@ class TestPostWriterNew:
         s2c: queue.Queue = queue.Queue()
 
         msg = SessionMessage(_make_request_msg("tools/list", 5))
+        # pyrefly: ignore [bad-assignment]
         msg.metadata = "not-a-client-metadata"
         c2s.put(msg)
         c2s.put(None)

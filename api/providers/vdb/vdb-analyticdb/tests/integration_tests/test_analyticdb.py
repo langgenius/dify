@@ -14,6 +14,7 @@ class AnalyticdbVectorTest(AbstractVectorTest):
         if config_type == "sql":
             self.vector = AnalyticdbVector(
                 collection_name=self.collection_name,
+                # pyrefly: ignore [missing-argument]
                 sql_config=AnalyticdbVectorBySqlConfig(
                     host="test_host",
                     port=5432,
@@ -41,6 +42,7 @@ class AnalyticdbVectorTest(AbstractVectorTest):
             )
 
     def run_all_tests(self):
+        # pyrefly: ignore [missing-attribute]
         self.vector.delete()
         return super().run_all_tests()
 

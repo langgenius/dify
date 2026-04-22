@@ -370,6 +370,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
 
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
+            # pyrefly: ignore [not-callable]
             document_indexing_sync_task.delay(dataset_id_str, document.id)
         return {"result": "success"}, 200
 
@@ -389,5 +390,6 @@ class DataSourceNotionDocumentSyncApi(Resource):
         document = DocumentService.get_document(dataset_id_str, document_id_str)
         if document is None:
             raise NotFound("Document not found.")
+        # pyrefly: ignore [not-callable]
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
         return {"result": "success"}, 200

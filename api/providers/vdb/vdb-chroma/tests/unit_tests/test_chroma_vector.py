@@ -12,7 +12,9 @@ from core.rag.models.document import Document
 
 def _build_fake_chroma_modules():
     chroma = types.ModuleType("chromadb")
+    # pyrefly: ignore [missing-attribute]
     chroma.DEFAULT_TENANT = "default_tenant"
+    # pyrefly: ignore [missing-attribute]
     chroma.DEFAULT_DATABASE = "default_database"
 
     class Settings:
@@ -37,8 +39,11 @@ def _build_fake_chroma_modules():
             self.get_or_create_collection = MagicMock(return_value=self.collection)
             self.delete_collection = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     chroma.Settings = Settings
+    # pyrefly: ignore [missing-attribute]
     chroma.QueryResult = QueryResult
+    # pyrefly: ignore [missing-attribute]
     chroma.HttpClient = _Client
     return chroma
 

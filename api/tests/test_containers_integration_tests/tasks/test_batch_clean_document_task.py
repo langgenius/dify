@@ -10,6 +10,8 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -70,6 +72,7 @@ class TestBatchCleanDocumentTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -79,6 +82,7 @@ class TestBatchCleanDocumentTask:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -294,6 +298,7 @@ class TestBatchCleanDocumentTask:
         # Create segment with simple content (no image references)
         segment = DocumentSegment(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             dataset_id=document.dataset_id,
             document_id=document.id,
@@ -695,6 +700,7 @@ class TestBatchCleanDocumentTask:
         for i in range(3):
             segment = DocumentSegment(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 dataset_id=document.dataset_id,
                 document_id=document.id,

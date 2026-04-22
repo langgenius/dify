@@ -10,6 +10,7 @@ def test_pipeline_dataset_normalizes_none_description() -> None:
     dataset = PipelineDataset(
         id="dataset-1",
         name="Dataset",
+        # pyrefly: ignore [bad-argument-type]
         description=None,
         chunk_structure="parent-child",
     )

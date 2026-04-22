@@ -216,11 +216,13 @@ class _AppRunner:
 
         if isinstance(user_params, _EndUser):
             with self._session() as session:
+                # pyrefly: ignore [bad-return]
                 return session.get(EndUser, user_params.end_user_id)
         elif not isinstance(user_params, _Account):
             raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
 
         with self._session() as session:
+            # pyrefly: ignore [bad-assignment]
             user: Account = session.get(Account, user_params.user_id)
             user.set_tenant_id(self._exec_params.tenant_id)
 
@@ -437,6 +439,7 @@ def _resume_advanced_chat(
         raise
 
     if generate_entity.stream:
+        # pyrefly: ignore [unsafe-overlap]
         assert isinstance(response, Generator)
         _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
 
@@ -491,6 +494,7 @@ def _resume_workflow(
         raise
 
     if generate_entity.stream:
+        # pyrefly: ignore [unsafe-overlap]
         assert isinstance(response, Generator)
         _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
 

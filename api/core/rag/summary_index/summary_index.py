@@ -90,4 +90,5 @@ class SummaryIndex:
                 futures = [executor.submit(process_segment, segment_id) for segment_id in pending_segment_ids]
                 concurrent.futures.wait(futures)
         else:
+            # pyrefly: ignore [not-callable]
             generate_summary_index_task.delay(dataset_id, document_id, None)

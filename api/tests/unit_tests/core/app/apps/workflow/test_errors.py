@@ -6,4 +6,5 @@ class TestWorkflowErrors:
         err = WorkflowPausedInBlockingModeError()
         assert err.error_code == "workflow_paused_in_blocking_mode"
         assert err.code == 400
+        # pyrefly: ignore [not-iterable]
         assert "blocking response mode" in err.description

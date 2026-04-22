@@ -524,6 +524,7 @@ class TestLogoutApi:
         # Assert
         mock_service_logout.assert_called_once_with(account=mock_account)
         mock_logout_user.assert_called_once()
+        # pyrefly: ignore [unsupported-operation]
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
@@ -552,4 +553,5 @@ class TestLogoutApi:
             response = logout_api.post()
 
         # Assert
+        # pyrefly: ignore [unsupported-operation]
         assert response.json["result"] == "success"

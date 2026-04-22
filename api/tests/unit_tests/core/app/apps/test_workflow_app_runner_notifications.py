@@ -33,6 +33,7 @@ class _DummyWorkflowEntry:
 
 def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch):
     queue_manager = _DummyQueueManager()
+    # pyrefly: ignore [bad-argument-type]
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
     workflow_entry = _DummyWorkflowEntry()
 
@@ -49,6 +50,7 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
     email_task = MagicMock()
     monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
 
+    # pyrefly: ignore [bad-argument-type]
     runner._handle_event(workflow_entry, event)
 
     email_task.apply_async.assert_called_once()

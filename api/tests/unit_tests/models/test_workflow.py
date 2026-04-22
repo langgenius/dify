@@ -333,6 +333,7 @@ class TestWorkflowDraftVariableGetValue:
         draft_var = WorkflowDraftVariable()
         draft_var.app_id = "app-1"
         draft_var.set_value(build_segment(persisted_file))
+        # pyrefly: ignore [missing-attribute]
         draft_var._WorkflowDraftVariable__value = None
 
         with (

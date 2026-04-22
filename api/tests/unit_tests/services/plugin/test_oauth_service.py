@@ -47,6 +47,7 @@ class TestCreateProxyContext:
 
         from extensions.ext_redis import redis_client
 
+        # pyrefly: ignore [missing-attribute]
         stored_data = json.loads(redis_client.setex.call_args[0][2])
         assert stored_data["credential_id"] == "cred-1"
 
@@ -55,6 +56,7 @@ class TestCreateProxyContext:
 
         from extensions.ext_redis import redis_client
 
+        # pyrefly: ignore [missing-attribute]
         stored_data = json.loads(redis_client.setex.call_args[0][2])
         assert "credential_id" not in stored_data
 
@@ -65,6 +67,7 @@ class TestCreateProxyContext:
 
         from extensions.ext_redis import redis_client
 
+        # pyrefly: ignore [missing-attribute]
         stored_data = json.loads(redis_client.setex.call_args[0][2])
         assert stored_data["scope"] == "repo"
 
@@ -92,6 +95,7 @@ class TestUseProxyContext:
 
         assert result == stored
         expected_key = "oauth_proxy_context:valid-id"
+        # pyrefly: ignore [missing-attribute]
         redis_client.delete.assert_called_once_with(expected_key)
 
     def test_returns_context_with_credential_id(self):

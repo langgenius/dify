@@ -225,8 +225,11 @@ class TestSpanBuilder:
         span = builder.build_span(span_data)
         assert isinstance(span, ReadableSpan)
         assert span.name == "test-span"
+        # pyrefly: ignore [missing-attribute]
         assert span.context.trace_id == 123
+        # pyrefly: ignore [missing-attribute]
         assert span.context.span_id == 456
+        # pyrefly: ignore [missing-attribute]
         assert span.parent.span_id == 789
         assert span.resource == resource
         assert span.attributes == {"attr1": "val1"}

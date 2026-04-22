@@ -24,6 +24,7 @@ class TestAgentConfigManagerConvert:
     def test_convert_returns_none_when_agent_mode_missing(self):
         config = {"model": {"provider": "openai", "name": "gpt-4"}}
 
+        # pyrefly: ignore [bad-argument-type]
         result = AgentConfigManager.convert(config)
 
         assert result is None
@@ -69,6 +70,7 @@ class TestAgentConfigManagerConvert:
 
         result = AgentConfigManager.convert(config)
 
+        # pyrefly: ignore [missing-attribute]
         assert result.strategy.name == "FUNCTION_CALLING"
 
     def test_convert_unknown_strategy_non_openai_defaults_to_chain_of_thought(self, base_config):
@@ -82,6 +84,7 @@ class TestAgentConfigManagerConvert:
 
         result = AgentConfigManager.convert(config)
 
+        # pyrefly: ignore [missing-attribute]
         assert result.strategy.name == "CHAIN_OF_THOUGHT"
 
     def test_convert_skips_disabled_tools(self, mocker, base_config):
@@ -157,7 +160,9 @@ class TestAgentConfigManagerConvert:
         result = AgentConfigManager.convert(config)
 
         assert result is not None
+        # pyrefly: ignore [missing-attribute]
         assert result.prompt.first_prompt is not None
+        # pyrefly: ignore [missing-attribute]
         assert result.prompt.next_iteration is not None
 
     def test_convert_chat_mode_prompt_defaults(self, base_config):
@@ -168,7 +173,9 @@ class TestAgentConfigManagerConvert:
         result = AgentConfigManager.convert(config)
 
         assert result is not None
+        # pyrefly: ignore [missing-attribute]
         assert result.prompt.first_prompt is not None
+        # pyrefly: ignore [missing-attribute]
         assert result.prompt.next_iteration is not None
 
     def test_convert_router_strategy_returns_none(self, base_config):
@@ -201,6 +208,7 @@ class TestAgentConfigManagerConvert:
 
         result = AgentConfigManager.convert(config)
 
+        # pyrefly: ignore [missing-attribute]
         assert result.max_iteration == 10
 
     def test_convert_custom_max_iteration(self, base_config):
@@ -209,6 +217,7 @@ class TestAgentConfigManagerConvert:
 
         result = AgentConfigManager.convert(config)
 
+        # pyrefly: ignore [missing-attribute]
         assert result.max_iteration == 25
 
     def test_convert_missing_model_raises_key_error(self, base_config):

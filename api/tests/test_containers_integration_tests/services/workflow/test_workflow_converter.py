@@ -4,6 +4,8 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -104,6 +106,7 @@ class TestWorkflowConverter:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -113,6 +116,7 @@ class TestWorkflowConverter:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -323,6 +327,7 @@ class TestWorkflowConverter:
         workflow_converter = WorkflowConverter()
         workflow = workflow_converter.convert_app_model_config_to_workflow(
             app_model=app,
+            # pyrefly: ignore [bad-argument-type]
             app_model_config=app.app_model_config,
             account_id=account.id,
         )
@@ -643,6 +648,7 @@ class TestConvertToKnowledgeRetrievalNodeVariants:
             dataset_config=self._dataset_config(),
             model_config=self._model_config(),
         )
+        # pyrefly: ignore [unsupported-operation]
         assert node["data"]["query_variable_selector"] == ["sys", "query"]
 
     def test_workflow_uses_start_variable(self):
@@ -651,6 +657,7 @@ class TestConvertToKnowledgeRetrievalNodeVariants:
             dataset_config=self._dataset_config(query_variable="query"),
             model_config=self._model_config(),
         )
+        # pyrefly: ignore [unsupported-operation]
         assert node["data"]["query_variable_selector"] == ["start", "query"]
 
 

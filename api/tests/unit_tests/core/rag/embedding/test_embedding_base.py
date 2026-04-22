@@ -124,6 +124,7 @@ class TestEmbeddingsNotImplemented:
 
         partial = PartialImpl()
         with pytest.raises(NotImplementedError):
+            # pyrefly: ignore [missing-attribute]
             partial.embed_query("test")
 
     def test_embed_documents_raises_not_implemented(self):
@@ -141,6 +142,7 @@ class TestEmbeddingsNotImplemented:
 
         partial = PartialImpl()
         with pytest.raises(NotImplementedError):
+            # pyrefly: ignore [missing-attribute]
             partial.embed_documents(["test"])
 
     def test_embed_multimodal_documents_raises_not_implemented(self):
@@ -158,6 +160,7 @@ class TestEmbeddingsNotImplemented:
 
         partial = PartialImpl()
         with pytest.raises(NotImplementedError):
+            # pyrefly: ignore [missing-attribute]
             partial.embed_multimodal_documents([{"file_id": "test"}])
 
     def test_embed_multimodal_query_raises_not_implemented(self):
@@ -175,6 +178,7 @@ class TestEmbeddingsNotImplemented:
 
         partial = PartialImpl()
         with pytest.raises(NotImplementedError):
+            # pyrefly: ignore [missing-attribute]
             partial.embed_multimodal_query({"file_id": "test"})
 
     def test_aembed_documents_raises_not_implemented(self):
@@ -194,6 +198,7 @@ class TestEmbeddingsNotImplemented:
 
         async def run_test():
             with pytest.raises(NotImplementedError):
+                # pyrefly: ignore [missing-attribute]
                 await partial.aembed_documents(["test"])
 
         asyncio.run(run_test())
@@ -215,6 +220,7 @@ class TestEmbeddingsNotImplemented:
 
         async def run_test():
             with pytest.raises(NotImplementedError):
+                # pyrefly: ignore [missing-attribute]
                 await partial.aembed_query("test")
 
         asyncio.run(run_test())

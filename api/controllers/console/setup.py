@@ -37,6 +37,7 @@ class SetupResponse(BaseModel):
     result: str = Field(description="Setup result", examples=["success"])
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.get(
     "/setup",
     response_model=SetupStatusResponse,
@@ -62,6 +63,7 @@ def get_setup_status_api() -> SetupStatusResponse:
     return SetupStatusResponse(step="finished")
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.post(
     "/setup",
     response_model=SetupResponse,

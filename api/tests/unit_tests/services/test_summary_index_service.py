@@ -94,6 +94,7 @@ def test_generate_summary_for_segment_passes_document_language(monkeypatch: pyte
     segment = _segment(has_document=True)
     dataset = _dataset()
 
+    # pyrefly: ignore [bad-typed-dict-key]
     content, got_usage = SummaryIndexService.generate_summary_for_segment(segment, dataset, {"a": 1})
     assert content == "sum"
     assert got_usage is usage
@@ -114,6 +115,7 @@ def test_generate_summary_for_segment_raises_when_empty(monkeypatch: pytest.Monk
     )
 
     with pytest.raises(ValueError, match="Generated summary is empty"):
+        # pyrefly: ignore [bad-typed-dict-key]
         SummaryIndexService.generate_summary_for_segment(_segment(), _dataset(), {"a": 1})
 
 
@@ -1101,7 +1103,9 @@ def test_update_summary_for_segment_creates_new_and_vectorize_fails_returns_erro
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_mock)
 
     out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+    # pyrefly: ignore [missing-attribute]
     assert out.status == SummaryStatus.ERROR
+    # pyrefly: ignore [missing-attribute]
     assert "Vectorization failed" in (out.error or "")
 
 

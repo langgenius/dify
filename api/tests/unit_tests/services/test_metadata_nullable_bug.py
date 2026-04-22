@@ -15,6 +15,7 @@ class TestMetadataNullableBug:
         # This test demonstrates the expected behavior - should fail validation
         with pytest.raises((ValueError, TypeError)):
             # This should fail because Pydantic expects non-None values
+            # pyrefly: ignore [bad-argument-type]
             MetadataArgs(type=None, name=None)
 
     def test_metadata_service_create_with_none_name_crashes(self):
@@ -48,6 +49,7 @@ class TestMetadataNullableBug:
         ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
+                # pyrefly: ignore [bad-argument-type]
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
     def test_api_layer_now_uses_pydantic_validation(self):

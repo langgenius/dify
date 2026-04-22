@@ -483,6 +483,7 @@ class TestBaseAppGeneratorExtras:
         base_app_generator = BaseAppGenerator()
         account = Account(name="Tester", email="tester@example.com")
         account.id = "account-id"
+        # pyrefly: ignore [missing-attribute]
         account.tenant_id = "tenant-id"
 
         factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)

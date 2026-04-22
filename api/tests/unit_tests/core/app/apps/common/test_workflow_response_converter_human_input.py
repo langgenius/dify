@@ -29,7 +29,9 @@ def _build_converter():
     )
     account = SimpleNamespace(id="acc-1", name="tester", email="tester@example.com")
     return WorkflowResponseConverter(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_entity,
+        # pyrefly: ignore [bad-argument-type]
         user=account,
         system_variables=system_variables,
     )

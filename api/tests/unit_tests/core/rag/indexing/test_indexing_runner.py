@@ -921,6 +921,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise ObjectDeletedError
+        # pyrefly: ignore [bad-argument-type]
         with patch.object(runner, "_extract", side_effect=ObjectDeletedError(state=None, msg="Object deleted")):
             # Act
             runner.run([doc])
@@ -1035,6 +1036,7 @@ class TestIndexingRunnerRetryLogic:
         # Act
         IndexingRunner._update_document_index_status(
             document_id,
+            # pyrefly: ignore [bad-argument-type]
             "completed",
             {"tokens": 100, "completed_at": naive_utc_now()},
         )
@@ -1050,6 +1052,7 @@ class TestIndexingRunnerRetryLogic:
 
         # Act & Assert
         with pytest.raises(DocumentIsPausedError):
+            # pyrefly: ignore [bad-argument-type]
             IndexingRunner._update_document_index_status(document_id, "completed")
 
     def test_update_document_index_status_deleted(self, mock_dependencies):
@@ -1061,6 +1064,7 @@ class TestIndexingRunnerRetryLogic:
 
         # Act & Assert
         with pytest.raises(DocumentIsDeletedPausedError):
+            # pyrefly: ignore [bad-argument-type]
             IndexingRunner._update_document_index_status(document_id, "completed")
 
 

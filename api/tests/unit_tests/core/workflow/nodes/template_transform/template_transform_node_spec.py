@@ -142,8 +142,11 @@ class TestTemplateTransformNode:
 
         assert config["type"] == "template-transform"
         assert "config" in config
+        # pyrefly: ignore [not-iterable]
         assert "variables" in config["config"]
+        # pyrefly: ignore [not-iterable]
         assert "template" in config["config"]
+        # pyrefly: ignore [bad-index]
         assert config["config"]["template"] == "{{ arg1 }}"
 
     def test_version(self):

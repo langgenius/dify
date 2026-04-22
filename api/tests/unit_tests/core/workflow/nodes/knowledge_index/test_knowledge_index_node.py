@@ -657,6 +657,7 @@ class TestInvokeKnowledgeIndex:
             is_preview=False,
             batch=batch,
             chunks=chunks,
+            # pyrefly: ignore [bad-argument-type]
             summary_index_setting=summary_setting,
         )
 

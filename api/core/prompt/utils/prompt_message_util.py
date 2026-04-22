@@ -77,6 +77,7 @@ class PromptMessageUtil:
                 prompt = {"role": role, "text": text, "files": files}
 
                 if tool_calls:
+                    # pyrefly: ignore [bad-typed-dict-key]
                     prompt["tool_calls"] = tool_calls
 
                 prompts.append(prompt)

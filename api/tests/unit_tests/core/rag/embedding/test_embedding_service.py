@@ -556,6 +556,7 @@ class TestCacheEmbeddingDocuments:
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
 
             # Mock database commit to raise IntegrityError
+            # pyrefly: ignore [bad-argument-type]
             mock_session.commit.side_effect = IntegrityError("Duplicate key", None, None)
 
             # Act
@@ -1319,6 +1320,7 @@ class TestEmbeddingEdgeCases:
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
+            # pyrefly: ignore [bad-argument-type]
             result = cache_embedding.embed_documents(texts)
 
             # Assert

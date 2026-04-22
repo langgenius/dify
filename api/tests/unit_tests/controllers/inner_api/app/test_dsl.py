@@ -117,6 +117,7 @@ class TestEnterpriseAppDSLImport:
             mock_dsl_cls.return_value = self._mock_dsl
             yield
 
+    # pyrefly: ignore [unknown-name]
     def _make_import_result(self, status: ImportStatus, **kwargs) -> "Import":
         from services.app_dsl_service import Import
 

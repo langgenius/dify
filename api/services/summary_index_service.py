@@ -306,6 +306,7 @@ class SummaryIndexService:
                         logger.debug(
                             "Successfully merged summary_record for segment %s, merged_id=%s",
                             segment.id,
+                            # pyrefly: ignore [missing-attribute]
                             summary_record_in_session.id,
                         )
                     else:
@@ -392,14 +393,20 @@ class SummaryIndexService:
                     # Update all fields including summary_content
                     # Always use the summary_content from the parameter (which is the latest from outer session)
                     # rather than relying on what's in the database, in case outer session hasn't committed yet
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.summary_index_node_id = summary_index_node_id
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.summary_index_node_hash = summary_hash
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.tokens = embedding_tokens  # Save embedding tokens
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.status = SummaryStatus.COMPLETED
                     # Ensure summary_content is preserved (use the latest from summary_record parameter)
                     # This is critical: use the parameter value, not the database value
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.summary_content = summary_content
                     # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
+                    # pyrefly: ignore [missing-attribute]
                     summary_record_in_session.updated_at = datetime.now(UTC).replace(tzinfo=None)
                     session.add(summary_record_in_session)
 
@@ -426,6 +433,7 @@ class SummaryIndexService:
                         summary_index_node_id,
                         summary_hash,
                         embedding_tokens,
+                        # pyrefly: ignore [missing-attribute]
                         summary_record_in_session.id,
                         use_provided_session,
                     )
@@ -435,7 +443,9 @@ class SummaryIndexService:
                     summary_record.tokens = embedding_tokens
                     summary_record.status = SummaryStatus.COMPLETED
                     summary_record.summary_content = summary_content
+                    # pyrefly: ignore [missing-attribute]
                     if summary_record_in_session.updated_at:
+                        # pyrefly: ignore [bad-argument-type]
                         summary_record.updated_at = summary_record_in_session.updated_at
                 finally:
                     # Only close session if we created it ourselves

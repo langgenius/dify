@@ -87,6 +87,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
+            # pyrefly: ignore [bad-argument-type]
             session=session_stub,
             form_id="form-id",
             delivery_id="delivery-id",
@@ -123,6 +124,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
+            # pyrefly: ignore [bad-argument-type]
             session=session_stub,
             form_id="form-id",
             delivery_id="delivery-id",
@@ -154,6 +156,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_all_workspace_members", fake_query)
 
         recipients = repo._build_email_recipients(
+            # pyrefly: ignore [bad-argument-type]
             session=session_stub,
             form_id="form-id",
             delivery_id="delivery-id",
@@ -180,6 +183,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
+            # pyrefly: ignore [bad-argument-type]
             session=session_stub,
             form_id="form-id",
             delivery_id="delivery-id",
@@ -210,6 +214,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
+            # pyrefly: ignore [bad-argument-type]
             session=session_stub,
             form_id="form-id",
             delivery_id="delivery-id",
@@ -253,6 +258,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             )
         )
 
+        # pyrefly: ignore [bad-argument-type]
         result = repo._delivery_method_to_model(session=session_stub, form_id="form-id", delivery_method=method)
 
         assert len(result.recipients) == 3

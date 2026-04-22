@@ -2,6 +2,8 @@ from dataclasses import asdict
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from core.entities.document_task import DocumentTask
@@ -71,6 +73,7 @@ class TestDocumentIndexingTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -78,6 +81,7 @@ class TestDocumentIndexingTasks:
 
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -153,6 +157,7 @@ class TestDocumentIndexingTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -160,6 +165,7 @@ class TestDocumentIndexingTasks:
 
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)

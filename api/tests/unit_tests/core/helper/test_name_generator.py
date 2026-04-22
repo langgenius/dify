@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.helper.name_generator import generate_incremental_name, generate_provider_name

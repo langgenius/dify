@@ -15,8 +15,11 @@ def _build_fake_hologres_modules():
     holo_module = types.ModuleType("holo_search_sdk")
     holo_types_module = types.ModuleType("holo_search_sdk.types")
 
+    # pyrefly: ignore [missing-attribute]
     holo_types_module.BaseQuantizationType = str
+    # pyrefly: ignore [missing-attribute]
     holo_types_module.DistanceType = str
+    # pyrefly: ignore [missing-attribute]
     holo_types_module.TokenizerType = str
 
     def _connect(**kwargs):
@@ -29,6 +32,7 @@ def _build_fake_hologres_modules():
         client.drop_table = MagicMock()
         return client
 
+    # pyrefly: ignore [missing-attribute]
     holo_module.connect = MagicMock(side_effect=_connect)
 
     return {
@@ -123,6 +127,7 @@ def test_add_texts_batches_and_serializes_metadata(hologres_module):
         Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}", "document_id": f"document-{i}"})
         for i in range(100)
     ]
+    # pyrefly: ignore [bad-argument-type]
     documents.append(SimpleNamespace(page_content="doc-100", metadata=None))
     embeddings = [[float(i)] for i in range(len(documents))]
 

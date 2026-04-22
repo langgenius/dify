@@ -14,6 +14,7 @@ class ConcreteTraceInstance(BaseTraceInstance):
         super().__init__(trace_config)
 
     def trace(self, trace_info: BaseTraceInfo):
+        # pyrefly: ignore [missing-attribute]
         super().trace(trace_info)
 
 

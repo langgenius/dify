@@ -43,6 +43,7 @@ class DummyStrategy(BaseAgentStrategy):
 class TestBaseAgentStrategyInstantiation:
     def test_cannot_instantiate_abstract_class(self) -> None:
         with pytest.raises(TypeError):
+            # pyrefly: ignore [bad-instantiation]
             BaseAgentStrategy()
 
 
@@ -151,6 +152,7 @@ class TestBaseAgentStrategyInvoke:
     def test_invoke_none_user_id(self) -> None:
         strategy = DummyStrategy(return_values=[])
 
+        # pyrefly: ignore [bad-argument-type]
         result = list(strategy.invoke(params={}, user_id=None))
 
         assert result == []

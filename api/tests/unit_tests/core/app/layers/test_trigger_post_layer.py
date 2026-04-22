@@ -44,6 +44,7 @@ class TestTriggerPostLayer:
                 start_time=datetime(2026, 2, 20, tzinfo=UTC) - timedelta(seconds=10),
                 trigger_log_id="log-1",
             )
+            # pyrefly: ignore [bad-argument-type]
             layer.initialize(runtime_state, Mock())
 
             layer.on_event(GraphRunSucceededEvent())
@@ -81,6 +82,7 @@ class TestTriggerPostLayer:
                 start_time=datetime(2026, 2, 20, tzinfo=UTC),
                 trigger_log_id="missing",
             )
+            # pyrefly: ignore [bad-argument-type]
             layer.initialize(runtime_state, Mock())
 
             layer.on_event(GraphRunFailedEvent(error="boom"))
@@ -101,6 +103,7 @@ class TestTriggerPostLayer:
                 start_time=datetime(2026, 2, 20, tzinfo=UTC),
                 trigger_log_id="log-1",
             )
+            # pyrefly: ignore [bad-argument-type]
             layer.initialize(runtime_state, Mock())
 
             layer.on_event(Mock())

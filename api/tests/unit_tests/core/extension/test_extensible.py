@@ -59,6 +59,7 @@ class TestExtensible:
         class MockExtension(Extensible):
             pass
 
+        # pyrefly: ignore [missing-attribute]
         mock_mod.MockExtension = MockExtension
         mock_module_from_spec.return_value = mock_mod
 
@@ -69,9 +70,13 @@ class TestExtensible:
 
         # Assert
         assert len(results) == 1
+        # pyrefly: ignore [bad-index]
         assert results[0].name == "ext1"
+        # pyrefly: ignore [bad-index]
         assert results[0].position == 10
+        # pyrefly: ignore [bad-index]
         assert results[0].builtin is True
+        # pyrefly: ignore [bad-index]
         assert results[0].extension_class == MockExtension
 
     @patch("core.extension.extensible.importlib.util.find_spec")
@@ -127,6 +132,7 @@ class TestExtensible:
         class MockExtension(Extensible):
             pass
 
+        # pyrefly: ignore [missing-attribute]
         mock_mod.MockExtension = MockExtension
         mock_module_from_spec.return_value = mock_mod
 
@@ -142,8 +148,11 @@ class TestExtensible:
             results = Extensible.scan_extensions()
 
         assert len(results) == 1
+        # pyrefly: ignore [bad-index]
         assert results[0].name == "ext1"
+        # pyrefly: ignore [bad-index]
         assert results[0].builtin is False
+        # pyrefly: ignore [bad-index]
         assert results[0].label == {"en": "Test"}
 
     @patch("core.extension.extensible.importlib.util.find_spec")
@@ -175,6 +184,7 @@ class TestExtensible:
         class MockExtension(Extensible):
             pass
 
+        # pyrefly: ignore [missing-attribute]
         mock_mod.MockExtension = MockExtension
         mock_module_from_spec.return_value = mock_mod
 
@@ -207,6 +217,7 @@ class TestExtensible:
         mock_exists.return_value = False
 
         mock_mod = types.ModuleType("ext1")
+        # pyrefly: ignore [missing-attribute]
         mock_mod.SomeOtherClass = type("SomeOtherClass", (), {})
         mock_module_from_spec.return_value = mock_mod
 
@@ -268,6 +279,7 @@ class TestExtensible:
         class MockExtension(Extensible):
             pass
 
+        # pyrefly: ignore [missing-attribute]
         mock_mod.MockExtension = MockExtension
         mock_module_from_spec.return_value = mock_mod
 
@@ -278,4 +290,5 @@ class TestExtensible:
             results = Extensible.scan_extensions()
 
         assert len(results) == 1
+        # pyrefly: ignore [bad-index]
         assert results[0].position == 0

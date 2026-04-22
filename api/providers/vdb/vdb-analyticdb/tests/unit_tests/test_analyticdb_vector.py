@@ -99,6 +99,7 @@ def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch):
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_NAMESPACE_PASSWORD", "ns-password")
 
     with patch.object(analyticdb_module, "AnalyticdbVector", return_value="vector") as vector_cls:
+        # pyrefly: ignore [bad-argument-type]
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
 
     assert result == "vector"
@@ -124,6 +125,7 @@ def test_factory_builds_sql_config_when_host_is_present(monkeypatch):
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_NAMESPACE", "dify")
 
     with patch.object(analyticdb_module, "AnalyticdbVector", return_value="vector") as vector_cls:
+        # pyrefly: ignore [bad-argument-type]
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
 
     assert result == "vector"

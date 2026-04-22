@@ -200,6 +200,7 @@ def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeyp
 
 def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch):
     class _Expr:
+        # pyrefly: ignore [bad-override]
         def __eq__(self, _other):
             return "expr"
 

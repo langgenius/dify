@@ -130,6 +130,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             execution_data = execution.model_dump()
 
             # Queue the save operation as a Celery task (fire and forget)
+            # pyrefly: ignore [not-callable]
             save_workflow_node_execution_task.delay(
                 execution_data=execution_data,
                 tenant_id=self._tenant_id,

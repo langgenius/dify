@@ -244,8 +244,11 @@ class TestMessageCycleManagerOptimization:
         assert thread.function == message_cycle_manager._generate_conversation_name_worker
         assert thread.started is True
         assert thread.daemon is True
+        # pyrefly: ignore [unsupported-operation]
         assert thread.kwargs["flask_app"] is flask_app
+        # pyrefly: ignore [unsupported-operation]
         assert thread.kwargs["conversation_id"] == "conv-1"
+        # pyrefly: ignore [unsupported-operation]
         assert thread.kwargs["query"] == "hello"
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
 

@@ -50,11 +50,13 @@ class TestAppMessageExportServiceIntegration:
             email=f"test-{uuid.uuid4()}@example.com",
             name="tester",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         session.add(account)
         session.flush()
 
+        # pyrefly: ignore [bad-argument-type]
         tenant = Tenant(name=f"tenant-{uuid.uuid4()}", status="normal")
         session.add(tenant)
         session.flush()

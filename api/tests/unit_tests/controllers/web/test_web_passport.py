@@ -33,6 +33,7 @@ class TestDecodeEnterpriseWebappUserId:
             "user_id": "u1",
         }
         result = decode_enterprise_webapp_user_id("valid-jwt")
+        # pyrefly: ignore [unsupported-operation]
         assert result["user_id"] == "u1"
 
     @patch("controllers.web.passport.PassportService")

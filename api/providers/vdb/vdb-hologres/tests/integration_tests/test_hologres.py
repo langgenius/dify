@@ -37,6 +37,7 @@ class HologresVectorTest(AbstractVectorTest):
 
     def search_by_full_text(self):
         """Override: full-text index may not be immediately ready in real mode."""
+        # pyrefly: ignore [missing-attribute]
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         if MOCK:
             # In mock mode, full-text search should return the document we inserted
@@ -59,9 +60,11 @@ class HologresVectorTest(AbstractVectorTest):
                 "dataset_id": self.dataset_id,
             },
         )
+        # pyrefly: ignore [missing-attribute]
         self.vector.add_texts(documents=[other_doc], embeddings=[self.example_embedding])
 
         # Search with filter - should only return the original document
+        # pyrefly: ignore [missing-attribute]
         hits = self.vector.search_by_vector(
             query_vector=self.example_embedding,
             document_ids_filter=[self.example_doc_id],
@@ -70,6 +73,7 @@ class HologresVectorTest(AbstractVectorTest):
         assert hits[0].metadata["doc_id"] == self.example_doc_id
 
         # Search without filter - should return both
+        # pyrefly: ignore [missing-attribute]
         all_hits = self.vector.search_by_vector(query_vector=self.example_embedding, top_k=10)
         assert len(all_hits) >= 2
 
@@ -86,9 +90,11 @@ class HologresVectorTest(AbstractVectorTest):
                 "dataset_id": self.dataset_id,
             },
         )
+        # pyrefly: ignore [missing-attribute]
         self.vector.add_texts(documents=[other_doc], embeddings=[self.example_embedding])
 
         # Search with filter - should only return the original document
+        # pyrefly: ignore [missing-attribute]
         hits = self.vector.search_by_full_text(
             query=get_example_text(),
             document_ids_filter=[self.example_doc_id],
@@ -99,12 +105,14 @@ class HologresVectorTest(AbstractVectorTest):
 
     def get_ids_by_metadata_field(self):
         """Override: Hologres implements this method via JSONB query."""
+        # pyrefly: ignore [missing-attribute]
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert ids is not None
         assert len(ids) == 1
 
     def run_all_tests(self):
         # Clean up before running tests
+        # pyrefly: ignore [missing-attribute]
         self.vector.delete()
         # Run base tests (create, search, text_exists, get_ids, add_texts, delete_by_ids, delete)
         super().run_all_tests()
@@ -112,6 +120,7 @@ class HologresVectorTest(AbstractVectorTest):
         # Additional filter tests require fresh data (table was deleted by base tests)
         if MOCK:
             # Recreate collection for filter tests
+            # pyrefly: ignore [missing-attribute]
             self.vector.create(
                 texts=[
                     Document(
@@ -129,6 +138,7 @@ class HologresVectorTest(AbstractVectorTest):
             self.search_by_vector_with_filter()
             self.search_by_full_text_with_filter()
             # Clean up
+            # pyrefly: ignore [missing-attribute]
             self.vector.delete()
 
 

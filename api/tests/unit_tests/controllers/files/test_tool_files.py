@@ -27,6 +27,7 @@ class DummyToolFile:
 @pytest.fixture(autouse=True)
 def mock_global_db():
     fake_db = types.SimpleNamespace(engine=object())
+    # pyrefly: ignore [missing-attribute]
     module.global_db = fake_db
 
 
@@ -38,6 +39,7 @@ class TestToolFileApi:
         mock_tool_file_manager,
         mock_verify,
     ):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -76,6 +78,7 @@ class TestToolFileApi:
         mock_tool_file_manager,
         mock_verify,
     ):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -106,6 +109,7 @@ class TestToolFileApi:
 
     @patch.object(module, "verify_tool_file_signature", return_value=False)
     def test_invalid_signature(self, mock_verify):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -128,6 +132,7 @@ class TestToolFileApi:
         mock_tool_file_manager,
         mock_verify,
     ):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -155,6 +160,7 @@ class TestToolFileApi:
         mock_tool_file_manager,
         mock_verify,
     ):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",

@@ -20,6 +20,7 @@ class TestWorkflowAppConfigManager:
                 return_value=[],
             ),
         ):
+            # pyrefly: ignore [bad-argument-type]
             app_config = WorkflowAppConfigManager.get_app_config(app_model, workflow)
 
         assert app_config.workflow_id == "wf-1"

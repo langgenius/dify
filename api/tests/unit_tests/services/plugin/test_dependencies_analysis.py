@@ -111,6 +111,7 @@ class TestGenerateDependencies:
 
         assert len(result) == 1
         assert result[0].type == PluginDependency.Type.Github
+        # pyrefly: ignore [missing-attribute]
         assert result[0].value.repo == "org/repo"
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")

@@ -406,6 +406,7 @@ class TestRagPipelineTaskProxy:
     def test_dispatch_edge_case_empty_plan(self, mock_db, mock_file_service_class, mock_feature_service):
         """Test _dispatch method with empty plan string."""
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="")
         mock_feature_service.get_features.return_value = mock_features
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
@@ -428,6 +429,7 @@ class TestRagPipelineTaskProxy:
     def test_dispatch_edge_case_none_plan(self, mock_db, mock_file_service_class, mock_feature_service):
         """Test _dispatch method with None plan."""
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan=None)
         mock_feature_service.get_features.return_value = mock_features
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()

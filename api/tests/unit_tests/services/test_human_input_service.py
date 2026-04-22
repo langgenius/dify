@@ -310,6 +310,7 @@ def test_form_properties(sample_form_record):
 
 def test_form_submitted_error_init():
     error = FormSubmittedError(form_id="test-form")
+    # pyrefly: ignore [not-iterable]
     assert "form_id=test-form" in error.description
     assert error.code == 412
 

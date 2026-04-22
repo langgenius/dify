@@ -46,6 +46,7 @@ class TestPromptTransform:
         with patch(
             "core.prompt.prompt_transform.ModelInstance", return_value=fake_model_instance
         ) as model_instance_cls:
+            # pyrefly: ignore [bad-argument-type]
             model_instance, model_schema = transform._resolve_model_runtime(model_config=model_config)
 
         model_instance_cls.assert_called_once_with(
@@ -76,7 +77,9 @@ class TestPromptTransform:
         model_config = SimpleNamespace(model_schema=fallback_schema)
 
         resolved_model_instance, resolved_schema = transform._resolve_model_runtime(
+            # pyrefly: ignore [bad-argument-type]
             model_config=model_config,
+            # pyrefly: ignore [bad-argument-type]
             model_instance=model_instance,
         )
 
@@ -95,6 +98,7 @@ class TestPromptTransform:
         )
 
         with pytest.raises(ValueError, match="Model schema not found for the provided model instance."):
+            # pyrefly: ignore [bad-argument-type]
             transform._resolve_model_runtime(model_instance=model_instance)
 
     def test_calculate_rest_token_defaults_when_context_size_missing(self):
@@ -109,6 +113,7 @@ class TestPromptTransform:
             parameters={},
         )
 
+        # pyrefly: ignore [bad-argument-type]
         rest = transform._calculate_rest_token([], model_config=model_config)
 
         assert rest == 2000
@@ -133,6 +138,7 @@ class TestPromptTransform:
             parameters={"max_tokens": 50},
         )
 
+        # pyrefly: ignore [bad-argument-type]
         rest = transform._calculate_rest_token([SimpleNamespace()], model_config=model_config)
 
         assert rest == 0
@@ -157,6 +163,7 @@ class TestPromptTransform:
             parameters={"max_tokens": 30},
         )
 
+        # pyrefly: ignore [bad-argument-type]
         rest = transform._calculate_rest_token([SimpleNamespace()], model_config=model_config)
 
         assert rest == 150
@@ -169,6 +176,7 @@ class TestPromptTransform:
         memory_config_with_window = SimpleNamespace(window=SimpleNamespace(enabled=True, size=3))
         result = transform._get_history_messages_from_memory(
             memory=memory,
+            # pyrefly: ignore [bad-argument-type]
             memory_config=memory_config_with_window,
             max_token_limit=100,
             human_prefix="Human",
@@ -187,6 +195,7 @@ class TestPromptTransform:
         memory_config_no_window = SimpleNamespace(window=SimpleNamespace(enabled=False, size=2))
         transform._get_history_messages_from_memory(
             memory=memory,
+            # pyrefly: ignore [bad-argument-type]
             memory_config=memory_config_no_window,
             max_token_limit=50,
         )
@@ -198,6 +207,7 @@ class TestPromptTransform:
         memory.get_history_prompt_messages.return_value = ["m1", "m2"]
 
         memory_config_window = SimpleNamespace(window=SimpleNamespace(enabled=True, size=2))
+        # pyrefly: ignore [bad-argument-type]
         result = transform._get_history_messages_list_from_memory(memory, memory_config_window, 120)
         assert result == ["m1", "m2"]
         memory.get_history_prompt_messages.assert_called_with(max_token_limit=120, message_limit=2)
@@ -205,6 +215,7 @@ class TestPromptTransform:
         memory.reset_mock()
         memory.get_history_prompt_messages.return_value = ["only"]
         memory_config_no_window = SimpleNamespace(window=SimpleNamespace(enabled=True, size=0))
+        # pyrefly: ignore [bad-argument-type]
         result = transform._get_history_messages_list_from_memory(memory, memory_config_no_window, 10)
         assert result == ["only"]
         memory.get_history_prompt_messages.assert_called_with(max_token_limit=10, message_limit=None)
@@ -223,8 +234,11 @@ class TestPromptTransform:
 
         result = transform._append_chat_histories(
             memory=memory,
+            # pyrefly: ignore [bad-argument-type]
             memory_config=memory_config,
+            # pyrefly: ignore [bad-argument-type]
             prompt_messages=["p1"],
+            # pyrefly: ignore [bad-argument-type]
             model_config=SimpleNamespace(),
         )
 

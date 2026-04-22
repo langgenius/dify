@@ -36,6 +36,7 @@ class MockConfig:
     node_configs: dict[str, NodeMockConfig] = field(default_factory=dict)
 
     # Default configurations by node type
+    # pyrefly: ignore [unknown-name]
     default_configs: dict[NodeType, dict[str, Any]] = field(default_factory=dict)
 
     # Global settings
@@ -71,10 +72,12 @@ class MockConfig:
             self.node_configs[node_id] = NodeMockConfig(node_id=node_id)
         self.node_configs[node_id].error = error
 
+    # pyrefly: ignore [unknown-name]
     def get_default_config(self, node_type: NodeType) -> dict[str, Any]:
         """Get default configuration for a node type."""
         return self.default_configs.get(node_type, {})
 
+    # pyrefly: ignore [unknown-name]
     def set_default_config(self, node_type: NodeType, config: dict[str, Any]) -> None:
         """Set default configuration for a node type."""
         self.default_configs[node_type] = config
@@ -155,6 +158,7 @@ class MockConfigBuilder:
         self._config.set_node_config(config.node_id, config)
         return self
 
+    # pyrefly: ignore [unknown-name]
     def with_default_config(self, node_type: NodeType, config: dict[str, Any]) -> MockConfigBuilder:
         """Set default configuration for a node type."""
         self._config.set_default_config(node_type, config)

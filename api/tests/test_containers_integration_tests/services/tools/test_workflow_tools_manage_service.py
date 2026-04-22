@@ -2,6 +2,8 @@ import json
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -106,10 +108,12 @@ class TestWorkflowToolManageService:
         }
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow for the app
         workflow = WorkflowModel(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             app_id=app.id,
             type="workflow",
@@ -185,6 +189,7 @@ class TestWorkflowToolManageService:
         # Execute the method under test
         result = WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=tool_name,
@@ -205,6 +210,7 @@ class TestWorkflowToolManageService:
         created_tool_provider = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
                 WorkflowToolProvider.app_id == app.id,
             )
@@ -220,6 +226,7 @@ class TestWorkflowToolManageService:
         assert created_tool_provider.privacy_policy == tool_privacy_policy
         assert created_tool_provider.version == workflow.version
         assert created_tool_provider.user_id == account.id
+        # pyrefly: ignore [missing-attribute]
         assert created_tool_provider.tenant_id == account.current_tenant.id
         assert created_tool_provider.app_id == app.id
 
@@ -254,6 +261,7 @@ class TestWorkflowToolManageService:
 
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=first_tool_name,
@@ -268,6 +276,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=first_tool_name,  # Same name
@@ -285,6 +294,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -318,6 +328,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=non_existent_app_id,  # Non-existent app ID
                 name=fake.word(),
@@ -335,6 +346,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -364,6 +376,7 @@ class TestWorkflowToolManageService:
             # Setup invalid workflow tool parameters (missing required fields)
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=fake.word(),
@@ -390,6 +403,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -420,6 +434,7 @@ class TestWorkflowToolManageService:
         first_tool_parameters = self._create_test_workflow_tool_parameters()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=first_tool_name,
@@ -435,6 +450,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,  # Same app_id
                 name=second_tool_name,  # Different name
@@ -452,6 +468,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -487,6 +504,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=fake.word(),
@@ -503,6 +521,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -543,6 +562,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=fake.word(),
@@ -557,6 +577,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -589,6 +610,7 @@ class TestWorkflowToolManageService:
         initial_tool_parameters = self._create_test_workflow_tool_parameters()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=initial_tool_name,
@@ -603,6 +625,7 @@ class TestWorkflowToolManageService:
         created_tool = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
                 WorkflowToolProvider.app_id == app.id,
             )
@@ -621,7 +644,9 @@ class TestWorkflowToolManageService:
         # Execute the update method
         result = WorkflowToolManageService.update_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
+            # pyrefly: ignore [missing-attribute]
             workflow_tool_id=created_tool.id,
             name=updated_tool_name,
             label=updated_tool_label,
@@ -675,6 +700,7 @@ class TestWorkflowToolManageService:
         initial_tool_parameters = self._create_test_workflow_tool_parameters()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=initial_tool_name,
@@ -687,12 +713,14 @@ class TestWorkflowToolManageService:
         created_tool = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
                 WorkflowToolProvider.app_id == app.id,
             )
             .first()
         )
 
+        # pyrefly: ignore [missing-attribute]
         original_name = created_tool.name
 
         workflow.graph = json.dumps(
@@ -710,7 +738,9 @@ class TestWorkflowToolManageService:
         with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
             WorkflowToolManageService.update_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
+                # pyrefly: ignore [missing-attribute]
                 workflow_tool_id=created_tool.id,
                 name=fake.word(),
                 label=fake.word(),
@@ -722,6 +752,7 @@ class TestWorkflowToolManageService:
         assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
 
         db_session_with_containers.refresh(created_tool)
+        # pyrefly: ignore [missing-attribute]
         assert created_tool.name == original_name
 
     def test_update_workflow_tool_not_found_error(
@@ -750,6 +781,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.update_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_tool_id=non_existent_tool_id,  # Non-existent tool ID
                 name=fake.word(),
@@ -767,6 +799,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
             )
             .count()
@@ -797,6 +830,7 @@ class TestWorkflowToolManageService:
         first_tool_parameters = self._create_test_workflow_tool_parameters()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=first_tool_name,
@@ -811,6 +845,7 @@ class TestWorkflowToolManageService:
         created_tool = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
                 WorkflowToolProvider.app_id == app.id,
             )
@@ -820,7 +855,9 @@ class TestWorkflowToolManageService:
         # Attempt to update tool with same name (should not fail)
         result = WorkflowToolManageService.update_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
+            # pyrefly: ignore [missing-attribute]
             workflow_tool_id=created_tool.id,
             name=first_tool_name,  # Same name
             label=fake.word(),
@@ -834,7 +871,9 @@ class TestWorkflowToolManageService:
 
         # Verify tool still exists with the same name
         db_session_with_containers.refresh(created_tool)
+        # pyrefly: ignore [missing-attribute]
         assert created_tool.name == first_tool_name
+        # pyrefly: ignore [missing-attribute]
         assert created_tool.updated_at is not None
 
     def test_create_workflow_tool_with_file_parameter_default(
@@ -896,6 +935,7 @@ class TestWorkflowToolManageService:
         # Note: from_db is mocked, so this test primarily validates the parameter configuration
         result = WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=fake.word(),
@@ -971,6 +1011,7 @@ class TestWorkflowToolManageService:
         # Note: from_db is mocked, so this test primarily validates the parameter configuration
         result = WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=fake.word(),
@@ -1015,6 +1056,7 @@ class TestWorkflowToolManageService:
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=tool_name,
@@ -1032,6 +1074,7 @@ class TestWorkflowToolManageService:
         tool_count = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
+                # pyrefly: ignore [missing-attribute]
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
                 WorkflowToolProvider.name == tool_name,
             )
@@ -1056,6 +1099,7 @@ class TestWorkflowToolManageService:
 
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=tool_name,
@@ -1067,11 +1111,13 @@ class TestWorkflowToolManageService:
 
         tool = (
             db_session_with_containers.query(WorkflowToolProvider)
+            # pyrefly: ignore [missing-attribute]
             .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.name == tool_name)
             .first()
         )
         assert tool is not None
 
+        # pyrefly: ignore [missing-attribute]
         result = WorkflowToolManageService.delete_workflow_tool(account.id, account.current_tenant.id, tool.id)
 
         assert result == {"result": "success"}
@@ -1089,6 +1135,7 @@ class TestWorkflowToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        # pyrefly: ignore [missing-attribute]
         result = WorkflowToolManageService.list_tenant_workflow_tools(account.id, account.current_tenant.id)
 
         assert result == []
@@ -1103,6 +1150,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="Tool not found"):
+            # pyrefly: ignore [missing-attribute]
             WorkflowToolManageService.get_workflow_tool_by_tool_id(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_get_workflow_tool_by_app_id_not_found(
@@ -1115,6 +1163,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="Tool not found"):
+            # pyrefly: ignore [missing-attribute]
             WorkflowToolManageService.get_workflow_tool_by_app_id(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_list_single_workflow_tools_not_found(
@@ -1127,6 +1176,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="not found"):
+            # pyrefly: ignore [missing-attribute]
             WorkflowToolManageService.list_single_workflow_tools(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_create_workflow_tool_with_labels(
@@ -1140,6 +1190,7 @@ class TestWorkflowToolManageService:
 
         result = WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             workflow_app_id=app.id,
             name=fake.unique.word(),

@@ -16,6 +16,7 @@ def test_get_keyword_factory_returns_jieba_factory(monkeypatch):
     class FakeJieba:
         pass
 
+    # pyrefly: ignore [missing-attribute]
     fake_module.Jieba = FakeJieba
     monkeypatch.setitem(sys.modules, "core.rag.datasource.keyword.jieba.jieba", fake_module)
 
@@ -34,6 +35,7 @@ def test_keyword_initialization_uses_configured_factory(monkeypatch):
     monkeypatch.setattr("core.rag.datasource.keyword.keyword_factory.dify_config.KEYWORD_STORE", KeyWordType.JIEBA)
     monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda keyword_type: lambda _: fake_processor))
 
+    # pyrefly: ignore [bad-argument-type]
     keyword = Keyword(dataset)
 
     assert keyword._keyword_processor is fake_processor
@@ -72,6 +74,7 @@ def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes():
             return "ok"
 
     keyword = Keyword.__new__(Keyword)
+    # pyrefly: ignore [bad-assignment]
     keyword._keyword_processor = Processor()
 
     assert keyword.custom() == "ok"
@@ -79,6 +82,7 @@ def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes():
     with pytest.raises(AttributeError):
         _ = keyword.value
 
+    # pyrefly: ignore [bad-assignment]
     keyword._keyword_processor = None
     with pytest.raises(AttributeError):
         _ = keyword.missing_method

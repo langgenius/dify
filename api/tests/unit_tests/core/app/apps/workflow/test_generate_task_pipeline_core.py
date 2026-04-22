@@ -80,10 +80,14 @@ def _make_pipeline():
 
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
+        # pyrefly: ignore [bad-argument-type]
         workflow=workflow,
+        # pyrefly: ignore [bad-argument-type]
         queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
+        # pyrefly: ignore [bad-argument-type]
         user=user,
         stream=False,
+        # pyrefly: ignore [bad-argument-type]
         draft_var_saver_factory=lambda **kwargs: None,
     )
 
@@ -142,6 +146,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
 
+        # pyrefly: ignore [bad-argument-type]
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
@@ -157,6 +162,7 @@ class TestWorkflowGenerateTaskPipeline:
     def test_handle_error_event(self):
         pipeline = _make_pipeline()
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
         responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("boom"))))
@@ -169,6 +175,7 @@ class TestWorkflowGenerateTaskPipeline:
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
         @contextmanager
@@ -185,6 +192,7 @@ class TestWorkflowGenerateTaskPipeline:
 
     def test_handle_node_succeeded_event_saves_output(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
         pipeline._workflow_execution_id = "run-id"
@@ -210,8 +218,10 @@ class TestWorkflowGenerateTaskPipeline:
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
         responses = list(
@@ -232,14 +242,17 @@ class TestWorkflowGenerateTaskPipeline:
         queue_message = SimpleNamespace(event=event)
 
         responses = list(
+            # pyrefly: ignore [bad-argument-type]
             pipeline._handle_text_chunk_event(event, tts_publisher=_Publisher(), queue_message=queue_message)
         )
 
+        # pyrefly: ignore [missing-attribute]
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
 
     def test_dispatch_event_handles_node_failed(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
 
         event = QueueNodeFailedEvent(
@@ -262,6 +275,7 @@ class TestWorkflowGenerateTaskPipeline:
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
 
         responses = list(
@@ -282,6 +296,7 @@ class TestWorkflowGenerateTaskPipeline:
             def add(self, item):
                 added.append(item)
 
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
 
         assert added
@@ -289,14 +304,23 @@ class TestWorkflowGenerateTaskPipeline:
     def test_iteration_loop_and_human_input_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = lambda **kwargs: "iter"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_next_to_stream_response = lambda **kwargs: "next"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_completed_to_stream_response = lambda **kwargs: "done"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_start_to_stream_response = lambda **kwargs: "loop"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_next_to_stream_response = lambda **kwargs: "loop_next"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_completed_to_stream_response = lambda **kwargs: "loop_done"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.human_input_form_filled_to_stream_response = lambda **kwargs: "filled"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.human_input_form_timeout_to_stream_response = lambda **kwargs: "timeout"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.handle_agent_log = lambda **kwargs: "log"
 
         iter_start = QueueIterationStartEvent(
@@ -389,6 +413,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         class _Publisher:
@@ -445,10 +470,13 @@ class TestWorkflowGenerateTaskPipeline:
 
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue_manager,
             user=end_user,
             stream=False,
+            # pyrefly: ignore [bad-argument-type]
             draft_var_saver_factory=lambda **kwargs: None,
         )
 
@@ -458,13 +486,16 @@ class TestWorkflowGenerateTaskPipeline:
     def test_process_returns_stream_and_blocking_variants(self):
         pipeline = _make_pipeline()
         pipeline._base_task_pipeline.stream = True
+        # pyrefly: ignore [bad-assignment]
         pipeline._wrapper_process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         stream_response = list(pipeline.process())
         assert len(stream_response) == 1
+        # pyrefly: ignore [missing-attribute]
         assert stream_response[0].workflow_run_id is None
 
         pipeline._base_task_pipeline.stream = False
+        # pyrefly: ignore [bad-assignment]
         pipeline._wrapper_process_stream_response = lambda **kwargs: iter(
             [
                 WorkflowFinishStreamResponse(
@@ -487,6 +518,7 @@ class TestWorkflowGenerateTaskPipeline:
         )
 
         blocking_response = pipeline.process()
+        # pyrefly: ignore [missing-attribute]
         assert blocking_response.workflow_run_id == "run-id"
 
     def test_to_blocking_response_handles_error_and_unexpected_end(self):
@@ -531,6 +563,7 @@ class TestWorkflowGenerateTaskPipeline:
     def test_wrapper_process_stream_response_without_tts(self):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {}
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         responses = list(pipeline._wrapper_process_stream_response())
@@ -541,6 +574,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
         sleep_spy = []
@@ -578,6 +612,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
         }
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
         class _Publisher:
@@ -668,17 +703,20 @@ class TestWorkflowGenerateTaskPipeline:
 
         pipeline._workflow_response_converter.workflow_node_retry_to_stream_response = lambda **kwargs: None
         assert list(pipeline._handle_node_retry_event(retry_event)) == []
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_retry_to_stream_response = lambda **kwargs: "retry"
         assert list(pipeline._handle_node_retry_event(retry_event)) == ["retry"]
 
         pipeline._workflow_response_converter.workflow_node_start_to_stream_response = lambda **kwargs: None
         assert list(pipeline._handle_node_started_event(started_event)) == []
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_start_to_stream_response = lambda **kwargs: "started"
         assert list(pipeline._handle_node_started_event(started_event)) == ["started"]
 
     def test_handle_node_exception_event_saves_output(self):
         pipeline = _make_pipeline()
         saved_ids: list[str] = []
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "failed"
         pipeline._save_output_for_event = lambda event, node_execution_id: saved_ids.append(node_execution_id)
 
@@ -705,6 +743,7 @@ class TestWorkflowGenerateTaskPipeline:
             start_at=0.0,
         )
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
         assert list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={}))) == ["finish"]
         assert list(
@@ -713,6 +752,7 @@ class TestWorkflowGenerateTaskPipeline:
             )
         ) == ["finish"]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_pause_to_stream_response = lambda **kwargs: [
             "pause-a",
             "pause-b",
@@ -732,14 +772,17 @@ class TestWorkflowGenerateTaskPipeline:
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_ping_event = lambda event, **kwargs: iter(["ping"])
         assert list(pipeline._dispatch_event(QueuePingEvent())) == ["ping"]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_workflow_failed_and_stop_events = lambda event, **kwargs: iter(["workflow-failed"])
         assert list(pipeline._dispatch_event(QueueWorkflowFailedEvent(error="failed", exceptions_count=1))) == [
             "workflow-failed"
         ]
 
+        # pyrefly: ignore [bad-argument-type]
         assert list(pipeline._dispatch_event(SimpleNamespace())) == []
 
     def test_process_stream_response_main_match_paths_and_cleanup(self):
@@ -748,6 +791,7 @@ class TestWorkflowGenerateTaskPipeline:
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [
                 SimpleNamespace(event=QueueWorkflowStartedEvent()),
@@ -756,9 +800,13 @@ class TestWorkflowGenerateTaskPipeline:
                 SimpleNamespace(event=QueueErrorEvent(error="e")),
             ]
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_workflow_started_event = lambda event, **kwargs: iter(["started"])
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_text_chunk_event = lambda event, **kwargs: iter(["text"])
+        # pyrefly: ignore [bad-assignment]
         pipeline._dispatch_event = lambda event, **kwargs: iter(["dispatched"])
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_error_event = lambda event, **kwargs: iter(["error"])
         publisher_calls: list[object] = []
 
@@ -766,6 +814,7 @@ class TestWorkflowGenerateTaskPipeline:
             def publish(self, message):
                 publisher_calls.append(message)
 
+        # pyrefly: ignore [bad-argument-type]
         responses = list(pipeline._process_stream_response(tts_publisher=_Publisher()))
         assert responses == ["started", "text", "dispatched", "error"]
         assert publisher_calls == [None]
@@ -773,21 +822,27 @@ class TestWorkflowGenerateTaskPipeline:
     def test_process_stream_response_break_paths(self):
         pipeline = _make_pipeline()
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueWorkflowFailedEvent(error="fail", exceptions_count=1))]
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_workflow_failed_and_stop_events = lambda event, **kwargs: iter(["failed"])
         assert list(pipeline._process_stream_response()) == ["failed"]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueWorkflowPausedEvent(reasons=[], outputs={}, paused_nodes=[]))]
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_workflow_paused_event = lambda event, **kwargs: iter(["paused"])
         assert list(pipeline._process_stream_response()) == ["paused"]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))]
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._handle_workflow_failed_and_stop_events = lambda event, **kwargs: iter(["stopped"])
         assert list(pipeline._process_stream_response()) == ["stopped"]
 
@@ -801,19 +856,24 @@ class TestWorkflowGenerateTaskPipeline:
                 added.append(item)
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.EXPLORE
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
+        # pyrefly: ignore [missing-attribute]
         assert added[-1].created_from == "installed-app"
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
         assert added[-1].created_from == "web-app"
 
         count_before = len(added)
         pipeline._application_generate_entity.invoke_from = InvokeFrom.DEBUGGER
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id="run-id")
         assert len(added) == count_before
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_workflow_app_log(session=_Session(), workflow_run_id=None)
         assert len(added) == count_before
 
@@ -830,6 +890,7 @@ class TestWorkflowGenerateTaskPipeline:
             captured_factory_args.update(kwargs)
             return _Saver()
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._draft_var_saver_factory = _factory
 
         event = QueueNodeSucceededEvent(

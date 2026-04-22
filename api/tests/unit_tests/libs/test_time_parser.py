@@ -51,6 +51,7 @@ class TestParseTimeDuration:
 
     def test_parse_none(self):
         """Test parsing None."""
+        # pyrefly: ignore [bad-argument-type]
         result = parse_time_duration(None)
         assert result is None
 

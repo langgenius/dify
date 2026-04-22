@@ -48,9 +48,8 @@ jobs:
         run: uv run --directory api --dev lint-imports
 
       - name: Run Type Checks
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: make type-check-core
-
+        run: uv run --directory api pyrefly check
+        
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example

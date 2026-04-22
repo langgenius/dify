@@ -205,7 +205,9 @@ class QAIndexProcessor(BaseIndexProcessor):
         docs = []
         for result in results:
             metadata = result.metadata
+            # pyrefly: ignore [missing-attribute]
             metadata["score"] = result.score
+            # pyrefly: ignore [missing-attribute]
             if result.score >= score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)

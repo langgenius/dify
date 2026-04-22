@@ -304,6 +304,7 @@ class TestDatasetDocumentStoreAddDocuments:
             )
 
             with pytest.raises(ValueError, match="must be a Document"):
+                # pyrefly: ignore [bad-argument-type]
                 store.add_documents(["not a document"])
 
     def test_add_documents_with_none_metadata(self):

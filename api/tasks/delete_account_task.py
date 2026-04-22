@@ -27,4 +27,5 @@ def delete_account_task(account_id):
             logger.error("Account %s not found.", account_id)
             return
         # send success email
+        # pyrefly: ignore [not-callable]
         send_deletion_success_task.delay(account.email)

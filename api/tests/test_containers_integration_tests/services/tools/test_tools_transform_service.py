@@ -3,6 +3,8 @@ from __future__ import annotations
 from unittest.mock import Mock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -73,6 +75,7 @@ class TestToolTransformService:
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
                 provider="test_provider",
+                # pyrefly: ignore [bad-argument-type]
                 credential_type="api_key",
                 encrypted_credentials='{"api_key": "test_key"}',
             )
@@ -849,8 +852,11 @@ class TestConvertToolEntityToApiEntity:
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
         assert isinstance(result, ToolApiEntity)
+        # pyrefly: ignore [bad-argument-type]
         assert len(result.parameters) == 2
+        # pyrefly: ignore [not-iterable]
         assert next(p for p in result.parameters if p.name == "param1").label.en_US == "Runtime 1"
+        # pyrefly: ignore [not-iterable]
         assert next(p for p in result.parameters if p.name == "param2").label.en_US == "Base 2"
 
     def test_additional_runtime_parameters(self):
@@ -860,7 +866,9 @@ class TestConvertToolEntityToApiEntity:
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
+        # pyrefly: ignore [bad-argument-type]
         assert len(result.parameters) == 2
+        # pyrefly: ignore [not-iterable]
         names = [p.name for p in result.parameters]
         assert "param1" in names
         assert "runtime_only" in names
@@ -875,7 +883,9 @@ class TestConvertToolEntityToApiEntity:
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
+        # pyrefly: ignore [bad-argument-type]
         assert len(result.parameters) == 1
+        # pyrefly: ignore [unsupported-operation]
         assert result.parameters[0].name == "param1"
 
     def test_empty_parameters(self):
@@ -884,6 +894,7 @@ class TestConvertToolEntityToApiEntity:
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
         assert isinstance(result, ToolApiEntity)
+        # pyrefly: ignore [bad-argument-type]
         assert len(result.parameters) == 0
 
     def test_none_parameters(self):
@@ -892,6 +903,7 @@ class TestConvertToolEntityToApiEntity:
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
         assert isinstance(result, ToolApiEntity)
+        # pyrefly: ignore [bad-argument-type]
         assert len(result.parameters) == 0
 
     def test_parameter_order_preserved(self):
@@ -901,7 +913,9 @@ class TestConvertToolEntityToApiEntity:
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
+        # pyrefly: ignore [not-iterable]
         assert [p.name for p in result.parameters] == ["p1", "p2", "p3", "p4"]
+        # pyrefly: ignore [unsupported-operation]
         assert result.parameters[1].label.en_US == "R2"
 
 

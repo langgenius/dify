@@ -849,6 +849,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
                 dataset_id=dataset_id,
                 query=query,
                 external_retrieval_parameters=external_retrieval_parameters,
+                # pyrefly: ignore [bad-argument-type]
                 metadata_condition=metadata_condition,
             )
 

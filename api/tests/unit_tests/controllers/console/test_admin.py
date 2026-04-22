@@ -648,15 +648,23 @@ class TestExploreAppBusinessLogicDirect:
 
         for case in test_cases:
             # Simulate the data fusion logic
+            # pyrefly: ignore [missing-attribute]
             payload_desc = case["payload"].get("desc")
+            # pyrefly: ignore [missing-attribute]
             payload_copyright = case["payload"].get("copyright")
+            # pyrefly: ignore [missing-attribute]
             payload_privacy_policy = case["payload"].get("privacy_policy")
+            # pyrefly: ignore [missing-attribute]
             payload_custom_disclaimer = case["payload"].get("custom_disclaimer")
 
             if case["site"]:
+                # pyrefly: ignore [missing-attribute]
                 site_desc = case["site"].get("description")
+                # pyrefly: ignore [missing-attribute]
                 site_copyright = case["site"].get("copyright")
+                # pyrefly: ignore [missing-attribute]
                 site_privacy_policy = case["site"].get("privacy_policy")
+                # pyrefly: ignore [missing-attribute]
                 site_custom_disclaimer = case["site"].get("custom_disclaimer")
 
                 # Site data takes precedence

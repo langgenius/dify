@@ -22,7 +22,9 @@ def _build_fake_elasticsearch_modules():
                 refresh=MagicMock(), delete=MagicMock(), exists=MagicMock(return_value=False), create=MagicMock()
             )
 
+    # pyrefly: ignore [missing-attribute]
     elasticsearch.Elasticsearch = Elasticsearch
+    # pyrefly: ignore [missing-attribute]
     elasticsearch.ConnectionError = ConnectionError
     return {"elasticsearch": elasticsearch}
 

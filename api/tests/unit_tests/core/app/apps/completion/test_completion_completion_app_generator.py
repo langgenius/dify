@@ -97,6 +97,7 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
+        # pyrefly: ignore [missing-attribute]
         module.file_factory.build_from_mappings.assert_not_called()
 
     def test_generate_success_with_files(self, generator, mocker):
@@ -129,6 +130,7 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
+        # pyrefly: ignore [missing-attribute]
         module.file_factory.build_from_mappings.assert_called_once()
 
     def test_generate_override_model_config_debugger(self, generator, mocker):
@@ -289,6 +291,7 @@ class TestCompletionAppGenerator:
             (
                 ValidationError.from_exception_data(
                     "Model",
+                    # pyrefly: ignore [bad-typed-dict-key]
                     [{"type": "missing", "loc": ("x",), "msg": "Field required", "input": {}}],
                 ),
                 True,

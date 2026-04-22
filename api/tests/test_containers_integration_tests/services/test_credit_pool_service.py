@@ -87,6 +87,7 @@ class TestCreditPoolService:
         assert result == credits_required
         db_session_with_containers.expire_all()
         pool = CreditPoolService.get_pool(tenant_id=tenant_id)
+        # pyrefly: ignore [missing-attribute]
         assert pool.quota_used == credits_required
 
     def test_check_and_deduct_credits_caps_at_remaining(self, db_session_with_containers):
@@ -101,4 +102,5 @@ class TestCreditPoolService:
         assert result == remaining
         db_session_with_containers.expire_all()
         updated_pool = CreditPoolService.get_pool(tenant_id=tenant_id)
+        # pyrefly: ignore [missing-attribute]
         assert updated_pool.quota_used == pool.quota_limit

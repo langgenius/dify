@@ -101,6 +101,7 @@ def test_datasource_entity():
     entity = DatasourceEntity(
         identity=identity,
         description=description,
+        # pyrefly: ignore [bad-argument-type]
         parameters=None,  # Should be handled by validator
     )
     assert entity.parameters == []
@@ -269,7 +270,9 @@ def test_online_drive_models():
 def test_datasource_message():
     # Use proper dict for message to avoid Pydantic Union validation ambiguity/crashes
     msg = DatasourceMessage(type="text", message={"text": "hello"})
+    # pyrefly: ignore [missing-attribute]
     assert msg.message.text == "hello"
 
     msg_json = DatasourceMessage(type="json", message={"json_object": {"k": "v"}})
+    # pyrefly: ignore [missing-attribute]
     assert msg_json.message.json_object == {"k": "v"}

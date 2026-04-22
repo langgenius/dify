@@ -55,6 +55,7 @@ def _create_api_app():
         def get(self):
             e = BadRequest()
             # Coerce a mapping description to trigger param error shaping
+            # pyrefly: ignore [bad-assignment]
             e.description = {"field": "is required"}
             raise e
 

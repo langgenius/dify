@@ -73,6 +73,7 @@ class TestGenerateTraceparentHeader:
         with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = generate_traceparent_header()
 
+            # pyrefly: ignore [missing-attribute]
             parts = result.split("-")
             # All parts should be valid hex
             assert re.match(r"^[0-9a-f]+$", parts[1])

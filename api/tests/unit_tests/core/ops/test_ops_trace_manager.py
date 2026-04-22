@@ -313,6 +313,7 @@ def test_get_decrypted_tracing_config_returns_config(encryption_mocks, mock_db):
     mock_db.scalar.side_effect = [trace_config_data, app]
 
     decrypted = OpsTraceManager.get_decrypted_tracing_config("app-id", "dummy")
+    # pyrefly: ignore [unsupported-operation]
     assert decrypted["other_value"] == "info"
 
 
@@ -385,6 +386,7 @@ def test_get_app_config_through_message_id_app_model_config(mock_db):
     conversation = SimpleNamespace(app_model_config_id="cfg", override_model_configs=None)
     mock_db.scalar.side_effect = [message, conversation, SimpleNamespace(id="cfg")]
     result = OpsTraceManager.get_app_config_through_message_id("m")
+    # pyrefly: ignore [missing-attribute]
     assert result.id == "cfg"
 
 
@@ -458,6 +460,7 @@ def test_trace_task_conversation_and_extract(monkeypatch):
 def test_trace_task_message_trace(trace_task_message, mock_db):
     task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="msg-id")
     result = task.message_trace("msg-id")
+    # pyrefly: ignore [missing-attribute]
     assert result.message_id == "msg-id"
 
 
@@ -465,10 +468,16 @@ def test_trace_task_workflow_trace(workflow_repo_fixture, mock_db):
     DummySessionContext.scalar_values = ["wf-app-log", "message-ref"]
     execution = SimpleNamespace(id_="run-id", total_tokens=0)
     task = TraceTask(
-        trace_type=TraceTaskName.WORKFLOW_TRACE, workflow_execution=execution, conversation_id="conv", user_id="user"
+        # pyrefly: ignore [bad-argument-type]
+        trace_type=TraceTaskName.WORKFLOW_TRACE,
+        workflow_execution=execution,
+        conversation_id="conv",
+        user_id="user",
     )
     result = task.workflow_trace(workflow_run_id="run-id", conversation_id="conv", user_id="user")
+    # pyrefly: ignore [missing-attribute]
     assert result.workflow_run_id == "run-id"
+    # pyrefly: ignore [missing-attribute]
     assert result.workflow_id == "wf-1"
 
 
@@ -477,7 +486,9 @@ def test_trace_task_moderation_trace(trace_task_message):
     moderation_result = SimpleNamespace(action="block", preset_response="no", query="q", flagged=True)
     timer = {"start": 1, "end": 2}
     result = task.moderation_trace("msg-id", timer, moderation_result=moderation_result, inputs={"src": "payload"})
+    # pyrefly: ignore [missing-attribute]
     assert result.flagged is True
+    # pyrefly: ignore [missing-attribute]
     assert result.message_id == "log-id"
 
 
@@ -485,6 +496,7 @@ def test_trace_task_suggested_question_trace(trace_task_message):
     task = TraceTask(trace_type=TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id="msg-id")
     timer = {"start": 1, "end": 2}
     result = task.suggested_question_trace("msg-id", timer, suggested_question=["q1"])
+    # pyrefly: ignore [missing-attribute]
     assert result.message_id == "log-id"
     assert "suggested_question" in result.__dict__
 
@@ -494,6 +506,7 @@ def test_trace_task_dataset_retrieval_trace(trace_task_message):
     timer = {"start": 1, "end": 2}
     mock_doc = SimpleNamespace(model_dump=lambda: {"doc": "value"})
     result = task.dataset_retrieval_trace("msg-id", timer, documents=[mock_doc])
+    # pyrefly: ignore [missing-attribute]
     assert result.documents == [{"doc": "value"}]
 
 
@@ -504,7 +517,9 @@ def test_trace_task_tool_trace(monkeypatch, mock_db):
     task = TraceTask(trace_type=TraceTaskName.TOOL_TRACE, message_id="msg-id")
     timer = {"start": 1, "end": 5}
     result = task.tool_trace("msg-id", timer, tool_name="tool-a", tool_inputs={"foo": 1}, tool_outputs="result")
+    # pyrefly: ignore [missing-attribute]
     assert result.tool_name == "tool-a"
+    # pyrefly: ignore [missing-attribute]
     assert result.time_cost == 5
 
 
@@ -515,7 +530,9 @@ def test_trace_task_generate_name_trace():
     result = task.generate_name_trace(
         "conv-id", timer, tenant_id="tenant", generate_conversation_name="name", inputs="q"
     )
+    # pyrefly: ignore [missing-attribute]
     assert result.outputs == "name"
+    # pyrefly: ignore [missing-attribute]
     assert result.tenant_id == "tenant"
 
 
@@ -580,6 +597,7 @@ def test_trace_queue_manager_send_to_celery(monkeypatch):
             return DummyTraceInfo()
 
     task = DummyTask()
+    # pyrefly: ignore [bad-argument-type]
     manager.send_to_celery([task])
     storage_save.assert_called_once()
     process_delay.assert_called_once_with({"file_id": "file-123", "app_id": "app-id"})

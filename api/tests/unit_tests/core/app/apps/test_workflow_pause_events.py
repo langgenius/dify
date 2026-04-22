@@ -81,6 +81,7 @@ def test_graph_run_paused_event_emits_queue_pause_event():
         graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
     )
 
+    # pyrefly: ignore [bad-argument-type]
     runner._handle_event(workflow_entry, event)
 
     assert len(runner.published_events) == 1
@@ -109,6 +110,7 @@ def _build_converter():
     user.name = "Tester"
     user.email = "tester@example.com"
     return WorkflowResponseConverter(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=application_generate_entity,
         user=user,
         system_variables=system_variables,
@@ -173,6 +175,7 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
+        # pyrefly: ignore [bad-argument-type]
         graph_runtime_state=runtime_state,
     )
 

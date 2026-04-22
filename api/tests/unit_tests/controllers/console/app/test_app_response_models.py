@@ -67,14 +67,18 @@ def app_module():
 
     console_module = ModuleType("controllers.console")
     console_module.__path__ = [str(root / "controllers" / "console")]
+    # pyrefly: ignore [missing-attribute]
     console_module.console_ns = stub_namespace
+    # pyrefly: ignore [missing-attribute]
     console_module.api = None
+    # pyrefly: ignore [missing-attribute]
     console_module.bp = None
     sys.modules["controllers.console"] = console_module
 
     app_package = ModuleType("controllers.console.app")
     app_package.__path__ = [str(root / "controllers" / "console" / "app")]
     sys.modules["controllers.console.app"] = app_package
+    # pyrefly: ignore [missing-attribute]
     console_module.app = app_package
 
     def _stub_module(name: str, attrs: dict[str, Any]):
@@ -104,10 +108,13 @@ def app_module():
     )
 
     spec = util.spec_from_file_location(module_name, module_path)
+    # pyrefly: ignore [bad-argument-type]
     module = util.module_from_spec(spec)
     sys.modules[module_name] = module
 
+    # pyrefly: ignore [missing-attribute]
     assert spec.loader is not None
+    # pyrefly: ignore [missing-attribute]
     spec.loader.exec_module(module)
 
     try:

@@ -24,9 +24,13 @@ def _build_fake_psycopg2_modules():
             self.getconn = MagicMock()
             self.putconn = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     psycopg2_pool.SimpleConnectionPool = SimpleConnectionPool
+    # pyrefly: ignore [missing-attribute]
     psycopg2_extras.execute_values = MagicMock()
+    # pyrefly: ignore [missing-attribute]
     psycopg2.pool = psycopg2_pool
+    # pyrefly: ignore [missing-attribute]
     psycopg2.extras = psycopg2_extras
 
     return {

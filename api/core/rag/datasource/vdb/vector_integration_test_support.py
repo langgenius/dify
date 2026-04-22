@@ -44,39 +44,47 @@ class AbstractVectorTest:
         self.example_embedding = [1.001 * i for i in range(128)]
 
     def create_vector(self):
+        # pyrefly: ignore [missing-attribute]
         self.vector.create(
             texts=[get_example_document(doc_id=self.example_doc_id)],
             embeddings=[self.example_embedding],
         )
 
     def search_by_vector(self):
+        # pyrefly: ignore [missing-attribute]
         hits_by_vector: list[Document] = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
         assert hits_by_vector[0].metadata["doc_id"] == self.example_doc_id
 
     def search_by_full_text(self):
+        # pyrefly: ignore [missing-attribute]
         hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 1
         assert hits_by_full_text[0].metadata["doc_id"] == self.example_doc_id
 
     def delete_vector(self):
+        # pyrefly: ignore [missing-attribute]
         self.vector.delete()
 
     def delete_by_ids(self, ids: list[str]):
+        # pyrefly: ignore [missing-attribute]
         self.vector.delete_by_ids(ids=ids)
 
     def add_texts(self) -> list[str]:
         batch_size = 100
         documents = [get_example_document(doc_id=str(uuid.uuid4())) for _ in range(batch_size)]
         embeddings = [self.example_embedding] * batch_size
+        # pyrefly: ignore [missing-attribute]
         self.vector.add_texts(documents=documents, embeddings=embeddings)
         return [doc.metadata["doc_id"] for doc in documents]
 
     def text_exists(self):
+        # pyrefly: ignore [missing-attribute]
         assert self.vector.text_exists(self.example_doc_id)
 
     def get_ids_by_metadata_field(self):
         with pytest.raises(NotImplementedError):
+            # pyrefly: ignore [missing-attribute]
             self.vector.get_ids_by_metadata_field(key="key", value="value")
 
     def run_all_tests(self):

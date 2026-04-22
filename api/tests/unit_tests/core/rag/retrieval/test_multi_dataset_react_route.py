@@ -195,6 +195,7 @@ class TestReactMultiDatasetRouter:
         delta = SimpleNamespace(message=SimpleNamespace(content="part"), usage=None)
         chunk = SimpleNamespace(model="m1", prompt_messages=[Mock()], delta=delta)
 
+        # pyrefly: ignore [bad-argument-type]
         text, usage = router._handle_invoke_result(iter([chunk]))
 
         assert text == "part"

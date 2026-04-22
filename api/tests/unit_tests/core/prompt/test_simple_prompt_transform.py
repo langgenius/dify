@@ -40,11 +40,15 @@ def test_get_common_chat_app_prompt_template_with_pcqm():
         with_memory_prompt=True,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == (
+        # pyrefly: ignore [bad-index]
         prompt_rules["context_prompt"]
         + pre_prompt
         + "\n"
+        # pyrefly: ignore [bad-index]
         + prompt_rules["histories_prompt"]
+        # pyrefly: ignore [bad-index]
         + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#histories#", "#query#"]
@@ -63,11 +67,15 @@ def test_get_baichuan_chat_app_prompt_template_with_pcqm():
         with_memory_prompt=True,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == (
+        # pyrefly: ignore [bad-index]
         prompt_rules["context_prompt"]
         + pre_prompt
         + "\n"
+        # pyrefly: ignore [bad-index]
         + prompt_rules["histories_prompt"]
+        # pyrefly: ignore [bad-index]
         + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#histories#", "#query#"]
@@ -86,7 +94,9 @@ def test_get_common_completion_app_prompt_template_with_pcq():
         with_memory_prompt=False,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == (
+        # pyrefly: ignore [bad-index]
         prompt_rules["context_prompt"] + pre_prompt + "\n" + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#query#"]
@@ -105,7 +115,9 @@ def test_get_baichuan_completion_app_prompt_template_with_pcq():
         with_memory_prompt=False,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == (
+        # pyrefly: ignore [bad-index]
         prompt_rules["context_prompt"] + pre_prompt + "\n" + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#query#"]
@@ -124,6 +136,7 @@ def test_get_common_chat_app_prompt_template_with_q():
         with_memory_prompt=False,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [bad-index, missing-attribute]
     assert prompt_template["prompt_template"].template == prompt_rules["query_prompt"]
     assert prompt_template["special_variable_keys"] == ["#query#"]
 
@@ -141,7 +154,9 @@ def test_get_common_chat_app_prompt_template_with_cq():
         with_memory_prompt=False,
     )
     prompt_rules = prompt_template["prompt_rules"]
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == (
+        # pyrefly: ignore [bad-index]
         prompt_rules["context_prompt"] + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#query#"]
@@ -159,6 +174,7 @@ def test_get_common_chat_app_prompt_template_with_p():
         query_in_prompt=False,
         with_memory_prompt=False,
     )
+    # pyrefly: ignore [missing-attribute]
     assert prompt_template["prompt_template"].template == pre_prompt + "\n"
     assert prompt_template["custom_variable_keys"] == ["name"]
     assert prompt_template["special_variable_keys"] == []
@@ -202,6 +218,7 @@ def test__get_chat_model_prompt_messages():
     )
 
     full_inputs = {**inputs, "#context#": context}
+    # pyrefly: ignore [missing-attribute]
     real_system_prompt = prompt_template["prompt_template"].format(full_inputs)
 
     assert len(prompt_messages) == 4
@@ -255,13 +272,17 @@ def test__get_completion_model_prompt_messages():
         "#query#": query,
         "#histories#": memory.get_history_prompt_text(
             max_token_limit=2000,
+            # pyrefly: ignore [missing-attribute]
             human_prefix=prompt_rules.get("human_prefix", "Human"),
+            # pyrefly: ignore [missing-attribute]
             ai_prefix=prompt_rules.get("assistant_prefix", "Assistant"),
         ),
     }
+    # pyrefly: ignore [missing-attribute]
     real_prompt = prompt_template["prompt_template"].format(full_inputs)
 
     assert len(prompt_messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert stops == prompt_rules.get("stops")
     assert prompt_messages[0].content == real_prompt
 
@@ -279,7 +300,9 @@ def test_get_prompt_dispatches_chat_and_completion():
 
     chat_messages, chat_stops = transform.get_prompt(
         app_mode=AppMode.CHAT,
+        # pyrefly: ignore [bad-argument-type]
         prompt_template_entity=prompt_entity,
+        # pyrefly: ignore [bad-argument-type]
         inputs={"n": 1},
         query="q",
         files=[],
@@ -292,7 +315,9 @@ def test_get_prompt_dispatches_chat_and_completion():
 
     completion_messages, completion_stops = transform.get_prompt(
         app_mode=AppMode.CHAT,
+        # pyrefly: ignore [bad-argument-type]
         prompt_template_entity=prompt_entity,
+        # pyrefly: ignore [bad-argument-type]
         inputs={"n": 1},
         query="q",
         files=[],
@@ -407,7 +432,9 @@ def test_get_last_user_message_with_files_and_context_files():
         ]
         message = transform._get_last_user_message(
             prompt="hello",
+            # pyrefly: ignore [bad-argument-type]
             files=[file],
+            # pyrefly: ignore [bad-argument-type]
             context_files=[context_file],
             image_detail_config=None,
         )

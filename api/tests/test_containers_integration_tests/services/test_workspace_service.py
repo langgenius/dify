@@ -3,6 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -50,6 +52,7 @@ class TestWorkspaceService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -59,6 +62,7 @@ class TestWorkspaceService:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
             plan="basic",
             custom_config='{"replace_webapp_logo": true, "remove_webapp_brand": false}',
@@ -118,7 +122,9 @@ class TestWorkspaceService:
 
             # Verify custom config is included for privileged users
             assert "custom_config" in result
+            # pyrefly: ignore [bad-index]
             assert result["custom_config"]["remove_webapp_brand"] is False
+            # pyrefly: ignore [not-iterable]
             assert "replace_webapp_logo" in result["custom_config"]
 
             # Verify database state
@@ -196,6 +202,7 @@ class TestWorkspaceService:
             .filter_by(tenant_id=tenant.id, account_id=account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         join.role = TenantAccountRole.NORMAL
         db_session_with_containers.commit()
 
@@ -250,6 +257,7 @@ class TestWorkspaceService:
             .filter_by(tenant_id=tenant.id, account_id=account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         join.role = TenantAccountRole.ADMIN
         db_session_with_containers.commit()
 
@@ -269,7 +277,9 @@ class TestWorkspaceService:
 
             # Verify custom config is included for admin users
             assert "custom_config" in result
+            # pyrefly: ignore [bad-index]
             assert result["custom_config"]["remove_webapp_brand"] is False
+            # pyrefly: ignore [not-iterable]
             assert "replace_webapp_logo" in result["custom_config"]
 
             # Verify database state
@@ -291,6 +301,7 @@ class TestWorkspaceService:
         # Arrange: No test data needed for this test
 
         # Act: Execute the method under test with None tenant
+        # pyrefly: ignore [bad-argument-type]
         result = WorkspaceService.get_tenant_info(None)
 
         # Assert: Verify the expected outcomes
@@ -348,13 +359,17 @@ class TestWorkspaceService:
                 assert "custom_config" in result
 
                 if config["replace_webapp_logo"]:
+                    # pyrefly: ignore [not-iterable]
                     assert "replace_webapp_logo" in result["custom_config"]
                     if config["replace_webapp_logo"]:
                         expected_url = f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo"
+                        # pyrefly: ignore [bad-index]
                         assert result["custom_config"]["replace_webapp_logo"] == expected_url
                 else:
+                    # pyrefly: ignore [bad-index]
                     assert result["custom_config"]["replace_webapp_logo"] is None
 
+                # pyrefly: ignore [bad-index]
                 assert result["custom_config"]["remove_webapp_brand"] == config["remove_webapp_brand"]
 
                 # Verify database state
@@ -386,6 +401,7 @@ class TestWorkspaceService:
             .filter_by(tenant_id=tenant.id, account_id=account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         join.role = TenantAccountRole.EDITOR
         db_session_with_containers.commit()
 
@@ -436,6 +452,7 @@ class TestWorkspaceService:
             .filter_by(tenant_id=tenant.id, account_id=account.id)
             .first()
         )
+        # pyrefly: ignore [missing-attribute]
         join.role = TenantAccountRole.DATASET_OPERATOR
         db_session_with_containers.commit()
 
@@ -521,16 +538,21 @@ class TestWorkspaceService:
 
                 # Verify logo replacement handling
                 if config.get("replace_webapp_logo"):
+                    # pyrefly: ignore [not-iterable]
                     assert "replace_webapp_logo" in result["custom_config"]
                     expected_url = f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo"
+                    # pyrefly: ignore [bad-index]
                     assert result["custom_config"]["replace_webapp_logo"] == expected_url
                 else:
+                    # pyrefly: ignore [bad-index]
                     assert result["custom_config"]["replace_webapp_logo"] is None
 
                 # Verify brand removal handling
                 if "remove_webapp_brand" in config:
+                    # pyrefly: ignore [bad-index]
                     assert result["custom_config"]["remove_webapp_brand"] == config["remove_webapp_brand"]
                 else:
+                    # pyrefly: ignore [bad-index]
                     assert result["custom_config"]["remove_webapp_brand"] is False
 
                 # Verify database state
@@ -542,10 +564,12 @@ class TestWorkspaceService:
     ):
         """TenantAccountJoin must exist; missing join should raise AssertionError."""
         fake = Faker()
+        # pyrefly: ignore [bad-argument-type]
         account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status="active")
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
+        # pyrefly: ignore [bad-argument-type]
         tenant = Tenant(name=fake.company(), status="normal", plan="basic")
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -575,6 +599,7 @@ class TestWorkspaceService:
             result = WorkspaceService.get_tenant_info(tenant)
 
         assert result is not None
+        # pyrefly: ignore [bad-index]
         assert result["custom_config"]["replace_webapp_logo"] is None
 
     def test_get_tenant_info_should_use_files_url_for_logo_url(
@@ -599,6 +624,7 @@ class TestWorkspaceService:
             result = WorkspaceService.get_tenant_info(tenant)
 
         assert result is not None
+        # pyrefly: ignore [bad-index]
         assert result["custom_config"]["replace_webapp_logo"].startswith(custom_base)
 
     def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(

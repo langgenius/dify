@@ -155,19 +155,26 @@ class TestAgentChatAppGenerateResponseConverterStream:
     def test_convert_stream_full_response(self):
         items = list(AgentChatAppGenerateResponseConverter.convert_stream_full_response(self.build_stream()))
         assert items[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert items[1]["event"] == "message"
         assert "answer" in items[1]
+        # pyrefly: ignore [bad-index]
         assert items[2]["event"] == "message_end"
+        # pyrefly: ignore [bad-index]
         assert items[3]["event"] == "error"
 
     def test_convert_stream_simple_response(self):
         items = list(AgentChatAppGenerateResponseConverter.convert_stream_simple_response(self.build_stream()))
         assert items[0] == "ping"
         # Assert the message event structure and content at items[1]
+        # pyrefly: ignore [bad-index]
         assert items[1]["event"] == "message"
+        # pyrefly: ignore [bad-index]
         assert items[1]["answer"] == "hi" or "hi" in items[1]["answer"]
+        # pyrefly: ignore [bad-index]
         assert items[2]["event"] == "message_end"
         assert "metadata" in items[2]
+        # pyrefly: ignore [bad-index]
         metadata = items[2]["metadata"]
         assert "annotation_reply" not in metadata
         assert "usage" not in metadata
@@ -192,4 +199,5 @@ class TestAgentChatAppGenerateResponseConverterStream:
                 "summary": "summary",
             }
         ]
+        # pyrefly: ignore [bad-index]
         assert items[3]["event"] == "error"

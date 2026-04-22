@@ -95,8 +95,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -115,8 +118,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -135,8 +141,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -149,8 +158,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -179,11 +191,16 @@ class TestEasyUiBasedGenerateTaskPipeline:
             SimpleNamespace(event=QueueMessageEndEvent(llm_result=llm_result)),
         ]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter(events)
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.get_message_event_type = lambda message_id: None
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_to_stream_response = lambda **kwargs: "chunk"
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
         pipeline.handle_output_moderation_when_task_finished = lambda completion: None
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_end_to_stream_response = lambda: "end"
         pipeline._save_message = lambda **kwargs: None
 
@@ -222,8 +239,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -236,7 +256,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def get_final_output(self):
                 return "final"
 
+        # pyrefly: ignore [bad-assignment]
         pipeline.output_moderation_handler = _Moderation()
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.publish = lambda event, publish_from: events.append(event)
 
         result = pipeline._handle_output_moderation_chunk("token")
@@ -285,8 +307,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -319,8 +344,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -411,8 +439,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -434,12 +465,18 @@ class TestEasyUiBasedGenerateTaskPipeline:
             SimpleNamespace(event=QueueErrorEvent(error=ValueError("boom"))),
         ]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter(events)
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.handle_annotation_reply = lambda event: SimpleNamespace(content="annotated")
+        # pyrefly: ignore [bad-assignment]
         pipeline._agent_thought_to_stream_response = lambda event: "thought"
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_file_to_stream_response = lambda event: "file"
+        # pyrefly: ignore [bad-assignment]
         pipeline._agent_message_to_stream_response = lambda **kwargs: "agent"
         pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        # pyrefly: ignore [bad-assignment]
         pipeline.error_to_stream_response = lambda err: err
 
         class _Session:
@@ -478,8 +515,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -527,13 +567,18 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
         pipeline._message_cycle_manager.generate_conversation_name = Mock(return_value=object())
+        # pyrefly: ignore [bad-assignment]
         pipeline._wrapper_process_stream_response = lambda trace_manager: iter(["payload"])
+        # pyrefly: ignore [bad-assignment]
         pipeline._to_stream_response = lambda generator: "streamed"
 
         result = pipeline.process()
@@ -548,13 +593,18 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
         pipeline._message_cycle_manager.generate_conversation_name = Mock()
+        # pyrefly: ignore [bad-assignment]
         pipeline._wrapper_process_stream_response = lambda trace_manager: iter(["payload"])
+        # pyrefly: ignore [bad-assignment]
         pipeline._to_blocking_response = lambda generator: "blocking"
 
         result = pipeline.process()
@@ -567,8 +617,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -584,8 +637,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -601,8 +657,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -620,8 +679,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -639,13 +701,17 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk("responding", "abc"))
 
+        # pyrefly: ignore [bad-argument-type]
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
@@ -656,13 +722,17 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk("finish", "abc"))
 
+        # pyrefly: ignore [bad-argument-type]
         assert pipeline._listen_audio_msg(publisher=publisher, task_id="task") is None
 
     def test_wrapper_process_stream_response_without_tts_publisher(self):
@@ -670,11 +740,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda publisher, trace_manager: iter(["payload"])
 
         responses = list(pipeline._wrapper_process_stream_response())
@@ -690,8 +764,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         }
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=entity,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -703,6 +780,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         inline_audio = MessageAudioStreamResponse(task_id="task", audio="inline")
         audio_calls = iter([inline_audio, None])
         pipeline._listen_audio_msg = lambda publisher, task_id: next(audio_calls)
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda publisher, trace_manager: iter(["payload"])
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
@@ -724,8 +802,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         }
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=entity,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -743,6 +824,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             clock["value"] += 0.1
             return clock["value"]
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._process_stream_response = lambda publisher, trace_manager: iter([])
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
@@ -761,19 +843,26 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
         pipeline._task_state.llm_result.message.content = "raw answer"
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))]
         )
         pipeline._handle_stop = Mock()
+        # pyrefly: ignore [bad-assignment]
         pipeline.handle_output_moderation_when_task_finished = lambda answer: "moderated answer"
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda answer: f"replace:{answer}"
         pipeline._save_message = lambda **kwargs: None
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_end_to_stream_response = lambda: "end"
 
         class _Session:
@@ -805,8 +894,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -822,6 +914,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             handled["retriever"] += 1
 
         pipeline._message_cycle_manager.handle_retriever_resources = _handle_retriever_resources
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter(
             [
                 SimpleNamespace(event=retriever_event),
@@ -840,8 +933,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -851,6 +947,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
         )
         pipeline._handle_output_moderation_chunk = lambda text: True
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter([SimpleNamespace(event=QueueLLMChunkEvent(chunk=chunk))])
 
         responses = list(pipeline._process_stream_response(publisher=None))
@@ -862,8 +959,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -871,8 +971,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
             prompt_messages=[],
             delta=SimpleNamespace(message=SimpleNamespace(content=[object(), "ok"])),
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.get_message_event_type = lambda message_id: None
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_to_stream_response = lambda **kwargs: kwargs["answer"]
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueLLMChunkEvent.model_construct(chunk=chunk))]
         )
@@ -886,12 +989,17 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._conversation_name_generate_thread = object()
+        # pyrefly: ignore [bad-assignment]
         pipeline.queue_manager.listen = lambda: iter([])
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
@@ -901,12 +1009,16 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
         pipeline.start_at = 10.0
+        # pyrefly: ignore [bad-assignment]
         pipeline._model_config = SimpleNamespace(mode="chat")
         pipeline._task_state.llm_result.prompt_messages = [AssistantPromptMessage(content="prompt")]
         pipeline._task_state.llm_result.message = AssistantPromptMessage(content="  {{name}} hello  ")
@@ -941,6 +1053,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
         )
 
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_message(session=session, trace_manager=trace_manager)
 
         assert message_obj.message == "serialized-prompt"
@@ -954,8 +1067,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -970,8 +1086,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -986,8 +1105,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -1019,6 +1141,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         response = pipeline._message_end_to_stream_response()
 
         assert response.id == "msg"
+        # pyrefly: ignore [bad-index]
         assert response.metadata["usage"]["prompt_tokens"] == 1
 
     def test_record_files_returns_none_when_message_has_no_files(self, monkeypatch):
@@ -1026,8 +1149,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -1064,8 +1190,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -1144,8 +1273,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -1160,8 +1292,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -1194,8 +1329,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=True,
         )
@@ -1208,6 +1346,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def append_new_token(self, text):
                 appended_tokens.append(text)
 
+        # pyrefly: ignore [bad-assignment]
         pipeline.output_moderation_handler = _Moderation()
 
         result = pipeline._handle_output_moderation_chunk("next-token")

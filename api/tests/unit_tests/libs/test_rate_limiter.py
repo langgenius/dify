@@ -39,6 +39,7 @@ def test_rate_limiter_counts_attempts_within_same_second(monkeypatch):
         prefix="test_rate_limit",
         max_attempts=2,
         time_window=60,
+        # pyrefly: ignore [bad-argument-type]
         redis_client=fake_redis,
     )
 

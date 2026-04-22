@@ -45,8 +45,10 @@ def _patch_redis_clients_on_loaded_modules():
         if module is None:
             continue
         if hasattr(module, "redis_client"):
+            # pyrefly: ignore [missing-attribute]
             module.redis_client = redis_mock
         if hasattr(module, "_pubsub_redis_client"):
+            # pyrefly: ignore [missing-attribute]
             module.pubsub_redis_client = redis_mock
 
 

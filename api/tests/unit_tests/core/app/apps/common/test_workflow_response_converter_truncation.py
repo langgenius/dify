@@ -585,6 +585,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         )
 
         # Verify response is not None
+        # pyrefly: ignore [missing-attribute]
         data = response.data
         assert data.inputs == large_value
         assert data.process_data == large_value

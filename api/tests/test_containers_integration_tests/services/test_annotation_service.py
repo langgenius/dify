@@ -1,6 +1,8 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -99,9 +101,11 @@ class TestAnnotationService:
 
         # Create app
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Setup current_user mock
+        # pyrefly: ignore [missing-attribute]
         self._mock_current_user(mock_external_service_dependencies, account.id, tenant.id)
 
         return app, account
@@ -687,6 +691,7 @@ class TestAnnotationService:
         result = AppAnnotationService.enable_app_annotation(enable_args, app.id)
 
         # Verify cached result
+        # pyrefly: ignore [missing-attribute]
         assert cached_job_id == result["job_id"].decode("utf-8")
         assert result["job_status"] == "processing"
 
@@ -904,6 +909,7 @@ class TestAnnotationService:
 
         # Verify error result
         assert "error_msg" in result
+        # pyrefly: ignore [missing-attribute]
         assert "empty" in result["error_msg"].lower()
 
     def test_batch_import_app_annotations_quota_exceeded(
@@ -950,6 +956,7 @@ class TestAnnotationService:
 
         # Verify error result
         assert "error_msg" in result
+        # pyrefly: ignore [missing-attribute]
         assert "limit" in result["error_msg"].lower()
 
     def test_get_app_annotation_setting_by_app_id_enabled(
@@ -994,7 +1001,9 @@ class TestAnnotationService:
         assert result["enabled"] is True
         assert result["id"] == annotation_setting.id
         assert result["score_threshold"] == 0.8
+        # pyrefly: ignore [bad-index]
         assert result["embedding_model"]["embedding_provider_name"] == "openai"
+        # pyrefly: ignore [bad-index]
         assert result["embedding_model"]["embedding_model_name"] == "text-embedding-ada-002"
 
     def test_get_app_annotation_setting_by_app_id_disabled(

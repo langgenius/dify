@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -91,6 +93,7 @@ class TestWorkflowRunService:
         }
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
@@ -180,11 +183,16 @@ class TestWorkflowRunService:
         message.answer = fake.text(max_nb_chars=200)
         message.message_tokens = 50
         message.answer_tokens = 100
+        # pyrefly: ignore [bad-argument-type]
         message.message_unit_price = 0.001
+        # pyrefly: ignore [bad-argument-type]
         message.answer_unit_price = 0.002
+        # pyrefly: ignore [bad-argument-type]
         message.message_price_unit = 0.001
+        # pyrefly: ignore [bad-argument-type]
         message.answer_price_unit = 0.001
         message.currency = "USD"
+        # pyrefly: ignore [bad-argument-type]
         message.status = "normal"
         message.from_source = ConversationFromSource.CONSOLE
         message.from_account_id = account.id
@@ -498,7 +506,9 @@ class TestWorkflowRunService:
         # Verify node execution properties
         statuses = [node_execution.status for node_execution in result]
         assert "paused" in statuses
+        # pyrefly: ignore [bad-argument-type]
         assert statuses.count("succeeded") == 3
+        # pyrefly: ignore [bad-argument-type]
         assert statuses.count("paused") == 1
 
         for node_execution in result:
@@ -542,6 +552,7 @@ class TestWorkflowRunService:
             "icon": "🚀",
             "icon_background": "#4ECDC4",
         }
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run without node executions
@@ -593,6 +604,7 @@ class TestWorkflowRunService:
             "icon": "🚀",
             "icon_background": "#4ECDC4",
         }
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Use invalid workflow run ID
@@ -644,6 +656,7 @@ class TestWorkflowRunService:
             "icon": "🚀",
             "icon_background": "#4ECDC4",
         }
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run

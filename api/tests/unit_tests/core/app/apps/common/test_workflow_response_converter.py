@@ -42,6 +42,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         """Test with None input"""
         # The method signature expects Union[dict, list, Segment], but implementation handles None
         # We'll test the actual behavior by passing an empty dict instead
+        # pyrefly: ignore [bad-argument-type]
         result = WorkflowResponseConverter._fetch_files_from_variable_value(None)
         assert result == []
 

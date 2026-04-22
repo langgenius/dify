@@ -382,6 +382,7 @@ def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pyt
 
     class FixedDateTime(datetime.datetime):
         @classmethod
+        # pyrefly: ignore [bad-override]
         def now(cls, tz=None):
             return fixed_now
 
@@ -457,6 +458,7 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
 
     class FixedDateTime(datetime.datetime):
         @classmethod
+        # pyrefly: ignore [bad-override]
         def now(cls, tz=None):
             return fixed_now
 

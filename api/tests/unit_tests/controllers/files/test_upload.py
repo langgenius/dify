@@ -60,6 +60,7 @@ class TestPluginUploadFileApi:
     ):
         dummy_file = DummyFile()
 
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -86,6 +87,7 @@ class TestPluginUploadFileApi:
         assert result["preview_url"] == "signed-url"
 
     def test_missing_file(self):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -107,6 +109,7 @@ class TestPluginUploadFileApi:
     def test_invalid_signature(self, mock_verify, mock_get_user):
         dummy_file = DummyFile()
 
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -135,6 +138,7 @@ class TestPluginUploadFileApi:
     ):
         dummy_file = DummyFile()
 
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -167,6 +171,7 @@ class TestPluginUploadFileApi:
     ):
         dummy_file = DummyFile()
 
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",

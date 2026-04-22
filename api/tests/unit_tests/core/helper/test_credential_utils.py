@@ -2,6 +2,8 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.entities import PluginCredentialType

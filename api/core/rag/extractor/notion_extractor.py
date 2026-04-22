@@ -103,6 +103,7 @@ class NotionExtractor(BaseExtractor):
 
             res = httpx.post(
                 DATABASE_URL_TMPL.format(database_id=database_id),
+                # pyrefly: ignore [bad-argument-type]
                 headers={
                     "Authorization": "Bearer " + self._notion_access_token,
                     "Content-Type": "application/json",
@@ -172,6 +173,7 @@ class NotionExtractor(BaseExtractor):
                 res = httpx.request(
                     "GET",
                     block_url,
+                    # pyrefly: ignore [bad-argument-type]
                     headers={
                         "Authorization": "Bearer " + self._notion_access_token,
                         "Content-Type": "application/json",
@@ -234,6 +236,7 @@ class NotionExtractor(BaseExtractor):
             res = httpx.request(
                 "GET",
                 block_url,
+                # pyrefly: ignore [bad-argument-type]
                 headers={
                     "Authorization": "Bearer " + self._notion_access_token,
                     "Content-Type": "application/json",
@@ -294,6 +297,7 @@ class NotionExtractor(BaseExtractor):
             res = httpx.request(
                 "GET",
                 block_url,
+                # pyrefly: ignore [bad-argument-type]
                 headers={
                     "Authorization": "Bearer " + self._notion_access_token,
                     "Content-Type": "application/json",
@@ -368,6 +372,7 @@ class NotionExtractor(BaseExtractor):
         res = httpx.request(
             "GET",
             retrieve_page_url,
+            # pyrefly: ignore [bad-argument-type]
             headers={
                 "Authorization": "Bearer " + self._notion_access_token,
                 "Content-Type": "application/json",

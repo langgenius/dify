@@ -52,6 +52,7 @@ class TestValidateUrl:
 
     def test_none_url_returns_default(self):
         """Test None URL returns default"""
+        # pyrefly: ignore [bad-argument-type]
         result = validate_url(None, "https://default.com")
         assert result == "https://default.com"
 
@@ -104,6 +105,7 @@ class TestValidateUrlWithPath:
 
     def test_none_url_returns_default(self):
         """Test None URL returns default"""
+        # pyrefly: ignore [bad-argument-type]
         result = validate_url_with_path(None, "https://default.com")
         assert result == "https://default.com"
 
@@ -133,6 +135,7 @@ class TestValidateProjectName:
 
     def test_none_project_name_returns_default(self):
         """Test None project name returns default"""
+        # pyrefly: ignore [bad-argument-type]
         result = validate_project_name(None, "default")
         assert result == "default"
 

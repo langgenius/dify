@@ -14,7 +14,9 @@ class TestAnnotationReplyFeature:
             mock_db.session.scalar.return_value = None
 
             result = feature.query(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+                # pyrefly: ignore [bad-argument-type]
                 message=SimpleNamespace(id="msg-1"),
                 query="hi",
                 user_id="user-1",
@@ -31,7 +33,9 @@ class TestAnnotationReplyFeature:
             mock_db.session.scalar.return_value = annotation_setting
 
             result = feature.query(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+                # pyrefly: ignore [bad-argument-type]
                 message=SimpleNamespace(id="msg-1"),
                 query="hi",
                 user_id="user-1",
@@ -74,7 +78,9 @@ class TestAnnotationReplyFeature:
             mock_annotation_service.get_annotation_by_id.return_value = annotation
 
             result = feature.query(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+                # pyrefly: ignore [bad-argument-type]
                 message=SimpleNamespace(id="msg-1"),
                 query="hi",
                 user_id="user-1",
@@ -121,7 +127,9 @@ class TestAnnotationReplyFeature:
             mock_annotation_service.get_annotation_by_id.return_value = annotation
 
             result = feature.query(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+                # pyrefly: ignore [bad-argument-type]
                 message=SimpleNamespace(id="msg-1"),
                 query="hi",
                 user_id="user-1",
@@ -152,7 +160,9 @@ class TestAnnotationReplyFeature:
 
             with caplog.at_level(logging.WARNING):
                 result = feature.query(
+                    # pyrefly: ignore [bad-argument-type]
                     app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+                    # pyrefly: ignore [bad-argument-type]
                     message=SimpleNamespace(id="msg-1"),
                     query="hi",
                     user_id="user-1",

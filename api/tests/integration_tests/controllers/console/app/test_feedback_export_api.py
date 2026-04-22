@@ -29,6 +29,7 @@ class TestFeedbackExportApi:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
+        # pyrefly: ignore [bad-argument-type]
         app.status = "normal"
         app.name = "Test App"
         return app

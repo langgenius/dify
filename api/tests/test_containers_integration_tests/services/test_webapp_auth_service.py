@@ -3,6 +3,8 @@ import uuid
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -67,6 +69,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -76,6 +79,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -120,6 +124,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -139,6 +144,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -342,6 +348,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -712,6 +719,7 @@ class TestWebAppAuthService:
         fake = Faker()
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
 

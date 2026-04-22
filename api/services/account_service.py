@@ -354,6 +354,7 @@ class AccountService:
                 int(cls.email_code_account_deletion_rate_limiter.time_window / 60)
             )
 
+        # pyrefly: ignore [not-callable]
         send_account_deletion_verification_code.delay(to=email, code=code)
 
         cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)
@@ -383,6 +384,7 @@ class AccountService:
             )
 
         # Now proceed with async account deletion
+        # pyrefly: ignore [not-callable]
         delete_account_task.delay(account.id)
 
     @staticmethod
@@ -522,12 +524,14 @@ class AccountService:
         code, token = cls.generate_reset_password_token(account_email, account)
 
         if account:
+            # pyrefly: ignore [not-callable]
             send_reset_password_mail_task.delay(
                 language=language,
                 to=account_email,
                 code=code,
             )
         else:
+            # pyrefly: ignore [not-callable]
             send_reset_password_mail_task_when_account_not_exist.delay(
                 language=language,
                 to=account_email,
@@ -555,6 +559,7 @@ class AccountService:
         code, token = cls.generate_email_register_token(account_email)
 
         if account:
+            # pyrefly: ignore [not-callable]
             send_email_register_mail_task_when_account_exist.delay(
                 language=language,
                 to=account_email,
@@ -562,6 +567,7 @@ class AccountService:
             )
 
         else:
+            # pyrefly: ignore [not-callable]
             send_email_register_mail_task.delay(
                 language=language,
                 to=account_email,
@@ -599,6 +605,7 @@ class AccountService:
             additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
         )
 
+        # pyrefly: ignore [not-callable]
         send_change_mail_task.delay(
             language=language,
             to=account_email,
@@ -619,6 +626,7 @@ class AccountService:
         if account_email is None:
             raise ValueError("Email must be provided.")
 
+        # pyrefly: ignore [not-callable]
         send_change_mail_completed_notification_task.delay(
             language=language,
             to=account_email,
@@ -644,6 +652,7 @@ class AccountService:
         code, token = cls.generate_owner_transfer_token(account_email, account)
         workspace_name = workspace_name or ""
 
+        # pyrefly: ignore [not-callable]
         send_owner_transfer_confirm_task.delay(
             language=language,
             to=account_email,
@@ -667,6 +676,7 @@ class AccountService:
             raise ValueError("Email must be provided.")
         workspace_name = workspace_name or ""
 
+        # pyrefly: ignore [not-callable]
         send_old_owner_transfer_notify_email_task.delay(
             language=language,
             to=account_email,
@@ -687,6 +697,7 @@ class AccountService:
             raise ValueError("Email must be provided.")
         workspace_name = workspace_name or ""
 
+        # pyrefly: ignore [not-callable]
         send_new_owner_transfer_notify_email_task.delay(
             language=language,
             to=account_email,
@@ -807,6 +818,7 @@ class AccountService:
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
+        # pyrefly: ignore [not-callable]
         send_email_code_login_mail_task.delay(
             language=language,
             to=account.email if account else email,
@@ -1166,6 +1178,7 @@ class TenantService:
             .limit(1)
         )
         if ta:
+            # pyrefly: ignore [missing-attribute]
             tenant.role = ta.role
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
@@ -1567,6 +1580,7 @@ class RegisterService:
         language = account.interface_language or "en-US"
 
         # send email
+        # pyrefly: ignore [not-callable]
         send_invite_member_mail_task.delay(
             language=language,
             to=account.email,

@@ -301,6 +301,7 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
         tenant_id="tenant",
         user_id="user",
         app_id="app",
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id="schedule-visual",
     )
@@ -331,6 +332,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
             "events": ["created", "updated"],
             "request_id": f"req-{_endpoint_id}",
         }
+        # pyrefly: ignore [not-callable]
         trigger_processing_tasks.dispatch_triggered_workflows_async.delay(dispatch_data)
         return Response("ok", status=202)
 
@@ -352,6 +354,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
             user_id=dispatch_data["user_id"],
             timestamp=dispatch_data["timestamp"],
             request_id=dispatch_data["request_id"],
+            # pyrefly: ignore [bad-argument-type]
             subscription=mock_plugin_subscription,
         )
 
@@ -466,6 +469,7 @@ def test_plugin_single_step_debug_flow(
         tenant_id=tenant_id,
         user_id=user_id,
         app_id=app_id,
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id=node_id,
     )
@@ -661,6 +665,7 @@ def test_schedule_visual_cron_conversion(
     else:
         node_config["data"]["cron_expression"] = cron_expression
 
+    # pyrefly: ignore [bad-argument-type]
     config = ScheduleService.to_schedule_config(node_config)
 
     assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
@@ -730,12 +735,14 @@ def test_plugin_trigger_full_chain_with_db_verification(
         parameters={},
         properties={},
         credentials={"token": "test-secret"},
+        # pyrefly: ignore [bad-argument-type]
         credential_type="api-key",
     )
     db_session_with_containers.add(subscription)
     db_session_with_containers.commit()
 
     # Update subscription_id to match the created subscription
+    # pyrefly: ignore [unsupported-operation]
     graph["nodes"][0]["data"]["subscription_id"] = subscription.id
     published_workflow.graph = json.dumps(graph)
     db_session_with_containers.commit()
@@ -827,6 +834,7 @@ def test_plugin_debug_via_http_endpoint(
         parameters={},
         properties={},
         credentials={"token": "debug-secret"},
+        # pyrefly: ignore [bad-argument-type]
         credential_type="api-key",
     )
     db_session_with_containers.add(subscription)
@@ -854,6 +862,7 @@ def test_plugin_debug_via_http_endpoint(
         tenant_id=tenant.id,
         user_id=account.id,
         app_id=app_model.id,
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id=node_id,
     )

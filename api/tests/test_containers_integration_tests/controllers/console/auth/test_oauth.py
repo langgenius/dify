@@ -193,7 +193,9 @@ class TestOAuthCallback:
         import httpx
 
         request_exception = httpx.RequestError("OAuth error")
+        # pyrefly: ignore [missing-attribute]
         request_exception.response = MagicMock()
+        # pyrefly: ignore [missing-attribute]
         request_exception.response.text = str(exception)
 
         mock_oauth_provider = MagicMock()

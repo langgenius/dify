@@ -20,6 +20,7 @@ def mock_db():
     to avoid touching Flask app context entirely.
     """
     fake_db = types.SimpleNamespace(engine=object())
+    # pyrefly: ignore [bad-assignment]
     module.db = fake_db
 
 
@@ -39,6 +40,7 @@ def fake_request(args: dict):
 class TestImagePreviewApi:
     @patch.object(module, "FileService")
     def test_success(self, mock_file_service):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -62,6 +64,7 @@ class TestImagePreviewApi:
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -85,6 +88,7 @@ class TestFilePreviewApi:
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
     def test_basic_stream(self, mock_file_service, mock_enforce):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -115,6 +119,7 @@ class TestFilePreviewApi:
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
     def test_as_attachment(self, mock_file_service, mock_enforce):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -147,6 +152,7 @@ class TestFilePreviewApi:
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
+        # pyrefly: ignore [bad-assignment]
         module.request = fake_request(
             {
                 "timestamp": "123",

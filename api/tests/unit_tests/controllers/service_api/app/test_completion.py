@@ -153,6 +153,7 @@ class TestChatRequestPayload:
         ]
         payload = ChatRequestPayload(inputs={}, query="test", files=files)
         assert payload.files == files
+        # pyrefly: ignore [bad-argument-type]
         assert len(payload.files) == 2
 
 

@@ -66,6 +66,7 @@ class TestGetParametersFromFeatureDict:
         )
 
         # Assert
+        # pyrefly: ignore [bad-typed-dict-key]
         assert result[feature_key] == expected_default
 
     def test_opening_statement_present(self, mock_config, mock_default_file_limits):
@@ -129,6 +130,7 @@ class TestGetParametersFromFeatureDict:
 
         # Assert
         for key in features:
+            # pyrefly: ignore [bad-typed-dict-key]
             assert result[key] == features[key]
         assert result["user_input_form"] == user_input
 

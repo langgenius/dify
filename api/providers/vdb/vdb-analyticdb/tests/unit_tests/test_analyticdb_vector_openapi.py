@@ -47,7 +47,9 @@ def _install_openapi_stubs(monkeypatch):
             self.config = config
 
     gpdb_client = types.ModuleType("alibabacloud_gpdb20160503.client")
+    # pyrefly: ignore [missing-attribute]
     gpdb_client.Client = _Client
+    # pyrefly: ignore [missing-attribute]
     gpdb_package.models = gpdb_models
 
     tea_openapi = types.ModuleType("alibabacloud_tea_openapi")
@@ -59,7 +61,9 @@ def _install_openapi_stubs(monkeypatch):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
+    # pyrefly: ignore [missing-attribute]
     tea_openapi_models.Config = OpenApiConfig
+    # pyrefly: ignore [missing-attribute]
     tea_openapi.models = tea_openapi_models
 
     tea_package = types.ModuleType("Tea")
@@ -73,7 +77,9 @@ def _install_openapi_stubs(monkeypatch):
             self.statusCode = status_code
             self.status_code = status_code
 
+    # pyrefly: ignore [missing-attribute]
     tea_exceptions.TeaException = TeaError
+    # pyrefly: ignore [missing-attribute]
     tea_package.exceptions = tea_exceptions
 
     monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503", gpdb_package)
@@ -141,6 +147,7 @@ def test_init_creates_openapi_client_and_runs_initialize(monkeypatch):
     assert isinstance(vector._client_config, stubs.OpenApiConfig)
     assert vector._client_config.user_agent == "dify"
     assert vector._client_config.access_key_id == "ak"
+    # pyrefly: ignore [missing-attribute]
     assert vector._client.config is vector._client_config
     initialize_mock.assert_called_once_with()
 
@@ -181,6 +188,7 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch):
 
     vector._initialize_vector_database.assert_called_once()
     vector._create_namespace_if_not_exists.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     openapi_module.redis_client.set.assert_called_once()
 
 
@@ -252,6 +260,7 @@ def test_create_collection_if_not_exists_creates_when_missing(monkeypatch):
     vector.create_collection_if_not_exists(embedding_dimension=1024)
 
     vector._client.create_collection.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     openapi_module.redis_client.set.assert_called_once()
 
 
@@ -305,6 +314,7 @@ def test_openapi_add_delete_and_search_methods(monkeypatch):
         SimpleNamespace(page_content="doc 2", metadata=None),
     ]
     embeddings = [[0.1, 0.2], [0.2, 0.3]]
+    # pyrefly: ignore [bad-argument-type]
     vector.add_texts(documents, embeddings)
 
     upsert_request = vector._client.upsert_collection_data.call_args.args[0]

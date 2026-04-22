@@ -57,6 +57,7 @@ def test_resolve_file_url_requires_file_reference() -> None:
     file = SimpleNamespace(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
 
     with pytest.raises(ValueError, match="Missing file reference"):
+        # pyrefly: ignore [bad-argument-type]
         runtime.resolve_file_url(file=file)
 
 

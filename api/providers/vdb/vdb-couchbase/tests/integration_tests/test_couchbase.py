@@ -43,6 +43,7 @@ class CouchbaseTest(AbstractVectorTest):
     def search_by_vector(self):
         # brief sleep to ensure document is indexed
         time.sleep(5)
+        # pyrefly: ignore [missing-attribute]
         hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
 

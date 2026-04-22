@@ -7,6 +7,8 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from constants import HIDDEN_VALUE

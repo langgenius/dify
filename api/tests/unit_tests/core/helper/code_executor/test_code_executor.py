@@ -4,6 +4,8 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.helper.code_executor import code_executor as code_executor_module

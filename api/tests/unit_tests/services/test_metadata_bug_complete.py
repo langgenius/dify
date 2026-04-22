@@ -15,12 +15,15 @@ class TestMetadataBugCompleteValidation:
         """Test Layer 1: Pydantic model validation correctly rejects None values."""
         # Pydantic should reject None values for required fields
         with pytest.raises((ValueError, TypeError)):
+            # pyrefly: ignore [bad-argument-type]
             MetadataArgs(type=None, name=None)
 
         with pytest.raises((ValueError, TypeError)):
+            # pyrefly: ignore [bad-argument-type]
             MetadataArgs(type="string", name=None)
 
         with pytest.raises((ValueError, TypeError)):
+            # pyrefly: ignore [bad-argument-type]
             MetadataArgs(type=None, name="test")
 
         # Valid values should work
@@ -57,6 +60,7 @@ class TestMetadataBugCompleteValidation:
             return_value=(mock_user, mock_user.current_tenant_id),
         ):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
+                # pyrefly: ignore [bad-argument-type]
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
     def test_3_database_constraints_verification(self):

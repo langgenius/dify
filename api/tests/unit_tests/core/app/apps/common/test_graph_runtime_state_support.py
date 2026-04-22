@@ -17,6 +17,7 @@ def _make_state(workflow_run_id: str | None) -> GraphRuntimeState:
 class _StubPipeline(GraphRuntimeStateSupport):
     def __init__(self, *, cached_state: GraphRuntimeState | None, queue_state: GraphRuntimeState | None):
         self._graph_runtime_state = cached_state
+        # pyrefly: ignore [bad-assignment]
         self._base_task_pipeline = SimpleNamespace(queue_manager=SimpleNamespace(graph_runtime_state=queue_state))
 
 

@@ -10,6 +10,8 @@ import logging
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from libs.email_i18n import EmailType
@@ -61,6 +63,7 @@ class TestMailOwnerTransferTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -69,6 +72,7 @@ class TestMailOwnerTransferTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -78,6 +82,7 @@ class TestMailOwnerTransferTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
+            # pyrefly: ignore [bad-argument-type]
             role=TenantAccountRole.OWNER.value,
             current=True,
         )

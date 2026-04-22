@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -81,6 +83,7 @@ class TestModelLoadBalancingService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -90,6 +93,7 @@ class TestModelLoadBalancingService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -130,6 +134,7 @@ class TestModelLoadBalancingService:
         provider = Provider(
             tenant_id=tenant_id,
             provider_name="openai",
+            # pyrefly: ignore [bad-argument-type]
             provider_type="custom",
             is_valid=True,
         )
@@ -141,6 +146,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             enabled=True,
             load_balancing_enabled=False,
@@ -298,6 +304,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant.id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             name="config1",
             encrypted_config='{"api_key": "test_key"}',
@@ -417,6 +424,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant.id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             name="config1",
             encrypted_config='{"api_key": "test_key"}',

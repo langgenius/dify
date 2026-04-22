@@ -145,7 +145,9 @@ class TestDatasetModelValidation:
 
         # Assert
         assert result == index_struct_data
+        # pyrefly: ignore [unsupported-operation]
         assert result["type"] == "vector"
+        # pyrefly: ignore [unsupported-operation]
         assert result["dimension"] == 1536
 
     def test_dataset_index_struct_dict_property_none(self):
@@ -839,7 +841,9 @@ class TestDatasetProcessRule:
 
         # Assert
         assert result == rules_data
+        # pyrefly: ignore [not-iterable]
         assert "pre_processing_rules" in result
+        # pyrefly: ignore [not-iterable]
         assert "segmentation" in result
 
     def test_dataset_process_rule_to_dict(self):

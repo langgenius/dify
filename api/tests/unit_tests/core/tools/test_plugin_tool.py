@@ -49,6 +49,7 @@ def test_plugin_tool_invoke_and_fork_runtime():
         ):
             messages = list(tool.invoke(user_id="user-1", tool_parameters={"raw": 1}))
 
+    # pyrefly: ignore [missing-attribute]
     assert [m.message.text for m in messages] == ["ok"]
     manager.invoke.assert_called_once()
     assert manager.invoke.call_args.kwargs["tool_parameters"] == {"converted": 1}

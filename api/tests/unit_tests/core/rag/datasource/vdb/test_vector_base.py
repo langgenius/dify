@@ -17,6 +17,7 @@ class _DummyVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         return None
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         return None
 
@@ -70,6 +71,7 @@ def test_filter_duplicate_texts_removes_existing_docs():
         Document(page_content="keep-unique", metadata={"doc_id": "unique"}),
     ]
 
+    # pyrefly: ignore [bad-argument-type]
     filtered = vector._filter_duplicate_texts(docs)
 
     assert [d.page_content for d in filtered] == ["keep-no-meta", "keep-no-doc-id", "keep-unique"]
@@ -84,5 +86,6 @@ def test_get_uuids_and_collection_name_property():
         Document(page_content="d", metadata={"doc_id": "id-2"}),
     ]
 
+    # pyrefly: ignore [bad-argument-type]
     assert vector._get_uuids(docs) == ["id-1", "id-2"]
     assert vector.collection_name == "collection_1"

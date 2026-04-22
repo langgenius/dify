@@ -45,10 +45,12 @@ class DummyUnit:
 def runner():
     runner = CotChatAgentRunner.__new__(CotChatAgentRunner)
     runner._instruction = "test_instruction"
+    # pyrefly: ignore [bad-assignment]
     runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
     runner._query = "user query"
     runner._agent_scratchpad = []
     runner.files = []
+    # pyrefly: ignore [bad-assignment]
     runner.application_generate_entity = DummyGenerateEntity()
     runner._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
     return runner

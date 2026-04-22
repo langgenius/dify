@@ -86,7 +86,9 @@ class TestWorkflowChildEngineBuilder:
             with pytest.raises(ChildGraphNotFoundError, match="child graph root node 'missing' not found"):
                 builder.build_child_engine(
                     workflow_id="workflow-id",
+                    # pyrefly: ignore [bad-argument-type]
                     graph_init_params=graph_init_params,
+                    # pyrefly: ignore [bad-argument-type]
                     parent_graph_runtime_state=parent_graph_runtime_state,
                     root_node_id="missing",
                 )
@@ -118,7 +120,9 @@ class TestWorkflowChildEngineBuilder:
         ):
             result = builder.build_child_engine(
                 workflow_id="workflow-id",
+                # pyrefly: ignore [bad-argument-type]
                 graph_init_params=graph_init_params,
+                # pyrefly: ignore [bad-argument-type]
                 parent_graph_runtime_state=parent_graph_runtime_state,
                 root_node_id="root",
                 variable_pool=sentinel.child_variable_pool,
@@ -197,6 +201,7 @@ class TestWorkflowChildEngineBuilder:
             child_engine = builder.build_child_engine(
                 workflow_id="workflow-id",
                 graph_init_params=graph_init_params,
+                # pyrefly: ignore [bad-argument-type]
                 parent_graph_runtime_state=parent_graph_runtime_state,
                 root_node_id="root",
             )
@@ -266,6 +271,7 @@ class TestWorkflowEntryInit:
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
                 variable_pool=sentinel.variable_pool,
+                # pyrefly: ignore [bad-argument-type]
                 graph_runtime_state=graph_runtime_state,
                 command_channel=None,
             )
@@ -381,6 +387,7 @@ class TestWorkflowEntrySingleStepRun:
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
+                # pyrefly: ignore [bad-argument-type]
                 workflow=workflow,
                 node_id="node-id",
                 user_id="user-id",
@@ -436,6 +443,7 @@ class TestWorkflowEntrySingleStepRun:
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
+                # pyrefly: ignore [bad-argument-type]
                 workflow=workflow,
                 node_id="node-id",
                 user_id="user-id",
@@ -505,6 +513,7 @@ class TestWorkflowEntrySingleStepRun:
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
+                # pyrefly: ignore [bad-argument-type]
                 workflow=workflow,
                 node_id="node-id",
                 user_id="user-id",
@@ -563,6 +572,7 @@ class TestWorkflowEntrySingleStepRun:
 
             with pytest.raises(WorkflowNodeRunFailedError):
                 workflow_entry.WorkflowEntry.single_step_run(
+                    # pyrefly: ignore [bad-argument-type]
                     workflow=workflow,
                     node_id="node-id",
                     user_id="user-id",
@@ -784,11 +794,13 @@ class TestWorkflowEntryHelpers:
 class TestMappingUserInputsBranches:
     def test_rejects_invalid_node_variable_key(self):
         class EmptySplitKey(UserString):
+            # pyrefly: ignore [bad-override]
             def split(self, _sep=None):
                 return []
 
         with pytest.raises(ValueError, match="Invalid node variable broken"):
             workflow_entry.WorkflowEntry.mapping_user_inputs_to_variable_pool(
+                # pyrefly: ignore [bad-argument-type]
                 variable_mapping={EmptySplitKey("broken"): ["node", "input"]},
                 user_inputs={},
                 variable_pool=MagicMock(),
@@ -840,6 +852,7 @@ class TestWorkflowEntryTracing:
                 yield "event"
 
         with patch.object(workflow_entry, "ObservabilityLayer", return_value=layer):
+            # pyrefly: ignore [bad-argument-type]
             events = list(workflow_entry.WorkflowEntry._traced_node_run(FakeNode()))
 
         assert events == ["event"]
@@ -863,6 +876,7 @@ class TestWorkflowEntryTracing:
 
         with patch.object(workflow_entry, "ObservabilityLayer", return_value=layer):
             with pytest.raises(RuntimeError, match="boom"):
+                # pyrefly: ignore [bad-argument-type]
                 list(workflow_entry.WorkflowEntry._traced_node_run(FakeNode()))
 
         assert isinstance(layer.on_node_run_end.call_args.args[1], RuntimeError)

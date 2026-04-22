@@ -64,4 +64,5 @@ def setup_http_mock(request, monkeypatch: pytest.MonkeyPatch):
     yield
 
     if MOCK_SWITCH:
+        # pyrefly: ignore [unbound-name]
         unpatch()

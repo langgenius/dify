@@ -17,6 +17,7 @@ class MockMessage:
 
 def test_extract_thread_messages_single_message():
     messages = [MockMessage(str(uuid4()), UUID_NIL)]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 1
     assert result[0] == messages[0]
@@ -31,8 +32,10 @@ def test_extract_thread_messages_linear_thread():
         MockMessage(id2, id1),
         MockMessage(id1, UUID_NIL),
     ]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 5
+    # pyrefly: ignore [bad-index]
     assert [msg["id"] for msg in result] == [id5, id4, id3, id2, id1]
 
 
@@ -44,8 +47,10 @@ def test_extract_thread_messages_branched_thread():
         MockMessage(id2, id1),
         MockMessage(id1, UUID_NIL),
     ]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 3
+    # pyrefly: ignore [bad-index]
     assert [msg["id"] for msg in result] == [id4, id2, id1]
 
 
@@ -62,8 +67,10 @@ def test_extract_thread_messages_partially_loaded():
         MockMessage(id2, id1),
         MockMessage(id1, id0),
     ]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 3
+    # pyrefly: ignore [bad-index]
     assert [msg["id"] for msg in result] == [id3, id2, id1]
 
 
@@ -74,8 +81,10 @@ def test_extract_thread_messages_legacy_messages():
         MockMessage(id2, UUID_NIL),
         MockMessage(id1, UUID_NIL),
     ]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 3
+    # pyrefly: ignore [bad-index]
     assert [msg["id"] for msg in result] == [id3, id2, id1]
 
 
@@ -88,8 +97,10 @@ def test_extract_thread_messages_mixed_with_legacy_messages():
         MockMessage(id2, UUID_NIL),
         MockMessage(id1, UUID_NIL),
     ]
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
     assert len(result) == 4
+    # pyrefly: ignore [bad-index]
     assert [msg["id"] for msg in result] == [id5, id4, id2, id1]
 
 
@@ -97,6 +108,7 @@ def test_extract_thread_messages_breaks_when_parent_is_none():
     id1, id2 = str(uuid4()), str(uuid4())
     messages = [MockMessage(id2, None), MockMessage(id1, UUID_NIL)]
 
+    # pyrefly: ignore [bad-argument-type]
     result = extract_thread_messages(messages)
 
     assert len(result) == 1

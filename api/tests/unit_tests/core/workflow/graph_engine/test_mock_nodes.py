@@ -99,7 +99,9 @@ class MockNodeMixin:
         super().__init__(
             node_id=node_id,
             config=config,
+            # pyrefly: ignore [unexpected-keyword]
             graph_init_params=graph_init_params,
+            # pyrefly: ignore [unexpected-keyword]
             graph_runtime_state=graph_runtime_state,
             **kwargs,
         )
@@ -111,6 +113,7 @@ class MockNodeMixin:
             return default_outputs
 
         # Check for node-specific configuration
+        # pyrefly: ignore [missing-attribute]
         node_config = self.mock_config.get_node_config(self._node_id)
         if node_config and node_config.outputs:
             return node_config.outputs
@@ -126,6 +129,7 @@ class MockNodeMixin:
         if not self.mock_config:
             return None
 
+        # pyrefly: ignore [missing-attribute]
         node_config = self.mock_config.get_node_config(self._node_id)
         if node_config:
             return node_config.error
@@ -137,6 +141,7 @@ class MockNodeMixin:
         if not self.mock_config or not self.mock_config.simulate_delays:
             return
 
+        # pyrefly: ignore [missing-attribute]
         node_config = self.mock_config.get_node_config(self._node_id)
         if node_config and node_config.delay > 0:
             time.sleep(node_config.delay)
@@ -348,10 +353,12 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
     """Mock implementation of KnowledgeRetrievalNode for testing."""
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
+    # pyrefly: ignore [bad-override]
     def _run(self) -> Generator:
         """Execute mock knowledge retrieval node."""
         # Simulate delay if configured
@@ -409,6 +416,7 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         """Return the version of this mock node."""
         return "1"
 
+    # pyrefly: ignore [bad-override]
     def _run(self) -> Generator:
         """Execute mock HTTP request node."""
         # Simulate delay if configured
@@ -458,10 +466,12 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
     """Mock implementation of QuestionClassifierNode for testing."""
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
+    # pyrefly: ignore [bad-override]
     def _run(self) -> Generator:
         """Execute mock question classifier node."""
         # Simulate delay if configured
@@ -510,6 +520,7 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
         """Return the version of this mock node."""
         return "1"
 
+    # pyrefly: ignore [bad-override]
     def _run(self) -> Generator:
         """Execute mock parameter extractor node."""
         # Simulate delay if configured
@@ -560,6 +571,7 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         """Return the version of this mock node."""
         return "1"
 
+    # pyrefly: ignore [bad-override]
     def _run(self) -> Generator:
         """Execute mock document extractor node."""
         # Simulate delay if configured
@@ -659,7 +671,10 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Initialize the iteration graph with the mock node factory
         iteration_graph = Graph.init(
-            graph_config=self.graph_config, node_factory=node_factory, root_node_id=self._node_data.start_node_id
+            # pyrefly: ignore [bad-argument-type]
+            graph_config=self.graph_config,
+            node_factory=node_factory,
+            root_node_id=self._node_data.start_node_id,
         )
 
         if not iteration_graph:
@@ -855,14 +870,19 @@ class MockCodeNode(MockNodeMixin, CodeNode):
                 if output_config.type == "string":
                     default_outputs[output_name] = f"mocked_{output_name}"
                 elif output_config.type == "number":
+                    # pyrefly: ignore [unsupported-operation]
                     default_outputs[output_name] = 42
                 elif output_config.type == "object":
+                    # pyrefly: ignore [unsupported-operation]
                     default_outputs[output_name] = {"key": "value"}
                 elif output_config.type == "array[string]":
+                    # pyrefly: ignore [unsupported-operation]
                     default_outputs[output_name] = ["item1", "item2"]
                 elif output_config.type == "array[number]":
+                    # pyrefly: ignore [unsupported-operation]
                     default_outputs[output_name] = [1, 2, 3]
                 elif output_config.type == "array[object]":
+                    # pyrefly: ignore [unsupported-operation]
                     default_outputs[output_name] = [{"key": "value1"}, {"key": "value2"}]
         else:
             # Default output when no schema is defined

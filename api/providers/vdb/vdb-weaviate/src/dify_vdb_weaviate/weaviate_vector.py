@@ -275,6 +275,7 @@ class WeaviateVector(BaseVector):
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
+    # pyrefly: ignore [bad-param-name-override]
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
@@ -440,6 +441,7 @@ class WeaviateVector(BaseVector):
 
             if score > score_threshold:
                 properties["score"] = score
+                # pyrefly: ignore [bad-argument-type]
                 docs.append(Document(page_content=text, metadata=properties))
 
         docs.sort(key=lambda d: d.metadata.get("score", 0.0), reverse=True)
@@ -493,6 +495,7 @@ class WeaviateVector(BaseVector):
             if isinstance(vec, dict):
                 vec = vec.get("default") or next(iter(vec.values()), None)
 
+            # pyrefly: ignore [bad-argument-type]
             docs.append(Document(page_content=text, vector=vec, metadata=properties))
         return docs
 

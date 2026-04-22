@@ -102,6 +102,7 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], 
         tasks_to_dispatch.append(schedule.id)
 
     if tasks_to_dispatch:
+        # pyrefly: ignore [not-callable]
         job = group(run_schedule_trigger.s(schedule_id) for schedule_id in tasks_to_dispatch)
         job.apply_async(producer=producer)
 

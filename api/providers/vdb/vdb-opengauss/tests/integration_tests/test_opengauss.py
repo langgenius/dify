@@ -32,6 +32,7 @@ class OpenGaussTest(AbstractVectorTest):
                     time.sleep(retry_delay)
         self.vector = OpenGauss(
             collection_name=self.collection_name,
+            # pyrefly: ignore [unbound-name]
             config=config,
         )
 

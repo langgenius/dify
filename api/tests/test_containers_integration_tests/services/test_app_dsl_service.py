@@ -8,6 +8,8 @@ from uuid import uuid4
 
 import pytest
 import yaml
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from core.trigger.constants import (
@@ -135,6 +137,7 @@ class TestAppDslService:
                 "api_rpm": 10,
             }
             app_service = AppService()
+            # pyrefly: ignore [missing-attribute]
             app = app_service.create_app(tenant.id, app_args, account)
             return app, account
 
@@ -916,6 +919,7 @@ class TestAppDslService:
                 }
             ),
             pre_prompt="You are a helpful assistant.",
+            # pyrefly: ignore [bad-argument-type]
             prompt_type="simple",
             created_by=account.id,
             updated_by=account.id,

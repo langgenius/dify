@@ -10,6 +10,8 @@ import uuid
 from unittest.mock import ANY, Mock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import select
 

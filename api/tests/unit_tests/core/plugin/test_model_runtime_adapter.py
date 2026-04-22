@@ -190,6 +190,7 @@ class TestPluginModelRuntime:
                 tools=None,
                 stop=None,
                 stream=False,
+                # pyrefly: ignore [unexpected-keyword]
                 user_id="request-user",
             )
 

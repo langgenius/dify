@@ -28,6 +28,7 @@ class InitValidateResponse(BaseModel):
     result: str = Field(description="Operation result", examples=["success"])
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.get(
     "/init",
     response_model=InitStatusResponse,
@@ -41,6 +42,7 @@ def get_init_status() -> InitStatusResponse:
     return InitStatusResponse(status="not_started")
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.post(
     "/init",
     response_model=InitValidateResponse,

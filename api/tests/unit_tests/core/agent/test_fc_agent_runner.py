@@ -26,8 +26,11 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
     usage.prompt_tokens = pt
     usage.completion_tokens = ct
     usage.total_tokens = tt
+    # pyrefly: ignore [bad-assignment]
     usage.prompt_price = 0
+    # pyrefly: ignore [bad-assignment]
     usage.completion_price = 0
+    # pyrefly: ignore [bad-assignment]
     usage.total_price = 0
     return usage
 
@@ -307,6 +310,7 @@ class TestRunMethod:
         runner.stream_tool_call = True
 
         content = [TextPromptMessageContent(data="hi")]
+        # pyrefly: ignore [bad-argument-type]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
         def generator():
@@ -327,6 +331,7 @@ class TestRunMethod:
         tool_call.function.arguments = json.dumps({"a": 1})
 
         content = [TextPromptMessageContent(data="hi")]
+        # pyrefly: ignore [bad-argument-type]
         chunk = DummyChunk(message=DummyMessage(content=content, tool_calls=[tool_call]), usage=build_usage())
 
         def generator():
@@ -343,6 +348,7 @@ class TestRunMethod:
     def test_run_non_streaming_list_content(self, runner):
         message = MagicMock(id="m1")
         content = [TextPromptMessageContent(data="hi")]
+        # pyrefly: ignore [bad-argument-type]
         dummy_message = DummyMessage(content=content)
         result = DummyResult(message=dummy_message, usage=build_usage())
 

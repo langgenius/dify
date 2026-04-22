@@ -215,6 +215,7 @@ class TestAgentStrategyEntity:
         entity = AgentStrategyEntity(
             identity=mock_identity,
             description=I18nObject(en_US="test"),
+            # pyrefly: ignore [bad-argument-type]
             parameters=None,
         )
         assert entity.parameters == []
@@ -277,6 +278,7 @@ class TestAgentStrategyEntity:
 
     def test_missing_required_fields_raise(self, mock_identity) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             AgentStrategyEntity(identity=mock_identity)
 
 

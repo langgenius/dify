@@ -119,6 +119,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
 
         engine = db_session_with_containers.get_bind()
         assert isinstance(engine, Engine)
+        # pyrefly: ignore [bad-instantiation]
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
 
         try:

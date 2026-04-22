@@ -91,6 +91,7 @@ class TestVariablePool:
         add_variables_to_pool(pool, complex_system_vars)
         add_variables_to_pool(
             pool,
+            # pyrefly: ignore [bad-argument-type]
             [
                 segment_to_variable(
                     segment=build_segment(1),

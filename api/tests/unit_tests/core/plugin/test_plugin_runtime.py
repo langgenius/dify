@@ -371,6 +371,7 @@ class TestPluginRuntimeErrorHandling:
             # Act & Assert
             with pytest.raises(InvokeRateLimitError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
+            # pyrefly: ignore [not-iterable]
             assert "Rate limit exceeded" in exc_info.value.description
 
     def test_plugin_invoke_authorization_error(self, plugin_client, mock_config):
@@ -390,6 +391,7 @@ class TestPluginRuntimeErrorHandling:
             # Act & Assert
             with pytest.raises(InvokeAuthorizationError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
+            # pyrefly: ignore [not-iterable]
             assert "Invalid credentials" in exc_info.value.description
 
     def test_plugin_invoke_bad_request_error(self, plugin_client, mock_config):
@@ -409,6 +411,7 @@ class TestPluginRuntimeErrorHandling:
             # Act & Assert
             with pytest.raises(InvokeBadRequestError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
+            # pyrefly: ignore [not-iterable]
             assert "Invalid parameters" in exc_info.value.description
 
     def test_plugin_invoke_connection_error(self, plugin_client, mock_config):
@@ -428,6 +431,7 @@ class TestPluginRuntimeErrorHandling:
             # Act & Assert
             with pytest.raises(InvokeConnectionError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
+            # pyrefly: ignore [not-iterable]
             assert "Connection to external service failed" in exc_info.value.description
 
     def test_plugin_invoke_server_unavailable_error(self, plugin_client, mock_config):
@@ -447,6 +451,7 @@ class TestPluginRuntimeErrorHandling:
             # Act & Assert
             with pytest.raises(InvokeServerUnavailableError) as exc_info:
                 plugin_client._request_with_plugin_daemon_response("POST", "plugin/test-tenant/invoke", bool)
+            # pyrefly: ignore [not-iterable]
             assert "Service temporarily unavailable" in exc_info.value.description
 
     def test_credentials_validation_error(self, plugin_client, mock_config):

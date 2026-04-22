@@ -68,10 +68,12 @@ class TestModelConfigManager:
 
     def test_convert_missing_model(self):
         with pytest.raises(ValueError, match="model is required"):
+            # pyrefly: ignore [bad-typed-dict-key]
             ModelConfigManager.convert({})
 
     def test_convert_without_stop(self):
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {"temperature": 0.9}}}
+        # pyrefly: ignore [bad-argument-type]
         result = ModelConfigManager.convert(config)
         assert result.stop == []
         assert result.parameters == {"temperature": 0.9}

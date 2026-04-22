@@ -89,6 +89,7 @@ def test_datasource_node_delegates_to_manager_stream(mocker):
             datasource_name="ds",
         ),
         graph_init_params=gp,
+        # pyrefly: ignore [bad-argument-type]
         graph_runtime_state=gs,
     )
 

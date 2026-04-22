@@ -9,6 +9,8 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -49,6 +51,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
+            # pyrefly: ignore [bad-argument-type]
             status="active",
             interface_language="en-US",  # Set interface language for Site creation
         )
@@ -62,8 +65,10 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
+        # pyrefly: ignore [bad-argument-type]
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
@@ -165,11 +170,13 @@ class TestWorkflowService:
         node_execution.tenant_id = app.tenant_id
         node_execution.app_id = app.id
         node_execution.workflow_id = workflow.id
+        # pyrefly: ignore [bad-argument-type]
         node_execution.triggered_from = "single-step"  # Required field
         node_execution.index = 1  # Required field
         node_execution.node_id = "test-node-1"
         node_execution.node_type = "test_node"
         node_execution.title = "Test Node"  # Required field
+        # pyrefly: ignore [bad-argument-type]
         node_execution.status = "succeeded"
         node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
         node_execution.created_by = account.id  # Required field
@@ -1289,6 +1296,7 @@ class TestWorkflowService:
         # Arrange
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
+        # pyrefly: ignore [bad-argument-type]
         app.mode = "invalid_mode"  # Invalid mode
 
         # Act & Assert - EnumText validation rejects invalid values at DB flush
@@ -1638,6 +1646,7 @@ class TestWorkflowService:
                 inputs={"input1": "value1"},
                 outputs={"output1": "result1"},
                 process_data={"process1": "data1"},
+                # pyrefly: ignore [bad-argument-type]
                 metadata={"total_tokens": 100},  # Use valid metadata field
             )
 

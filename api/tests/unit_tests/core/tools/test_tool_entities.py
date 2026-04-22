@@ -17,6 +17,7 @@ def test_log_message_metadata_none_defaults_to_empty_dict():
         label="Log entry",
         status=ToolInvokeMessage.LogMessage.LogStatus.START,
         data={},
+        # pyrefly: ignore [bad-argument-type]
         metadata=None,
     )
 
@@ -24,6 +25,7 @@ def test_log_message_metadata_none_defaults_to_empty_dict():
 
 
 def test_tool_entity_output_schema_none_defaults_to_empty_dict():
+    # pyrefly: ignore [bad-argument-type]
     entity = ToolEntity(identity=_make_identity(), output_schema=None)
 
     assert entity.output_schema == {}

@@ -241,12 +241,16 @@ class ExternalDatasetService:
                 authorization.config.header = "Authorization"
 
             if authorization.config.type == "bearer":
+                # pyrefly: ignore [unsupported-operation]
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
             elif authorization.config.type == "basic":
+                # pyrefly: ignore [unsupported-operation]
                 headers[authorization.config.header] = f"Basic {authorization.config.api_key}"
             elif authorization.config.type == "custom":
+                # pyrefly: ignore [unsupported-operation]
                 headers[authorization.config.header] = authorization.config.api_key
 
+        # pyrefly: ignore [bad-return]
         return headers
 
     @staticmethod

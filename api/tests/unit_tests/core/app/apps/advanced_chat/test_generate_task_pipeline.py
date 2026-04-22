@@ -106,6 +106,7 @@ def test_persist_human_input_extra_content_skips_when_existing(monkeypatch: pyte
 
 def test_handle_workflow_paused_event_persists_human_input_extra_content() -> None:
     pipeline = _build_pipeline()
+    # pyrefly: ignore [bad-assignment]
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_response_converter = mock.Mock()
     pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = []
@@ -173,14 +174,17 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
     workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
 
     pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=application_generate_entity,
         workflow=workflow,
+        # pyrefly: ignore [bad-argument-type]
         queue_manager=queue_manager,
         conversation=conversation,
         message=message,
         user=user,
         stream=True,
         dialogue_count=1,
+        # pyrefly: ignore [bad-argument-type]
         draft_var_saver_factory=SimpleNamespace(),
     )
 
@@ -215,6 +219,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
 
 def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None:
     pipeline = _build_pipeline()
+    # pyrefly: ignore [bad-assignment]
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_id = "workflow-1"
     pipeline._ensure_workflow_initialized = mock.Mock()
@@ -237,6 +242,7 @@ def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None
 
 def test_workflow_partial_success_emits_message_end_before_workflow_finished() -> None:
     pipeline = _build_pipeline()
+    # pyrefly: ignore [bad-assignment]
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_id = "workflow-1"
     pipeline._ensure_workflow_initialized = mock.Mock()

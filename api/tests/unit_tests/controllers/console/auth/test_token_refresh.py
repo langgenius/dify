@@ -71,6 +71,7 @@ class TestRefreshTokenApi:
         # Assert
         mock_extract_token.assert_called_once()
         mock_refresh_token.assert_called_once_with("valid_refresh_token")
+        # pyrefly: ignore [missing-attribute]
         assert response.json["result"] == "success"
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
@@ -89,6 +90,7 @@ class TestRefreshTokenApi:
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
+            # pyrefly: ignore [not-iterable]
             response, status_code = refresh_api.post()
 
         # Assert
@@ -114,6 +116,7 @@ class TestRefreshTokenApi:
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
+            # pyrefly: ignore [not-iterable]
             response, status_code = refresh_api.post()
 
         # Assert
@@ -139,6 +142,7 @@ class TestRefreshTokenApi:
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
+            # pyrefly: ignore [not-iterable]
             response, status_code = refresh_api.post()
 
         # Assert
@@ -162,6 +166,7 @@ class TestRefreshTokenApi:
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
+            # pyrefly: ignore [not-iterable]
             response, status_code = refresh_api.post()
 
         # Assert
@@ -189,6 +194,7 @@ class TestRefreshTokenApi:
             response = refresh_api.post()
 
         # Assert
+        # pyrefly: ignore [missing-attribute]
         assert response.json["result"] == "success"
         # Verify new token pair was generated
         mock_refresh_token.assert_called_once_with("valid_refresh_token")

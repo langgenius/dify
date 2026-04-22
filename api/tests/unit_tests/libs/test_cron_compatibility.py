@@ -315,6 +315,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
 
         for test_case in visual_configs:
             with self.subTest(frequency=test_case["frequency"]):
+                # pyrefly: ignore [bad-argument-type]
                 cron_expr = ScheduleService.visual_to_cron(test_case["frequency"], test_case["config"])
                 assert cron_expr == test_case["expected_cron"]
 

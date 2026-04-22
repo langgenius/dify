@@ -157,6 +157,7 @@ class OceanBaseVector(BaseVector):
             vidx_params = self._client.prepare_index_params()
             vidx_params.add_index(
                 field_name="vector",
+                # pyrefly: ignore [bad-argument-type]
                 index_type=OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE,
                 index_name="vector_index",
                 metric_type=self._config.metric_type,
@@ -237,6 +238,7 @@ class OceanBaseVector(BaseVector):
             logger.warning("Failed to check OceanBase version: %s. Disabling hybrid search.", str(e))
             return False
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
         batch_size = self._config.batch_size

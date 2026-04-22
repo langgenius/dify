@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -166,6 +168,7 @@ class TestTriggerProviderService:
         original_credentials = {"api_key": "original-secret-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -195,6 +198,7 @@ class TestTriggerProviderService:
 
         # Execute rebuild
         TriggerProviderService.rebuild_trigger_subscription(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             provider_id=provider_id,
             subscription_id=subscription.id,
@@ -206,6 +210,7 @@ class TestTriggerProviderService:
         # Verify unsubscribe was called with decrypted original credentials
         mock_external_service_dependencies["trigger_manager"].unsubscribe_trigger.assert_called_once()
         unsubscribe_call_args = mock_external_service_dependencies["trigger_manager"].unsubscribe_trigger.call_args
+        # pyrefly: ignore [missing-attribute]
         assert unsubscribe_call_args.kwargs["tenant_id"] == tenant.id
         assert unsubscribe_call_args.kwargs["provider_id"] == provider_id
         assert unsubscribe_call_args.kwargs["credential_type"] == credential_type
@@ -229,6 +234,7 @@ class TestTriggerProviderService:
         # Use mock provider controller to decrypt credentials
         provider_controller = mock_external_service_dependencies["provider_controller"]
         credential_encrypter, _ = create_provider_encrypter(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             config=provider_controller.get_credential_schema_config(credential_type),
             cache=NoOpProviderCredentialCache(),
@@ -239,6 +245,7 @@ class TestTriggerProviderService:
 
         # Verify cache was cleared
         mock_external_service_dependencies["delete_cache"].assert_called_once_with(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             provider_id=subscription.provider_id,
             subscription_id=subscription.id,
@@ -266,6 +273,7 @@ class TestTriggerProviderService:
         original_credentials = {"api_key": "original-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -291,6 +299,7 @@ class TestTriggerProviderService:
 
         # Execute rebuild
         TriggerProviderService.rebuild_trigger_subscription(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             provider_id=provider_id,
             subscription_id=subscription.id,
@@ -325,6 +334,7 @@ class TestTriggerProviderService:
         original_credentials = {"api_key": "original-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -350,6 +360,7 @@ class TestTriggerProviderService:
 
         # Execute rebuild
         TriggerProviderService.rebuild_trigger_subscription(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             provider_id=provider_id,
             subscription_id=subscription.id,
@@ -384,6 +395,7 @@ class TestTriggerProviderService:
         original_credentials = {"api_key": "original-key"}
         subscription = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -409,6 +421,7 @@ class TestTriggerProviderService:
 
         # Execute rebuild
         TriggerProviderService.rebuild_trigger_subscription(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             provider_id=provider_id,
             subscription_id=subscription.id,
@@ -443,6 +456,7 @@ class TestTriggerProviderService:
         original_credentials = {"api_key": "original-key"}
         subscription = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -463,6 +477,7 @@ class TestTriggerProviderService:
         # Execute rebuild and expect error
         with pytest.raises(ValueError, match="Subscribe failed"):
             TriggerProviderService.rebuild_trigger_subscription(
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 provider_id=provider_id,
                 subscription_id=subscription.id,
@@ -494,6 +509,7 @@ class TestTriggerProviderService:
 
         with pytest.raises(ValueError, match="not found"):
             TriggerProviderService.rebuild_trigger_subscription(
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 provider_id=provider_id,
                 subscription_id=fake_subscription_id,
@@ -521,6 +537,7 @@ class TestTriggerProviderService:
         # Create first subscription
         subscription1 = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -532,6 +549,7 @@ class TestTriggerProviderService:
         # Create second subscription with different name
         subscription2 = self._create_test_subscription(
             db_session_with_containers,
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             account.id,
             provider_id,
@@ -552,6 +570,7 @@ class TestTriggerProviderService:
         # Try to rename subscription2 to subscription1's name (should fail)
         with pytest.raises(ValueError, match="already exists"):
             TriggerProviderService.rebuild_trigger_subscription(
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 provider_id=provider_id,
                 subscription_id=subscription2.id,

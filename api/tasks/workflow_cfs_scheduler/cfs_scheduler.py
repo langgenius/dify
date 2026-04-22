@@ -16,6 +16,7 @@ class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler):
     Trigger workflow CFS plan scheduler.
     """
 
+    # pyrefly: ignore [bad-override]
     plan: AsyncWorkflowCFSPlanEntity
 
     def can_schedule(self) -> SchedulerCommand:

@@ -173,6 +173,7 @@ def init_app(app: DifyApp) -> Celery:
         }
     if dify_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:
         imports.append("schedule.update_tidb_serverless_status_task")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["update_tidb_serverless_status_task"] = {
             "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
             "schedule": timedelta(minutes=10),
@@ -191,12 +192,14 @@ def init_app(app: DifyApp) -> Celery:
         }
     if dify_config.ENABLE_DATASETS_QUEUE_MONITOR:
         imports.append("schedule.queue_monitor_task")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
     if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
         imports.append("tasks.human_input_timeout_tasks")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["human_input_form_timeout"] = {
             "task": "human_input_form_timeout.check_and_resume",
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
@@ -224,12 +227,14 @@ def init_app(app: DifyApp) -> Celery:
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["workflow_schedule_task"] = {
             "task": "schedule.workflow_schedule_task.poll_workflow_schedules",
             "schedule": timedelta(minutes=dify_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL),
         }
     if dify_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK:
         imports.append("schedule.trigger_provider_refresh_task")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["trigger_provider_refresh"] = {
             "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
             "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
@@ -237,6 +242,7 @@ def init_app(app: DifyApp) -> Celery:
 
     if dify_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK:
         imports.append("schedule.update_api_token_last_used_task")
+        # pyrefly: ignore [unsupported-operation]
         beat_schedule["batch_update_api_token_last_used"] = {
             "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),

@@ -114,6 +114,7 @@ class TestEditionChecks:
             with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
                 with pytest.raises(Exception) as exc_info:
                     cloud_view()
+                # pyrefly: ignore [missing-attribute]
                 assert exc_info.value.code == 404
 
     def test_only_edition_enterprise_allows_when_enabled(self):
@@ -194,7 +195,9 @@ class TestBillingResourceLimits:
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     with pytest.raises(Exception) as exc_info:
                         add_member()
+                    # pyrefly: ignore [missing-attribute]
                     assert exc_info.value.code == 403
+                    # pyrefly: ignore [missing-attribute]
                     assert "members has reached the limit" in str(exc_info.value.description)
 
     def test_should_check_source_for_documents_limit(self):
@@ -219,6 +222,7 @@ class TestBillingResourceLimits:
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     with pytest.raises(Exception) as exc_info:
                         upload_document()
+                    # pyrefly: ignore [missing-attribute]
                     assert exc_info.value.code == 403
 
         # Test 2: Should allow when source is not datasets
@@ -295,7 +299,9 @@ class TestRateLimiting:
                         knowledge_request()
 
                     # Verify error
+                    # pyrefly: ignore [missing-attribute]
                     assert exc_info.value.code == 403
+                    # pyrefly: ignore [missing-attribute]
                     assert "rate limit" in str(exc_info.value.description)
 
                     # Verify rate limit log was created

@@ -89,25 +89,44 @@ def _build_fake_qdrant_modules():
             super().__init__(**kwargs)
             self._load = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     qdrant_client.QdrantClient = QdrantClient
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.FilterSelector = FilterSelector
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.HnswConfigDiff = HnswConfigDiff
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.PayloadSchemaType = SimpleNamespace(KEYWORD="KEYWORD")
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.TextIndexParams = TextIndexParams
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.TextIndexType = SimpleNamespace(TEXT="TEXT")
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.TokenizerType = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.VectorParams = VectorParams
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.Distance = _Distance()
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.PointStruct = PointStruct
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.Filter = Filter
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.FieldCondition = FieldCondition
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.MatchValue = MatchValue
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.MatchAny = MatchAny
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_models.MatchText = MatchText
+    # pyrefly: ignore [missing-attribute]
     qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
 
+    # pyrefly: ignore [missing-attribute]
     qdrant_http.models = qdrant_http_models
+    # pyrefly: ignore [missing-attribute]
     qdrant_local_mod.QdrantLocal = QdrantLocal
+    # pyrefly: ignore [missing-attribute]
     qdrant_local_pkg.qdrant_local = qdrant_local_mod
 
     return {

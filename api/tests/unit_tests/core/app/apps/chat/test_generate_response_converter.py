@@ -57,9 +57,12 @@ class TestChatAppGenerateResponseConverter:
 
         full = list(ChatAppGenerateResponseConverter.convert_stream_full_response(stream()))
         assert full[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert full[1]["event"] == "message"
+        # pyrefly: ignore [bad-index]
         assert full[2]["event"] == "error"
 
         simple = list(ChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert simple[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert simple[-1]["event"] == "message_end"

@@ -270,7 +270,9 @@ class TestDuplicateDocumentIndexingTaskProxy:
         """Test _dispatch method with empty plan string."""
         # Arrange
         mock_features = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan=""
+            # pyrefly: ignore [bad-argument-type]
+            billing_enabled=True,
+            plan="",
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()
@@ -287,7 +289,9 @@ class TestDuplicateDocumentIndexingTaskProxy:
         """Test _dispatch method with None plan."""
         # Arrange
         mock_features = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan=None
+            # pyrefly: ignore [bad-argument-type]
+            billing_enabled=True,
+            plan=None,
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()

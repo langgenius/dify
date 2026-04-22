@@ -209,6 +209,7 @@ class TestWorkflowRunStateTransitions:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         workflow_run.status = WorkflowExecutionStatus.SUCCEEDED.value
         workflow_run.finished_at = datetime.now(UTC)
         workflow_run.elapsed_time = 2.5
@@ -234,6 +235,7 @@ class TestWorkflowRunStateTransitions:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         workflow_run.status = WorkflowExecutionStatus.FAILED.value
         workflow_run.error = "Node execution failed: Invalid input"
         workflow_run.finished_at = datetime.now(UTC)
@@ -259,6 +261,7 @@ class TestWorkflowRunStateTransitions:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         workflow_run.status = WorkflowExecutionStatus.STOPPED.value
         workflow_run.finished_at = datetime.now(UTC)
 
@@ -282,6 +285,7 @@ class TestWorkflowRunStateTransitions:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         workflow_run.status = WorkflowExecutionStatus.PAUSED.value
 
         # Assert
@@ -304,6 +308,7 @@ class TestWorkflowRunStateTransitions:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         workflow_run.status = WorkflowExecutionStatus.RUNNING.value
 
         # Assert
@@ -587,6 +592,7 @@ class TestNodeExecutionRelationships:
         )
 
         # Act - transition to succeeded
+        # pyrefly: ignore [bad-argument-type]
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         node_execution.elapsed_time = 1.2
         node_execution.finished_at = datetime.now(UTC)
@@ -935,6 +941,7 @@ class TestGraphConfigurationValidation:
             app_id=str(uuid4()),
             type=WorkflowType.WORKFLOW.value,
             version="draft",
+            # pyrefly: ignore [bad-argument-type]
             graph=None,
             features="{}",
             created_by=str(uuid4()),

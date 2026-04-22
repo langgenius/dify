@@ -64,6 +64,7 @@ class TestSpanData:
 
     def test_span_data_missing_required_fields(self):
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             SpanData(
                 trace_id=123,
                 # span_id missing

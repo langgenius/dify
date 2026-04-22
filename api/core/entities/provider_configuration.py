@@ -1515,6 +1515,7 @@ class ProviderConfiguration(BaseModel):
             model_types = list(provider_schema.supported_model_types)
 
         # Group model settings by model type and model
+        # pyrefly: ignore [bad-assignment]
         model_setting_map: defaultdict[ModelType, dict[str, ModelSettings]] = defaultdict(dict)
         for model_setting in self.model_settings:
             model_setting_map[model_setting.model_type][model_setting.model] = model_setting

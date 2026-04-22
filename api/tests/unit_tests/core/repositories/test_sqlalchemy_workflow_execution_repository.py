@@ -98,7 +98,11 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_init_invalid_session_factory(self, mock_account):
         with pytest.raises(ValueError, match="Invalid session_factory type"):
             SQLAlchemyWorkflowExecutionRepository(
-                session_factory="invalid", user=mock_account, app_id=None, triggered_from=None
+                # pyrefly: ignore [bad-argument-type]
+                session_factory="invalid",
+                user=mock_account,
+                app_id=None,
+                triggered_from=None,
             )
 
     def test_init_no_tenant_id(self, mock_session_factory):
@@ -212,11 +216,13 @@ class TestSQLAlchemyWorkflowExecutionRepository:
             repo._to_db_model(sample_workflow_execution)
 
         repo._triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+        # pyrefly: ignore [bad-assignment]
         repo._creator_user_id = None
         with pytest.raises(ValueError, match="created_by is required"):
             repo._to_db_model(sample_workflow_execution)
 
         repo._creator_user_id = "some_id"
+        # pyrefly: ignore [bad-assignment]
         repo._creator_user_role = None
         with pytest.raises(ValueError, match="created_by_role is required"):
             repo._to_db_model(sample_workflow_execution)

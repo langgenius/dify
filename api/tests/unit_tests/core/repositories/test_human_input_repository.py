@@ -317,6 +317,7 @@ def test_query_workspace_members_by_ids_empty_returns_empty() -> None:
 def test_query_workspace_members_by_ids_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com"), ("u2", "b@example.com")])
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    # pyrefly: ignore [bad-argument-type]
     rows = repo._query_workspace_members_by_ids(session=session, restrict_to_user_ids=["u1", "u2"])
     assert rows == [
         _WorkspaceMemberInfo(user_id="u1", email="a@example.com"),
@@ -327,6 +328,7 @@ def test_query_workspace_members_by_ids_maps_rows() -> None:
 def test_query_all_workspace_members_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com")])
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    # pyrefly: ignore [bad-argument-type]
     rows = repo._query_all_workspace_members(session=session)
     assert rows == [_WorkspaceMemberInfo(user_id="u1", email="a@example.com")]
 
@@ -371,6 +373,7 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
             body="b",
         )
     )
+    # pyrefly: ignore [bad-argument-type]
     result = repo._delivery_method_to_model(session="sess", form_id="form-1", delivery_method=method)
     assert result.recipients == ["r"]
     assert called["delivery_id"] == "del-1"

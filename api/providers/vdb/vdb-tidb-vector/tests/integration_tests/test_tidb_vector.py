@@ -26,10 +26,12 @@ class TiDBVectorTest(AbstractVectorTest):
         self.vector = vector
 
     def search_by_full_text(self):
+        # pyrefly: ignore [missing-attribute]
         hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
     def get_ids_by_metadata_field(self):
+        # pyrefly: ignore [missing-attribute]
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert len(ids) == 1
 

@@ -70,7 +70,9 @@ class TestExtractProcessorLoaders:
 
         upload_file = SimpleNamespace(key="file.txt")
 
+        # pyrefly: ignore [bad-argument-type]
         docs = ExtractProcessor.load_from_upload_file(upload_file=upload_file, return_text=False)
+        # pyrefly: ignore [bad-argument-type]
         text = ExtractProcessor.load_from_upload_file(upload_file=upload_file, return_text=True)
 
         assert len(docs) == 2
@@ -138,6 +140,7 @@ class TestExtractProcessorFileRouting:
             upload_file=SimpleNamespace(key=f"uploaded{extension}", tenant_id="tenant-1", created_by="user-1"),
         )
 
+        # pyrefly: ignore [bad-argument-type]
         docs = ExtractProcessor.extract(setting, is_automatic=is_automatic)
 
         assert len(docs) == 1
@@ -198,6 +201,7 @@ class TestExtractProcessorFileRouting:
         setting = SimpleNamespace(datasource_type=DatasourceType.FILE, upload_file=None)
 
         with pytest.raises(AssertionError, match="upload_file is required"):
+            # pyrefly: ignore [bad-argument-type]
             ExtractProcessor.extract(setting)
 
 
@@ -215,6 +219,7 @@ class TestExtractProcessorDatasourceRouting:
         )
         setting = SimpleNamespace(datasource_type=DatasourceType.NOTION, notion_info=notion_info)
 
+        # pyrefly: ignore [bad-argument-type]
         docs = ExtractProcessor.extract(setting)
 
         assert docs[0].page_content == "extracted-by-NotionExtractor"
@@ -241,6 +246,7 @@ class TestExtractProcessorDatasourceRouting:
         )
         setting = SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=website_info)
 
+        # pyrefly: ignore [bad-argument-type]
         docs = ExtractProcessor.extract(setting)
         assert docs[0].page_content == f"extracted-by-{expected}"
         assert factory.calls[-1][0] == expected
@@ -257,16 +263,20 @@ class TestExtractProcessorDatasourceRouting:
         setting = SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=bad_provider)
 
         with pytest.raises(ValueError, match="Unsupported website provider"):
+            # pyrefly: ignore [bad-argument-type]
             ExtractProcessor.extract(setting)
 
     def test_extract_unsupported_datasource_type(self):
         with pytest.raises(ValueError, match="Unsupported datasource type"):
+            # pyrefly: ignore [bad-argument-type]
             ExtractProcessor.extract(SimpleNamespace(datasource_type="unknown"))
 
     def test_extract_requires_notion_info(self):
         with pytest.raises(AssertionError, match="notion_info is required"):
+            # pyrefly: ignore [bad-argument-type]
             ExtractProcessor.extract(SimpleNamespace(datasource_type=DatasourceType.NOTION, notion_info=None))
 
     def test_extract_requires_website_info(self):
         with pytest.raises(AssertionError, match="website_info is required"):
+            # pyrefly: ignore [bad-argument-type]
             ExtractProcessor.extract(SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=None))

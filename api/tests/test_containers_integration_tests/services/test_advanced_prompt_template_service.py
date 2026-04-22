@@ -1,6 +1,8 @@
 import copy
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from core.prompt.prompt_templates.advanced_prompt_templates import (

@@ -50,6 +50,7 @@ def test_latest_prefers_highest_numeric_version():
         def _get_error_strategy(self):
             return None
 
+        # pyrefly: ignore [bad-override]
         def _get_retry_config(self):
             return types.SimpleNamespace()  # not used
 

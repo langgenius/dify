@@ -399,7 +399,9 @@ class TableTestRunner:
             event_mismatch_details = None
             if test_case.expected_event_sequence is not None:
                 event_sequence_match, event_mismatch_details = self._validate_event_sequence(
-                    test_case.expected_event_sequence, events
+                    # pyrefly: ignore [bad-argument-type]
+                    test_case.expected_event_sequence,
+                    events,
                 )
 
             if not (has_start and has_success):
@@ -452,7 +454,9 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
+                # pyrefly: ignore [unbound-name]
                 graph=graph if "graph" in locals() else None,
+                # pyrefly: ignore [unbound-name]
                 graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
             )
 
@@ -681,10 +685,15 @@ class TableTestRunner:
 
         # Summary
         report.append("SUMMARY:")
+        # pyrefly: ignore [bad-argument-type]
         report.append(f"  Total Tests: {suite_result.total_tests}")
+        # pyrefly: ignore [bad-argument-type]
         report.append(f"  Passed: {suite_result.passed_tests}")
+        # pyrefly: ignore [bad-argument-type]
         report.append(f"  Failed: {suite_result.failed_tests}")
+        # pyrefly: ignore [bad-argument-type]
         report.append(f"  Success Rate: {suite_result.success_rate:.1f}%")
+        # pyrefly: ignore [bad-argument-type]
         report.append(f"  Total Time: {suite_result.total_execution_time:.2f}s")
         report.append("")
 
@@ -693,12 +702,16 @@ class TableTestRunner:
         if failed_results:
             report.append("FAILED TESTS:")
             for result in failed_results:
+                # pyrefly: ignore [bad-argument-type]
                 report.append(f"  - {result.test_case.description}")
                 if result.error:
+                    # pyrefly: ignore [bad-argument-type]
                     report.append(f"    Error: {str(result.error)}")
                 if result.validation_details:
+                    # pyrefly: ignore [bad-argument-type]
                     report.append(f"    Validation: {result.validation_details}")
                 if result.event_mismatch_details:
+                    # pyrefly: ignore [bad-argument-type]
                     report.append(f"    Events: {result.event_mismatch_details}")
                 report.append("")
 
@@ -708,6 +721,7 @@ class TableTestRunner:
 
         report.append("  Slowest Tests:")
         for result in sorted_results:
+            # pyrefly: ignore [bad-argument-type]
             report.append(f"    - {result.test_case.description}: {result.execution_time:.2f}s")
 
         report.append("=" * 80)

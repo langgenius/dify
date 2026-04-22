@@ -280,10 +280,12 @@ def test_structured_output_parser():
 
     for case in testcases:
         # Setup model entity
+        # pyrefly: ignore [bad-argument-type]
         model_schema = get_model_entity(case["provider"], case["model_name"], case["support_structure_output"])
 
         # Add parameter rules if specified
         if "parameter_rules" in case:
+            # pyrefly: ignore [bad-assignment]
             model_schema.parameter_rules = case["parameter_rules"]
 
         # Setup model instance
@@ -298,8 +300,10 @@ def test_structured_output_parser():
 
         if case["should_raise"]:
             # Test error cases
+            # pyrefly: ignore [bad-argument-type, bad-specialization]
             with pytest.raises(case["expected_error"]):  # noqa: PT012
                 if case["stream"]:
+                    # pyrefly: ignore [no-matching-overload]
                     result_generator = invoke_llm_with_structured_output(
                         provider=case["provider"],
                         model_schema=model_schema,
@@ -311,6 +315,7 @@ def test_structured_output_parser():
                     # Consume the generator to trigger the error
                     list(result_generator)
                 else:
+                    # pyrefly: ignore [no-matching-overload]
                     invoke_llm_with_structured_output(
                         provider=case["provider"],
                         model_schema=model_schema,
@@ -328,6 +333,7 @@ def test_structured_output_parser():
                 if case["name"] == "json_repair_scenario":
                     mock_json_repair.return_value = {"name": "test"}
 
+                # pyrefly: ignore [no-matching-overload]
                 result = invoke_llm_with_structured_output(
                     provider=case["provider"],
                     model_schema=model_schema,
@@ -356,8 +362,11 @@ def test_structured_output_parser():
                     assert isinstance(last_chunk.structured_output, dict)
                 else:
                     # Test non-streaming results
+                    # pyrefly: ignore [bad-argument-type, invalid-argument]
                     assert isinstance(result, case["expected_result_type"])
+                    # pyrefly: ignore [missing-attribute]
                     assert result.model == case["model_name"]
+                    # pyrefly: ignore [missing-attribute]
                     assert result.structured_output is not None
                     assert isinstance(result.structured_output, dict)
 

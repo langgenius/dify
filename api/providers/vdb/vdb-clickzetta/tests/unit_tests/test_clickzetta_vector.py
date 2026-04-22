@@ -40,6 +40,7 @@ def _build_fake_clickzetta_module():
     def connect(**_kwargs):
         return _FakeConnection()
 
+    # pyrefly: ignore [missing-attribute]
     clickzetta.connect = connect
     return clickzetta
 
@@ -421,6 +422,7 @@ def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, 
     clickzetta_module.ClickzettaVector._shutdown = False
     clickzetta_module.ClickzettaVector._init_write_queue()
     clickzetta_module.ClickzettaVector._init_write_queue()
+    # pyrefly: ignore [missing-attribute]
     assert clickzetta_module.ClickzettaVector._write_thread.started == 1
 
     result_queue_ok = queue.Queue()

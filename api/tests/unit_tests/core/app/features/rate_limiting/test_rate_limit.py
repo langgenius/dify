@@ -393,6 +393,7 @@ class TestRateLimitGenerator:
         request_id = "test_request"
 
         wrapped_gen = rate_limit.generate(generator, request_id)
+        # pyrefly: ignore [missing-attribute]
         wrapped_gen.close()
 
         redis_patch.hdel.assert_called_once()
@@ -426,7 +427,9 @@ class TestRateLimitGenerator:
         rate_limit = RateLimit("test_client", 5)
         generator = SimpleGenerator()
 
+        # pyrefly: ignore [bad-argument-type]
         wrapped_gen = rate_limit.generate(generator, "test_request")
+        # pyrefly: ignore [missing-attribute]
         wrapped_gen.close()  # Should not raise error
 
         redis_patch.hdel.assert_called_once()
@@ -445,9 +448,11 @@ class TestRateLimitGenerator:
         generator = sample_generator()
 
         wrapped_gen = rate_limit.generate(generator, "test_request")
+        # pyrefly: ignore [missing-attribute]
         wrapped_gen.close()
 
         with pytest.raises(StopIteration):
+            # pyrefly: ignore [bad-argument-type]
             next(wrapped_gen)
 
 

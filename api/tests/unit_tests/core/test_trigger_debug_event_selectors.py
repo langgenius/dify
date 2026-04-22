@@ -53,6 +53,7 @@ def _make_poller(
         tenant_id="tenant-1",
         user_id="user-1",
         app_id="app-1",
+        # pyrefly: ignore [bad-typed-dict-key]
         node_config={"id": "node-1", "data": {"mode": "cron"}},
         node_id="node-1",
     )

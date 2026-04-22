@@ -26,7 +26,9 @@ def test_extract_access_token():
         (_mock_request({}, {COOKIE_NAME_WEBAPP_ACCESS_TOKEN: "123"}, {}), None, "123"),
     ]
     for request, expected_console, expected_webapp in test_cases:
+        # pyrefly: ignore [bad-argument-type]
         assert extract_access_token(request) == expected_console  # pyright: ignore[reportArgumentType]
+        # pyrefly: ignore [bad-argument-type]
         assert extract_webapp_access_token(request) == expected_webapp  # pyright: ignore[reportArgumentType]
 
 

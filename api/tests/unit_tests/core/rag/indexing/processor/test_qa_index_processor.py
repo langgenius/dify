@@ -265,6 +265,7 @@ class TestQAIndexProcessor:
         with patch("core.rag.index_processor.processor.qa_index_processor.RetrievalService.retrieve") as mock_retrieve:
             mock_retrieve.return_value = [result_ok, result_low]
             reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            # pyrefly: ignore [bad-argument-type]
             docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
 
         assert len(docs) == 1
@@ -331,6 +332,7 @@ class TestQAIndexProcessor:
 
     def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="Q1")]
+        # pyrefly: ignore [bad-typed-dict-key]
         assert processor.generate_summary_preview("tenant-1", preview_items, {}) is preview_items
 
     def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app) -> None:

@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
 import pytest
+
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -116,9 +118,11 @@ class TestMessageService:
 
         # Create app
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Setup current_user mock
+        # pyrefly: ignore [missing-attribute]
         self._mock_current_user(mock_external_service_dependencies, account.id, tenant.id)
 
         return app, account

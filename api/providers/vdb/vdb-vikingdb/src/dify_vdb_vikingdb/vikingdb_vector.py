@@ -114,6 +114,7 @@ class VikingDBVector(BaseVector):
         self._create_collection(dimension)
         self.add_texts(texts, embeddings, **kwargs)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         page_contents = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -141,6 +142,7 @@ class VikingDBVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         docs = self._client.get_collection(self._collection_name).fetch_data(id)
         not_exists_str = "data does not exist"
+        # pyrefly: ignore [missing-attribute]
         if docs is not None and not_exists_str not in docs.fields.get("message", ""):
             return True
         return False
@@ -171,6 +173,7 @@ class VikingDBVector(BaseVector):
 
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
+        # pyrefly: ignore [bad-argument-type]
         self.delete_by_ids(ids)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

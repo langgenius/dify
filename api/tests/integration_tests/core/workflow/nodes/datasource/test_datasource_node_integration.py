@@ -81,6 +81,7 @@ def test_node_integration_minimal_stream(mocker):
             datasource_name="ds",
         ),
         graph_init_params=_GP(),
+        # pyrefly: ignore [bad-argument-type]
         graph_runtime_state=_GS(vp),
     )
 

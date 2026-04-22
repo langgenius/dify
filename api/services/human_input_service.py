@@ -228,6 +228,7 @@ class HumanInputService:
         if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             payload = {"workflow_run_id": workflow_run_id}
             try:
+                # pyrefly: ignore [not-callable]
                 resume_app_execution.apply_async(
                     kwargs={"payload": payload},
                 )

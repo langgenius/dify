@@ -109,6 +109,7 @@ def test_invoke_supports_single_message_and_parameter_casting():
     )
 
     assert len(messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert messages[0].message.text == "ok"
     assert tool.last_invocation == {
         "user_id": "user-1",
@@ -123,6 +124,7 @@ def test_invoke_supports_list_and_generator_results():
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
     list_messages = list(tool.invoke(user_id="user-1", tool_parameters={}))
+    # pyrefly: ignore [missing-attribute]
     assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage, None, None]:
@@ -131,6 +133,7 @@ def test_invoke_supports_list_and_generator_results():
 
     tool.result = _message_generator()
     generated_messages = list(tool.invoke(user_id="user-2", tool_parameters={}))
+    # pyrefly: ignore [missing-attribute]
     assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
@@ -173,36 +176,46 @@ def test_message_factory_helpers():
 
     image_message = tool.create_image_message("https://example.com/image.png")
     assert image_message.type == ToolInvokeMessage.MessageType.IMAGE
+    # pyrefly: ignore [missing-attribute]
     assert image_message.message.text == "https://example.com/image.png"
 
     file_obj = object()
     file_message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
     assert file_message.type == ToolInvokeMessage.MessageType.FILE
+    # pyrefly: ignore [missing-attribute]
     assert file_message.message.file_marker == "file_marker"
     assert file_message.meta == {"file": file_obj}
 
     link_message = tool.create_link_message("https://example.com")
     assert link_message.type == ToolInvokeMessage.MessageType.LINK
+    # pyrefly: ignore [missing-attribute]
     assert link_message.message.text == "https://example.com"
 
     text_message = tool.create_text_message("hello")
     assert text_message.type == ToolInvokeMessage.MessageType.TEXT
+    # pyrefly: ignore [missing-attribute]
     assert text_message.message.text == "hello"
 
     blob_message = tool.create_blob_message(b"blob", meta={"source": "unit-test"})
     assert blob_message.type == ToolInvokeMessage.MessageType.BLOB
+    # pyrefly: ignore [missing-attribute]
     assert blob_message.message.blob == b"blob"
     assert blob_message.meta == {"source": "unit-test"}
 
     json_message = tool.create_json_message({"k": "v"}, suppress_output=True)
     assert json_message.type == ToolInvokeMessage.MessageType.JSON
+    # pyrefly: ignore [missing-attribute]
     assert json_message.message.json_object == {"k": "v"}
+    # pyrefly: ignore [missing-attribute]
     assert json_message.message.suppress_output is True
 
     variable_message = tool.create_variable_message("answer", 42, stream=False)
     assert variable_message.type == ToolInvokeMessage.MessageType.VARIABLE
+    # pyrefly: ignore [missing-attribute]
     assert variable_message.message.variable_name == "answer"
+    # pyrefly: ignore [missing-attribute]
     assert variable_message.message.variable_value == 42
+    # pyrefly: ignore [missing-attribute]
     assert variable_message.message.stream is False
 
 

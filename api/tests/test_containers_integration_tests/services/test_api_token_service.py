@@ -24,6 +24,7 @@ class TestQueryTokenFromDb:
         api_token.id = str(uuid4())
         api_token.app_id = app_id
         api_token.tenant_id = tenant_id
+        # pyrefly: ignore [bad-argument-type]
         api_token.type = "app"
         api_token.token = token_value
         db_session_with_containers.add(api_token)

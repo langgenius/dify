@@ -12,12 +12,14 @@ HEARTBEAT_WAIT_TIMEOUT_SECONDS = 5.0
 
 def _install_fake_flask_migrate(monkeypatch, upgrade_impl) -> None:
     module = types.ModuleType("flask_migrate")
+    # pyrefly: ignore [missing-attribute]
     module.upgrade = upgrade_impl
     monkeypatch.setitem(sys.modules, "flask_migrate", module)
 
 
 def _invoke_upgrade_db() -> int:
     try:
+        # pyrefly: ignore [not-callable]
         commands.upgrade_db.callback()
     except SystemExit as e:
         return int(e.code or 0)
@@ -37,6 +39,7 @@ def test_upgrade_db_skips_when_lock_not_acquired(monkeypatch, capsys):
     assert exit_code == 0
     assert "Database migration skipped" in captured.out
 
+    # pyrefly: ignore [missing-attribute]
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=1234, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_not_called()
@@ -61,6 +64,7 @@ def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
     assert exit_code == 1
     assert "Database migration failed: boom" in captured.out
 
+    # pyrefly: ignore [missing-attribute]
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=321, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_called_once()
@@ -82,6 +86,7 @@ def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsy
     assert exit_code == 0
     assert "Database migration successful!" in captured.out
 
+    # pyrefly: ignore [missing-attribute]
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=999, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_called_once()

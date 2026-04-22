@@ -618,6 +618,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         # Create test variables
         self._node_var_with_exec = WorkflowDraftVariable.new_node_variable(
             app_id=self._test_app_id,
+            # pyrefly: ignore [missing-attribute]
             user_id=self._test_user_id,
             node_id=self._node_id,
             name="test_var",
@@ -628,6 +629,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
 
         self._node_var_without_exec = WorkflowDraftVariable.new_node_variable(
             app_id=self._test_app_id,
+            # pyrefly: ignore [missing-attribute]
             user_id=self._test_user_id,
             node_id=self._node_id,
             name="no_exec_var",
@@ -639,6 +641,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
 
         self._node_var_missing_exec = WorkflowDraftVariable.new_node_variable(
             app_id=self._test_app_id,
+            # pyrefly: ignore [missing-attribute]
             user_id=self._test_user_id,
             node_id=self._node_id,
             name="missing_exec_var",
@@ -648,6 +651,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
 
         self._conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=self._test_app_id,
+            # pyrefly: ignore [missing-attribute]
             user_id=self._test_user_id,
             name="conv_var_1",
             value=build_segment("old_conv_value"),
@@ -814,6 +818,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         # Create a system variable
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=self._test_app_id,
+            # pyrefly: ignore [missing-attribute]
             user_id=self._test_user_id,
             name="sys_var",
             value=build_segment("sys_value"),

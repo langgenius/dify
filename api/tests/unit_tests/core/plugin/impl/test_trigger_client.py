@@ -123,6 +123,7 @@ class TestPluginTriggerClient:
             event_name="created",
             credentials={"token": "x"},
             credential_type=CredentialType.API_KEY,
+            # pyrefly: ignore [bad-argument-type]
             request=_request(),
             parameters={"k": "v"},
             subscription=_subscription(),
@@ -144,6 +145,7 @@ class TestPluginTriggerClient:
                 event_name="created",
                 credentials={"token": "x"},
                 credential_type=CredentialType.API_KEY,
+                # pyrefly: ignore [bad-argument-type]
                 request=_request(),
                 parameters={"k": "v"},
                 subscription=_subscription(),
@@ -175,6 +177,7 @@ class TestPluginTriggerClient:
             tenant_id="tenant-1",
             provider="org/plugin/provider",
             subscription={"id": "sub"},
+            # pyrefly: ignore [bad-argument-type]
             request=_request(),
             credentials={"token": "x"},
             credential_type=CredentialType.API_KEY,
@@ -189,6 +192,7 @@ class TestPluginTriggerClient:
                 tenant_id="tenant-1",
                 provider="org/plugin/provider",
                 subscription={"id": "sub"},
+                # pyrefly: ignore [bad-argument-type]
                 request=_request(),
                 credentials={"token": "x"},
                 credential_type=CredentialType.API_KEY,

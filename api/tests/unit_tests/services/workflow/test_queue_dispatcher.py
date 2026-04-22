@@ -37,6 +37,7 @@ class TestDispatchers:
 
     def test_base_dispatcher_is_abstract(self):
         with pytest.raises(TypeError):
+            # pyrefly: ignore [bad-instantiation]
             BaseQueueDispatcher()
 
 

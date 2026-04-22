@@ -640,9 +640,13 @@ class TestFetchDatasetRetriever:
 
         # Assert
         assert resolved.logical_operator == "and"
+        # pyrefly: ignore [unsupported-operation]
         assert resolved.conditions[0].value == "readme"
+        # pyrefly: ignore [unsupported-operation]
         assert isinstance(resolved.conditions[1].value, list)
+        # pyrefly: ignore [unsupported-operation]
         assert resolved.conditions[1].value[1] == "readme"
+        # pyrefly: ignore [unsupported-operation]
         assert resolved.conditions[2].value == 2025
 
     def test_fetch_passes_resolved_metadata_conditions(

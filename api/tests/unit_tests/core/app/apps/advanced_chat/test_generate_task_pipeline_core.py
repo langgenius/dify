@@ -92,12 +92,14 @@ def _make_pipeline():
     pipeline = AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
         workflow=workflow,
+        # pyrefly: ignore [bad-argument-type]
         queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
         conversation=conversation,
         message=message,
         user=user,
         stream=False,
         dialogue_count=1,
+        # pyrefly: ignore [bad-argument-type]
         draft_var_saver_factory=lambda **kwargs: None,
     )
 
@@ -125,6 +127,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_text_chunk_event_updates_state(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager = SimpleNamespace(
             message_to_stream_response=lambda **kwargs: MessageEndStreamResponse(
                 task_id="task", id="message-id", metadata={}
@@ -133,6 +136,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         event = SimpleNamespace(text="hi", from_variable_selector=None)
 
+        # pyrefly: ignore [bad-argument-type]
         responses = list(pipeline._handle_text_chunk_event(event))
 
         assert pipeline._task_state.answer == "hi"
@@ -142,6 +146,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
 
+        # pyrefly: ignore [bad-argument-type]
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
@@ -157,12 +162,14 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_handle_error_event(self):
         pipeline = _make_pipeline()
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
         @contextmanager
         def _fake_session():
             yield SimpleNamespace()
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._database_session = _fake_session
 
         responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("boom"))))
@@ -175,6 +182,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
         @contextmanager
@@ -211,7 +219,9 @@ class TestAdvancedChatGenerateTaskPipeline:
             def get_final_output(self):
                 return "final"
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.queue_manager = SimpleNamespace(
             publish=lambda event, pub_from: events.append(event)
         )
@@ -225,9 +235,11 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_node_succeeded_event_records_files(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: [
             {"type": "file", "transfer_method": "local"}
         ]
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
 
@@ -238,6 +250,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
         )
 
+        # pyrefly: ignore [bad-argument-type]
         responses = list(pipeline._handle_node_succeeded_event(event))
 
         assert responses == ["done"]
@@ -246,15 +259,21 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_iteration_and_loop_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = lambda **kwargs: (
             "iter_start"
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_next_to_stream_response = lambda **kwargs: "iter_next"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_iteration_completed_to_stream_response = lambda **kwargs: (
             "iter_done"
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_start_to_stream_response = lambda **kwargs: "loop_start"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_next_to_stream_response = lambda **kwargs: "loop_next"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_loop_completed_to_stream_response = lambda **kwargs: "loop_done"
 
         iter_start = QueueIterationStartEvent(
@@ -320,13 +339,17 @@ class TestAdvancedChatGenerateTaskPipeline:
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_pause_to_stream_response = lambda **kwargs: ["pause"]
         pipeline._persist_human_input_extra_content = lambda **kwargs: None
         pipeline._save_message = lambda **kwargs: None
         pipeline._base_task_pipeline.queue_manager.publish = lambda *args, **kwargs: None
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
+        # pyrefly: ignore [bad-assignment]
         pipeline._get_message = lambda **kwargs: SimpleNamespace(id="message-id")
 
         @contextmanager
@@ -358,6 +381,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_node_failure_handlers(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "node_finish"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
 
@@ -393,12 +417,14 @@ class TestAdvancedChatGenerateTaskPipeline:
             def publish(self, message):
                 published.append(message)
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager = SimpleNamespace(message_to_stream_response=lambda **kwargs: "chunk")
 
         event = SimpleNamespace(text="hi", from_variable_selector=["a"])
         queue_message = SimpleNamespace(event=event)
 
         responses = list(
+            # pyrefly: ignore [bad-argument-type]
             pipeline._handle_text_chunk_event(event, tts_publisher=_Publisher(), queue_message=queue_message)
         )
 
@@ -420,6 +446,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             def append_new_token(self, text):
                 seen.append(text)
 
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
 
         result = pipeline._handle_output_moderation_chunk("token")
@@ -449,6 +476,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_message_replace_event(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
 
         event = QueueMessageReplaceEvent(
@@ -462,7 +490,9 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         persisted: list[str] = []
         pipeline._persist_human_input_extra_content = lambda **kwargs: persisted.append("saved")
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.human_input_form_filled_to_stream_response = lambda **kwargs: "filled"
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.human_input_form_timeout_to_stream_response = lambda **kwargs: "timeout"
 
         filled_event = QueueHumanInputFormFilledEvent(
@@ -532,6 +562,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             start_at=0.0,
         )
 
+        # pyrefly: ignore [bad-argument-type]
         pipeline._save_message(session=_Session(), graph_runtime_state=graph_runtime_state)
 
         assert message.status == MessageStatus.NORMAL
@@ -540,6 +571,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_end_to_stream_response = lambda: "end"
         saved: list[str] = []
 
@@ -565,8 +597,11 @@ class TestAdvancedChatGenerateTaskPipeline:
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
+        # pyrefly: ignore [bad-assignment]
         pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer: "safe"
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
+        # pyrefly: ignore [bad-assignment]
         pipeline._message_end_to_stream_response = lambda: "end"
 
         saved: list[str] = []
@@ -589,6 +624,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_dispatch_event_handles_node_exception(self):
         pipeline = _make_pipeline()
+        # pyrefly: ignore [bad-assignment]
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "failed"
         pipeline._save_output_for_event = lambda *args, **kwargs: None
 

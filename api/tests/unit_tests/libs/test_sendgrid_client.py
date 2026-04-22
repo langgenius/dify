@@ -36,6 +36,7 @@ def test_sendgrid_missing_to_raises(mock_client_cls: MagicMock):
 def test_sendgrid_auth_errors_reraise(mock_client_cls: MagicMock):
     mock_client = MagicMock()
     mock_client_cls.return_value = mock_client
+    # pyrefly: ignore [bad-argument-type]
     mock_client.client.mail.send.post.side_effect = UnauthorizedError(401, "Unauthorized", b"{}", {})
 
     sg = SendGridClient(sendgrid_api_key="key", _from="noreply@example.com")

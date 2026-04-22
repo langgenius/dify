@@ -182,6 +182,7 @@ class TestWorkflowNodeExecutionConflictHandling:
         other_error = IntegrityError(
             "null value in column violates not-null constraint",
             params=None,
+            # pyrefly: ignore [bad-argument-type]
             orig=None,
         )
 

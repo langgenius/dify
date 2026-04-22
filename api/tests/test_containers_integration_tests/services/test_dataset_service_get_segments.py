@@ -35,12 +35,14 @@ class SegmentServiceTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
+            # pyrefly: ignore [bad-argument-type]
             tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()

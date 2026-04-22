@@ -68,7 +68,9 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
+            # pyrefly: ignore [bad-argument-type]
             graph_init_params=SimpleNamespace(run_context=run_context),
+            # pyrefly: ignore [bad-argument-type]
             graph_runtime_state=SimpleNamespace(),
         )
 

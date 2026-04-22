@@ -18,6 +18,7 @@ def _build_fake_iris_module():
         conn.cursor.return_value = MagicMock()
         return conn
 
+    # pyrefly: ignore [missing-attribute]
     iris.connect = MagicMock(side_effect=connect)
     return iris
 
@@ -29,6 +30,7 @@ def iris_module(monkeypatch):
     import dify_vdb_iris.iris_vector as module
 
     reloaded = importlib.reload(module)
+    # pyrefly: ignore [missing-attribute]
     reloaded._pool_instance = None
     return reloaded
 
@@ -334,6 +336,7 @@ def test_iris_vector_full_text_search_paths(iris_module, monkeypatch):
 
     fake_libs = types.ModuleType("libs")
     fake_helper = types.ModuleType("libs.helper")
+    # pyrefly: ignore [missing-attribute]
     fake_helper.escape_like_pattern = lambda value: value.replace("%", "\\%")
     monkeypatch.setitem(sys.modules, "libs", fake_libs)
     monkeypatch.setitem(sys.modules, "libs.helper", fake_helper)

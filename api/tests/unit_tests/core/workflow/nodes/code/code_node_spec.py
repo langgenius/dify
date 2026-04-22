@@ -437,6 +437,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
+        # pyrefly: ignore [bad-assignment]
         node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
 
         assert node._node_data.title == "Test Node"
@@ -453,6 +454,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
+        # pyrefly: ignore [bad-assignment]
         node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
 
         assert node._node_data.code_language == CodeLanguage.JAVASCRIPT

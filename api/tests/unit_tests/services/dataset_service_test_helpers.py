@@ -445,6 +445,7 @@ def _make_knowledge_configuration(
 ) -> KnowledgeConfiguration:
     return KnowledgeConfiguration(
         chunk_structure=chunk_structure,
+        # pyrefly: ignore [bad-argument-type]
         indexing_technique=indexing_technique,
         embedding_model_provider=embedding_model_provider,
         embedding_model=embedding_model,

@@ -117,6 +117,7 @@ class TestPluginParameterEntities:
         return I18nObject(en_US="label")
 
     def test_parameter_option_value_casts_to_string(self):
+        # pyrefly: ignore [bad-argument-type]
         option = PluginParameterOption(value=123, label=self._label())
         assert option.value == "123"
 
@@ -271,6 +272,7 @@ class TestPluginDaemonEntities:
         class _FakeCredential:
             value = "custom-type"
 
+        # pyrefly: ignore [bad-argument-type]
         assert CredentialType.get_name(_FakeCredential()) == "CUSTOM TYPE"
         assert CredentialType.API_KEY.is_editable() is True
         assert CredentialType.OAUTH2.is_editable() is False
@@ -326,6 +328,7 @@ class TestPluginRequestEntities:
             RequestInvokeSpeech2Text(provider="openai", model="m", file=b"abc")  # type: ignore[arg-type]
 
     def test_trigger_invoke_event_response_variables_conversion(self):
+        # pyrefly: ignore [bad-argument-type]
         converted = TriggerInvokeEventResponse(variables='{"a": 1}', cancelled=False)
         assert converted.variables == {"a": 1}
         passthrough = TriggerInvokeEventResponse(variables={"b": 2}, cancelled=True)

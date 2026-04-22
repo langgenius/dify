@@ -24,6 +24,7 @@ class ChromaVectorTest(AbstractVectorTest):
 
     def search_by_full_text(self):
         # chroma dos not support full text searching
+        # pyrefly: ignore [missing-attribute]
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 

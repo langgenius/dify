@@ -47,7 +47,9 @@ class TestStructuredOutput:
         assert "additionalProperties" not in schema["items"][0]
 
         # Test with non-dict input
+        # pyrefly: ignore [bad-argument-type]
         remove_additional_properties(None)  # Should not raise
+        # pyrefly: ignore [bad-argument-type]
         remove_additional_properties([])  # Should not raise
 
     def test_convert_boolean_to_string(self):
@@ -65,7 +67,9 @@ class TestStructuredOutput:
         assert schema["properties"]["list_schema"][0]["type"] == "string"
 
         # Test with non-dict input
+        # pyrefly: ignore [bad-argument-type]
         convert_boolean_to_string(None)  # Should not raise
+        # pyrefly: ignore [bad-argument-type]
         convert_boolean_to_string([])  # Should not raise
 
     def test_parse_structured_output_valid(self):
@@ -188,7 +192,9 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        # pyrefly: ignore [not-iterable]
         assert "Existing system prompt" in result[0].content
+        # pyrefly: ignore [not-iterable]
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
 
@@ -200,6 +206,7 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        # pyrefly: ignore [not-iterable]
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
 

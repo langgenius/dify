@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .test_mock_config import MockConfig
 
 
+# pyrefly: ignore [invalid-inheritance]
 class MockNodeFactory(DifyNodeFactory):
     """
     A factory that creates mock nodes for testing purposes.
@@ -159,6 +160,7 @@ class MockNodeFactory(DifyNodeFactory):
         :param node_type: The node type to mock
         :param mock_class: The mock class to use for this node type
         """
+        # pyrefly: ignore [unsupported-operation]
         self._mock_node_types[node_type] = mock_class
 
     def unregister_mock_node_type(self, node_type: NodeType) -> None:

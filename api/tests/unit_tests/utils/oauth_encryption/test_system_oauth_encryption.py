@@ -116,9 +116,11 @@ class TestSystemOAuthEncrypter:
         encrypter = SystemOAuthEncrypter("test_secret")
 
         with pytest.raises(Exception):  # noqa: B017
+            # pyrefly: ignore [bad-argument-type]
             encrypter.encrypt_oauth_params(None)
 
         with pytest.raises(Exception):  # noqa: B017
+            # pyrefly: ignore [bad-argument-type]
             encrypter.encrypt_oauth_params("not_a_dict")
 
     def test_decrypt_oauth_params_basic(self):
@@ -207,11 +209,13 @@ class TestSystemOAuthEncrypter:
         encrypter = SystemOAuthEncrypter("test_secret")
 
         with pytest.raises(ValueError) as exc_info:
+            # pyrefly: ignore [bad-argument-type]
             encrypter.decrypt_oauth_params(123)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
         with pytest.raises(ValueError) as exc_info:
+            # pyrefly: ignore [bad-argument-type]
             encrypter.decrypt_oauth_params(None)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
@@ -461,6 +465,7 @@ class TestConvenienceFunctions:
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
         with pytest.raises(Exception):  # noqa: B017
+            # pyrefly: ignore [bad-argument-type]
             encrypt_system_oauth_params(None)
 
         # Test decryption with invalid input
@@ -468,6 +473,7 @@ class TestConvenienceFunctions:
             decrypt_system_oauth_params("")
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             decrypt_system_oauth_params(None)
 
 
@@ -501,6 +507,7 @@ class TestErrorHandling:
 
         # Test non-string error
         with pytest.raises(ValueError) as exc_info:
+            # pyrefly: ignore [bad-argument-type]
             encrypter.decrypt_oauth_params(123)
         assert "encrypted_data must be a string" in str(exc_info.value)
 

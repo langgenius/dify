@@ -49,6 +49,7 @@ def test_get_icon_url_calls_runtime(mocker):
         datasource_type="online_document",
     )
     assert url == "https://icon"
+    # pyrefly: ignore [missing-attribute]
     DatasourceManager.get_datasource_runtime.assert_called_once()
 
 
@@ -141,6 +142,7 @@ def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker):
         DatasourceManager.get_datasource_plugin_provider(
             provider_id="prov/x",
             tenant_id="t1",
+            # pyrefly: ignore [bad-argument-type]
             datasource_type=types.SimpleNamespace(),  # not a DatasourceProviderType at runtime
         )
 
@@ -187,11 +189,13 @@ def test_stream_online_results_yields_messages_online_document(mocker):
         provider="prov",
         plugin_id="plug",
         credential_id="",
+        # pyrefly: ignore [bad-argument-type]
         datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
         online_drive_request=None,
     )
     msgs = list(gen)
     assert len(msgs) == 1
+    # pyrefly: ignore [missing-attribute]
     assert msgs[0].message.text == "hello"
 
 
@@ -219,12 +223,14 @@ def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_do
         provider="prov",
         plugin_id="plug",
         credential_id="cred",
+        # pyrefly: ignore [bad-argument-type]
         datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
         online_drive_request=None,
     )
     messages, final_value = _drain_generator(gen)
 
     assert runtime.runtime.credentials == {"token": "t"}
+    # pyrefly: ignore [missing-attribute]
     assert [m.message.text for m in messages] == ["hello"]
     assert final_value == {}
 
@@ -304,11 +310,13 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
         plugin_id="plug",
         credential_id="cred",
         datasource_param=None,
+        # pyrefly: ignore [bad-argument-type]
         online_drive_request=types.SimpleNamespace(id="fid", bucket="b"),
     )
     messages, final_value = _drain_generator(gen)
 
     assert runtime.runtime.credentials == {"token": "t"}
+    # pyrefly: ignore [missing-attribute]
     assert [m.message.text for m in messages] == ["drive"]
     assert final_value == {}
 
@@ -359,6 +367,7 @@ def test_stream_node_events_emits_events_online_document(mocker):
             parameters_for_log={"k": "v"},
             datasource_info={"user_id": "u1"},
             variable_pool=mocker.Mock(),
+            # pyrefly: ignore [bad-argument-type]
             datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
             online_drive_request=None,
         )
@@ -458,6 +467,7 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
             parameters_for_log={"k": "v"},
             datasource_info={"info": "x"},
             variable_pool=variable_pool,
+            # pyrefly: ignore [bad-argument-type]
             datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
             online_drive_request=None,
         )
@@ -520,6 +530,7 @@ def test_stream_node_events_raises_when_toolfile_missing(mocker):
                 parameters_for_log={},
                 datasource_info={},
                 variable_pool=mocker.Mock(),
+                # pyrefly: ignore [bad-argument-type]
                 datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
                 online_drive_request=None,
             )
@@ -566,6 +577,7 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
             datasource_info={"k": "v"},
             variable_pool=variable_pool,
             datasource_param=None,
+            # pyrefly: ignore [bad-argument-type]
             online_drive_request=types.SimpleNamespace(id="id", bucket="b"),
         )
     )
@@ -650,6 +662,7 @@ def test_get_upload_file_by_id_builds_file(mocker):
     f = DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")
     assert f.related_id == "fid"
     assert f.extension == ".txt"
+    # pyrefly: ignore [missing-attribute]
     assert parse_file_reference(f.reference).storage_key is None
     assert f.storage_key == "k"
 

@@ -156,6 +156,7 @@ class TestValidateAppToken:
 
         # Act
         with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
+            # pyrefly: ignore [missing-argument]
             result = protected_view()
 
         # Assert

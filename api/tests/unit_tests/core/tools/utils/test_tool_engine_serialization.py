@@ -203,12 +203,15 @@ class TestSafeJsonDict:
     def test_invalid_input_type(self):
         """Test that invalid input types raise TypeError"""
         with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
+            # pyrefly: ignore [bad-argument-type]
             safe_json_dict("not a dict")
 
         with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
+            # pyrefly: ignore [bad-argument-type]
             safe_json_dict([1, 2, 3])
 
         with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
+            # pyrefly: ignore [bad-argument-type]
             safe_json_dict(42)
 
     def test_empty_dict(self):
@@ -246,6 +249,7 @@ class TestToolInvokeMessageJsonSerialization:
         message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
         # Apply safe_json_value transformation
+        # pyrefly: ignore [missing-attribute]
         transformed_data = safe_json_value(message.message.json_object)
 
         # Verify transformations
@@ -283,6 +287,7 @@ class TestToolInvokeMessageJsonSerialization:
         message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
         # Transform the data
+        # pyrefly: ignore [missing-attribute]
         transformed_data = safe_json_value(message.message.json_object)
 
         # Verify nested transformations
@@ -329,6 +334,7 @@ class TestToolInvokeMessageJsonSerialization:
         assert transformed_message.type == ToolInvokeMessage.MessageType.JSON
 
         # Verify the JSON object was transformed
+        # pyrefly: ignore [missing-attribute]
         json_obj = transformed_message.message.json_object
         assert isinstance(json_obj["metadata"]["created_at"], str)
         assert isinstance(json_obj["metadata"]["version"], float)
@@ -352,6 +358,7 @@ class TestToolInvokeMessageJsonSerialization:
         json_message = ToolInvokeMessage.JsonMessage(json_object=data_with_none)
         message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
+        # pyrefly: ignore [missing-attribute]
         transformed_data = safe_json_value(message.message.json_object)
         json_string = json.dumps(transformed_data, ensure_ascii=False)
 
@@ -373,6 +380,7 @@ class TestToolInvokeMessageJsonSerialization:
         json_message = ToolInvokeMessage.JsonMessage(json_object=large_data)
         message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
+        # pyrefly: ignore [missing-attribute]
         transformed_data = safe_json_value(message.message.json_object)
         json_string = json.dumps(transformed_data, ensure_ascii=False)
 
@@ -431,6 +439,7 @@ class TestEndToEndSerialization:
         message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
         # Step 2: Apply safe_json_value transformation
+        # pyrefly: ignore [missing-attribute]
         transformed_data = safe_json_value(message.message.json_object)
 
         # Step 3: Serialize to JSON string

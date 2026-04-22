@@ -209,6 +209,7 @@ class TestGetUserTenant:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
                     mock_get.return_value = mock_tenant
                     mock_get_user.return_value = mock_user
+                    # pyrefly: ignore [missing-argument]
                     result = protected_view()
 
         # Assert
@@ -226,6 +227,7 @@ class TestGetUserTenant:
         # Act & Assert - Pydantic validates payload before manual check
         with app.test_request_context(json={"user_id": "user456"}):
             with pytest.raises(ValidationError):
+                # pyrefly: ignore [missing-argument]
                 protected_view()
 
     def test_should_raise_error_when_tenant_not_found(self, app: Flask):
@@ -241,6 +243,7 @@ class TestGetUserTenant:
             with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 mock_get.return_value = None
                 with pytest.raises(ValueError, match="tenant not found"):
+                    # pyrefly: ignore [missing-argument]
                     protected_view()
 
     @patch("controllers.inner_api.plugin.wraps.Tenant")
@@ -263,6 +266,7 @@ class TestGetUserTenant:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
                     mock_get.return_value = mock_tenant
                     mock_get_user.return_value = mock_user
+                    # pyrefly: ignore [missing-argument]
                     result = protected_view()
 
         # Assert
@@ -291,6 +295,7 @@ class TestPluginData:
         """Test that valid payload is injected into kwargs"""
 
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):
             return payload
@@ -306,6 +311,7 @@ class TestPluginData:
         """Test that ValueError is raised when JSON parsing fails"""
 
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):
             return payload
@@ -324,6 +330,7 @@ class TestPluginData:
             def model_validate(cls, data: dict[str, Any]):
                 raise Exception("Validation failed")
 
+        # pyrefly: ignore [bad-argument-type]
         @plugin_data(payload_type=InvalidPayload)
         def protected_view(payload, **kwargs):
             return payload
@@ -337,6 +344,7 @@ class TestPluginData:
         """Test that decorator works when used with parentheses"""
 
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):
             return payload
