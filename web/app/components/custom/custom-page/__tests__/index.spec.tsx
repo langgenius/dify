@@ -1,10 +1,10 @@
+import type { ReactElement } from 'react'
 import type { AppContextValue } from '@/context/app-context'
-import type { SystemFeatures } from '@/types/feature'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import {
@@ -13,11 +13,31 @@ import {
   useAppContext,
   userProfilePlaceholder,
 } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { defaultSystemFeatures } from '@/types/feature'
 import CustomPage from '../index'
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    branding: {
+      enabled: true,
+      workspace_logo: 'https://example.com/workspace-logo.png',
+    },
+  },
+})
+
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -32,18 +52,13 @@ vi.mock('@/context/app-context', async (importOriginal) => {
     useAppContext: vi.fn(),
   }
 })
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
 }))
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
 const mockUseAppContext = vi.mocked(useAppContext)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
-const mockUseToastContext = vi.mocked(useToastContext)
 
 const createProviderContext = ({
   enableBilling = false,
@@ -82,15 +97,6 @@ const createAppContextValue = (): AppContextValue => ({
   isValidatingCurrentWorkspace: false,
 })
 
-const createSystemFeatures = (): SystemFeatures => ({
-  ...defaultSystemFeatures,
-  branding: {
-    ...defaultSystemFeatures.branding,
-    enabled: true,
-    workspace_logo: 'https://example.com/workspace-logo.png',
-  },
-})
-
 describe('CustomPage', () => {
   const setShowPricingModal = vi.fn()
 
@@ -102,13 +108,6 @@ describe('CustomPage', () => {
       setShowPricingModal,
     } as unknown as ReturnType<typeof useModalContext>)
     mockUseAppContext.mockReturnValue(createAppContextValue())
-    mockUseGlobalPublicStore.mockImplementation(selector => selector({
-      systemFeatures: createSystemFeatures(),
-      setSystemFeatures: vi.fn(),
-    }))
-    mockUseToastContext.mockReturnValue({
-      notify: vi.fn(),
-    } as unknown as ReturnType<typeof useToastContext>)
   })
 
   // Integration coverage for the page and its child custom brand section.

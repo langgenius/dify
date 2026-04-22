@@ -78,10 +78,10 @@ const DatasetItem: FC<Props> = ({
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className="system-sm-medium w-0 grow truncate text-text-secondary">{payload.name}</div>
+        <div className="w-0 grow truncate system-sm-medium text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (
-        <div className="ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex">
+        <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {
             editable && (
               <ActionButton
@@ -131,7 +131,7 @@ const DatasetItem: FC<Props> = ({
       }
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl">
+        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl">
           <SettingsModal
             currentDataset={payload}
             onCancel={hideSettingsModal}

@@ -55,8 +55,8 @@ from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired
-from graphon.entities.workflow_start_reason import WorkflowStartReason
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,

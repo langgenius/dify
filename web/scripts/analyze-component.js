@@ -304,7 +304,7 @@ Create the test file at: ${testPath}
 }
 
 class TestReviewPromptBuilder {
-  build({ analysis, testPath, testCode, originalPromptSection }) {
+  build({ analysis, testPath, originalPromptSection }) {
     const formattedOriginalPrompt = originalPromptSection
       ? originalPromptSection
           .split('\n')
@@ -374,13 +374,13 @@ Options:
 
 Examples:
   # Analyze a component and generate test prompt
-  pnpm analyze-component app/components/base/button/index.tsx
+  pnpm analyze-component app/components/base/radio/index.tsx
 
   # Output as JSON
-  pnpm analyze-component app/components/base/button/index.tsx --json
+  pnpm analyze-component app/components/base/radio/index.tsx --json
 
   # Review existing test
-  pnpm analyze-component app/components/base/button/index.tsx --review
+  pnpm analyze-component app/components/base/radio/index.tsx --review
 
 For complete testing guidelines, see: web/docs/test.md
 `)

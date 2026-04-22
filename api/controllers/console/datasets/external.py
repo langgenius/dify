@@ -173,8 +173,11 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, external_knowledge_api_id):
+        _, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
-        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
+            external_knowledge_api_id, current_tenant_id
+        )
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
 
@@ -224,10 +227,11 @@ class ExternalApiUseCheckApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, external_knowledge_api_id):
+        _, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id
+            external_knowledge_api_id, current_tenant_id
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 

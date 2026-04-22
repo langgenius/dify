@@ -1,5 +1,6 @@
 import base64
 from decimal import Decimal
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -20,7 +21,7 @@ from core.tools.mcp_tool.tool import MCPTool
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 
-def _make_mcp_tool(output_schema: dict | None = None) -> MCPTool:
+def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
     identity = ToolIdentity(
         author="test",
         name="test_mcp_tool",

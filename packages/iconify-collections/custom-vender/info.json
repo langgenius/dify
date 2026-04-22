@@ -1,0 +1,24 @@
+{
+  "prefix": "custom-vender",
+  "name": "Dify Custom Vender",
+  "total": 277,
+  "version": "0.0.0-private",
+  "author": {
+    "name": "LangGenius, Inc.",
+    "url": "https://github.com/langgenius/dify"
+  },
+  "license": {
+    "title": "Modified Apache 2.0",
+    "spdx": "Apache-2.0",
+    "url": "https://github.com/langgenius/dify/blob/main/LICENSE"
+  },
+  "samples": [
+    "features-citations",
+    "features-content-moderation",
+    "features-document",
+    "features-folder-upload",
+    "features-love-message",
+    "features-message-fast"
+  ],
+  "palette": false
+}

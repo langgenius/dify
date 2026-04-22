@@ -4,7 +4,7 @@ import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,10 +19,8 @@ from core.trigger.entities.entities import TriggerProviderEntity
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
-
-class PluginDaemonBasicResponse(BaseModel, Generic[T]):
+class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseModel):
     """
     Basic response from plugin daemon.
     """
@@ -75,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
 
 
 class PluginModelSchemaEntity(BaseModel):

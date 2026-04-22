@@ -2,17 +2,18 @@
 import type { FC } from 'react'
 import type { Body, BodyPayload, KeyValue as KeyValueType } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { uniqueId } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
 import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import KeyValue from '../key-value'
+import { isSupportedHttpBodyVariable } from './supported-body-vars'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
@@ -58,7 +59,7 @@ const EditBody: FC<Props> = ({
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+      return isSupportedHttpBodyVariable(varPayload.type)
     },
   })
 
@@ -113,7 +114,7 @@ const EditBody: FC<Props> = ({
           value: '',
         })
       }
-      (draft.data as BodyPayload)[0].value = value
+      (draft.data as BodyPayload)[0]!.value = value
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -126,7 +127,7 @@ const EditBody: FC<Props> = ({
           type: BodyPayloadValueType.file,
         })
       }
-      (draft.data as BodyPayload)[0].file = value as ValueSelector
+      (draft.data as BodyPayload)[0]!.file = value as ValueSelector
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -145,7 +146,7 @@ const EditBody: FC<Props> = ({
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className="text-[13px] font-normal leading-[18px] text-text-secondary">{bodyTextMap[t]}</div>
+            <div className="text-[13px] leading-[18px] font-normal text-text-secondary">{bodyTextMap[t]}</div>
           </label>
         ))}
       </div>

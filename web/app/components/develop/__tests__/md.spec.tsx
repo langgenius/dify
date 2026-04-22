@@ -188,7 +188,7 @@ describe('md.tsx components', () => {
       )
       const row = container.firstChild as HTMLElement
       expect(row.className).toContain('xl:grid-cols-2')
-      expect(row.className).toContain('xl:!max-w-none')
+      expect(row.className).toContain('xl:max-w-none!')
     })
 
     it('should have items-start class', () => {
@@ -219,8 +219,8 @@ describe('md.tsx components', () => {
         </Col>,
       )
       const col = container.firstChild as HTMLElement
-      expect(col.className).toContain('[&>:first-child]:mt-0')
-      expect(col.className).toContain('[&>:last-child]:mb-0')
+      expect(col.className).toContain('*:first:mt-0')
+      expect(col.className).toContain('*:last:mb-0')
     })
 
     it('should apply sticky classes when sticky is true', () => {
@@ -317,7 +317,7 @@ describe('md.tsx components', () => {
         </Properties>,
       )
       const list = screen.getByRole('list')
-      expect(list.className).toContain('max-w-[calc(theme(maxWidth.lg)-theme(spacing.8))]')
+      expect(list.className).toContain('max-w-[calc(var(--container-lg)-(--spacing(8)))]')
     })
   })
 

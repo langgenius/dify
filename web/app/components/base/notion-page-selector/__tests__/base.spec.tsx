@@ -9,6 +9,8 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/service/knowledge/use-import', () => ({
   usePreImportNotionPages: vi.fn(),
   useInvalidPreImportNotionPages: vi.fn(),
@@ -183,7 +185,7 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Configure Notion' }))
+    await user.click(screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }))
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   })
 

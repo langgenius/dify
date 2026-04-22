@@ -83,7 +83,7 @@ describe('useWorkflowStartRun', () => {
     vi.clearAllMocks()
     workflowStoreState = createWorkflowStoreState()
     mockGetNodes.mockReturnValue([
-      { id: 'start-1', data: { type: BlockEnum.Start, variables: [] } },
+      { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [] } },
     ])
     mockGetFeaturesState.mockReturnValue({
       features: {
@@ -115,7 +115,7 @@ describe('useWorkflowStartRun', () => {
 
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
     mockGetNodes.mockReturnValue([
-      { id: 'start-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },
+      { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },
     ])
 
     const { result } = renderHook(() => useWorkflowStartRun())

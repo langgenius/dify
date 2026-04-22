@@ -6,7 +6,12 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
@@ -73,15 +78,15 @@ def _make_pipeline():
         workflow_run_id="run-id",
     )
 
-    message = SimpleNamespace(
+    message = MessageSnapshot(
         id="message-id",
         query="hello",
         created_at=naive_utc_now(),
         status=MessageStatus.NORMAL,
         answer="",
     )
-    conversation = SimpleNamespace(id="conv-id", mode=AppMode.ADVANCED_CHAT)
-    workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+    conversation = ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT)
+    workflow = WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={})
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
 
     pipeline = AdvancedChatAppGenerateTaskPipeline(

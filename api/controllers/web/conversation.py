@@ -1,10 +1,11 @@
 from typing import Literal
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
@@ -35,18 +36,6 @@ class ConversationListQuery(BaseModel):
         if value is None:
             return value
         return uuid_value(value)
-
-
-class ConversationRenamePayload(BaseModel):
-    name: str | None = None
-    auto_generate: bool = False
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
 
 
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
@@ -99,7 +88,7 @@ class ConversationListApi(WebApiResource):
         query = ConversationListQuery.model_validate(raw_args)
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

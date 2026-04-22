@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -22,7 +22,12 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -38,13 +43,12 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.base import Base
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.workflow_draft_variable_service import (
@@ -63,7 +67,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -76,7 +80,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -89,7 +93,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -101,7 +105,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -234,7 +238,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         conversation: Conversation,
         message: Message,
         application_generate_entity: AdvancedChatAppGenerateEntity,
@@ -266,9 +270,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: Mapping,
+        args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -354,7 +358,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         args: LoopNodeRunPayload,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -434,7 +438,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         invoke_from: InvokeFrom,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -446,7 +450,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -524,19 +528,20 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             worker_thread.start()
 
-            # release database connection, because the following new thread operations may take a long time
-            with Session(bind=db.engine, expire_on_commit=False) as session:
-                workflow = _refresh_model(session, workflow)
-                message = _refresh_model(session, message)
+            # Capture the scalar fields needed by the response pipeline before
+            # releasing the request-scoped SQLAlchemy session.
+            workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
+            conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
+            message_snapshot = MessageSnapshot.from_message(message)
             db.session.close()
 
             # return response or stream generator
             response = self._handle_advanced_chat_response(
                 application_generate_entity=application_generate_entity,
-                workflow=workflow,
+                workflow=workflow_snapshot,
                 queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
+                conversation=conversation_snapshot,
+                message=message_snapshot,
                 user=user,
                 stream=stream,
                 draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
@@ -643,14 +648,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         application_generate_entity: AdvancedChatAppGenerateEntity,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
-        conversation: Conversation,
-        message: Message,
-        user: Union[Account, EndUser],
+        conversation: ConversationSnapshot,
+        message: MessageSnapshot,
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    ) -> ChatbotAppBlockingResponse | Generator[ChatbotAppStreamResponse, None, None]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -683,13 +688,3 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             else:
                 logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e
-
-
-_T = TypeVar("_T", bound=Base)
-
-
-def _refresh_model(session, model: _T) -> _T:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
-        detach_model = session.get(type(model), model.id)
-        assert detach_model is not None
-        return detach_model

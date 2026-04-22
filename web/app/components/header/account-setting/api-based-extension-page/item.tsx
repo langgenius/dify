@@ -1,13 +1,20 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
 import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 
@@ -57,18 +64,21 @@ const Item: FC<ItemProps> = ({
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
-      {
-        showDeleteConfirm
-        && (
-          <Confirm
-            isShow={showDeleteConfirm}
-            onCancel={() => setShowDeleteConfirm(false)}
-            title={`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
-            onConfirm={handleDeleteApiBasedExtension}
-            confirmText={t('operation.delete', { ns: 'common' }) || ''}
-          />
-        )
-      }
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {`${t('operation.delete', { ns: 'common' })} \u201C${data.name}\u201D?`}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDeleteApiBasedExtension}>
+              {t('operation.delete', { ns: 'common' }) || ''}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -122,7 +122,7 @@ class MCPClientWithAuthRetry(MCPClient):
             logger.exception("Authentication retry failed")
             raise MCPAuthError(f"Authentication retry failed: {e}") from e
 
-    def _execute_with_retry(self, func: Callable[..., Any], *args, **kwargs) -> Any:
+    def _execute_with_retry[**P, R](self, func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
         Execute a function with authentication retry logic.
 

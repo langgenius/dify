@@ -134,7 +134,7 @@ describe('ToolItem', () => {
     it('should have cursor-not-allowed when disabled', () => {
       render(<ToolItem {...defaultProps} disabled />)
 
-      const card = document.querySelector('.\\!cursor-not-allowed')
+      const card = document.querySelector('.cursor-not-allowed\\!')
       expect(card).toBeInTheDocument()
     })
 

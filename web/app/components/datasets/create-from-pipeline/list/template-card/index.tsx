@@ -1,11 +1,19 @@
 import type { PipelineTemplate } from '@/models/pipeline'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Confirm from '@/app/components/base/confirm'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
@@ -156,15 +164,24 @@ const TemplateCard = ({
           />
         </Modal>
       )}
-      {showDeleteConfirm && (
-        <Confirm
-          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
-          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
-          isShow={showDeleteConfirm}
-          onConfirm={onConfirmDelete}
-          onCancel={onCancelDelete}
-        />
-      )}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && onCancelDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deletePipeline.title', { ns: 'datasetPipeline' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('deletePipeline.content', { ns: 'datasetPipeline' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showDetailModal && (
         <Modal
           isShow={showDetailModal}

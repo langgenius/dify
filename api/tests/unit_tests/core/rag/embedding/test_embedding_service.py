@@ -139,7 +139,7 @@ class TestCacheEmbeddingDocuments:
 
         # Mock database query to return no cached embedding (cache miss)
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model invocation
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
@@ -203,7 +203,7 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -240,7 +240,7 @@ class TestCacheEmbeddingDocuments:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # Mock database to return cached embedding (cache hit)
-            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
+            mock_session.scalar.return_value = mock_cached_embedding
 
             # Act
             result = cache_embedding.embed_documents(texts)
@@ -313,19 +313,7 @@ class TestCacheEmbeddingDocuments:
                 mock_hash.side_effect = generate_hash
 
                 # Mock database to return cached embedding only for first text (hash_1)
-                call_count = [0]
-
-                def mock_filter_by(**kwargs):
-                    call_count[0] += 1
-                    mock_query = Mock()
-                    # First call (hash_1) returns cached, others return None
-                    if call_count[0] == 1:
-                        mock_query.first.return_value = mock_cached_embedding
-                    else:
-                        mock_query.first.return_value = None
-                    return mock_query
-
-                mock_session.query.return_value.filter_by = mock_filter_by
+                mock_session.scalar.side_effect = [mock_cached_embedding, None, None]
                 mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
                 # Act
@@ -392,7 +380,7 @@ class TestCacheEmbeddingDocuments:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [
@@ -455,7 +443,7 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
@@ -489,7 +477,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise connection error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeConnectionError("Failed to connect to API")
@@ -515,7 +503,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise rate limit error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeRateLimitError("Rate limit exceeded")
@@ -539,7 +527,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise authorization error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeAuthorizationError("Invalid API key")
@@ -564,7 +552,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
 
             # Mock database commit to raise IntegrityError
@@ -884,7 +872,7 @@ class TestEmbeddingModelSwitching:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_3_small.invoke_text_embedding.return_value = result_3_small
@@ -1047,7 +1035,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1100,7 +1088,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1186,7 +1174,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_cohere.invoke_text_embedding.return_value = result_cohere
@@ -1284,7 +1272,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1327,7 +1315,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1375,7 +1363,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1427,7 +1415,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1483,7 +1471,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1551,7 +1539,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1649,7 +1637,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1728,7 +1716,7 @@ class TestEmbeddingCachePerformance:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # First call: cache miss
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             usage = EmbeddingUsage(
                 tokens=5,
@@ -1756,7 +1744,7 @@ class TestEmbeddingCachePerformance:
             assert len(result1) == 1
 
             # Arrange - Second call: cache hit
-            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
+            mock_session.scalar.return_value = mock_cached_embedding
 
             # Act - Second call (cache hit)
             result2 = cache_embedding.embed_documents([text])
@@ -1816,7 +1804,7 @@ class TestEmbeddingCachePerformance:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [

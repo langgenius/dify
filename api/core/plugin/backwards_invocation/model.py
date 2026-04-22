@@ -1,6 +1,7 @@
 import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
+from typing import Any
 
 from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -225,7 +226,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
-        def handle() -> Generator[dict, None, None]:
+        def handle() -> Generator[dict[str, Any], None, None]:
             for chunk in response:
                 yield {"result": hexlify(chunk).decode("utf-8")}
 

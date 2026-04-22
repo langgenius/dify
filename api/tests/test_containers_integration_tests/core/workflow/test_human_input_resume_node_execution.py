@@ -17,8 +17,8 @@ from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from graphon.graph_engine.graph_engine import GraphEngine
+from graphon.graph_engine import GraphEngine
+from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
@@ -29,7 +29,7 @@ from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -101,8 +101,8 @@ def _build_graph(
 
     start_data = StartNodeData(title="start", variables=[])
     start_node = StartNode(
-        id="start",
-        config={"id": "start", "data": start_data.model_dump()},
+        node_id="start",
+        config=start_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
@@ -116,8 +116,8 @@ def _build_graph(
         ],
     )
     human_node = HumanInputNode(
-        id="human",
-        config={"id": "human", "data": human_data.model_dump()},
+        node_id="human",
+        config=human_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
@@ -130,8 +130,8 @@ def _build_graph(
         desc=None,
     )
     end_node = EndNode(
-        id="end",
-        config={"id": "end", "data": end_data.model_dump()},
+        node_id="end",
+        config=end_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
@@ -175,7 +175,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
     def setup_test_data(self, db_session_with_containers: Session):
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -184,7 +184,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()

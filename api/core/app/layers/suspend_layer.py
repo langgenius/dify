@@ -1,6 +1,5 @@
-from graphon.graph_engine.layers.base import GraphEngineLayer
-from graphon.graph_events.base import GraphEngineEvent
-from graphon.graph_events.graph import GraphRunPausedEvent
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 
 
 class SuspendLayer(GraphEngineLayer):

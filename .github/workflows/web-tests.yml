@@ -22,8 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     defaults:
       run:
         shell: bash
@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: blob-report-${{ matrix.shardIndex }}
           path: web/.vitest-reports/*
@@ -66,7 +66,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup web environment
@@ -84,19 +83,22 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           directory: web/coverage
           flags: web
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
 
-  web-build:
-    name: Web Build
+  dify-ui-test:
+    name: dify-ui Tests
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
-        working-directory: ./web
+        shell: bash
+        working-directory: ./packages/dify-ui
 
     steps:
       - name: Checkout code
@@ -104,20 +106,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
-        with:
-          files: |
-            web/**
-            .github/workflows/web-tests.yml
-            .github/actions/setup-web/**
-
       - name: Setup web environment
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Web build check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run build
+      - name: Install Chromium for Browser Mode
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run dify-ui tests
+        run: vp test run --coverage --silent=passed-only
+
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          directory: packages/dify-ui/coverage
+          flags: dify-ui
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}

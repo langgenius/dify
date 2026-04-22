@@ -93,12 +93,20 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   }),
 }))
 
-// Mock useToastContext
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
+}))
 // Factory function for creating test PluginPayload
 const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayload => ({
   category: AuthCategory.tool,
@@ -147,29 +155,6 @@ describe('AddApiKeyButton', () => {
       )
 
       expect(screen.getByRole('button')).toHaveTextContent('Custom API Key')
-    })
-
-    it('should apply button variant', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          buttonVariant="primary"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button').className).toContain('btn-primary')
-    })
-
-    it('should use secondary-accent variant by default', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<AddApiKeyButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-
-      // Verify the default button has secondary-accent variant class
-      expect(screen.getByRole('button').className).toContain('btn-secondary-accent')
     })
   })
 
@@ -363,25 +348,6 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       expect(screen.getByText('plugin.auth.setupOAuth')).toBeInTheDocument()
-    })
-
-    it('should apply button variant to setup button', () => {
-      const pluginPayload = createPluginPayload()
-      mockGetPluginOAuthClientSchema.mockReturnValue({
-        schema: [],
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: false,
-      })
-
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          buttonVariant="secondary"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button').className).toContain('btn-secondary')
     })
   })
 

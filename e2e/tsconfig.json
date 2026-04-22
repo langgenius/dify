@@ -1,0 +1,18 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node", "@playwright/test", "@cucumber/cucumber"],
+    "allowJs": false,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": [
+    "./node_modules",
+    "./playwright-report",
+    "./test-results",
+    "./.auth",
+    "./cucumber-report",
+    "./.logs"
+  ]
+}

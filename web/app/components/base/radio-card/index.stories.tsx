@@ -115,7 +115,7 @@ const WithConfigurationDemo = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-600">Region:</label>
-              <select className="rounded border border-gray-300 px-2 py-1 text-xs">
+              <select className="rounded-sm border border-gray-300 px-2 py-1 text-xs">
                 <option>US East</option>
                 <option>EU West</option>
                 <option>Asia Pacific</option>
@@ -123,7 +123,7 @@ const WithConfigurationDemo = () => {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-600">Size:</label>
-              <select className="rounded border border-gray-300 px-2 py-1 text-xs">
+              <select className="rounded-sm border border-gray-300 px-2 py-1 text-xs">
                 <option>Small (10GB)</option>
                 <option>Medium (50GB)</option>
                 <option>Large (100GB)</option>
@@ -505,7 +505,7 @@ const PlaygroundDemo = () => {
         isChosen={selected === 'option2'}
         onChosen={() => setSelected('option2')}
         chosenConfig={(
-          <div className="rounded bg-blue-50 p-2 text-xs text-gray-600">
+          <div className="rounded-sm bg-blue-50 p-2 text-xs text-gray-600">
             Additional configuration appears when selected
           </div>
         )}

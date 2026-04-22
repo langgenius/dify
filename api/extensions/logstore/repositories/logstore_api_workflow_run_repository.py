@@ -354,11 +354,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> WorkflowRun | None:
         """Fallback to PostgreSQL query for records not in LogStore (with tenant isolation)."""
         from sqlalchemy import select
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             stmt = select(WorkflowRun).where(
                 WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id
             )
@@ -439,11 +439,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     def _fallback_get_workflow_run_by_id(self, run_id: str) -> WorkflowRun | None:
         """Fallback to PostgreSQL query for records not in LogStore."""
         from sqlalchemy import select
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 

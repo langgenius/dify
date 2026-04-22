@@ -148,7 +148,7 @@ describe('ChunkStructureCard', () => {
       expect(card).toHaveClass('shadow-xs')
     })
 
-    it('should have blur effect element', () => {
+    it('should have blur-sm effect element', () => {
       const { container } = render(<ChunkStructureCard {...defaultProps} />)
       const blurElement = container.querySelector('[class*="blur-"]')
       expect(blurElement).toHaveClass('absolute', '-left-1', '-top-1', 'size-14', 'rounded-full')

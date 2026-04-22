@@ -1,15 +1,14 @@
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { useCallback, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -24,7 +23,6 @@ type UseAppInfoActionsParams = {
 
 export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -49,6 +47,56 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     setActiveModal(null)
   }, [])
 
+  const emitAppMetaUpdate = useCallback(() => {
+    if (!appDetail?.id)
+      return
+
+    void import('@/app/components/workflow/collaboration/core/websocket-manager')
+      .then(({ webSocketClient }) => {
+        const socket = webSocketClient.getSocket(appDetail.id)
+        if (!socket)
+          return
+        socket.emit('collaboration_event', {
+          type: 'app_meta_update',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now(),
+        })
+      })
+      .catch(() => { })
+  }, [appDetail?.id])
+
+  useEffect(() => {
+    if (!appDetail?.id)
+      return
+
+    let unsubscribe: (() => void) | null = null
+    let disposed = false
+
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        if (disposed)
+          return
+
+        unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+          try {
+            const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+            if (disposed)
+              return
+            setAppDetail({ ...res })
+          }
+          catch (error) {
+            console.error('failed to refresh app detail from collaboration update:', error)
+          }
+        })
+      })
+      .catch(() => { })
+
+    return () => {
+      disposed = true
+      unsubscribe?.()
+    }
+  }, [appDetail?.id, setAppDetail])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -72,13 +120,14 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
         max_active_requests,
       })
       closeModal()
-      notify({ type: 'success', message: t('editDone', { ns: 'app' }) })
+      toast(t('editDone', { ns: 'app' }), { type: 'success' })
       setAppDetail(app)
+      emitAppMetaUpdate()
     }
     catch {
-      notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
+      toast(t('editFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, setAppDetail, t])
+  }, [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -98,15 +147,15 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
         mode: appDetail.mode,
       })
       closeModal()
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, onPlanInfoChanged, replace, t])
+  }, [appDetail, closeModal, onPlanInfoChanged, replace, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)
@@ -117,9 +166,9 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, notify, t])
+  }, [appDetail, t])
 
   const exportCheck = useCallback(async () => {
     if (!appDetail)
@@ -134,7 +183,6 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const handleConfirmExport = useCallback(async () => {
     if (!appDetail)
       return
-    closeModal()
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -145,29 +193,29 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, onExport, t])
+    finally {
+      closeModal()
+    }
+  }, [appDetail, closeModal, onExport, t])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail)
       return
     try {
       await deleteApp(appDetail.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      toast(t('appDeleted', { ns: 'app' }), { type: 'success' })
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     }
     catch (e: unknown) {
-      notify({
-        type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
-      })
+      toast(`${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
     }
     closeModal()
-  }, [appDetail, closeModal, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])
 
   return {
     appDetail,

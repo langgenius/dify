@@ -1,7 +1,6 @@
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
 import {
@@ -11,6 +10,25 @@ import {
   JsonEditorSection,
   TextEditorSection,
 } from '../value-content-sections'
+
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 
 vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor', () => ({
   default: ({ schema, onUpdate }: { schema: string, onUpdate: (value: string) => void }) => (
@@ -80,7 +98,7 @@ describe('value-content sections', () => {
     const onChange = vi.fn()
     render(<BoolArraySection values={[true, false]} onChange={onChange} />)
 
-    fireEvent.click(screen.getAllByText('True')[1])
+    fireEvent.click(screen.getAllByText('True')[1]!)
     expect(onChange).toHaveBeenCalledWith([true, true])
   })
 
@@ -105,8 +123,8 @@ describe('value-content sections', () => {
 
     fireEvent.change(screen.getByTestId('schema-editor'), { target: { value: '{"foo":1}' } })
     expect(onChange).toHaveBeenCalledWith('{"foo":1}')
-    expect(screen.getByText('Broken JSON')).toBeInTheDocument()
-    expect(screen.getByText('Too deep')).toBeInTheDocument()
+    expect(screen.getByText('Broken JSON'))!.toBeInTheDocument()
+    expect(screen.getByText('Too deep'))!.toBeInTheDocument()
   })
 
   it('should render chunk preview when the json editor has chunks', () => {
@@ -122,20 +140,18 @@ describe('value-content sections', () => {
       />,
     )
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument()
+    expect(screen.getByTestId('schema-editor'))!.toBeInTheDocument()
   })
 
   it('should render the file editor section', () => {
     render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() }}>
-        <FileEditorSection
-          currentVar={createVar({ name: 'files', value_type: VarType.file })}
-          fileValue={[]}
-          fileUploadConfig={createFileUploadConfig()}
-          textEditorDisabled={false}
-          onChange={vi.fn()}
-        />
-      </ToastContext.Provider>,
+      <FileEditorSection
+        currentVar={createVar({ name: 'files', value_type: VarType.file })}
+        fileValue={[]}
+        fileUploadConfig={createFileUploadConfig()}
+        textEditorDisabled={false}
+        onChange={vi.fn()}
+      />,
     )
 
     expect(screen.getAllByRole('button').length).toBeGreaterThan(0)

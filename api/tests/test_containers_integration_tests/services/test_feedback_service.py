@@ -99,7 +99,7 @@ class TestFeedbackService:
             )
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test CSV export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
@@ -138,7 +138,7 @@ class TestFeedbackService:
             )
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test JSON export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")
@@ -175,7 +175,7 @@ class TestFeedbackService:
             )
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test with filters
         result = FeedbackService.export_feedbacks(
@@ -188,11 +188,8 @@ class TestFeedbackService:
             format_type="csv",
         )
 
-        # Verify filters were applied
-        assert mock_query.filter.called
-        filter_calls = mock_query.filter.call_args_list
-        # At least three filter invocations are expected (source, rating, comment)
-        assert len(filter_calls) >= 3
+        # Verify query was executed (filters are baked into the select statement)
+        assert mock_db_session.execute.called
 
     def test_export_feedbacks_no_data(self, mock_db_session, sample_data):
         """Test exporting feedback when no data exists."""
@@ -206,7 +203,7 @@ class TestFeedbackService:
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = []
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
 
@@ -271,7 +268,7 @@ class TestFeedbackService:
             )
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")
@@ -329,7 +326,7 @@ class TestFeedbackService:
             )
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
@@ -367,7 +364,7 @@ class TestFeedbackService:
             ),
         ]
 
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.execute.return_value = mock_query
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")

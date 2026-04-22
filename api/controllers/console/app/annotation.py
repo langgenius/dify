@@ -25,7 +25,13 @@ from fields.annotation_fields import (
 )
 from libs.helper import uuid_value
 from libs.login import login_required
-from services.annotation_service import AppAnnotationService
+from services.annotation_service import (
+    AppAnnotationService,
+    EnableAnnotationArgs,
+    UpdateAnnotationArgs,
+    UpdateAnnotationSettingArgs,
+    UpsertAnnotationArgs,
+)
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -120,7 +126,12 @@ class AnnotationReplyActionApi(Resource):
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         match action:
             case "enable":
-                result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
+                enable_args: EnableAnnotationArgs = {
+                    "score_threshold": args.score_threshold,
+                    "embedding_provider_name": args.embedding_provider_name,
+                    "embedding_model_name": args.embedding_model_name,
+                }
+                result = AppAnnotationService.enable_app_annotation(enable_args, app_id)
             case "disable":
                 result = AppAnnotationService.disable_app_annotation(app_id)
         return result, 200
@@ -161,7 +172,8 @@ class AppAnnotationSettingUpdateApi(Resource):
 
         args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
 
-        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args.model_dump())
+        setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
+        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, setting_args)
         return result, 200
 
 
@@ -237,8 +249,16 @@ class AnnotationApi(Resource):
     def post(self, app_id):
         app_id = str(app_id)
         args = CreateAnnotationPayload.model_validate(console_ns.payload)
-        data = args.model_dump(exclude_none=True)
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, app_id)
+        upsert_args: UpsertAnnotationArgs = {}
+        if args.answer is not None:
+            upsert_args["answer"] = args.answer
+        if args.content is not None:
+            upsert_args["content"] = args.content
+        if args.message_id is not None:
+            upsert_args["message_id"] = args.message_id
+        if args.question is not None:
+            upsert_args["question"] = args.question
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, app_id)
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
@@ -315,9 +335,12 @@ class AnnotationUpdateDeleteApi(Resource):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
-        annotation = AppAnnotationService.update_app_annotation_directly(
-            args.model_dump(exclude_none=True), app_id, annotation_id
-        )
+        update_args: UpdateAnnotationArgs = {}
+        if args.answer is not None:
+            update_args["answer"] = args.answer
+        if args.question is not None:
+            update_args["question"] = args.question
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_id, annotation_id)
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required

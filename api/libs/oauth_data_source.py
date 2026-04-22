@@ -1,20 +1,15 @@
-import sys
 import urllib.parse
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 import httpx
 from flask_login import current_user
 from pydantic import TypeAdapter
 from sqlalchemy import select
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
+from core.helper.http_client_pooling import get_pooled_http_client
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
-
-if sys.version_info >= (3, 12):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
 
 
 class NotionPageSummary(TypedDict):
@@ -36,6 +31,13 @@ class NotionSourceInfo(TypedDict):
 SOURCE_INFO_STORAGE_ADAPTER = TypeAdapter(dict[str, object])
 NOTION_SOURCE_INFO_ADAPTER = TypeAdapter(NotionSourceInfo)
 NOTION_PAGE_SUMMARY_ADAPTER = TypeAdapter(NotionPageSummary)
+
+
+# Reuse a small pooled client for OAuth data source flows.
+_http_client: httpx.Client = get_pooled_http_client(
+    "oauth:notion",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class OAuthDataSource:
@@ -75,7 +77,7 @@ class NotionOAuth(OAuthDataSource):
         data = {"code": code, "grant_type": "authorization_code", "redirect_uri": self.redirect_uri}
         headers = {"Accept": "application/json"}
         auth = (self.client_id, self.client_secret)
-        response = httpx.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
 
         response_json = response.json()
         access_token = response_json.get("access_token")
@@ -93,27 +95,28 @@ class NotionOAuth(OAuthDataSource):
             pages=pages,
         )
         # save data source binding
-        data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.access_token == access_token,
+        with session_factory.create_session() as session:
+            data_source_binding = session.scalar(
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.access_token == access_token,
+                )
             )
-        )
-        if data_source_binding:
-            data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info)
-            data_source_binding.disabled = False
-            data_source_binding.updated_at = naive_utc_now()
-            db.session.commit()
-        else:
-            new_data_source_binding = DataSourceOauthBinding(
-                tenant_id=current_user.current_tenant_id,
-                access_token=access_token,
-                source_info=SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info),
-                provider="notion",
-            )
-            db.session.add(new_data_source_binding)
-            db.session.commit()
+            if data_source_binding:
+                data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info)
+                data_source_binding.disabled = False
+                data_source_binding.updated_at = naive_utc_now()
+                session.commit()
+            else:
+                new_data_source_binding = DataSourceOauthBinding(
+                    tenant_id=current_user.current_tenant_id,
+                    access_token=access_token,
+                    source_info=SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info),
+                    provider="notion",
+                )
+                session.add(new_data_source_binding)
+                session.commit()
 
     def save_internal_access_token(self, access_token: str) -> None:
         workspace_name = self.notion_workspace_name(access_token)
@@ -128,55 +131,57 @@ class NotionOAuth(OAuthDataSource):
             pages=pages,
         )
         # save data source binding
-        data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.access_token == access_token,
+        with session_factory.create_session() as session:
+            data_source_binding = session.scalar(
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.access_token == access_token,
+                )
             )
-        )
-        if data_source_binding:
-            data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info)
-            data_source_binding.disabled = False
-            data_source_binding.updated_at = naive_utc_now()
-            db.session.commit()
-        else:
-            new_data_source_binding = DataSourceOauthBinding(
-                tenant_id=current_user.current_tenant_id,
-                access_token=access_token,
-                source_info=SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info),
-                provider="notion",
-            )
-            db.session.add(new_data_source_binding)
-            db.session.commit()
+            if data_source_binding:
+                data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info)
+                data_source_binding.disabled = False
+                data_source_binding.updated_at = naive_utc_now()
+                session.commit()
+            else:
+                new_data_source_binding = DataSourceOauthBinding(
+                    tenant_id=current_user.current_tenant_id,
+                    access_token=access_token,
+                    source_info=SOURCE_INFO_STORAGE_ADAPTER.validate_python(source_info),
+                    provider="notion",
+                )
+                session.add(new_data_source_binding)
+                session.commit()
 
     def sync_data_source(self, binding_id: str) -> None:
         # save data source binding
-        data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.id == binding_id,
-                DataSourceOauthBinding.disabled == False,
+        with session_factory.create_session() as session:
+            data_source_binding = session.scalar(
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.id == binding_id,
+                    DataSourceOauthBinding.disabled == False,
+                )
             )
-        )
 
-        if data_source_binding:
-            # get all authorized pages
-            pages = self.get_authorized_pages(data_source_binding.access_token)
-            source_info = NOTION_SOURCE_INFO_ADAPTER.validate_python(data_source_binding.source_info)
-            new_source_info = self._build_source_info(
-                workspace_name=source_info["workspace_name"],
-                workspace_icon=source_info["workspace_icon"],
-                workspace_id=source_info["workspace_id"],
-                pages=pages,
-            )
-            data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(new_source_info)
-            data_source_binding.disabled = False
-            data_source_binding.updated_at = naive_utc_now()
-            db.session.commit()
-        else:
-            raise ValueError("Data source binding not found")
+            if data_source_binding:
+                # get all authorized pages
+                pages = self.get_authorized_pages(data_source_binding.access_token)
+                source_info = NOTION_SOURCE_INFO_ADAPTER.validate_python(data_source_binding.source_info)
+                new_source_info = self._build_source_info(
+                    workspace_name=source_info["workspace_name"],
+                    workspace_icon=source_info["workspace_icon"],
+                    workspace_id=source_info["workspace_id"],
+                    pages=pages,
+                )
+                data_source_binding.source_info = SOURCE_INFO_STORAGE_ADAPTER.validate_python(new_source_info)
+                data_source_binding.disabled = False
+                data_source_binding.updated_at = naive_utc_now()
+                session.commit()
+            else:
+                raise ValueError("Data source binding not found")
 
     def get_authorized_pages(self, access_token: str) -> list[NotionPageSummary]:
         pages: list[NotionPageSummary] = []
@@ -268,7 +273,7 @@ class NotionOAuth(OAuthDataSource):
                 "Notion-Version": "2022-06-28",
             }
 
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = _http_client.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))
@@ -283,7 +288,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
+        response = _http_client.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
         if response.status_code != 200:
             message = response_json.get("message", "unknown error")
@@ -299,7 +304,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=self._NOTION_BOT_USER, headers=headers)
+        response = _http_client.get(url=self._NOTION_BOT_USER, headers=headers)
         response_json = response.json()
         if "object" in response_json and response_json["object"] == "user":
             user_type = response_json["type"]
@@ -323,7 +328,7 @@ class NotionOAuth(OAuthDataSource):
                 "Authorization": f"Bearer {access_token}",
                 "Notion-Version": "2022-06-28",
             }
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = _http_client.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))

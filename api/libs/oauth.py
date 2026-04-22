@@ -1,24 +1,26 @@
 import logging
-import sys
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired
+from typing import NotRequired, TypedDict
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
-if sys.version_info >= (3, 12):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
+from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
 
-JsonObject = dict[str, object]
-JsonObjectList = list[JsonObject]
+type JsonObject = dict[str, object]
+type JsonObjectList = list[JsonObject]
 
-JSON_OBJECT_ADAPTER = TypeAdapter(JsonObject)
-JSON_OBJECT_LIST_ADAPTER = TypeAdapter(JsonObjectList)
+JSON_OBJECT_ADAPTER: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
+JSON_OBJECT_LIST_ADAPTER: TypeAdapter[JsonObjectList] = TypeAdapter(JsonObjectList)
+
+# Reuse a pooled httpx.Client for OAuth flows (public endpoints, no SSRF proxy).
+_http_client: httpx.Client = get_pooled_http_client(
+    "oauth:default",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class AccessTokenResponse(TypedDict, total=False):
@@ -115,7 +117,7 @@ class GitHubOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
         access_token = response_json.get("access_token")
@@ -127,7 +129,7 @@ class GitHubOAuth(OAuth):
 
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"token {token}"}
-        response = httpx.get(self._USER_INFO_URL, headers=headers)
+        response = _http_client.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
@@ -147,7 +149,7 @@ class GitHubOAuth(OAuth):
         Returns an empty string when no usable email is found.
         """
         try:
-            email_response = httpx.get(GitHubOAuth._EMAIL_INFO_URL, headers=headers)
+            email_response = _http_client.get(GitHubOAuth._EMAIL_INFO_URL, headers=headers)
             email_response.raise_for_status()
             email_records = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
         except (httpx.HTTPStatusError, ValidationError):
@@ -204,7 +206,7 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
         access_token = response_json.get("access_token")
@@ -216,7 +218,7 @@ class GoogleOAuth(OAuth):
 
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"Bearer {token}"}
-        response = httpx.get(self._USER_INFO_URL, headers=headers)
+        response = _http_client.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         return _json_object(response)
 

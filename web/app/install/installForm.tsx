@@ -1,23 +1,23 @@
 'use client'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+
 import { useStore } from '@tanstack/react-form'
 import * as React from 'react'
-
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
-import useDocumentTitle from '@/hooks/use-document-title'
 
+import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 import Loading from '../components/base/loading'
 
@@ -191,7 +191,7 @@ const InstallForm = () => {
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-none"
+                            className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-hidden"
                           >
                             {showPassword ? '👀' : '😝'}
                           </button>
@@ -199,7 +199,7 @@ const InstallForm = () => {
                       </div>
 
                       <div className={cn('mt-1 text-xs text-text-secondary', {
-                        '!text-sm text-red-400': passwordErrors && passwordErrors.length > 0,
+                        'text-sm! text-red-400': passwordErrors && passwordErrors.length > 0,
                       })}
                       >
                         {t('error.passwordInvalid', { ns: 'login' })}

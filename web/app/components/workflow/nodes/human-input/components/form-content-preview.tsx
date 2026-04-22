@@ -1,12 +1,12 @@
 'use client'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
-import type { ButtonProps } from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { Markdown } from '@/app/components/base/markdown'
 import { useStore } from '@/app/components/workflow/store'
@@ -92,7 +92,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
             </Button>
           ))}
         </div>
-        <div className="mt-1 text-text-tertiary system-xs-regular">{t('nodes.humanInput.editor.previewTip', { ns: 'workflow' })}</div>
+        <div className="mt-1 system-xs-regular text-text-tertiary">{t('nodes.humanInput.editor.previewTip', { ns: 'workflow' })}</div>
       </div>
     </div>
   )

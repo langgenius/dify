@@ -1,11 +1,11 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
@@ -24,27 +24,27 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from graphon.file import helpers as file_helpers
+from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
-from services.app_dsl_service import AppDslService, ImportMode
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     RerankingModel,
-    Rule,
-    Segmentation,
     WebsiteInfo,
     WeightKeywordSetting,
     WeightModel,
@@ -129,6 +129,7 @@ class AppNamePayload(BaseModel):
 
 class AppIconPayload(BaseModel):
     icon: str | None = Field(default=None, description="Icon data")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
@@ -152,32 +153,13 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+type JSONValue = Any
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
     if isinstance(value, datetime):
         return int(value.timestamp())
     return value
-
-
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
 
 
 class Tag(ResponseModel):
@@ -302,7 +284,7 @@ class Site(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("icon_type", mode="before")
     @classmethod
@@ -352,7 +334,7 @@ class AppPartial(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -400,7 +382,7 @@ class AppDetailWithSite(AppDetail):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
@@ -642,7 +624,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -655,6 +637,12 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+                return result.model_dump(mode="json"), 400
+            if result.status == ImportStatus.PENDING:
+                session.rollback()
+                return result.model_dump(mode="json"), 202
             session.commit()
 
             # Inherit web app permission from original app
@@ -742,7 +730,12 @@ class AppIconApi(Resource):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
+        app_model = app_service.update_app_icon(
+            app_model,
+            args.icon or "",
+            args.icon_background or "",
+            args.icon_type,
+        )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
