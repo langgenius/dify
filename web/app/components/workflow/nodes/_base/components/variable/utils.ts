@@ -1530,7 +1530,14 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
           return []
         return [method.config.body]
       })
-      res = matchNotSystemVars([formContent, ...mailTemplates])
+      const inputSelectors = payload.inputs.flatMap((input) => {
+        if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+          return [input.default.selector]
+        if (input.type === InputVarType.select && input.option_source.type === 'variable')
+          return [input.option_source.selector]
+        return []
+      })
+      res = [...matchNotSystemVars([formContent, ...mailTemplates]), ...inputSelectors]
       break
     }
   }
@@ -2031,6 +2038,15 @@ export const updateNodeVars = (
               ),
             },
           }
+        })
+        payload.inputs = payload.inputs.map((input) => {
+          if (input.type === InputVarType.paragraph && input.default.type === 'variable' && input.default.selector.join('.') === oldVarSelector.join('.')) {
+            input.default.selector = newVarSelector
+          }
+          if (input.type === InputVarType.select && input.option_source.type === 'variable' && input.option_source.selector.join('.') === oldVarSelector.join('.')) {
+            input.option_source.selector = newVarSelector
+          }
+          return input
         })
         break
       }
