@@ -357,7 +357,7 @@ describe('FieldItem', () => {
   })
 
   describe('Callback Stability', () => {
-    it('should maintain stable handleOnClickEdit when props dont change', () => {
+    it('should maintain stable handleOnClickEdit when props don't change', () => {
       const onClickEdit = vi.fn()
       const payload = createInputVar()
 
