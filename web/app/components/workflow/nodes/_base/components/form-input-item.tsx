@@ -197,7 +197,7 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleValueChange = (newValue: FormInputValue) => {
-    const nextType = varInput?.type ?? getVarKindType(formState) ?? VarKindType.constant
+    const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
     onChange({
       ...value,
       [variable]: {
@@ -209,7 +209,7 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleAppOrModelSelect = (newValue: Record<string, unknown>) => {
-    const nextType = varInput?.type ?? getVarKindType(formState) ?? VarKindType.constant
+    const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
     onChange({
       ...value,
       [variable]: {
