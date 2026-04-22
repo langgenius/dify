@@ -243,4 +243,4 @@ class TestValkeyVectorConfig:
 
     def test_invalid_distance_metric_rejected(self):
         with pytest.raises(ValidationError):
-            ValkeyVectorConfig(distance_metric="HAMMING")
+            ValkeyVectorConfig(distance_metric="HAMMING")  # type: ignore[arg-type]

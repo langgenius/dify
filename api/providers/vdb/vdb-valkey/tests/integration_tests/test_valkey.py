@@ -235,9 +235,9 @@ class TestDelete:
             page_content="other group",
             metadata={"doc_id": d_other, "doc_hash": d_other, "document_id": d_other, "dataset_id": other_group},
         )
-        field_pairs = [
+        field_pairs: list[str | bytes] = [
             "vector",
-            _embedding(3.0),
+            b"",  # placeholder, replaced below
             "page_content",
             "other group",
             "metadata",
@@ -251,8 +251,7 @@ class TestDelete:
         ]
         import struct
 
-        vec_bytes = struct.pack(f"<{EMBEDDING_DIM}f", *_embedding(3.0))
-        field_pairs[1] = vec_bytes
+        field_pairs[1] = struct.pack(f"<{EMBEDDING_DIM}f", *_embedding(3.0))
         vv._run(vv._client.custom_command(["HSET", f"{vv._prefix}{d_other}", *field_pairs]))
 
         vv.delete()  # only deletes vv._group_id
