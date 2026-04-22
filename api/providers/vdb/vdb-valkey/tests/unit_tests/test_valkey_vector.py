@@ -235,3 +235,7 @@ class TestValkeyVectorConfig:
         assert c.host == "h"
         assert c.port == 6380
         assert c.distance_metric == "L2"
+
+    def test_invalid_distance_metric_rejected(self):
+        with pytest.raises(ValidationError):
+            ValkeyVectorConfig(distance_metric="HAMMING")  # type: ignore[arg-type]
