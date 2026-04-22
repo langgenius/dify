@@ -156,7 +156,7 @@ Follow Dify project conventions:
 
 After refactoring, verify:
 - \`pnpm lint:fix\` passes
-- \`pnpm type-check:tsgo\` passes
+- \`pnpm type-check\` passes
 - Re-run \`pnpm refactor-component ${analysis.path}\` to confirm complexity < 50
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
