@@ -181,8 +181,7 @@ class DeprecatedEndpointCreateApi(Resource):
     @console_ns.doc(deprecated=True)
     @console_ns.doc(
         description=(
-            "Deprecated legacy alias for creating a plugin endpoint. "
-            "Use POST /workspaces/current/endpoints instead."
+            "Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/current/endpoints instead."
         )
     )
     @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
