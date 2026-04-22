@@ -1,3 +1,4 @@
+import type { HumanInputFieldValue } from './field-renderer'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n-config'
 import type { HumanInputResolvedValue } from '@/types/workflow'
@@ -36,7 +37,7 @@ export const splitByOutputVar = (content: string): string[] => {
 }
 
 export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, HumanInputResolvedValue> = {}) => {
-  const initialInputs: Record<string, string> = {}
+  const initialInputs: Record<string, HumanInputFieldValue> = {}
   formInputs.forEach((item) => {
     if (isParagraphFormInput(item)) {
       const resolvedValue = defaultValues[item.output_variable_name]

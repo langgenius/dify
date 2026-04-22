@@ -1,5 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
@@ -16,7 +17,7 @@ type Props = {
   data: HumanInputFormData
   showBackButton?: boolean
   handleBack?: () => void
-  onSubmit?: ({ inputs, action }: { inputs: Record<string, string>, action: string }) => Promise<void>
+  onSubmit?: ({ inputs, action }: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
 }
 
 const FormContent = ({
@@ -32,7 +33,7 @@ const FormContent = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputsChange = (name: string, value: string) => {
+  const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
     setInputs(prev => ({
       ...prev,
       [name]: value,

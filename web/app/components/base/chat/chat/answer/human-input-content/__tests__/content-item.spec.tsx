@@ -8,6 +8,15 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="mock-markdown">{content}</div>,
 }))
 
+vi.mock('../field-renderer', () => ({
+  __esModule: true,
+  default: ({ field, onChange }: { field: FormInputItem, onChange: (value: unknown) => void }) => (
+    <button type="button" data-testid={`renderer-${field.type}`} onClick={() => onChange(field.type === 'paragraph' ? 'updated value' : field.type)}>
+      {field.type}
+    </button>
+  ),
+}))
+
 describe('ContentItem', () => {
   const mockOnInputChange = vi.fn()
   const mockFormInputFields: FormInputItem[] = [
@@ -49,9 +58,8 @@ describe('ContentItem', () => {
       />,
     )
 
-    const textarea = screen.getByTestId('content-item-textarea')
+    const textarea = screen.getByTestId('renderer-paragraph')
     expect(textarea).toBeInTheDocument()
-    expect(textarea).toHaveValue('Initial bio')
     expect(screen.queryByTestId('mock-markdown')).not.toBeInTheDocument()
   })
 
@@ -66,10 +74,9 @@ describe('ContentItem', () => {
       />,
     )
 
-    const textarea = screen.getByTestId('content-item-textarea')
-    await user.type(textarea, 'x')
+    await user.click(screen.getByTestId('renderer-paragraph'))
 
-    expect(mockOnInputChange).toHaveBeenCalledWith('user_bio', 'Initial biox')
+    expect(mockOnInputChange).toHaveBeenCalledWith('user_bio', 'updated value')
   })
 
   it('should render nothing if field name is valid but not found in formInputFields', () => {
@@ -85,8 +92,10 @@ describe('ContentItem', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render nothing if input type is not supported', () => {
-    const { container } = render(
+  it('should delegate select fields to the shared renderer', async () => {
+    const user = userEvent.setup()
+
+    render(
       <ContentItem
         content="{{#$output.user_bio#}}"
         formInputFields={[
@@ -105,7 +114,8 @@ describe('ContentItem', () => {
       />,
     )
 
-    expect(container.querySelector('[data-testid="content-item-textarea"]')).not.toBeInTheDocument()
-    expect(container.querySelector('.py-3')?.textContent).toBe('')
+    await user.click(screen.getByTestId('renderer-select'))
+
+    expect(mockOnInputChange).toHaveBeenCalledWith('user_bio', 'select')
   })
 })

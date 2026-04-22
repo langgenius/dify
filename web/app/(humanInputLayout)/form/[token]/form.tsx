@@ -1,5 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
@@ -81,9 +82,9 @@ const FormContent = () => {
   }, [formData?.inputs, formData?.resolved_default_values])
 
   // use immer
-  const handleInputsChange = (name: string, value: string) => {
+  const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
     const newInputs = produce(inputs, (draft) => {
-      draft[name] = value
+      draft[name] = typeof value === 'string' ? value : ''
     })
     setInputs(newInputs)
   }

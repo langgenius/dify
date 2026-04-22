@@ -1,5 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { HumanInputFieldValue } from './field-renderer'
 import type { HumanInputFormProps } from './type'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -18,14 +19,14 @@ const HumanInputForm = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputsChange = useCallback((name: string, value: string) => {
+  const handleInputsChange = useCallback((name: string, value: HumanInputFieldValue) => {
     setInputs(prev => ({
       ...prev,
       [name]: value,
     }))
   }, [])
 
-  const submit = async (formToken: string, actionID: string, inputs: Record<string, string>) => {
+  const submit = async (formToken: string, actionID: string, inputs: Record<string, HumanInputFieldValue>) => {
     setIsSubmitting(true)
     await onSubmit?.(formToken, { inputs, action: actionID })
     setIsSubmitting(false)
