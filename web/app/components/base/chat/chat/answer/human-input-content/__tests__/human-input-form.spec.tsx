@@ -1,16 +1,33 @@
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
 vi.mock('../content-item', () => ({
-  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: string) => void }) => (
+  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: unknown) => void }) => (
     <div data-testid="mock-content-item">
       {content}
       <button data-testid="update-input" onClick={() => onInputChange('field1', 'new value')}>Update</button>
+      <button
+        data-testid="update-input-file"
+        onClick={() => onInputChange('field3', [{
+          id: 'file-1',
+          name: 'avatar.png',
+          size: 128,
+          type: 'image/png',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'image',
+        }])}
+      >
+        Update File
+      </button>
     </div>
   ),
 }))
@@ -76,6 +93,52 @@ describe('HumanInputForm', () => {
     })
   })
 
+  it('should submit non-string field values without coercion', async () => {
+    const user = userEvent.setup()
+    const mockOnSubmit = vi.fn().mockResolvedValue(undefined)
+    const formDataWithFileList: HumanInputFormData = {
+      ...mockFormData,
+      form_content: '{{#$output.field1#}} {{#$output.field3#}}',
+      inputs: [
+        {
+          type: InputVarType.paragraph,
+          output_variable_name: 'field1',
+          default: { type: 'constant', value: 'initial', selector: [] },
+        },
+        {
+          type: InputVarType.multiFiles,
+          output_variable_name: 'field3',
+          allowed_file_extensions: [],
+          allowed_file_types: [],
+          allowed_file_upload_methods: [],
+          max_upload_count: 5,
+        },
+      ] as FormInputItem[],
+    }
+
+    render(<HumanInputForm formData={formDataWithFileList} onSubmit={mockOnSubmit} />)
+
+    await user.click(screen.getAllByTestId('update-input')[0]!)
+    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(mockOnSubmit).toHaveBeenCalledWith('token_123', {
+      action: 'action_1',
+      inputs: {
+        field1: 'new value',
+        field3: [{
+          id: 'file-1',
+          name: 'avatar.png',
+          size: 128,
+          type: 'image/png',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'image',
+        } satisfies FileEntity],
+      },
+    })
+  })
+
   it('should disable buttons during submission', async () => {
     const user = userEvent.setup()
     let resolveSubmit: (value: void | PromiseLike<void>) => void
@@ -109,17 +172,17 @@ describe('HumanInputForm', () => {
     expect(screen.getAllByTestId('mock-content-item')).toHaveLength(3)
   })
 
-  it('should handle unsupported input types in initializeInputs', () => {
+  it('should handle mixed supported input types in initializeInputs', () => {
     const formDataWithUnsupported = {
       ...mockFormData,
       inputs: [
         {
-          type: 'select',
+          type: InputVarType.select,
           output_variable_name: 'field2',
           option_source: { type: 'variable', value: [], selector: [] },
         } as FormInputItem,
         {
-          type: 'file',
+          type: InputVarType.singleFile,
           output_variable_name: 'field3',
           allowed_file_extensions: [],
           allowed_file_types: [],
