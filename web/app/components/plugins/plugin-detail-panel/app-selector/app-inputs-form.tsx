@@ -1,8 +1,8 @@
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import { PortalSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { InputVarType } from '@/app/components/workflow/types'
 
@@ -62,14 +62,23 @@ const AppInputsForm = ({
       )
     }
     if (form.type === InputVarType.select) {
+      const selectOptions: Array<{ value: string, name: string }> = options.map((option: string) => ({ value: option, name: option }))
+      const selectedOption = selectOptions.find(option => option.value === (inputs[variable] || '')) ?? null
+
       return (
-        <PortalSelect
-          popupClassName="w-[356px] z-1050"
-          value={inputs[variable] || ''}
-          items={options.map((option: string) => ({ value: option, name: option }))}
-          onSelect={item => handleFormChange(variable, item.value as string)}
-          placeholder={label}
-        />
+        <Select value={selectedOption?.value ?? null} onValueChange={value => value && handleFormChange(variable, value)}>
+          <SelectTrigger className="w-full">
+            {selectedOption?.name ?? label}
+          </SelectTrigger>
+          <SelectContent popupClassName="z-1050 w-(--anchor-width)">
+            {selectOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                <SelectItemText>{option.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
     if (form.type === InputVarType.singleFile) {
