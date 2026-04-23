@@ -56,7 +56,7 @@ class FileMetadata:
     tags: dict[str, str] | None = None
     parent_version: int | None = None
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format"""
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
@@ -77,7 +77,7 @@ class FileMetadata:
 class FileLifecycleManager:
     """File lifecycle manager"""
 
-    def __init__(self, storage, dataset_id: str | None = None):
+    def __init__(self, storage: Any, dataset_id: str | None = None) -> None:
         """Initialize lifecycle manager
 
         Args:

@@ -139,8 +139,8 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_api_tokens(tenant_id: str, app_id: str):
-    def del_api_token(session, api_token_id: str):
+def _delete_app_api_tokens(tenant_id: str, app_id: str) -> None:
+    def del_api_token(session: Any, api_token_id: str) -> None:
         # Fetch token details for cache invalidation
         token_obj = session.scalar(select(ApiToken).where(ApiToken.id == api_token_id).limit(1))
         if token_obj:
@@ -247,7 +247,7 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_workflow_runs(tenant_id: str, app_id: str):
+def _delete_app_workflow_runs(tenant_id: str, app_id: str) -> None:
     """Delete all workflow runs for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -261,7 +261,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
     logger.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
 
 
-def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
+def _delete_app_workflow_node_executions(tenant_id: str, app_id: str) -> None:
     """Delete all workflow node executions for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -307,7 +307,7 @@ def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
+def _delete_archived_workflow_run_files(tenant_id: str, app_id: str) -> None:
     prefix = f"{tenant_id}/app_id={app_id}/"
     try:
         archive_storage = get_archive_storage()
@@ -351,7 +351,7 @@ def _delete_app_conversations(tenant_id: str, app_id: str):
     )
 
 
-def _delete_conversation_variables(*, app_id: str):
+def _delete_conversation_variables(app_id: str) -> None:
     with session_factory.create_session() as session:
         stmt = delete(ConversationVariable).where(ConversationVariable.app_id == app_id)
         session.execute(stmt)
@@ -457,9 +457,9 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_draft_variables(app_id: str):
+def _delete_draft_variables(app_id: str) -> None:
     """Delete all workflow draft variables for an app in batches."""
-    return delete_draft_variables_batch(app_id, batch_size=1000)
+    delete_draft_variables_batch(app_id, batch_size=1000)
 
 
 def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:

@@ -119,7 +119,15 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def get_datasets(
+        page: int,
+        per_page: int,
+        tenant_id: str | None = None,
+        user: Account | None = None,
+        search: str | None = None,
+        tag_ids: list[str] | None = None,
+        include_all: bool = False,
+    ) -> tuple[list[Dataset], int]:
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
@@ -189,7 +197,7 @@ class DatasetService:
 
         datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
 
-        return datasets.items, datasets.total
+        return datasets.items, datasets.total or 0
 
     @staticmethod
     def get_process_rules(dataset_id) -> ProcessRulesDict:
@@ -209,7 +217,7 @@ class DatasetService:
         return {"mode": mode, "rules": rules}
 
     @staticmethod
-    def get_datasets_by_ids(ids, tenant_id):
+    def get_datasets_by_ids(ids: list[str] | None, tenant_id: str) -> tuple[list[Dataset], int]:
         # Check if ids is not empty to avoid WHERE false condition
         if not ids or len(ids) == 0:
             return [], 0
@@ -217,7 +225,7 @@ class DatasetService:
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
-        return datasets.items, datasets.total
+        return datasets.items, datasets.total or 0
 
     @staticmethod
     def create_empty_dataset(
@@ -308,7 +316,7 @@ class DatasetService:
     def create_empty_rag_pipeline_dataset(
         tenant_id: str,
         rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
-    ):
+    ) -> Dataset:
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
             if db.session.scalar(
@@ -359,12 +367,12 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def check_doc_form(dataset: Dataset, doc_form: str):
+    def check_doc_form(dataset: Dataset, doc_form: str) -> None:
         if dataset.doc_form and doc_form != dataset.doc_form:
             raise ValueError("doc_form is different from the dataset doc_form.")
 
     @staticmethod
-    def check_dataset_model_setting(dataset):
+    def check_dataset_model_setting(dataset: Dataset) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
                 model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
@@ -382,7 +390,7 @@ class DatasetService:
                 raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
 
     @staticmethod
-    def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
+    def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str) -> None:
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
@@ -399,7 +407,7 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
+    def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str) -> bool:
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_instance = model_manager.get_model_instance(
@@ -420,7 +428,7 @@ class DatasetService:
             raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
 
     @staticmethod
-    def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
+    def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str) -> None:
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
@@ -437,7 +445,7 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def update_dataset(dataset_id, data, user):
+    def update_dataset(dataset_id: str, data: dict[str, Any], user: Account) -> Dataset:
         """
         Update dataset configuration and settings.
 
@@ -489,7 +497,7 @@ class DatasetService:
         return dataset is not None
 
     @staticmethod
-    def _update_external_dataset(dataset, data, user):
+    def _update_external_dataset(dataset: Dataset, data: dict[str, Any], user: Account) -> Dataset:
         """
         Update external dataset configuration.
 
@@ -502,12 +510,12 @@ class DatasetService:
             Dataset: Updated dataset object
         """
         # Update retrieval model if provided
-        external_retrieval_model = data.get("external_retrieval_model", None)
+        external_retrieval_model = data.get("external_retrieval_model")
         if external_retrieval_model:
             dataset.retrieval_model = external_retrieval_model
 
         # Update summary index setting if provided
-        summary_index_setting = data.get("summary_index_setting", None)
+        summary_index_setting = data.get("summary_index_setting")
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
 
@@ -521,8 +529,8 @@ class DatasetService:
             dataset.permission = permission
 
         # Validate and update external knowledge configuration
-        external_knowledge_id = data.get("external_knowledge_id", None)
-        external_knowledge_api_id = data.get("external_knowledge_api_id", None)
+        external_knowledge_id = data.get("external_knowledge_id")
+        external_knowledge_api_id = data.get("external_knowledge_api_id")
 
         if not external_knowledge_id:
             raise ValueError("External knowledge id is required.")
@@ -544,7 +552,9 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def _update_external_knowledge_binding(dataset_id, external_knowledge_id, external_knowledge_api_id):
+    def _update_external_knowledge_binding(
+        dataset_id: str, external_knowledge_id: str, external_knowledge_api_id: str
+    ) -> None:
         """
         Update external knowledge binding configuration.
 
@@ -571,7 +581,7 @@ class DatasetService:
                 session.add(external_knowledge_binding)
 
     @staticmethod
-    def _update_internal_dataset(dataset, data, user):
+    def _update_internal_dataset(dataset: Dataset, data: dict[str, Any], user: Account) -> Dataset:
         """
         Update internal dataset configuration.
 
@@ -637,7 +647,7 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def _update_pipeline_knowledge_base_node_data(dataset: Dataset, updata_user_id: str):
+    def _update_pipeline_knowledge_base_node_data(dataset: Dataset, updata_user_id: str) -> None:
         """
         Update pipeline knowledge base node data.
         """
@@ -720,7 +730,9 @@ class DatasetService:
             raise
 
     @staticmethod
-    def _handle_indexing_technique_change(dataset, data, filtered_data):
+    def _handle_indexing_technique_change(
+        dataset: Dataset, data: dict[str, Any], filtered_data: dict[str, Any]
+    ) -> str | None:
         """
         Handle changes in indexing technique and configure embedding models accordingly.
 
@@ -751,7 +763,7 @@ class DatasetService:
         return None
 
     @staticmethod
-    def _configure_embedding_model_for_high_quality(data, filtered_data):
+    def _configure_embedding_model_for_high_quality(data: dict[str, Any], filtered_data: dict[str, Any]) -> None:
         """
         Configure embedding model settings for high quality indexing.
 
@@ -786,7 +798,9 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def _handle_embedding_model_update_when_technique_unchanged(dataset, data, filtered_data):
+    def _handle_embedding_model_update_when_technique_unchanged(
+        dataset: Dataset, data: dict[str, Any], filtered_data: dict[str, Any]
+    ) -> str | None:
         """
         Handle embedding model updates when indexing technique remains the same.
 
@@ -811,7 +825,7 @@ class DatasetService:
             return DatasetService._update_embedding_model_settings(dataset, data, filtered_data)
 
     @staticmethod
-    def _preserve_existing_embedding_settings(dataset, filtered_data):
+    def _preserve_existing_embedding_settings(dataset: Dataset, filtered_data: dict[str, Any]) -> None:
         """
         Preserve existing embedding model settings when not provided in update.
 
@@ -834,7 +848,9 @@ class DatasetService:
             del filtered_data["embedding_model"]
 
     @staticmethod
-    def _update_embedding_model_settings(dataset, data, filtered_data):
+    def _update_embedding_model_settings(
+        dataset: Dataset, data: dict[str, Any], filtered_data: dict[str, Any]
+    ) -> str | None:
         """
         Update embedding model settings with new values.
 
@@ -868,7 +884,7 @@ class DatasetService:
         return None
 
     @staticmethod
-    def _apply_new_embedding_settings(dataset, data, filtered_data):
+    def _apply_new_embedding_settings(dataset: Dataset, data: dict[str, Any], filtered_data: dict[str, Any]) -> None:
         """
         Apply new embedding model settings to the dataset.
 
@@ -965,7 +981,7 @@ class DatasetService:
     @staticmethod
     def update_rag_pipeline_dataset_settings(
         session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
-    ):
+    ) -> None:
         if not current_user or not current_user.current_tenant_id:
             raise ValueError("Current user or current tenant not found")
         dataset = session.merge(dataset)
@@ -1120,7 +1136,7 @@ class DatasetService:
                 deal_dataset_index_update_task.delay(dataset.id, action)
 
     @staticmethod
-    def delete_dataset(dataset_id, user):
+    def delete_dataset(dataset_id: str, user: Account) -> bool:
         dataset = DatasetService.get_dataset(dataset_id)
 
         if dataset is None:
@@ -1135,12 +1151,14 @@ class DatasetService:
         return True
 
     @staticmethod
-    def dataset_use_check(dataset_id) -> bool:
+    def dataset_use_check(dataset_id: str) -> bool:
         stmt = select(exists().where(AppDatasetJoin.dataset_id == dataset_id))
         return db.session.execute(stmt).scalar_one()
 
     @staticmethod
-    def check_dataset_permission(dataset, user):
+    def check_dataset_permission(dataset: Dataset, user: Account | None) -> None:
+        if not user:
+            raise NoPermissionError("User not found.")
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
@@ -1161,7 +1179,7 @@ class DatasetService:
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def check_dataset_operator_permission(user: Account | None = None, dataset: Dataset | None = None):
+    def check_dataset_operator_permission(user: Account | None = None, dataset: Dataset | None = None) -> None:
         if not dataset:
             raise ValueError("Dataset not found")
 
@@ -1183,12 +1201,12 @@ class DatasetService:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def get_dataset_queries(dataset_id: str, page: int, per_page: int):
+    def get_dataset_queries(dataset_id: str, page: int, per_page: int) -> tuple[list[DatasetQuery], int]:
         stmt = select(DatasetQuery).filter_by(dataset_id=dataset_id).order_by(db.desc(DatasetQuery.created_at))
 
         dataset_queries = db.paginate(select=stmt, page=page, per_page=per_page, max_per_page=100, error_out=False)
 
-        return dataset_queries.items, dataset_queries.total
+        return dataset_queries.items, dataset_queries.total or 0
 
     @staticmethod
     def get_related_apps(dataset_id: str):
@@ -1199,7 +1217,7 @@ class DatasetService:
         ).all()
 
     @staticmethod
-    def update_dataset_api_status(dataset_id: str, status: bool):
+    def update_dataset_api_status(dataset_id: str, status: bool) -> None:
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -1310,7 +1328,7 @@ class DocumentService:
         return cls.DISPLAY_STATUS_FILTERS[normalized]
 
     @classmethod
-    def apply_display_status_filter(cls, query, status: str | None):
+    def apply_display_status_filter(cls, query: Any, status: str | None) -> Any:
         filters = cls.build_display_status_filters(status)
         if not filters:
             return query
@@ -1713,14 +1731,14 @@ class DocumentService:
         return file_detail
 
     @staticmethod
-    def check_archived(document):
+    def check_archived(document: Document) -> bool:
         if document.archived:
             return True
         else:
             return False
 
     @staticmethod
-    def delete_document(document):
+    def delete_document(document: Document) -> None:
         # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
@@ -1736,7 +1754,7 @@ class DocumentService:
         db.session.commit()
 
     @staticmethod
-    def delete_documents(dataset: Dataset, document_ids: list[str]):
+    def delete_documents(dataset: Dataset, document_ids: list[str]) -> None:
         # Check if document_ids is not empty to avoid WHERE false condition
         if not document_ids or len(document_ids) == 0:
             return
@@ -1794,7 +1812,7 @@ class DocumentService:
         return document
 
     @staticmethod
-    def pause_document(document):
+    def pause_document(document: Document) -> None:
         if document.indexing_status not in {
             IndexingStatus.WAITING,
             IndexingStatus.PARSING,
@@ -1816,7 +1834,7 @@ class DocumentService:
         redis_client.setnx(indexing_cache_key, "True")
 
     @staticmethod
-    def recover_document(document):
+    def recover_document(document: Document) -> None:
         if not document.is_paused:
             raise DocumentIndexingError()
         # update document to be recover
@@ -1833,7 +1851,7 @@ class DocumentService:
         recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
-    def retry_document(dataset_id: str, documents: list[Document]):
+    def retry_document(dataset_id: str, documents: list[Document]) -> None:
         for document in documents:
             # add retry flag
             retry_indexing_cache_key = f"document_{document.id}_is_retried"
@@ -1853,7 +1871,7 @@ class DocumentService:
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
-    def sync_website_document(dataset_id: str, document: Document):
+    def sync_website_document(dataset_id: str, document: Document) -> None:
         # add sync flag
         sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)

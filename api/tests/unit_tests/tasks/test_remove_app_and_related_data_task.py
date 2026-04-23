@@ -27,12 +27,11 @@ class TestDeleteDraftVariablesBatch:
     def test_delete_draft_variables_calls_batch_function(self, mock_batch_delete):
         """Test that _delete_draft_variables calls the batch function correctly."""
         app_id = "test-app-id"
-        expected_return = 42
-        mock_batch_delete.return_value = expected_return
+        mock_batch_delete.return_value = 42
 
         result = _delete_draft_variables(app_id)
 
-        assert result == expected_return
+        assert result is None
         mock_batch_delete.assert_called_once_with(app_id, batch_size=1000)
 
 
