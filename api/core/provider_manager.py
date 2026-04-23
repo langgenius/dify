@@ -56,12 +56,37 @@ from services.feature_service import FeatureService
 
 class ProviderManager:
     """
-    ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
+    ProviderManager manages tenant-scoped model provider configuration.
+
+    The runtime adapter is injected by the composition layer so this class stays
+    focused on configuration assembly instead of constructing plugin runtimes.
+    Request-bound managers may carry caller identity in that runtime, and the
+    resulting ``ProviderConfiguration`` objects must reuse it for downstream
+    model-type and schema lookups.
+
+    Configuration assembly is cached per manager instance so call chains that
+    share one request-scoped manager can reuse the same provider graph instead
+    of rebuilding it for every lookup. Call ``clear_configurations_cache()``
+    when a long-lived manager needs to observe writes performed within the same
+    instance scope.
     """
+
+    decoding_rsa_key: Any | None
+    decoding_cipher_rsa: Any | None
+    _configurations_cache: dict[str, ProviderConfigurations]
 
     def __init__(self):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
+        self._configurations_cache = {}
+
+    def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
+        """Drop assembled provider configurations cached on this manager instance."""
+        if tenant_id is None:
+            self._configurations_cache.clear()
+            return
+
+        self._configurations_cache.pop(tenant_id, None)
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -100,6 +125,10 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        cached_configurations = self._configurations_cache.get(tenant_id)
+        if cached_configurations is not None:
+            return cached_configurations
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
@@ -257,6 +286,8 @@ class ProviderManager:
             )
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
+
+        self._configurations_cache[tenant_id] = provider_configurations
 
         # Return the encapsulated object
         return provider_configurations
