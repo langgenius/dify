@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import Any, TypedDict, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
@@ -9,6 +9,12 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from graphon.model_runtime.errors.invoke import InvokeError
 
 logger = logging.getLogger(__name__)
+
+
+class ErrorStreamResponseDict(TypedDict):
+    code: str
+    message: str
+    status: int
 
 
 class AppGenerateResponseConverter(ABC):
@@ -106,7 +112,7 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
+    def _error_to_stream_response(cls, e: Exception) -> ErrorStreamResponseDict:
         """
         Error to stream response.
         :param e: exception
@@ -126,7 +132,7 @@ class AppGenerateResponseConverter(ABC):
         }
 
         # Determine the response based on the type of exception
-        data: dict[str, Any] | None = None
+        data: ErrorStreamResponseDict | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v
