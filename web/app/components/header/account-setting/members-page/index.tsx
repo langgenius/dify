@@ -19,8 +19,8 @@ import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
-import Operation from './operation'
-import TransferOwnership from './operation/transfer-ownership'
+import MemberMenu from './member-menu'
+import RoleBadges from './role-badges'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
@@ -53,7 +53,9 @@ const MembersPage = () => {
       <div className="flex flex-col">
         <div className="mb-4 flex items-center gap-3 rounded-xl border-l-[0.5px] border-t-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[20px]">
-            <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+            <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
+              {currentWorkspace?.name[0]?.toLocaleUpperCase()}
+            </span>
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-text-secondary system-md-semibold">
@@ -130,8 +132,16 @@ const MembersPage = () => {
                     <div className="">
                       <div className="text-text-secondary system-sm-medium">
                         {account.name}
-                        {account.status === 'pending' && <span className="ml-1 text-text-warning system-xs-medium">{t('members.pending', { ns: 'common' })}</span>}
-                        {userProfile.email === account.email && <span className="text-text-tertiary system-xs-regular">{t('members.you', { ns: 'common' })}</span>}
+                        {account.status === 'pending' && (
+                          <span className="ml-1 system-xs-medium text-text-warning">
+                            {t('members.pending', { ns: 'common' })}
+                          </span>
+                        )}
+                        {userProfile.email === account.email && (
+                          <span className="system-xs-regular text-text-tertiary">
+                            {t('members.you', { ns: 'common' })}
+                          </span>
+                        )}
                       </div>
                       <div className="text-text-tertiary system-xs-regular">{account.email}</div>
                     </div>
@@ -139,7 +149,7 @@ const MembersPage = () => {
                   <div className="flex w-[120px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">
                     {formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}
                   </div>
-                  <div className="flex w-[215px] shrink-0 items-center">
+                  {/* <div className="flex w-[215px] shrink-0 items-center">
                     {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
                     )}
@@ -151,6 +161,21 @@ const MembersPage = () => {
                     )}
                     {!isCurrentWorkspaceOwner && (
                       <div className="px-3 text-text-secondary system-sm-regular">{RoleMap[account.role] || RoleMap.normal}</div>
+                    )}
+                  </div> */}
+                  <div className="flex w-[215px] shrink-0 items-center gap-2 px-3">
+                    <RoleBadges
+                      className="grow"
+                      roles={[RoleMap[account.role] || RoleMap.normal]}
+                    />
+                    {isCurrentWorkspaceManager && (
+                      <MemberMenu
+                        member={account}
+                        operatorRole={currentWorkspace.role}
+                        canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
+                        onOperate={refetch}
+                        onTransferOwnership={() => setShowTransferOwnershipModal(true)}
+                      />
                     )}
                   </div>
                 </div>
