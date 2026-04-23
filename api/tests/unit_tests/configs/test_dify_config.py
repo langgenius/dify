@@ -286,6 +286,39 @@ def test_pubsub_explicit_sentinel_mode(monkeypatch: pytest.MonkeyPatch):
     assert pubsub_spec != main_spec
 
 
+def test_pubsub_empty_string_env_vars_treated_as_unset(monkeypatch: pytest.MonkeyPatch):
+    """Deployment templates expose env vars via ``${VAR:-}`` which
+    renders as an empty string when the caller hasn't set one.
+    pydantic's Literal / int / bool / float parsers would otherwise
+    reject ``""`` with a validation error, crashing DifyConfig() at
+    import time — the fast-fail regression surfaced in DB migration CI.
+    """
+    os.environ.clear()
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    # Simulate docker-compose ``EVENT_BUS_REDIS_MODE: ${EVENT_BUS_REDIS_MODE:-}``
+    # rendering as empty string when the operator hasn't set one.
+    monkeypatch.setenv("EVENT_BUS_REDIS_MODE", "")
+    monkeypatch.setenv("EVENT_BUS_REDIS_PORT", "")
+    monkeypatch.setenv("EVENT_BUS_REDIS_DB", "")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_SSL", "")
+    monkeypatch.setenv("EVENT_BUS_REDIS_SENTINEL_SOCKET_TIMEOUT", "")
+
+    # Must not raise pydantic ValidationError.
+    config = DifyConfig()
+
+    assert config.PUBSUB_REDIS_MODE is None
+    assert config.PUBSUB_REDIS_PORT is None
+    assert config.PUBSUB_REDIS_DB is None
+    assert config.PUBSUB_REDIS_USE_SSL is None
+    assert config.PUBSUB_REDIS_SENTINEL_SOCKET_TIMEOUT is None
+
+
 def test_build_main_spec_fails_when_standalone_host_missing(monkeypatch: pytest.MonkeyPatch):
     """Standalone mode with empty ``REDIS_HOST`` is a misconfiguration
     and must fail fast at spec construction (not later when the client
