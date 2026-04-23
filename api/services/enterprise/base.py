@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from configs import dify_config
 from core.helper.trace_id_helper import generate_traceparent_header
 from services.errors.enterprise import (
     EnterpriseAPIBadRequestError,
@@ -15,6 +16,11 @@ from services.errors.enterprise import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Headers recognised by dify-enterprise's /inner/api/rbac/* endpoints.
+# Keep in sync with pkg/enterprise/service/rbac_inner_handlers.go.
+INNER_TENANT_ID_HEADER = "X-Inner-Tenant-Id"
+INNER_ACCOUNT_ID_HEADER = "X-Inner-Account-Id"
 
 
 class BaseRequest:
@@ -49,8 +55,16 @@ class BaseRequest:
         *,
         timeout: float | httpx.Timeout | None = None,
         raise_for_status: bool = False,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
+        if extra_headers:
+            # Explicitly ignore empty values so callers can pass optional
+            # headers (e.g. `X-Inner-Account-Id`) without having to branch.
+            for key, value in extra_headers.items():
+                if value is None or value == "":
+                    continue
+                headers[key] = value
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
 
@@ -121,6 +135,43 @@ class EnterpriseRequest(BaseRequest):
     base_url = os.environ.get("ENTERPRISE_API_URL", "ENTERPRISE_API_URL")
     secret_key = os.environ.get("ENTERPRISE_API_SECRET_KEY", "ENTERPRISE_API_SECRET_KEY")
     secret_key_header = "Enterprise-Api-Secret-Key"
+
+    @classmethod
+    def send_inner_rbac_request(
+        cls,
+        method: str,
+        endpoint: str,
+        *,
+        tenant_id: str,
+        account_id: str | None = None,
+        json: Any | None = None,
+        params: Mapping[str, Any] | None = None,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> Any:
+        """Call an /inner/api/rbac/* endpoint on dify-enterprise.
+
+        Inner RBAC endpoints require three headers on top of the standard
+        Enterprise-Api-Secret-Key: the tenant the call targets and (optionally)
+        the account acting on behalf of the workspace. This helper centralises
+        both the assertions and the header wiring so callers only have to
+        supply business payload.
+        """
+        if not dify_config.ENTERPRISE_ENABLED:
+            raise EnterpriseAPIError("Enterprise edition is not enabled")
+        if not tenant_id:
+            raise ValueError("tenant_id must be provided for inner RBAC requests")
+
+        inner_headers: dict[str, str] = {INNER_TENANT_ID_HEADER: tenant_id}
+        if account_id:
+            inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
+        return cls.send_request(
+            method,
+            endpoint,
+            json=json,
+            params=params,
+            timeout=timeout,
+            extra_headers=inner_headers,
+        )
 
 
 class EnterprisePluginManagerRequest(BaseRequest):
