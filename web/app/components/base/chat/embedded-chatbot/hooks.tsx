@@ -46,7 +46,6 @@ function getFormattedChatList(messages: any[]) {
   })
   return newChatList
 }
-
 export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
   const isInstalledApp = false // just can be webapp and try app
   const isTryApp = appSourceType === AppSourceType.tryApp
@@ -64,7 +63,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
-
   useEffect(() => {
     if (isTryApp)
       return
@@ -73,15 +71,12 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setConversationId(conversation_id)
     })
   }, [])
-
   useEffect(() => {
     setUserId(embeddedUserId || undefined)
   }, [embeddedUserId])
-
   useEffect(() => {
     setConversationId(embeddedConversationId || undefined)
   }, [embeddedConversationId])
-
   useEffect(() => {
     if (isTryApp)
       return
@@ -107,11 +102,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     setLanguageFromParams()
   }, [appInfo])
-
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-
   const removeConversationIdInfo = useCallback((appId: string) => {
     setConversationIdInfo((prev) => {
       const newInfo = { ...prev }
@@ -119,16 +112,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       return newInfo
     })
   }, [setConversationIdInfo])
-
   const allowResetChat = !conversationId
-
-  // --- FIXED LOGIC: URL conversationId now takes priority over localStorage ---
-  const currentConversationId = useMemo(
-    () => conversationId || conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
-    [appId, conversationIdInfo, userId, conversationId],
-  )
-  // ----------------------------------------------------------------------------
-
+  const currentConversationId = useMemo(() => conversationId || conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']
@@ -143,59 +128,49 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       })
     }
   }, [appId, conversationIdInfo, setConversationIdInfo, userId])
-
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)
       return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-
   const { data: appPinnedConversationData } = useShareConversations({
     appSourceType,
     appId,
     pinned: true,
     limit: 100,
   })
-
   const { data: appConversationData, isLoading: appConversationDataLoading } = useShareConversations({
     appSourceType,
     appId,
     pinned: false,
     limit: 100,
   })
-
   const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
   })
-
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
-
   const appPrevChatList = useMemo(() => (currentConversationId && appChatListData?.data.length)
     ? buildChatItemTree(getFormattedChatList(appChatListData.data))
     : [], [appChatListData, currentConversationId])
-
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
-
   const { t } = useTranslation()
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
-
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setNewConversationInputs(newInputs)
   }, [])
-
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
@@ -260,11 +235,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       }
     })
   }, [initInputs, appParams])
-
   const allInputsHidden = useMemo(() => {
     return inputsForms.length > 0 && inputsForms.every(item => item.hide === true)
   }, [inputsForms])
-
   useEffect(() => {
     // init inputs from url params
     (async () => {
@@ -276,7 +249,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setInitUserVariables(userVariables)
     })()
   }, [])
-
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
@@ -284,7 +256,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-
   const { data: newConversation } = useShareConversationName({
     conversationId: newConversationId,
     appSourceType,
@@ -293,15 +264,12 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     refetchOnWindowFocus: false,
     enabled: !isTryApp,
   })
-
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
-
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
-
   const conversationList = useMemo(() => {
     const data = originConversationList.slice()
     if (showNewConversationItemInList && data[0]?.id !== '') {
@@ -314,7 +282,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     return data
   }, [originConversationList, showNewConversationItemInList, t])
-
   useEffect(() => {
     if (newConversation) {
       setOriginConversationList(produce((draft) => {
@@ -326,28 +293,23 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       }))
     }
   }, [newConversation])
-
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find(item => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)
       conversationItem = pinnedConversationList.find(item => item.id === currentConversationId)
     return conversationItem
   }, [conversationList, currentConversationId, pinnedConversationList])
-
   const currentConversationLatestInputs = useMemo(() => {
     if (!currentConversationId || !appChatListData?.data.length)
       return newConversationInputsRef.current || {}
     return appChatListData.data.slice().pop().inputs || {}
   }, [appChatListData, currentConversationId])
-
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
-
   useEffect(() => {
     if (currentConversationItem && !isTryApp)
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
-
   const checkInputsRequired = useCallback((silent?: boolean) => {
     if (allInputsHidden)
       return true
@@ -381,18 +343,15 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     return true
   }, [inputsForms, t, allInputsHidden])
-
   const handleStartChat = useCallback((callback?: () => void) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
       callback?.()
     }
   }, [setShowNewConversationItemInList, checkInputsRequired])
-
   const currentChatInstanceRef = useRef<{
     handleStop: () => void
   }>({ handleStop: noop })
-
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
@@ -400,7 +359,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (conversationId)
       setClearChatList(false)
   }, [handleConversationIdInfoChange, setClearChatList])
-
   const handleNewConversation = useCallback(async () => {
     if (isTryApp) {
       setClearChatList(true)
@@ -412,19 +370,16 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
   }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
-
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
     setShowNewConversationItemInList(false)
     invalidateShareConversations()
   }, [handleConversationIdInfoChange, invalidateShareConversations])
-
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     toast.success(t('api.success', { ns: 'common' }))
   }, [appSourceType, appId, t])
-
   return {
     appSourceType,
     isInstalledApp,
