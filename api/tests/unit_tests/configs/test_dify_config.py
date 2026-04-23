@@ -217,8 +217,9 @@ def test_pubsub_defaults_inherit_main_spec(monkeypatch: pytest.MonkeyPatch):
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
 
 
-def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
-    """Legacy ``PUBSUB_REDIS_URL`` keeps working (backward compat)."""
+def test_pubsub_explicit_standalone_mode(monkeypatch: pytest.MonkeyPatch):
+    """``PUBSUB_REDIS_MODE=standalone`` + structured fields route pub/sub
+    to an independent Redis instance without touching the main spec."""
     from configs.middleware.cache.redis_connection_spec import (
         build_main_redis_spec,
         build_pubsub_spec,
@@ -232,7 +233,10 @@ def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
+    monkeypatch.setenv("PUBSUB_REDIS_MODE", "standalone")
+    monkeypatch.setenv("PUBSUB_REDIS_HOST", "pubsub-host")
+    monkeypatch.setenv("PUBSUB_REDIS_PORT", "6381")
+    monkeypatch.setenv("PUBSUB_REDIS_DB", "5")
 
     config = DifyConfig()
     main_spec = build_main_redis_spec(config)

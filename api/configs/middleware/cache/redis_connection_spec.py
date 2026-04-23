@@ -20,7 +20,6 @@ failover-aware Sentinel handle) without a second connection path.
 
 from dataclasses import dataclass
 from typing import Literal, Protocol
-from urllib.parse import unquote
 
 RedisMode = Literal["standalone", "sentinel", "cluster"]
 
@@ -32,20 +31,13 @@ class PubSubConfigProtocol(Protocol):
     """Subset of ``RedisPubSubConfig`` fields that the pub/sub builder reads.
 
     ``PUBSUB_REDIS_MODE`` (when set) triggers structured-field construction
-    and unlocks independent Sentinel topologies. ``PUBSUB_REDIS_URL``
-    remains as a backward-compatibility escape hatch — its limitation
-    (cannot encode Sentinel topology) is exactly what motivated the
-    structured-field alternative.
+    and unlocks independent Sentinel topologies. When unset, the pub/sub
+    spec is inherited from the main Redis spec, letting Dify reuse the
+    main client object and its failover-aware Sentinel handle.
     """
 
-    # Structured mode selector (takes precedence over URL when set)
+    # Structured mode selector — set to declare an independent pub/sub topology.
     PUBSUB_REDIS_MODE: RedisMode | None
-
-    # Legacy URL (backward-compat; kept because existing deployments ship
-    # this field in their .env — will be honored unless PUBSUB_REDIS_MODE
-    # is also set)
-    PUBSUB_REDIS_URL: str | None
-    PUBSUB_REDIS_USE_CLUSTERS: bool
 
     # Structured standalone fields
     PUBSUB_REDIS_HOST: str | None
@@ -316,68 +308,6 @@ def build_main_redis_spec(config: MainRedisConfigProtocol) -> RedisConnectionSpe
     )
 
 
-def _parse_legacy_pubsub_url(url: str, use_clusters: bool) -> RedisConnectionSpec:
-    """Parse the legacy ``PUBSUB_REDIS_URL`` into a spec.
-
-    Supports ``redis://`` and ``rediss://`` schemes. Cluster mode (via
-    ``PUBSUB_REDIS_USE_CLUSTERS=True``) accepts a comma-separated
-    multi-node netloc (``redis://:pw@n1:7001,n2:7002``) which ``urlparse``
-    cannot handle natively.
-
-    This path cannot express Sentinel topology — that limitation is
-    exactly why the structured ``PUBSUB_REDIS_MODE`` path was introduced.
-    """
-    if url.startswith("rediss://"):
-        use_ssl = True
-        rest = url[len("rediss://") :]
-    elif url.startswith("redis://"):
-        use_ssl = False
-        rest = url[len("redis://") :]
-    else:
-        raise ValueError(f"PUBSUB_REDIS_URL must start with redis:// or rediss:// (got: {url[:16]!r}...)")
-
-    # Split off the path component (``/db``) from the netloc.
-    netloc, _, path_raw = rest.partition("/")
-
-    # Split userinfo ("user:password@") from host list.
-    if "@" in netloc:
-        userinfo, _, hostports = netloc.partition("@")
-        raw_user, has_pw, raw_pw = userinfo.partition(":")
-        username = unquote(raw_user) if raw_user else None
-        password = unquote(raw_pw) if has_pw and raw_pw else None
-    else:
-        username = None
-        password = None
-        hostports = netloc
-
-    db = int(path_raw) if path_raw and path_raw.isdigit() else 0
-
-    if use_clusters:
-        nodes = _parse_host_port_list(hostports, env_name="PUBSUB_REDIS_URL")
-        if not nodes:
-            raise ValueError("PUBSUB_REDIS_URL is empty after stripping scheme")
-        return RedisConnectionSpec(
-            mode="cluster",
-            cluster_nodes=nodes,
-            username=username,
-            password=password,
-            use_ssl=use_ssl,
-        )
-
-    host, sep, port_str = hostports.rpartition(":")
-    if not sep or not host or not port_str.isdigit():
-        raise ValueError(f"PUBSUB_REDIS_URL netloc is malformed; expected 'host:port' (got: {hostports!r})")
-    return RedisConnectionSpec(
-        mode="standalone",
-        host=host,
-        port=int(port_str),
-        db=db,
-        username=username,
-        password=password,
-        use_ssl=use_ssl,
-    )
-
-
 def _spec_from_pubsub_fields(cfg: PubSubConfigProtocol) -> RedisConnectionSpec:
     """Build a spec from the structured ``PUBSUB_REDIS_*`` fields.
 
@@ -442,23 +372,15 @@ def build_pubsub_spec(
 ) -> RedisConnectionSpec:
     """Determine the Event Bus connection spec.
 
-    Resolution order (highest priority first):
+    Resolution:
 
     1. ``PUBSUB_REDIS_MODE`` set → build from structured ``PUBSUB_REDIS_*``
-       fields (the only path that supports Sentinel for pub/sub)
-    2. ``PUBSUB_REDIS_URL`` set (non-whitespace) → parse legacy URL
-       (standalone or cluster, no Sentinel)
-    3. Otherwise → return ``main_spec`` as-is so the caller can detect
-       "pub/sub == main" and share a single client (essential for
-       inheriting Sentinel failover)
+       fields (supports all three topologies, including Sentinel).
+    2. Otherwise → return ``main_spec`` as-is so the caller can detect
+       "pub/sub == main" and share a single client object. This is what
+       gives the Event Bus the same Sentinel failover the main client has.
     """
     if pubsub_config.PUBSUB_REDIS_MODE:
         return _spec_from_pubsub_fields(pubsub_config)
-
-    url_raw = pubsub_config.PUBSUB_REDIS_URL
-    if url_raw:
-        cleaned = url_raw.strip()
-        if cleaned:
-            return _parse_legacy_pubsub_url(cleaned, pubsub_config.PUBSUB_REDIS_USE_CLUSTERS)
 
     return main_spec

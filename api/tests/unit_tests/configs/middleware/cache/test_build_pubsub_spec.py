@@ -2,17 +2,13 @@
 
 The pub/sub spec builder determines how the Event Bus client is constructed:
 
-- **Default (no pub/sub config set)**: inherit ``main_spec`` as-is. This
-  lets Dify reuse the main client object, which is essential for Sentinel
-  topology — the returned ``master_for`` handle already provides failover.
-- **Backward-compat (``PUBSUB_REDIS_URL`` set)**: parse the URL into a
-  standalone spec (or cluster when ``PUBSUB_REDIS_USE_CLUSTERS=True``).
-  This path retains the pre-refactor URL-based escape hatch.
+- **Default (``PUBSUB_REDIS_MODE`` unset)**: inherit ``main_spec`` as-is.
+  This lets Dify reuse the main client object — essential for Sentinel,
+  where the ``master_for`` handle already provides failover.
 - **Explicit (``PUBSUB_REDIS_MODE`` set)**: construct a spec from the
-  ``PUBSUB_REDIS_*`` field set. Supports all three topologies —
-  including Sentinel, which the URL form could never express.
-
-Priority: ``PUBSUB_REDIS_MODE > PUBSUB_REDIS_URL > inherit``.
+  structured ``PUBSUB_REDIS_*`` field set. Supports all three topologies,
+  including independent Sentinel — a capability the old URL contract
+  could not express.
 """
 
 from types import SimpleNamespace
@@ -58,8 +54,6 @@ def _main_cluster() -> RedisConnectionSpec:
 def _make_pubsub_config(**overrides: Any) -> SimpleNamespace:
     defaults: dict[str, Any] = {
         "PUBSUB_REDIS_MODE": None,
-        "PUBSUB_REDIS_URL": None,
-        "PUBSUB_REDIS_USE_CLUSTERS": False,
         "PUBSUB_REDIS_HOST": None,
         "PUBSUB_REDIS_PORT": None,
         "PUBSUB_REDIS_DB": None,
@@ -108,76 +102,6 @@ class TestDefaultInheritance:
         spec = build_pubsub_spec(main, cfg)
 
         assert spec == main
-
-    def test_whitespace_only_url_is_treated_as_unset(self) -> None:
-        main = _main_sentinel()
-        cfg = _make_pubsub_config(PUBSUB_REDIS_URL="   ")
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec == main
-
-
-class TestBackwardCompatURL:
-    """PUBSUB_REDIS_URL (legacy) should still work for standalone and cluster."""
-
-    def test_standalone_url(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_URL="redis://bus-user:bus-pw@bus.example:6380/3",
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.mode == "standalone"
-        assert spec.host == "bus.example"
-        assert spec.port == 6380
-        assert spec.db == 3
-        assert spec.username == "bus-user"
-        assert spec.password == "bus-pw"
-        assert spec.use_ssl is False
-
-    def test_rediss_url_enables_ssl(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_URL="rediss://bus.example:6380/0",
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.use_ssl is True
-
-    def test_cluster_url_with_use_clusters_flag(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_URL="redis://:pw@n1:7001,n2:7002,n3:7003",
-            PUBSUB_REDIS_USE_CLUSTERS=True,
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.mode == "cluster"
-        assert spec.cluster_nodes == (("n1", 7001), ("n2", 7002), ("n3", 7003))
-        assert spec.password == "pw"
-
-    def test_url_with_no_db_path_defaults_to_zero(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(PUBSUB_REDIS_URL="redis://bus.example:6380")
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.db == 0
-
-    def test_url_strips_whitespace(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_URL="   redis://bus.example:6380   ",
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.mode == "standalone"
-        assert spec.host == "bus.example"
 
 
 class TestExplicitStandaloneMode:
@@ -275,33 +199,6 @@ class TestExplicitClusterMode:
 
         with pytest.raises(ValueError, match="PUBSUB_REDIS_CLUSTERS"):
             build_pubsub_spec(main, cfg)
-
-
-class TestPriority:
-    def test_explicit_mode_wins_over_url(self) -> None:
-        main = _main_standalone()
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_MODE="sentinel",
-            PUBSUB_REDIS_SENTINELS="ps1:26379",
-            PUBSUB_REDIS_SENTINEL_SERVICE_NAME="pubsub-master",
-            # URL is set but should be ignored
-            PUBSUB_REDIS_URL="redis://legacy.example:6379/0",
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.mode == "sentinel"
-
-    def test_url_wins_over_inheritance(self) -> None:
-        main = _main_sentinel()  # main is sentinel
-        cfg = _make_pubsub_config(
-            PUBSUB_REDIS_URL="redis://legacy.example:6379/0",
-        )
-
-        spec = build_pubsub_spec(main, cfg)
-
-        assert spec.mode == "standalone"  # URL took precedence, not inheritance
-        assert spec.host == "legacy.example"
 
 
 class TestInvalidMode:
