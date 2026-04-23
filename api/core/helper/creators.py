@@ -35,6 +35,7 @@ def get_redirect_url(user_account_id: str, claim_code: str) -> str:
     client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or "")
     if client_id:
         from services.oauth_server import OAuthServerService
+
         oauth_code = OAuthServerService.sign_oauth_authorization_code(client_id, user_account_id)
         params["oauth_code"] = oauth_code
     return f"{base_url}?{urlencode(params)}"
