@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 import httpx
 
+from configs import dify_config
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -384,12 +385,23 @@ class ApiTool(Tool):
         """
         invoke http request
         """
-        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 
         # do http request
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
+
+        is_file, mime_type = self._determine_file_response(response)
+        if is_file:
+            blob = self._read_limited_response_content(response)
+            if not blob:
+                yield self.create_text_message(
+                    "Empty response from the tool, please check your parameters and try again."
+                )
+                return
+            mime_type = mime_type or "application/octet-stream"
+            yield self.create_blob_message(blob=blob, meta={"mime_type": mime_type})
+            return
 
         # validate response
         parsed_response = self.validate_and_parse_response(response)
@@ -409,3 +421,41 @@ class ApiTool(Tool):
                 parsed_response.content if isinstance(parsed_response.content, str) else str(parsed_response.content)
             )
             yield self.create_text_message(text_response)
+
+    @staticmethod
+    def _determine_file_response(response: httpx.Response) -> tuple[bool, str]:
+        """Determine whether the HTTP response should be treated as a file download."""
+        if response.status_code >= 400:
+            raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
+
+        content_type = (response.headers.get("content-type", "") or "").strip()
+        mime_type = content_type.split(";", 1)[0].strip().lower()
+
+        content_disposition = (response.headers.get("content-disposition", "") or "").strip()
+        if not content_disposition:
+            return False, mime_type
+
+        disposition_type = content_disposition.split(";", 1)[0].strip().lower()
+        return disposition_type == "attachment", mime_type
+
+    @staticmethod
+    def _read_limited_response_content(response: httpx.Response) -> bytes:
+        """Read response body with an upper bound to avoid large-file memory abuse."""
+        max_file_size = dify_config.PLUGIN_MAX_FILE_SIZE
+        content_length_header = (response.headers.get("content-length", "") or "").strip()
+        if content_length_header:
+            try:
+                content_length = int(content_length_header)
+            except ValueError:
+                content_length = 0
+
+            if content_length > max_file_size:
+                raise ToolInvokeError(
+                    f"Response size {content_length} exceeds the maximum allowed size {max_file_size} bytes"
+                )
+
+        blob = response.content
+        if len(blob) > max_file_size:
+            raise ToolInvokeError(f"Response size exceeds the maximum allowed size {max_file_size} bytes")
+
+        return blob
