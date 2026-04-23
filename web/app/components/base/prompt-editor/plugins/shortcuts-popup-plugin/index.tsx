@@ -158,7 +158,7 @@ export default function ShortcutsPopupPlugin({
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
             maxWidth: `${Math.min(400, availableWidth)}px`,
-            maxHeight: `${Math.min(300, availableHeight)}px`,
+            maxHeight: `${Math.min(560, availableHeight)}px`,
             overflow: 'auto',
           })
         },

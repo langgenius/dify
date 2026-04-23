@@ -129,6 +129,25 @@ describe('HITLInputComponentUI', () => {
       expect(getByText('alpha, beta')).toBeInTheDocument()
     })
 
+    it('should render input type label after the summary content', () => {
+      const { getByText } = renderComponent({
+        formInput: {
+          type: InputVarType.select,
+          output_variable_name: 'customer_name',
+          option_source: {
+            type: 'constant',
+            selector: [],
+            value: ['alpha', 'beta'],
+          },
+        } satisfies FormInputItem,
+      })
+
+      const summary = getByText('alpha, beta')
+      const typeLabel = getByText('appDebug.variableConfig.select')
+
+      expect(summary.compareDocumentPosition(typeLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
     it('should render file-list summary with max uploads', () => {
       const { getByText } = renderComponent({
         formInput: {

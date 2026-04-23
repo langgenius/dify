@@ -203,6 +203,7 @@ const InputField: React.FC<InputFieldProps> = ({
           <TypeSelector
             value={tempPayload.type}
             items={fieldTypeItems}
+            popupClassName="z-[1000000]"
             onSelect={handleTypeChange}
           />
         </div>

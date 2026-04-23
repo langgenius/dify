@@ -147,11 +147,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         </div>
       </div>
 
-      <div className="flex w-full items-center gap-x-0.5 pr-5">
+      <div className="flex w-full items-center gap-x-2 pr-5">
         <div className="min-w-0 grow">
-          <div className="max-w-full truncate system-2xs-medium text-text-tertiary uppercase">
-            {inputTypeLabel}
-          </div>
           {variableSelector
             ? (
                 <VariableBlock
@@ -168,6 +165,9 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
                   {summaryText}
                 </div>
               )}
+        </div>
+        <div className="shrink-0 system-2xs-medium text-text-tertiary uppercase">
+          {inputTypeLabel}
         </div>
 
         {/* Actions */}
