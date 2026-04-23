@@ -51,7 +51,7 @@ class DifyModelFactory:
 
     def __init__(self, tenant_id: str, model_manager: ModelManager | None = None) -> None:
         self.tenant_id = tenant_id
-        self.model_manager = model_manager or ModelManager()
+        self.model_manager = model_manager or ModelManager(enable_credentials_cache=True)
 
     def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance:
         return self.model_manager.get_model_instance(

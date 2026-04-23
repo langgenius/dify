@@ -101,7 +101,7 @@ def try_join_default_workspace(account_id: str) -> None:
 class EnterpriseService:
 
     @classmethod
-    @ttl_cache(ttl=600)
+    @ttl_cache(ttl=5)
     def get_info(cls):
         return EnterpriseRequest.send_request("GET", "/info")
 

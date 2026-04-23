@@ -480,9 +480,10 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self):
+    def __init__(self, enable_credentials_cache: bool = False):
         self._provider_manager = ProviderManager()
         self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
+        self._enable_credentials_cache = enable_credentials_cache
 
     def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
         """
@@ -510,7 +511,8 @@ class ModelManager:
             )
 
         ret = ModelInstance(provider_model_bundle, model)
-        self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
+        if self._enable_credentials_cache:
+            self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
         return ret
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
