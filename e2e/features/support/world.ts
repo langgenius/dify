@@ -6,6 +6,7 @@ import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
 export class DifyWorld extends World {
+  browser: Browser | undefined
   context: BrowserContext | undefined
   page: Page | undefined
   consoleErrors: string[] = []
