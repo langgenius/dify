@@ -72,7 +72,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     if (!expanded)
       setExpanded(true)
 
-    refetchModelList().catch(() => {})
+    refetchModelList().catch((error) => {
+      console.error('Failed to refetch model list:', error)
+    })
   }, [currentProviderName, expanded, refetchModelList, setExpanded])
 
   const handleOpenModelList = useCallback(() => {
@@ -84,7 +86,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       return
     }
 
-    refetchModelList().catch(() => {})
+    refetchModelList().catch((error) => {
+      console.error('Failed to refetch model list:', error)
+    })
   }, [expanded, loading, refetchModelList, setExpanded])
 
   return (

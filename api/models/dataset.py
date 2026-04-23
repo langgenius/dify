@@ -5,7 +5,6 @@ import hmac
 import json
 import logging
 import os
-import pickle
 import re
 import time
 from collections.abc import Sequence
@@ -1249,10 +1248,10 @@ class Embedding(TypeBase):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("''"))
 
     def set_embedding(self, embedding_data: list[float]):
-        self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
+        self.embedding = json.dumps(embedding_data).encode("utf-8")
 
     def get_embedding(self) -> list[float]:
-        return cast(list[float], pickle.loads(self.embedding))  # noqa: S301
+        return cast(list[float], json.loads(self.embedding.decode("utf-8")))
 
 
 class DatasetCollectionBinding(TypeBase):
