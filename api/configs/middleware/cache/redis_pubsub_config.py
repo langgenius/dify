@@ -97,23 +97,17 @@ class RedisPubSubConfig(BaseSettings):
         default=None,
     )
     PUBSUB_REDIS_SENTINEL_SERVICE_NAME: str | None = Field(
-        validation_alias=AliasChoices(
-            "EVENT_BUS_REDIS_SENTINEL_SERVICE_NAME", "PUBSUB_REDIS_SENTINEL_SERVICE_NAME"
-        ),
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_SERVICE_NAME", "PUBSUB_REDIS_SENTINEL_SERVICE_NAME"),
         description="Sentinel service (master) name to resolve for the Event Bus.",
         default=None,
     )
     PUBSUB_REDIS_SENTINEL_USERNAME: str | None = Field(
-        validation_alias=AliasChoices(
-            "EVENT_BUS_REDIS_SENTINEL_USERNAME", "PUBSUB_REDIS_SENTINEL_USERNAME"
-        ),
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_USERNAME", "PUBSUB_REDIS_SENTINEL_USERNAME"),
         description="Username for authenticating to the Event Bus Sentinel quorum.",
         default=None,
     )
     PUBSUB_REDIS_SENTINEL_PASSWORD: str | None = Field(
-        validation_alias=AliasChoices(
-            "EVENT_BUS_REDIS_SENTINEL_PASSWORD", "PUBSUB_REDIS_SENTINEL_PASSWORD"
-        ),
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_PASSWORD", "PUBSUB_REDIS_SENTINEL_PASSWORD"),
         description="Password for authenticating to the Event Bus Sentinel quorum.",
         default=None,
     )
