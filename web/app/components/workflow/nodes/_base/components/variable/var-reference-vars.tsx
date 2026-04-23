@@ -14,9 +14,6 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Input from '@/app/components/base/input'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -30,6 +27,8 @@ import {
   getVariableCategory,
   getVariableDisplayName,
 } from './var-reference-vars.helpers'
+
+const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 
 type ItemProps = {
   nodeId: string
@@ -80,15 +79,21 @@ const Item: FC<ItemProps> = ({
     if (!isFlat)
       return null
     const variable = itemData.variable
-    let Icon
     switch (variable) {
       case 'current':
-        Icon = isInCodeGeneratorInstructionEditor ? CodeAssistant : MagicEdit
-        return <Icon className="h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600" />
+        return (
+          <span
+            aria-hidden
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600',
+              isInCodeGeneratorInstructionEditor ? 'i-custom-vender-line-general-code-assistant' : 'i-custom-vender-line-general-magic-edit',
+            )}
+          />
+        )
       case 'error_message':
-        return <Variable02 className="h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600" />
+        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600" />
       default:
-        return <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-text-accent" />
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
@@ -216,7 +221,7 @@ const Item: FC<ItemProps> = ({
       <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
       {
         (isObj || isStructureOutput) && (
-          <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+          <span aria-hidden className={cn('ml-0.5 i-custom-vender-line-arrows-chevron-right h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
         )
       }
     </div>
@@ -227,7 +232,7 @@ const Item: FC<ItemProps> = ({
       open={open}
       onOpenChange={noop}
     >
-      <PopoverTrigger render={itemTrigger} />
+      <PopoverTrigger nativeButton={false} render={itemTrigger} />
       <PopoverContent
         placement="left-start"
         sideOffset={0}
@@ -415,9 +420,9 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('var-search-input-wrapper mx-2 mt-2 mb-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('mx-2 mt-2 mb-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
-                className="var-search-input"
+                className={VAR_SEARCH_INPUT_CLASS_NAME}
                 showLeftIcon
                 showClearIcon
                 value={searchValue}
@@ -442,50 +447,50 @@ const VarReferenceVars: FC<Props> = ({
 
       {filteredVars.length > 0
         ? (
-          <div ref={listRef} className={cn('max-h-[85vh] overflow-x-hidden overflow-y-auto', maxHeightClass)}>
-            {
-              indexedFilteredVars.map((item, i) => (
-                <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
-                  {!item.isFlat && (
-                    <div
-                      className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
-                      title={item.title}
-                    >
-                      {item.title}
-                    </div>
-                  )}
-                  {item.vars.map(({ variable, optionIndex }) => (
-                    <Item
-                      key={optionIndex}
-                      title={item.title}
-                      nodeId={item.nodeId}
-                      objPath={[]}
-                      itemData={variable}
-                      onChange={onChange}
-                      itemWidth={itemWidth}
-                      isSupportFileVar={isSupportFileVar}
-                      isException={variable.isException}
-                      isLoopVar={item.isLoop}
-                      isFlat={item.isFlat}
-                      isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
-                      zIndex={zIndex}
-                      preferSchemaType={preferSchemaType}
-                      isSelected={effectiveSelectedIndex === optionIndex}
-                      onActivate={() => setSelectedIndex(optionIndex)}
-                    />
-                  ))}
-                  {item.isFlat && !indexedFilteredVars[i + 1]?.isFlat && !!indexedFilteredVars.find(item => !item.isFlat) && (
-                    <div className="relative mt-[14px] flex items-center space-x-1">
-                      <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
-                      <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
-                      <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
-                    </div>
-                  )}
-                </div>
-              ))
-            }
-          </div>
-        )
+            <div ref={listRef} className={cn('max-h-[85vh] overflow-x-hidden overflow-y-auto', maxHeightClass)}>
+              {
+                indexedFilteredVars.map((item, i) => (
+                  <div key={item.nodeId} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
+                    {!item.isFlat && (
+                      <div
+                        className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </div>
+                    )}
+                    {item.vars.map(({ variable, optionIndex }) => (
+                      <Item
+                        key={optionIndex}
+                        title={item.title}
+                        nodeId={item.nodeId}
+                        objPath={[]}
+                        itemData={variable}
+                        onChange={onChange}
+                        itemWidth={itemWidth}
+                        isSupportFileVar={isSupportFileVar}
+                        isException={variable.isException}
+                        isLoopVar={item.isLoop}
+                        isFlat={item.isFlat}
+                        isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
+                        zIndex={zIndex}
+                        preferSchemaType={preferSchemaType}
+                        isSelected={effectiveSelectedIndex === optionIndex}
+                        onActivate={() => setSelectedIndex(optionIndex)}
+                      />
+                    ))}
+                    {item.isFlat && !indexedFilteredVars[i + 1]?.isFlat && !!indexedFilteredVars.find(item => !item.isFlat) && (
+                      <div className="relative mt-[14px] flex items-center space-x-1">
+                        <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
+                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
+                        <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              }
+            </div>
+          )
         : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t('common.noVar', { ns: 'workflow' })}</div>}
       {
         showManageInputField && (
