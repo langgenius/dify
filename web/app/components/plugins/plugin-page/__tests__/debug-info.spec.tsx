@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DebugInfo from '../debug-info'
 
@@ -13,27 +14,6 @@ vi.mock('@/context/i18n', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useDebugKey: () => mockDebugKey,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    disabled,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    disabled?: boolean
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      {children}
-      {!disabled && <div data-testid="tooltip-content">{popupContent}</div>}
-    </div>
-  ),
 }))
 
 vi.mock('../../base/key-value-item', () => ({
@@ -68,16 +48,31 @@ describe('DebugInfo', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders debug metadata and masks the key when info is available', () => {
+  it('renders a disabled trigger when debug info is unavailable', () => {
+    render(<DebugInfo />)
+
+    const trigger = screen.getByRole('button')
+    expect(trigger).toBeDisabled()
+  })
+
+  it('opens a popover with debug metadata and masks the key when info is available', async () => {
     mockDebugKey.data = {
       host: '127.0.0.1',
       port: 5001,
       key: '12345678abcdefghijklmnopqrst87654321',
     }
 
+    const user = userEvent.setup()
     render(<DebugInfo />)
 
-    expect(screen.getByTestId('debug-button')).toBeInTheDocument()
+    const trigger = screen.getByRole('button')
+    expect(trigger).toBeEnabled()
+
+    // Popover is closed initially — content not rendered yet
+    expect(screen.queryByText('plugin.debugInfo.title')).not.toBeInTheDocument()
+
+    await user.click(trigger)
+
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
