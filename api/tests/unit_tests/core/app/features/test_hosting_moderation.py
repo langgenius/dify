@@ -1,8 +1,7 @@
 from unittest.mock import Mock, patch
 
-from graphon.model_runtime.entities.message_entities import PromptMessage
-
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
+from graphon.model_runtime.entities.message_entities import PromptMessage
 
 
 class TestHostingModerationFeature:
