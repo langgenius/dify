@@ -18,7 +18,7 @@ describe('useWorkflowFinished', () => {
     expect(state.resultText).toBe('hello')
   })
 
-  it('joins multi-key text outputs with blank lines and activates the result tab', () => {
+  it('joins multi-key text outputs with single line breaks and activates the result tab', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowFinished(), {
       initialStoreState: { workflowRunningData: baseRunningData() },
     })

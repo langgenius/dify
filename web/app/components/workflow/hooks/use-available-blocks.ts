@@ -42,7 +42,7 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
       availablePrevBlocks = []
 
     let availableNextBlocks = availableNodesType
-    if (!nodeType || nodeType === BlockEnum.End || nodeType === BlockEnum.LoopEnd || nodeType === BlockEnum.KnowledgeBase)
+    if (!nodeType || nodeType === BlockEnum.LoopEnd || nodeType === BlockEnum.KnowledgeBase)
       availableNextBlocks = []
 
     return {
