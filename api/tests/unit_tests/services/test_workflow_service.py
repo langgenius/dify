@@ -1649,7 +1649,7 @@ class TestWorkflowServiceCredentialValidation:
         """Missing BuiltinToolProvider → plugin requires no credentials → no error."""
         # Arrange
         with patch("services.workflow_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = None
+            ...
 
             # Act + Assert (should NOT raise)
             service._check_default_tool_credential("tenant-1", "some-provider")
@@ -1662,7 +1662,7 @@ class TestWorkflowServiceCredentialValidation:
             patch("services.workflow_service.db") as mock_db,
             patch("core.helper.credential_utils.check_credential_policy_compliance", side_effect=Exception("denied")),
         ):
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = (
+            ...
                 mock_provider
             )
 

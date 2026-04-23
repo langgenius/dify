@@ -545,9 +545,9 @@ class TestVectorService:
 
         processing_rule = VectorServiceTestDataFactory.create_dataset_process_rule_mock()
 
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = dataset_document
+        ...
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = processing_rule
+        ...
 
         mock_embedding_model = VectorServiceTestDataFactory.create_embedding_model_instance_mock()
 
@@ -574,7 +574,7 @@ class TestVectorService:
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
 
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+        ...
 
         # Act
         VectorService.create_segments_vector(None, [segment], dataset, "parent_child_model")
@@ -599,9 +599,9 @@ class TestVectorService:
 
         dataset_document = VectorServiceTestDataFactory.create_dataset_document_mock()
 
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = dataset_document
+        ...
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        ...
 
         # Act & Assert
         with pytest.raises(ValueError, match="No processing rule found"):
@@ -626,9 +626,9 @@ class TestVectorService:
 
         processing_rule = VectorServiceTestDataFactory.create_dataset_process_rule_mock()
 
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = dataset_document
+        ...
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = processing_rule
+        ...
 
         # Act & Assert
         with pytest.raises(ValueError, match="The knowledge base index technique is not high quality"):

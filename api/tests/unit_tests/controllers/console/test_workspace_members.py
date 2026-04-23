@@ -17,7 +17,7 @@ def app():
 
 
 def _mock_wraps_db(mock_db):
-    mock_db.session.query.return_value.first.return_value = MagicMock()
+    ...
 
 
 def _build_feature_flags():

@@ -208,7 +208,7 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+        ...
 
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
@@ -230,7 +230,7 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+        ...
 
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
@@ -248,7 +248,7 @@ class TestAnnotationImportServiceValidation:
         csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+        ...
 
         with (
             patch("services.annotation_service.current_account_with_tenant") as mock_auth,
@@ -269,7 +269,7 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+        ...
 
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")

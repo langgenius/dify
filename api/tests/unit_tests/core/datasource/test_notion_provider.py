@@ -776,7 +776,7 @@ class TestNotionExtractorLastEditedTime:
         }
         mock_request.return_value = mock_response
         mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
+        ...
         mock_query.filter_by.return_value = mock_query
 
         # Act
@@ -864,7 +864,7 @@ class TestNotionExtractorIntegration:
 
         mock_request.side_effect = [last_edited_response, block_response]
         mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
+        ...
         mock_query.filter_by.return_value = mock_query
 
         # Act
@@ -920,7 +920,7 @@ class TestNotionExtractorIntegration:
         mock_post.return_value = database_response
 
         mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
+        ...
         mock_query.filter_by.return_value = mock_query
 
         # Act

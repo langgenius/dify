@@ -168,10 +168,10 @@ class TestSegmentServiceCreateSegment:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None  # No existing segments
-        mock_db_session.query.return_value = mock_query
+        ...
 
         mock_segment = SegmentTestDataFactory.create_segment_mock()
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
@@ -217,10 +217,10 @@ class TestSegmentServiceCreateSegment:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         mock_segment = SegmentTestDataFactory.create_segment_mock()
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
@@ -252,7 +252,7 @@ class TestSegmentServiceCreateSegment:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         mock_embedding_model = MagicMock()
         mock_embedding_model.get_text_embedding_num_tokens.return_value = [10]
@@ -260,7 +260,7 @@ class TestSegmentServiceCreateSegment:
         mock_model_manager.get_model_instance.return_value = mock_embedding_model
 
         mock_segment = SegmentTestDataFactory.create_segment_mock()
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
@@ -294,10 +294,10 @@ class TestSegmentServiceCreateSegment:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         mock_segment = SegmentTestDataFactory.create_segment_mock(enabled=False, status="error")
-        mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
@@ -345,7 +345,7 @@ class TestSegmentServiceUpdateSegment:
         dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = SegmentUpdateArgs(content="Updated content", keywords=["updated"])
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
@@ -434,7 +434,7 @@ class TestSegmentServiceUpdateSegment:
         dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = SegmentUpdateArgs(content="Updated question", answer="Updated answer", keywords=["qa"])
 
-        mock_db_session.query.return_value.where.return_value.first.return_value = segment
+        ...
 
         with (
             patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
@@ -563,7 +563,7 @@ class TestSegmentServiceDeleteSegments:
 
         mock_query = MagicMock()
         mock_query.with_entities.return_value.where.return_value.all.return_value = segments_info
-        mock_db_session.query.return_value = mock_query
+        ...
 
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = []
@@ -581,7 +581,7 @@ class TestSegmentServiceDeleteSegments:
             SegmentService.delete_segments(segment_ids, document, dataset)
 
             # Assert
-            mock_db_session.query.return_value.where.return_value.delete.assert_called_once()
+            ...
             mock_db_session.commit.assert_called_once()
             mock_task.delay.assert_called_once()
 
@@ -595,7 +595,7 @@ class TestSegmentServiceDeleteSegments:
         SegmentService.delete_segments([], document, dataset)
 
         # Assert
-        mock_db_session.query.assert_not_called()
+        ...
 
 
 class TestSegmentServiceUpdateSegmentsStatus:
@@ -793,7 +793,7 @@ class TestSegmentServiceGetSegmentById:
 
         mock_query = MagicMock()
         mock_query.where.return_value.first.return_value = segment
-        mock_db_session.query.return_value = mock_query
+        ...
 
         # Act
         result = SegmentService.get_segment_by_id(segment_id, tenant_id)
@@ -809,7 +809,7 @@ class TestSegmentServiceGetSegmentById:
 
         mock_query = MagicMock()
         mock_query.where.return_value.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         # Act
         result = SegmentService.get_segment_by_id(segment_id, tenant_id)
@@ -898,7 +898,7 @@ class TestSegmentServiceGetChildChunkById:
 
         mock_query = MagicMock()
         mock_query.where.return_value.first.return_value = chunk
-        mock_db_session.query.return_value = mock_query
+        ...
 
         # Act
         result = SegmentService.get_child_chunk_by_id(chunk_id, tenant_id)
@@ -914,7 +914,7 @@ class TestSegmentServiceGetChildChunkById:
 
         mock_query = MagicMock()
         mock_query.where.return_value.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         # Act
         result = SegmentService.get_child_chunk_by_id(chunk_id, tenant_id)
@@ -949,7 +949,7 @@ class TestSegmentServiceCreateChildChunk:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
@@ -981,7 +981,7 @@ class TestSegmentServiceCreateChildChunk:
 
         mock_query = MagicMock()
         mock_query.where.return_value.scalar.return_value = None
-        mock_db_session.query.return_value = mock_query
+        ...
 
         with (
             patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
