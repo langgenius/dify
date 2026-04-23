@@ -102,26 +102,34 @@ const ImportFromMarketplaceTemplateModal = ({
               <div className="flex items-center gap-3">
                 {template.icon_file_key
                   ? (
-                    <img
-                      src={`${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`}
-                      alt={template.template_name}
-                      className="h-10 w-10 rounded-lg object-cover"
-                    />
-                  )
+                      <img
+                        src={`${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`}
+                        alt={template.template_name}
+                        className="h-10 w-10 rounded-lg object-cover"
+                      />
+                    )
                   : (
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
-                      style={{ background: template.icon_background || '#F3F4F6' }}
-                    >
-                      {template.icon || '📄'}
-                    </div>
-                  )}
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
+                        style={{ background: template.icon_background || '#F3F4F6' }}
+                      >
+                        {template.icon || '📄'}
+                      </div>
+                    )}
                 <div className="flex flex-col">
                   <div className="system-md-semibold text-text-primary">{template.template_name}</div>
                   <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
-                    <span>{t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher_unique_handle}</span>
+                    <span>
+                      {t('marketplace.template.publishedBy', { ns: 'app' })}
+                      {' '}
+                      {template.publisher_unique_handle}
+                    </span>
                     <span>·</span>
-                    <span>{t('marketplace.template.usageCount', { ns: 'app' })} {template.usage_count}</span>
+                    <span>
+                      {t('marketplace.template.usageCount', { ns: 'app' })}
+                      {' '}
+                      {template.usage_count}
+                    </span>
                   </div>
                 </div>
               </div>

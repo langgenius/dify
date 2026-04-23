@@ -36,12 +36,12 @@ import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
-import SuggestedAction from './suggested-action'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
   PublisherSummarySection,
 } from './sections'
+import SuggestedAction from './suggested-action'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
@@ -365,8 +365,7 @@ const AppPublisher = ({
                 >
                   {publishingToMarketplace
                     ? t('common.publishingToMarketplace', { ns: 'workflow' })
-                    : t('common.publishToMarketplace', { ns: 'workflow' })
-                  }
+                    : t('common.publishToMarketplace', { ns: 'workflow' })}
                 </SuggestedAction>
               </div>
             )}
