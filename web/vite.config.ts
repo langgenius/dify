@@ -19,9 +19,6 @@ export default defineConfig(({ mode }) => {
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
-    staged: {
-      '*': 'eslint --fix --pass-on-unpruned-suppressions',
-    },
     plugins: isTest
       ? [
           nextStaticImageTestPlugin({ projectRoot }),

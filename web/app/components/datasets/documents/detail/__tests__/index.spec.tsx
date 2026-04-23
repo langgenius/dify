@@ -74,7 +74,7 @@ vi.mock('@/service/use-base', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mocks.toastNotify },
 }))
 

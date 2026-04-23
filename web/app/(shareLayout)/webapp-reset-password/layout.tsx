@@ -1,11 +1,12 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { useSuspenseQuery } from '@tanstack/react-query'
 import Header from '@/app/signin/_header'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

@@ -1,11 +1,11 @@
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {

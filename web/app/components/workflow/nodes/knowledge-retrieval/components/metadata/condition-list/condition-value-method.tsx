@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
@@ -7,7 +8,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 
 export type ConditionValueMethodProps = {
   valueMethod?: string

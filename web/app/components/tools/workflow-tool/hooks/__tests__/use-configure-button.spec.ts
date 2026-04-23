@@ -33,7 +33,7 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -150,14 +150,14 @@ describe('isParametersOutdated', () => {
 
   it('should return true when paragraph type does not match string', () => {
     const detail = createMockDetail()
-    detail.tool.parameters[0].type = 'number'
+    detail.tool.parameters[0]!.type = 'number'
     const inputs = [createMockInputVar({ variable: 'test_var', type: InputVarType.paragraph })]
     expect(isParametersOutdated(detail, inputs)).toBe(true)
   })
 
   it('should return true when text-input type does not match string', () => {
     const detail = createMockDetail()
-    detail.tool.parameters[0].type = 'number'
+    detail.tool.parameters[0]!.type = 'number'
     const inputs = [createMockInputVar({ variable: 'test_var', type: InputVarType.textInput })]
     expect(isParametersOutdated(detail, inputs)).toBe(true)
   })
@@ -344,7 +344,7 @@ describe('useConfigureButton', () => {
         inputs: [createMockInputVar({ variable: 'test_var', type: InputVarType.paragraph })],
       })))
 
-      expect(result.current.payload.parameters[0].type).toBe('string')
+      expect(result.current.payload.parameters[0]!.type).toBe('string')
     })
   })
 

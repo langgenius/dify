@@ -3,6 +3,7 @@ import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
@@ -13,7 +14,6 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
-import { toast } from '@/app/components/base/ui/toast'
 import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
@@ -112,14 +112,14 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
       // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
-        handleQueryChange(historyRef.current[currentIndex - 1])
+        handleQueryChange(historyRef.current[currentIndex - 1]!)
       }
     }
     else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
-        handleQueryChange(historyRef.current[currentIndex + 1])
+        handleQueryChange(historyRef.current[currentIndex + 1]!)
       }
       else if (currentIndex === historyRef.current.length - 1) {
         // If it is the last element, clear the input box

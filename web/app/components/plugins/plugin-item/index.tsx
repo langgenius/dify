@@ -9,6 +9,7 @@ import {
   RiHardDrive3Line,
   RiLoginCircleLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,9 +17,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
@@ -85,7 +86,10 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
@@ -105,7 +109,7 @@ const PluginItem: FC<Props> = ({
       }}
     >
       <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
-        <CornerMark text={categoriesMap[category].label} />
+        <CornerMark text={categoriesMap[category]!.label} />
         {/* Header */}
         <div className="flex">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">

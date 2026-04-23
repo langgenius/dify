@@ -1,5 +1,4 @@
 import type { DataSet } from '@/models/datasets'
-import { RiEditLine } from '@remixicon/react'
 import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -22,6 +21,7 @@ const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
+const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -210,7 +210,7 @@ describe('MenuItem', () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
       // Arrange
-      render(<MenuItem name="Edit" Icon={RiEditLine} handleClick={handleClick} />)
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
       // Act
       await user.click(screen.getByText('Edit'))
@@ -225,7 +225,7 @@ describe('MenuItem', () => {
 
       render(
         <div onClick={parentClick}>
-          <MenuItem name="Edit" Icon={RiEditLine} handleClick={handleClick} />
+          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
         </div>,
       )
 
@@ -236,7 +236,7 @@ describe('MenuItem', () => {
     })
 
     it('should not crash when no click handler is provided', () => {
-      render(<MenuItem name="Edit" Icon={RiEditLine} />)
+      render(<MenuItem name="Edit" Icon={TestEditIcon} />)
 
       const event = createEvent.click(screen.getByText('Edit'))
       fireEvent(screen.getByText('Edit'), event)

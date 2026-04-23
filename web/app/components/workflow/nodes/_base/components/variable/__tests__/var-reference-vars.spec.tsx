@@ -199,6 +199,34 @@ describe('VarReferenceVars', () => {
     }))
   })
 
+  it('should filter by externally controlled search text and match child variables', () => {
+    render(
+      <VarReferenceVars
+        hideSearch
+        searchText="child"
+        vars={createVars([
+          {
+            title: 'Object vars',
+            nodeId: 'node-obj',
+            vars: [{
+              variable: 'payload',
+              type: VarType.object,
+              children: [{ variable: 'child_name', type: VarType.string }],
+            }, {
+              variable: 'other_value',
+              type: VarType.string,
+            }],
+          },
+        ])}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
+    expect(screen.getByText('payload')).toBeInTheDocument()
+    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
+  })
+
   it('should ignore file vars when file support is disabled and forward blur-sm events', () => {
     const onChange = vi.fn()
     const onBlur = vi.fn()

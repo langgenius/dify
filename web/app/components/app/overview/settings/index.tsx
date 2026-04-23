@@ -3,7 +3,11 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -16,12 +20,8 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -57,6 +57,10 @@ export type ConfigParams = {
 }
 
 const prefixSettings = 'overview.appInfo.settings'
+type SelectOption = {
+  value: string
+  name: string
+}
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
@@ -110,6 +114,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
+  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
+  const selectedLanguage = languageOptions.find(item => item.value === language)
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
@@ -303,13 +309,26 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {/* language */}
           <div className="flex items-center">
             <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
-            <SimpleSelect
-              wrapperClassName="w-[200px]"
-              items={languages.filter(item => item.supported)}
-              defaultValue={language}
-              onSelect={item => setLanguage(item.value as Language)}
-              notClearable
-            />
+            <Select
+              value={selectedLanguage?.value ?? null}
+              onValueChange={(nextValue) => {
+                if (!nextValue)
+                  return
+                setLanguage(nextValue as Language)
+              }}
+            >
+              <SelectTrigger size="large" className="w-[200px]">
+                {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+              </SelectTrigger>
+              <SelectContent popupClassName="w-(--anchor-width)">
+                {languageOptions.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {/* theme color */}
           {isChat && (

@@ -6,10 +6,11 @@ import type {
   ToolWithProvider,
 } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
@@ -180,7 +181,10 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {

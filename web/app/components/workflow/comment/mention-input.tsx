@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react'
 import type { UserProfile } from '@/service/workflow-comment'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import {
@@ -19,8 +21,6 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { Button } from '@/app/components/base/ui/button'
 import { useParams } from '@/next/navigation'
 import { fetchMentionableUsers } from '@/service/workflow-comment'
 import { useStore, useWorkflowStore } from '../store'
@@ -111,7 +111,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
           continue
 
         const previousChar = searchStart > 0 ? value[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar))
+        if (searchStart > 0 && !/\s/.test(previousChar!))
           continue
 
         if (
@@ -332,7 +332,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
       const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
 
       if (mentionMatch) {
-        setMentionQuery(mentionMatch[1])
+        setMentionQuery(mentionMatch[1]!)
         setMentionPosition(cursorPosition - mentionMatch[0].length)
         setShowMentionDropdown(true)
         setSelectedMentionIndex(0)
@@ -398,7 +398,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
     const beforeMention = value.slice(0, mentionPosition)
     const afterMention = value.slice(textarea.selectionStart || 0)
 
-    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1])
+    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1]!)
     const prefix = needsSpaceBefore ? ' ' : ''
     const newContent = `${beforeMention}${prefix}@${user.name} ${afterMention}`
 
@@ -511,7 +511,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <div
           aria-hidden
           className={cn(
-            'inset-0 pointer-events-none absolute z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
             'body-lg-regular text-text-primary',
           )}
           style={{ paddingRight, paddingBottom }}

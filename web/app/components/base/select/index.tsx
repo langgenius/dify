@@ -1,6 +1,6 @@
 'use client'
 /**
- * @deprecated Use `@/app/components/base/ui/select` instead.
+ * @deprecated Use `@langgenius/dify-ui/select` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */

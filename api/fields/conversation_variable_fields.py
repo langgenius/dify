@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Any
 
 from flask_restx import Namespace, fields
-from graphon.variables.types import SegmentType
 from pydantic import field_validator
 
 from fields.base import ResponseModel
+from graphon.variables.types import SegmentType
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
@@ -57,10 +57,10 @@ class ConversationVariableResponse(ResponseModel):
     def _normalize_value_type(cls, value: Any) -> str:
         exposed_type = getattr(value, "exposed_type", None)
         if callable(exposed_type):
-            return str(exposed_type().value)
+            return str(exposed_type())
         if isinstance(value, str):
             try:
-                return str(SegmentType(value).exposed_type().value)
+                return str(SegmentType(value).exposed_type())
             except ValueError:
                 return value
         try:

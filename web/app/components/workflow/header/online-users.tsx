@@ -1,17 +1,17 @@
 'use client'
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useReactFlow } from 'reactflow'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'

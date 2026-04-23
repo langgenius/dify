@@ -1,18 +1,8 @@
 {
+  "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": "src",
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "types": ["vite-plus/test/globals"]
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "tailwind.config.ts"],
+  "exclude": ["node_modules", "dist", "storybook-static", "coverage"]
 }

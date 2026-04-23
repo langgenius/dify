@@ -1,6 +1,11 @@
 import type { WorkflowHistoryState } from '../workflow-history-store'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiCloseLine,
   RiHistoryLine,
 } from '@remixicon/react'
@@ -13,11 +18,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -91,12 +91,20 @@ const ViewWorkflowHistory = () => {
   }, [t])
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
-    const filterList = (list: any, startIndex = 0, reverse = false) => list.map((state: Partial<WorkflowHistoryState>, index: number) => {
-      const nodes = (state.nodes || store.getState().nodes) || []
-      const nodeId = state?.workflowHistoryEventMeta?.nodeId
+    const filterList = (
+      list: Array<Partial<WorkflowHistoryState> | undefined>,
+      startIndex = 0,
+      reverse = false,
+    ) => list.flatMap((state, index) => {
+      if (!state)
+        return []
+
+      const nodes = state.nodes || store.getState().nodes || []
+      const nodeId = state.workflowHistoryEventMeta?.nodeId
       const targetTitle = nodes.find(n => n.id === nodeId)?.data?.title ?? ''
-      return {
-        label: state.workflowHistoryEvent && getHistoryLabel(state.workflowHistoryEvent),
+
+      return [{
+        label: state.workflowHistoryEvent ? getHistoryLabel(state.workflowHistoryEvent) : '',
         index: reverse ? list.length - 1 - index - startIndex : index - startIndex,
         state: {
           ...state,
@@ -107,8 +115,8 @@ const ViewWorkflowHistory = () => {
               }
             : undefined,
         },
-      }
-    }).filter(Boolean)
+      }]
+    })
 
     const historyData = {
       pastStates: filterList(pastStates, pastStates.length).reverse(),
@@ -132,35 +140,42 @@ const ViewWorkflowHistory = () => {
 
   return (
     (
-      <PortalToFollowElem
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: 131,
-        }}
+      <Popover
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen) => {
+          if (nodesReadOnly)
+            return
+          setOpen(nextOpen)
+        }}
       >
-        <PortalToFollowElemTrigger onClick={() => !nodesReadOnly && setOpen(v => !v)}>
-          <TipPopup
-            title={t('changeHistory.title', { ns: 'workflow' })}
-          >
-            <div
-              className={
-                cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
-              }
-              onClick={() => {
-                if (nodesReadOnly)
-                  return
-                setCurrentLogItem()
-                setShowMessageLogModal(false)
-              }}
-            >
-              <RiHistoryLine className="h-4 w-4" />
-            </div>
-          </TipPopup>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-12">
+        <TipPopup
+          title={t('changeHistory.title', { ns: 'workflow' })}
+        >
+          <PopoverTrigger
+            nativeButton={false}
+            render={(
+              <div
+                className={
+                  cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+                }
+                onClick={() => {
+                  if (nodesReadOnly)
+                    return
+                  setCurrentLogItem()
+                  setShowMessageLogModal(false)
+                }}
+              >
+                <RiHistoryLine className="h-4 w-4" />
+              </div>
+            )}
+          />
+        </TipPopup>
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={4}
+          alignOffset={131}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div
             className="ml-2 flex max-w-[360px] min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
           >
@@ -293,8 +308,8 @@ const ViewWorkflowHistory = () => {
               <div className="mb-1 leading-[18px] text-text-tertiary">{t('changeHistory.hintText', { ns: 'workflow' })}</div>
             </div>
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     )
   )
 }

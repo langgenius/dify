@@ -14,9 +14,6 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -24,7 +21,11 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
+from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
 
@@ -88,6 +89,19 @@ def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) 
 
 class EnabledConfig(TypedDict):
     enabled: bool
+
+
+class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
+    provider: str
+    name: str
+    mode: NotRequired[str]
+    completion_params: NotRequired[dict[str, Any]]
+
+
+class SuggestedQuestionsAfterAnswerConfig(TypedDict):
+    enabled: bool
+    model: NotRequired[SuggestedQuestionsAfterAnswerModelConfig]
+    prompt: NotRequired[str]
 
 
 class EmbeddingModelInfo(TypedDict):
@@ -219,7 +233,7 @@ class ModelConfig(TypedDict):
 class AppModelConfigDict(TypedDict):
     opening_statement: str | None
     suggested_questions: list[str]
-    suggested_questions_after_answer: EnabledConfig
+    suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
     text_to_speech: EnabledConfig
     retriever_resource: EnabledConfig
@@ -446,7 +460,8 @@ class App(Base):
 
     @property
     def api_base_url(self) -> str:
-        return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return normalize_api_base_url(base)
 
     @property
     def tenant(self) -> Tenant | None:
@@ -678,8 +693,13 @@ class AppModelConfig(TypeBase):
         return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
 
     @property
-    def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return self._get_enabled_config(self.suggested_questions_after_answer)
+    def suggested_questions_after_answer_dict(self) -> SuggestedQuestionsAfterAnswerConfig:
+        return cast(
+            SuggestedQuestionsAfterAnswerConfig,
+            json.loads(self.suggested_questions_after_answer)
+            if self.suggested_questions_after_answer
+            else {"enabled": False},
+        )
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:

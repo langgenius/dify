@@ -6,11 +6,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from graphon.file import File, FileTransferMethod, FileType
 
 
 def _unwrap(func):
@@ -31,7 +31,7 @@ def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     file_list = [
         File(
             tenant_id="t1",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="http://u",
         )

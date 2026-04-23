@@ -9,11 +9,11 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
@@ -64,7 +64,7 @@ const ModelLoadBalancingConfigs = ({
         if (!prev)
           return prev
         const newConfigs = [...prev.configs]
-        const modifiedConfig = modifier(newConfigs[index])
+        const modifiedConfig = modifier(newConfigs[index]!)
         if (modifiedConfig)
           newConfigs[index] = modifiedConfig
         else

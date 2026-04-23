@@ -9,7 +9,7 @@ const strToKeyValueList = (value: string) => {
     const [key, ...others] = item.split(':')
     return {
       id: uniqueId(UNIQUE_ID_PREFIX),
-      key: key.trim(),
+      key: key!.trim(),
       value: others.join(':').trim(),
     }
   })

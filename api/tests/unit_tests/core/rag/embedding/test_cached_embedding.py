@@ -12,11 +12,11 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from sqlalchemy.exc import IntegrityError
 
 from core.rag.embedding.cached_embedding import CacheEmbedding
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from models.dataset import Embedding
 
 

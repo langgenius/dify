@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
@@ -61,7 +61,7 @@ const VarList: FC<Props> = ({
         payload: {
           type: ChangeType.remove,
           payload: {
-            beforeKey: list[index].variable,
+            beforeKey: list[index]!.variable,
           },
         },
       })

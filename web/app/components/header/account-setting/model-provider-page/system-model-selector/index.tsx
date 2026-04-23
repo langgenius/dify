@@ -3,21 +3,17 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
@@ -138,22 +134,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
         {t(labelKey, { ns: 'common' })}
-        <Tooltip>
-          <TooltipTrigger
-            aria-label={tipText}
-            delay={0}
-            render={(
-              <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-              </span>
-            )}
-          />
-          <TooltipContent>
-            <div className="w-[261px] text-text-tertiary">
-              {tipText}
-            </div>
-          </TooltipContent>
-        </Tooltip>
+        <Infotip
+          aria-label={tipText}
+          className="ml-0.5"
+          popupClassName="w-[261px]"
+        >
+          {tipText}
+        </Infotip>
       </div>
     )
   }

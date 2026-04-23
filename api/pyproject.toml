@@ -6,7 +6,7 @@ requires-python = "~=3.12.0"
 dependencies = [
     # Legacy: mature and widely deployed
     "bleach>=6.3.0",
-    "boto3>=1.42.88",
+    "boto3>=1.42.91",
     "celery>=5.6.3",
     "croniter>=6.2.2",
     "flask-cors>=6.0.2",
@@ -30,11 +30,8 @@ dependencies = [
     "flask-migrate>=4.1.0,<5.0.0",
     "flask-orjson>=2.0.0,<3.0.0",
     "flask-restx>=1.3.2,<2.0.0",
-    "google-cloud-aiplatform>=1.147.0,<2.0.0",
+    "google-cloud-aiplatform>=1.148.1,<2.0.0",
     "httpx[socks]>=0.28.1,<1.0.0",
-    "langfuse>=4.2.0,<5.0.0",
-    "langsmith>=0.7.31,<1.0.0",
-    "mlflow-skinny>=3.11.1,<4.0.0",
     "opentelemetry-distro>=0.62b0,<1.0.0",
     "opentelemetry-instrumentation-celery>=0.62b0,<1.0.0",
     "opentelemetry-instrumentation-flask>=0.62b0,<1.0.0",
@@ -44,15 +41,12 @@ dependencies = [
     "opentelemetry-propagator-b3>=1.41.0,<2.0.0",
     "readabilipy>=0.3.0,<1.0.0",
     "resend>=2.27.0,<3.0.0",
-    "weave>=0.52.36,<1.0.0",
 
     # Emerging: newer and fast-moving, use compatible pins
-    "arize-phoenix-otel~=0.15.0",
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.1.2",
+    "graphon~=0.2.2",
     "httpx-sse~=0.4.0",
-    "json-repair~=0.59.2",
-    "opik~=1.11.2",
+    "json-repair~=0.59.4",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -61,8 +55,8 @@ dependencies = [
 packages = []
 
 [tool.uv.workspace]
-members = ["providers/vdb/*"]
-exclude = ["providers/vdb/__pycache__"]
+members = ["providers/vdb/*", "providers/trace/*"]
+exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
 dify-vdb-alibabacloud-mysql = { workspace = true }
@@ -95,9 +89,17 @@ dify-vdb-upstash = { workspace = true }
 dify-vdb-vastbase = { workspace = true }
 dify-vdb-vikingdb = { workspace = true }
 dify-vdb-weaviate = { workspace = true }
+dify-trace-aliyun = { workspace = true }
+dify-trace-arize-phoenix = { workspace = true }
+dify-trace-langfuse = { workspace = true }
+dify-trace-langsmith = { workspace = true }
+dify-trace-mlflow = { workspace = true }
+dify-trace-opik = { workspace = true }
+dify-trace-tencent = { workspace = true }
+dify-trace-weave = { workspace = true }
 
 [tool.uv]
-default-groups = ["storage", "tools", "vdb-all"]
+default-groups = ["storage", "tools", "vdb-all", "trace-all"]
 package = false
 override-dependencies = [
     "pyarrow>=18.0.0",
@@ -112,10 +114,10 @@ override-dependencies = [
 dev = [
     "coverage>=7.13.4",
     "dotenv-linter>=0.7.0",
-    "faker>=20.1.0",
+    "faker>=40.15.0",
     "lxml-stubs>=0.5.1",
-    "basedpyright>=1.39.0",
-    "ruff>=0.15.10",
+    "basedpyright>=1.39.3",
+    "ruff>=0.15.11",
     "pytest>=9.0.3",
     "pytest-benchmark>=5.2.3",
     "pytest-cov>=7.1.0",
@@ -155,14 +157,14 @@ dev = [
     "types-tensorflow>=2.18.0.20260408",
     "types-tqdm>=4.67.3.20260408",
     "types-ujson>=5.10.0",
-    "boto3-stubs>=1.42.88",
+    "boto3-stubs>=1.42.92",
     "types-jmespath>=1.1.0.20260408",
-    "hypothesis>=6.151.12",
+    "hypothesis>=6.152.1",
     "types_pyOpenSSL>=24.1.0",
     "types_cffi>=2.0.0.20260408",
     "types_setuptools>=82.0.0.20260408",
     "pandas-stubs>=3.0.0",
-    "scipy-stubs>=1.15.3.0",
+    "scipy-stubs>=1.17.1.4",
     "types-python-http-client>=3.3.7.20260408",
     "import-linter>=2.3",
     "types-redis>=4.6.0.20241004",
@@ -171,8 +173,8 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.60.0",
-    "xinference-client>=2.4.0",
+    "pyrefly>=0.62.0",
+    "xinference-client>=2.5.0",
 ]
 
 ############################################################
@@ -181,13 +183,13 @@ dev = [
 ############################################################
 storage = [
     "azure-storage-blob>=12.28.0",
-    "bce-python-sdk>=0.9.69",
+    "bce-python-sdk>=0.9.70",
     "cos-python-sdk-v5>=1.9.41",
     "esdk-obs-python>=3.22.2",
     "google-cloud-storage>=3.10.1",
     "opendal>=0.46.0",
     "oss2>=2.19.1",
-    "supabase>=2.18.1",
+    "supabase>=2.28.3",
     "tos>=2.9.0",
 ]
 
@@ -264,7 +266,26 @@ vdb-vastbase = ["dify-vdb-vastbase"]
 vdb-vikingdb = ["dify-vdb-vikingdb"]
 vdb-weaviate = ["dify-vdb-weaviate"]
 # Optional client used by some tests / integrations (not a vector backend plugin)
-vdb-xinference = ["xinference-client>=2.4.0"]
+vdb-xinference = ["xinference-client>=2.5.0"]
+
+trace-all = [
+    "dify-trace-aliyun",
+    "dify-trace-arize-phoenix",
+    "dify-trace-langfuse",
+    "dify-trace-langsmith",
+    "dify-trace-mlflow",
+    "dify-trace-opik",
+    "dify-trace-tencent",
+    "dify-trace-weave",
+]
+trace-aliyun = ["dify-trace-aliyun"]
+trace-arize-phoenix = ["dify-trace-arize-phoenix"]
+trace-langfuse = ["dify-trace-langfuse"]
+trace-langsmith = ["dify-trace-langsmith"]
+trace-mlflow = ["dify-trace-mlflow"]
+trace-opik = ["dify-trace-opik"]
+trace-tencent = ["dify-trace-tencent"]
+trace-weave = ["dify-trace-weave"]
 
 [tool.pyrefly]
 project-includes = ["."]

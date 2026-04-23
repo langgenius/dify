@@ -1,16 +1,16 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
@@ -107,7 +107,7 @@ const PluginVersionPicker: FC<Props> = ({
                 <div className="system-sm-medium text-text-secondary">{version.version}</div>
                 {currentVersion === version.version && <Badge className="ml-1" text="CURRENT" />}
               </div>
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{formatDate(version.created_at, format)}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">{formatDate(version.created_at, format!)}</div>
             </div>
           ))}
         </div>

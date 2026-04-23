@@ -10,7 +10,7 @@ const mockDeleteEndpoint = vi.fn()
 const mockUpdateEndpoint = vi.fn()
 const mockToastNotify = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
@@ -161,30 +161,30 @@ describe('EndpointCard', () => {
     it('should render endpoint name', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      expect(screen.getByText('Test Endpoint')).toBeInTheDocument()
+      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
     })
 
     it('should render visible endpoints only', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      expect(screen.getByText('GET')).toBeInTheDocument()
-      expect(screen.getByText('https://api.example.com/api/test')).toBeInTheDocument()
+      expect(screen.getByText('GET'))!.toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com/api/test'))!.toBeInTheDocument()
       expect(screen.queryByText('POST')).not.toBeInTheDocument()
     })
 
     it('should show active status when enabled', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      expect(screen.getByText('plugin.detailPanel.serviceOk')).toBeInTheDocument()
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
+      expect(screen.getByText('plugin.detailPanel.serviceOk'))!.toBeInTheDocument()
+      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-color', 'green')
     })
 
     it('should show disabled status when not enabled', () => {
       const disabledData = { ...mockEndpointData, enabled: false }
       render(<EndpointCard pluginDetail={mockPluginDetail} data={disabledData} handleChange={mockHandleChange} />)
 
-      expect(screen.getByText('plugin.detailPanel.disabled')).toBeInTheDocument()
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'gray')
+      expect(screen.getByText('plugin.detailPanel.disabled'))!.toBeInTheDocument()
+      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-color', 'gray')
     })
   })
 
@@ -194,7 +194,7 @@ describe('EndpointCard', () => {
 
       fireEvent.click(screen.getByRole('switch'))
 
-      expect(screen.getByText('plugin.detailPanel.endpointDisableTip')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointDisableTip'))!.toBeInTheDocument()
     })
 
     it('should call disableEndpoint when confirm disable', () => {
@@ -211,16 +211,16 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1])
+      fireEvent.click(allButtons[1]!)
 
-      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
     })
 
     it('should call deleteEndpoint when confirm delete', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1])
+      fireEvent.click(allButtons[1]!)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalledWith('ep-1')
@@ -230,16 +230,16 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0])
+      fireEvent.click(allButtons[0]!)
 
-      expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
     })
 
     it('should call updateEndpoint when save in modal', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0])
+      fireEvent.click(allButtons[0]!)
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockUpdateEndpoint).toHaveBeenCalled()
@@ -252,13 +252,13 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[2])
+      fireEvent.click(allButtons[2]!)
 
       act(() => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(screen.getByText('Test Endpoint')).toBeInTheDocument()
+      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
     })
   })
 
@@ -270,7 +270,7 @@ describe('EndpointCard', () => {
       }
       render(<EndpointCard pluginDetail={mockPluginDetail} data={dataWithNoEndpoints} handleChange={mockHandleChange} />)
 
-      expect(screen.getByText('Test Endpoint')).toBeInTheDocument()
+      expect(screen.getByText('Test Endpoint'))!.toBeInTheDocument()
     })
 
     it('should call handleChange after enable', () => {
@@ -286,20 +286,20 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       fireEvent.click(screen.getByRole('switch'))
-      expect(screen.getByText('plugin.detailPanel.endpointDisableTip')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointDisableTip'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitForAlertDialogToClose()
 
-      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'true')
     })
 
     it('should hide delete confirm when cancel clicked', async () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1])
-      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
+      fireEvent.click(allButtons[1]!)
+      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitForAlertDialogToClose()
@@ -309,8 +309,8 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0])
-      expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
+      fireEvent.click(allButtons[0]!)
+      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 
@@ -344,7 +344,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1])
+      fireEvent.click(allButtons[1]!)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalled()
@@ -354,9 +354,9 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0])
+      fireEvent.click(allButtons[0]!)
 
-      expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 
       failureFlags.update = true
       fireEvent.click(screen.getByTestId('modal-save'))

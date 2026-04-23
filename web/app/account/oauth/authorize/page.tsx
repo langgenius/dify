@@ -1,5 +1,8 @@
 'use client'
 
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -7,17 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useIsLogin, useUserProfile } from '@/service/use-common'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {
@@ -61,15 +62,20 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { data: userProfileResp } = useUserProfile()
+  // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
+  // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
+  // service/base.ts prevents a redirect loop here.
+  const { data: userProfileResp, isPending: isProfileLoading, error: profileError } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
 
-  const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
-  const isLoading = isOAuthLoading || isIsLoginLoading
+  const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
@@ -151,7 +157,7 @@ export default function OAuthAuthorize() {
             return (
               <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
-                {Icon.label}
+                {Icon!.label}
               </div>
             )
           })}

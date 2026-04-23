@@ -1,8 +1,8 @@
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {

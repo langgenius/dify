@@ -120,7 +120,7 @@ const ConditionList = ({
             availableNodes={availableNodes}
             filterVar={filterVar}
             numberVariables={numberVariables}
-            file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0] } : undefined}
+            file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0]! } : undefined}
             isSubVariableKey={isSubVariable}
           />
         ))

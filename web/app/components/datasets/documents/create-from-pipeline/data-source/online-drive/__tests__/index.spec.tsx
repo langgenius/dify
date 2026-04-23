@@ -49,8 +49,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -259,8 +259,8 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('file-list')).toBeInTheDocument()
+      expect(screen.getByTestId('header'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-list'))!.toBeInTheDocument()
     })
 
     it('should render Header with correct props', () => {
@@ -271,9 +271,9 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header-doc-title')).toHaveTextContent('Docs')
-      expect(screen.getByTestId('header-plugin-name')).toHaveTextContent('My Online Drive')
-      expect(screen.getByTestId('header-credential-id')).toHaveTextContent('cred-123')
+      expect(screen.getByTestId('header-doc-title'))!.toHaveTextContent('Docs')
+      expect(screen.getByTestId('header-plugin-name'))!.toHaveTextContent('My Online Drive')
+      expect(screen.getByTestId('header-credential-id'))!.toHaveTextContent('cred-123')
     })
 
     it('should render FileList with correct props', () => {
@@ -290,11 +290,11 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list')).toBeInTheDocument()
-      expect(screen.getByTestId('file-list-keywords')).toHaveTextContent('search-term')
-      expect(screen.getByTestId('file-list-breadcrumbs')).toHaveTextContent('folder1/folder2')
-      expect(screen.getByTestId('file-list-bucket')).toHaveTextContent('my-bucket')
-      expect(screen.getByTestId('file-list-selected-count')).toHaveTextContent('2')
+      expect(screen.getByTestId('file-list'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-list-keywords'))!.toHaveTextContent('search-term')
+      expect(screen.getByTestId('file-list-breadcrumbs'))!.toHaveTextContent('folder1/folder2')
+      expect(screen.getByTestId('file-list-bucket'))!.toHaveTextContent('my-bucket')
+      expect(screen.getByTestId('file-list-selected-count'))!.toHaveTextContent('2')
     })
 
     it('should pass docLink with correct path to Header', () => {
@@ -371,7 +371,7 @@ describe('OnlineDrive', () => {
 
         render(<OnlineDrive {...props} />)
 
-        expect(screen.getByTestId('header-plugin-name')).toHaveTextContent('Custom Online Drive')
+        expect(screen.getByTestId('header-plugin-name'))!.toHaveTextContent('Custom Online Drive')
       })
     })
 
@@ -411,7 +411,7 @@ describe('OnlineDrive', () => {
 
         render(<OnlineDrive {...props} />)
 
-        expect(screen.getByTestId('file-list-is-in-pipeline')).toHaveTextContent('true')
+        expect(screen.getByTestId('file-list-is-in-pipeline'))!.toHaveTextContent('true')
       })
     })
 
@@ -421,7 +421,7 @@ describe('OnlineDrive', () => {
 
         render(<OnlineDrive {...props} />)
 
-        expect(screen.getByTestId('file-list-support-batch')).toHaveTextContent('true')
+        expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent('true')
       })
 
       it('should pass supportBatchUpload false to FileList when supportBatchUpload is false', () => {
@@ -429,7 +429,7 @@ describe('OnlineDrive', () => {
 
         render(<OnlineDrive {...props} />)
 
-        expect(screen.getByTestId('file-list-support-batch')).toHaveTextContent('false')
+        expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent('false')
       })
 
       it.each([
@@ -441,7 +441,7 @@ describe('OnlineDrive', () => {
 
         render(<OnlineDrive {...props} />)
 
-        expect(screen.getByTestId('file-list-support-batch')).toHaveTextContent(expected)
+        expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent(expected)
       })
     })
 
@@ -504,7 +504,7 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-list-loading')).toHaveTextContent('true')
+        expect(screen.getByTestId('file-list-loading'))!.toHaveTextContent('true')
       })
     })
 
@@ -566,7 +566,8 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert - filteredOnlineDriveFileList should have 2 items matching 'test'
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('2')
+      // Assert - filteredOnlineDriveFileList should have 2 items matching 'test'
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('2')
     })
 
     it('should return all files when keywords is empty', () => {
@@ -580,7 +581,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('3')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('3')
     })
 
     it('should filter files case-insensitively', () => {
@@ -594,7 +595,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('2')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('2')
     })
   })
 
@@ -932,7 +933,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header-credentials-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('header-credentials-count'))!.toHaveTextContent('0')
     })
 
     it('should handle undefined credentials data', () => {
@@ -943,7 +944,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header-credentials-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('header-credentials-count'))!.toHaveTextContent('0')
     })
 
     it('should handle undefined pipelineId', async () => {
@@ -969,7 +970,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('0')
     })
 
     it('should handle empty breadcrumbs', () => {
@@ -978,7 +979,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-breadcrumbs')).toHaveTextContent('')
+      expect(screen.getByTestId('file-list-breadcrumbs'))!.toHaveTextContent('')
     })
 
     it('should handle empty bucket', () => {
@@ -987,7 +988,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-bucket')).toHaveTextContent('')
+      expect(screen.getByTestId('file-list-bucket'))!.toHaveTextContent('')
     })
 
     it('should handle special characters in keywords', () => {
@@ -1001,7 +1002,8 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert - Should find file with special characters
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('1')
+      // Assert - Should find file with special characters
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('1')
     })
 
     it('should handle very long file names', () => {
@@ -1013,7 +1015,7 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('file-list-count')).toHaveTextContent('1')
+      expect(screen.getByTestId('file-list-count'))!.toHaveTextContent('1')
     })
 
     it('should handle bucket list initiation response', async () => {
@@ -1051,10 +1053,10 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('file-list')).toBeInTheDocument()
-      expect(screen.getByTestId('file-list-is-in-pipeline')).toHaveTextContent(String(propVariation.isInPipeline))
-      expect(screen.getByTestId('file-list-support-batch')).toHaveTextContent(String(propVariation.supportBatchUpload))
+      expect(screen.getByTestId('header'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-list'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-list-is-in-pipeline'))!.toHaveTextContent(String(propVariation.isInPipeline))
+      expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent(String(propVariation.supportBatchUpload))
     })
 
     it.each([
@@ -1117,7 +1119,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByText('Documentation')).toBeInTheDocument()
+      expect(screen.getByText('Documentation'))!.toBeInTheDocument()
     })
 
     it('should render doc link with correct href', () => {
@@ -1129,9 +1131,9 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://custom-docs.com/path')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(link)!.toHaveAttribute('href', 'https://custom-docs.com/path')
+      expect(link)!.toHaveAttribute('target', '_blank')
+      expect(link)!.toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should render doc title text', () => {
@@ -1139,7 +1141,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByText('My Documentation Title')).toBeInTheDocument()
+      expect(screen.getByText('My Documentation Title'))!.toBeInTheDocument()
     })
 
     it('should render configuration button', () => {
@@ -1147,7 +1149,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
   })
 
@@ -1164,7 +1166,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         if (docTitle)
-          expect(screen.getByText(docTitle)).toBeInTheDocument()
+          expect(screen.getByText(docTitle))!.toBeInTheDocument()
       })
     })
 
@@ -1178,7 +1180,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByRole('link')).toHaveAttribute('href', docLink)
+        expect(screen.getByRole('link'))!.toHaveAttribute('href', docLink)
       })
     })
 
@@ -1209,7 +1211,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const titleSpan = screen.getByTitle('Accessible Title')
-      expect(titleSpan).toBeInTheDocument()
+      expect(titleSpan)!.toBeInTheDocument()
     })
   })
 })
@@ -1437,10 +1439,10 @@ describe('utils', () => {
         const result = convertOnlineDriveData(data, [], 'my-bucket')
 
         expect(result.fileList).toHaveLength(4)
-        expect(result.fileList[0].type).toBe(OnlineDriveFileType.folder)
-        expect(result.fileList[1].type).toBe(OnlineDriveFileType.file)
-        expect(result.fileList[2].type).toBe(OnlineDriveFileType.folder)
-        expect(result.fileList[3].type).toBe(OnlineDriveFileType.file)
+        expect(result.fileList[0]!.type).toBe(OnlineDriveFileType.folder)
+        expect(result.fileList[1]!.type).toBe(OnlineDriveFileType.file)
+        expect(result.fileList[2]!.type).toBe(OnlineDriveFileType.folder)
+        expect(result.fileList[3]!.type).toBe(OnlineDriveFileType.file)
       })
     })
 
@@ -1539,7 +1541,7 @@ describe('utils', () => {
 
         const result = convertOnlineDriveData(data, [], 'my-bucket')
 
-        expect(result.fileList[0].size).toBe(0)
+        expect(result.fileList[0]!.size).toBe(0)
       })
 
       it('should handle files with very large size', () => {
@@ -1555,7 +1557,7 @@ describe('utils', () => {
 
         const result = convertOnlineDriveData(data, [], 'my-bucket')
 
-        expect(result.fileList[0].size).toBe(largeSize)
+        expect(result.fileList[0]!.size).toBe(largeSize)
       })
 
       it('should handle files with special characters in name', () => {
@@ -1574,9 +1576,9 @@ describe('utils', () => {
 
         const result = convertOnlineDriveData(data, [], 'my-bucket')
 
-        expect(result.fileList[0].name).toBe('file[1] (copy).txt')
-        expect(result.fileList[1].name).toBe('doc-with-dash_and_underscore.pdf')
-        expect(result.fileList[2].name).toBe('file with spaces.txt')
+        expect(result.fileList[0]!.name).toBe('file[1] (copy).txt')
+        expect(result.fileList[1]!.name).toBe('doc-with-dash_and_underscore.pdf')
+        expect(result.fileList[2]!.name).toBe('file with spaces.txt')
       })
 
       it('should handle complex next_page_parameters', () => {

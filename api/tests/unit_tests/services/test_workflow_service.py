@@ -12,9 +12,10 @@ This test suite covers:
 import json
 import uuid
 from typing import Any, cast
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch, sentinel
 
 import pytest
+
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -28,7 +29,6 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from graphon.variables.input_entities import VariableEntityType
-
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -1301,7 +1301,7 @@ class TestWorkflowService:
             passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
             assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is provided_config
 
-    def test_get_default_block_config_http_request_malformed_config_raises_value_error(self, workflow_service):
+    def test_get_default_block_config_http_request_malformed_config_raises_type_error(self, workflow_service):
         with (
             patch(
                 "services.workflow_service.get_node_type_classes_mapping",
@@ -1309,7 +1309,7 @@ class TestWorkflowService:
             ),
             patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
-            with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+            with pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"):
                 workflow_service.get_default_block_config(
                     BuiltinNodeTypes.HTTP_REQUEST,
                     filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
@@ -2615,7 +2615,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft.graph_dict = {"nodes": []}
         draft.get_node_config_by_id.return_value = {
             "id": "node-1",
-            "data": MagicMock(type=BuiltinNodeTypes.HUMAN_INPUT),
+            "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"},
         }
         service.get_draft_workflow = MagicMock(return_value=draft)
 
@@ -2820,16 +2820,21 @@ class TestWorkflowServiceFreeNodeExecution:
         workflow.app_id = "app-1"
         account = MagicMock()
         account.id = "u-1"
-        node_config = {"id": "n-1"}
+        node_config = {"id": "n-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"}}
         variable_pool = MagicMock()
 
         with (
             patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
             patch("services.workflow_service.GraphRuntimeState"),
+            patch(
+                "services.workflow_service.adapt_human_input_node_data_for_graph",
+                return_value=sentinel.adapted_node_data,
+            ) as mock_adapt_node_data,
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
+            mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
@@ -2842,9 +2847,11 @@ class TestWorkflowServiceFreeNodeExecution:
                 call_depth=0,
             )
             mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_adapt_node_data.assert_called_once_with(node_config["data"])
+            mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
             mock_node_cls.assert_called_once_with(
-                id="n-1",
-                config=node_config,
+                node_id="n-1",
+                config=sentinel.node_data,
                 graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
                 graph_runtime_state=ANY,
                 runtime=mock_runtime_cls.return_value,

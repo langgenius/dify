@@ -1,9 +1,9 @@
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 
 type OperationsProps = {
   showDelete: boolean
@@ -54,7 +54,7 @@ const Operations = ({
       {showDelete && (
         <>
           <DropdownMenuSeparator />
-          <DropdownMenuItem destructive onClick={handleDelete}>
+          <DropdownMenuItem variant="destructive" onClick={handleDelete}>
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
             {t('operation.delete', { ns: 'common' })}
           </DropdownMenuItem>

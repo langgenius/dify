@@ -46,7 +46,7 @@ describe('workflow preview loop interactions', () => {
     result.current.handleNodeLoopRerender('loop-node')
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const updatedLoopNode = mockSetNodes.mock.calls[0][0].find((node: Node) => node.id === 'loop-node')
+    const updatedLoopNode = mockSetNodes.mock.calls[0]![0].find((node: Node) => node.id === 'loop-node')
     expect(updatedLoopNode.width).toBe(100 + 60 + LOOP_PADDING.right)
     expect(updatedLoopNode.height).toBe(90 + 40 + LOOP_PADDING.bottom)
   })
