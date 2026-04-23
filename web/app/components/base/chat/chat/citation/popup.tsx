@@ -1,4 +1,5 @@
 import type { FC, MouseEvent } from 'react'
+import type { CitationItem } from '../type'
 import type { Resources } from './index'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Fragment, useState } from 'react'
@@ -9,6 +10,20 @@ import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
+
+/**
+ * Picks a segment to use for dataset/file download. Streaming message_end payloads may
+ * include multiple hits for one document where only later segments have `dataset_id` set
+ * (the first is merged before metadata is complete). Prefer any segment with both ids.
+ */
+function getPrimaryFileSource(sources: CitationItem[] | undefined): CitationItem | undefined {
+  if (!sources?.length)
+    return undefined
+  return (
+    sources.find(s => s.dataset_id && s.document_id)
+    ?? sources.find(s => s.dataset_id)
+  )
+}
 
 type PopupProps = {
   data: Resources
@@ -32,8 +47,9 @@ const Popup: FC<PopupProps> = ({
     e.stopPropagation()
 
     const isUploadFile = data.dataSourceType === 'upload_file' || data.dataSourceType === 'file'
-    const datasetId = data.sources?.[0]?.dataset_id
-    const documentId = data.documentId || data.sources?.[0]?.document_id
+    const sourceForDownload = getPrimaryFileSource(data.sources)
+    const datasetId = sourceForDownload?.dataset_id
+    const documentId = sourceForDownload?.document_id || data.documentId
     if (!isUploadFile || !datasetId || !documentId || isDownloading)
       return
 
@@ -67,7 +83,7 @@ const Popup: FC<PopupProps> = ({
             <div className="flex h-[18px] items-center">
               <FileIcon type={fileType} className="mr-1 h-4 w-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
-                {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!data.sources?.[0]?.dataset_id
+                {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!getPrimaryFileSource(data.sources)?.dataset_id
                   ? (
                       <button
                         data-testid="popup-download-btn"
