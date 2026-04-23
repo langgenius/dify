@@ -22,6 +22,8 @@ import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.service_api.dataset.document import (
+    DeprecatedDocumentAddByTextApi,
+    DeprecatedDocumentUpdateByTextApi,
     DocumentAddByFileApi,
     DocumentAddByTextApi,
     DocumentApi,
@@ -1005,7 +1007,7 @@ class TestDocumentAddByTextApi:
 
         # Act
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={
                 "name": "Test Document",
@@ -1037,7 +1039,7 @@ class TestDocumentAddByTextApi:
 
         # Act & Assert
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={"name": "Test Document", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1066,7 +1068,7 @@ class TestDocumentAddByTextApi:
 
         # Act & Assert
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={"name": "Test Document", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1091,6 +1093,20 @@ class TestArchivedDocumentImmutableError:
         error = ArchivedDocumentImmutableError()
         assert isinstance(error, BaseHTTPException)
         assert error.code == 403
+
+
+class TestDocumentTextRouteDeprecation:
+    """Test that legacy underscore text routes stay marked deprecated."""
+
+    def test_create_by_text_legacy_alias_is_deprecated(self):
+        """Ensure only the legacy create-by-text alias is marked deprecated."""
+        assert DeprecatedDocumentAddByTextApi.post.__apidoc__["deprecated"] is True
+        assert DocumentAddByTextApi.post.__apidoc__.get("deprecated") is not True
+
+    def test_update_by_text_legacy_alias_is_deprecated(self):
+        """Ensure only the legacy update-by-text alias is marked deprecated."""
+        assert DeprecatedDocumentUpdateByTextApi.post.__apidoc__["deprecated"] is True
+        assert DocumentUpdateByTextApi.post.__apidoc__.get("deprecated") is not True
 
 
 # =============================================================================
@@ -1162,7 +1178,7 @@ class TestDocumentUpdateByTextApiPost:
 
         doc_id = str(uuid.uuid4())
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_text",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update-by-text",
             method="POST",
             json={"name": "Updated Doc", "text": "New content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1195,7 +1211,7 @@ class TestDocumentUpdateByTextApiPost:
 
         doc_id = str(uuid.uuid4())
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_text",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update-by-text",
             method="POST",
             json={"name": "Doc", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},

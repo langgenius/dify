@@ -10,6 +10,72 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
+
+    return (
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
+    )
+  }
+
+  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    return (
+      <div
+        data-testid="popover-trigger"
+        onClick={() => setOpen(!open)}
+      >
+        {render}
+      </div>
+    )
+  }
+
+  const PopoverContent = ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    if (!open)
+      return null
+
+    return (
+      <div data-testid="popover-content" {...props}>
+        {children}
+      </div>
+    )
+  }
+
+  return {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+  }
+})
+
 type PortalToFollowElemProps = {
   children: React.ReactNode
   open?: boolean
@@ -209,20 +275,17 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const triggers = screen.getAllByTestId('portal-trigger')
-      const varPickerTrigger = triggers[triggers.length - 1]
+      const varPickerTrigger = screen.getByTestId('popover-trigger')
 
       await user.click(varPickerTrigger!)
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Select a different option
-      const options = screen.getAllByText('var2')
-      expect(options.length).toBeGreaterThan(0)
-      await user.click(options[0]!)
+      await user.click(screen.getByText('var2'))
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown when clicking the trigger button', async () => {
@@ -233,16 +296,15 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const triggers = screen.getAllByTestId('portal-trigger')
-      const varPickerTrigger = triggers[triggers.length - 1]
+      const varPickerTrigger = screen.getByTestId('popover-trigger')
 
       // Open dropdown
       await user.click(varPickerTrigger!)
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Close dropdown
       await user.click(varPickerTrigger!)
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 

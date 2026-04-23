@@ -1,15 +1,17 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+import { useTranslation } from 'react-i18next'
 import PanelOperatorPopup from './panel-operator-popup'
 
 type PanelOperatorProps = {
@@ -18,7 +20,6 @@ type PanelOperatorProps = {
   triggerClassName?: string
   offset?: OffsetOptions | number
   onOpenChange?: (open: boolean) => void
-  inNode?: boolean
   showHelpLink?: boolean
 }
 const PanelOperator = ({
@@ -32,6 +33,7 @@ const PanelOperator = ({
   onOpenChange,
   showHelpLink = true,
 }: PanelOperatorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const sideOffset = typeof offset === 'number'
     ? offset
@@ -42,29 +44,27 @@ const PanelOperator = ({
     ? offset.crossAxis
     : 0
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    setOpen(newOpen)
-
-    if (onOpenChange)
-      onOpenChange(newOpen)
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen)
+    onOpenChange?.(nextOpen)
   }, [onOpenChange])
 
   return (
     <DropdownMenu
+      modal={false}
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DropdownMenuTrigger render={<div />}>
-        <div
-          className={`
-            flex h-6 w-6 cursor-pointer items-center justify-center rounded-md
-            hover:bg-state-base-hover
-            ${open && 'bg-state-base-hover'}
-            ${triggerClassName}
-          `}
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </div>
+      <DropdownMenuTrigger
+        render={<button type="button" />}
+        aria-label={t('operation.more', { ns: 'common' })}
+        className={cn(
+          'nodrag nopan nowheel flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover',
+          'data-[popup-open]:bg-state-base-hover',
+          triggerClassName,
+        )}
+      >
+        <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -75,7 +75,7 @@ const PanelOperator = ({
         <PanelOperatorPopup
           id={id}
           data={data}
-          onClosePopup={() => handleOpenChange(false)}
+          onClosePopup={() => setOpen(false)}
           showHelpLink={showHelpLink}
         />
       </DropdownMenuContent>

@@ -3,13 +3,13 @@ import type {
   DSLImportResponse,
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector } from '@/context/app-context'

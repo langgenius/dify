@@ -1,6 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import List from '../index'
+
+let mockBrandingEnabled = false
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { branding: { enabled: mockBrandingEnabled } },
+})
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -18,15 +25,6 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceOwner: true,
   }),
   useSelector: () => true,
-}))
-
-// Mock global public context
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    systemFeatures: {
-      branding: { enabled: false },
-    },
-  }),
 }))
 
 // Mock external api panel context
@@ -101,6 +99,14 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
+// Mock SecretKeyModal — it depends on user profile context and service APIs
+// not configured in this test. ServiceApi always mounts the modal (controlled
+// by `isShow`) so we provide a lightweight stub.
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow }: { isShow: boolean }) =>
+    isShow ? <div data-testid="secret-key-modal" /> : null,
+}))
+
 // Mock TagManagementModal
 vi.mock('@/app/components/base/tag-management', () => ({
   default: () => <div data-testid="tag-management-modal" />,
@@ -133,6 +139,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBrandingEnabled = false
   })
 
   describe('Rendering', () => {
@@ -319,18 +326,9 @@ describe('List', () => {
     })
 
     it('should not show DatasetFooter when branding is enabled', async () => {
-      vi.doMock('@/context/global-public-context', () => ({
-        useGlobalPublicStore: () => ({
-          systemFeatures: {
-            branding: { enabled: true },
-          },
-        }),
-      }))
+      mockBrandingEnabled = true
 
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+      render(<List />)
 
       expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
     })

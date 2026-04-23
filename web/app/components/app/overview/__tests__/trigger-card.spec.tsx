@@ -73,8 +73,8 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
     <button
       data-testid="switch"
       data-checked={checked ? 'true' : 'false'}

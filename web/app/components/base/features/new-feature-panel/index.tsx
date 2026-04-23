@@ -1,7 +1,7 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 
@@ -64,19 +64,6 @@ const NewFeaturePanel = ({
         </div>
         {/* list */}
         <div className="grow basis-0 overflow-y-auto px-4 pb-4">
-          {showFileUpload && (
-            <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div className="absolute top-0 left-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className="relative flex h-full w-full items-start">
-                <div className="mr-0.5 shrink-0 p-0.5">
-                  <RiInformation2Fill className="h-5 w-5 text-text-accent" />
-                </div>
-                <div className="p-1 system-xs-medium text-text-primary">
-                  <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
-                </div>
-              </div>
-            </div>
-          )}
           {!isChatMode && !inWorkflow && (
             <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}

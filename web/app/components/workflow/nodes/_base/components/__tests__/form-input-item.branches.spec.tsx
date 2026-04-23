@@ -194,7 +194,7 @@ describe('FormInputItem branches', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('combobox'))
     expect(document.querySelector('img[src="/basic.svg"]')).toBeInTheDocument()
     fireEvent.click(screen.getByText('basic'))
 
@@ -261,7 +261,10 @@ describe('FormInputItem branches', () => {
       expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByRole('combobox'))
     expect(document.querySelector('img[src="/remote.svg"]')).toBeInTheDocument()
     fireEvent.click(screen.getByText('remote'))
 

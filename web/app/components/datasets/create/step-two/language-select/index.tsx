@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@/app/components/base/ui/select'
 import { languages } from '@/i18n-config/language'
 
 export type ILanguageSelectProps = {

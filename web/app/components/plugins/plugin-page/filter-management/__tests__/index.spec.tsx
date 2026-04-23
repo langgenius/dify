@@ -1,6 +1,7 @@
 import type { Category, Tag } from '../constant'
 import type { FilterState } from '../index'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { createContext, useContext } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ==================== Imports (after mocks) ====================
@@ -68,19 +69,47 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
-// Track portal open state for testing
-let mockPortalOpenState = false
+type MockPopoverContextValue = {
+  open: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpenState = open
-    return <div data-testid="portal-container" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
+const MockPopoverContext = createContext<MockPopoverContextValue>({
+  open: false,
+})
+
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open, onOpenChange }: {
+    children: React.ReactNode
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => (
+    <MockPopoverContext.Provider value={{ open, onOpenChange }}>
+      <div data-testid="portal-container" data-open={open}>{children}</div>
+    </MockPopoverContext.Provider>
   ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
+  PopoverTrigger: ({ children, render, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
+    className?: string
+  }) => {
+    const { open, onOpenChange } = useContext(MockPopoverContext)
+    return (
+      <div
+        data-testid="portal-trigger"
+        onClick={() => onOpenChange?.(!open)}
+        className={className}
+      >
+        {render ?? children}
+      </div>
+    )
+  },
+  PopoverContent: ({ children, className }: {
+    children: React.ReactNode
+    className?: string
+  }) => {
+    const { open } = useContext(MockPopoverContext)
+    if (!open)
       return null
     return <div data-testid="portal-content" className={className}>{children}</div>
   },
@@ -457,7 +486,6 @@ describe('SearchBox Component', () => {
 describe('CategoriesFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -694,7 +722,6 @@ describe('CategoriesFilter Component', () => {
 describe('TagFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -857,7 +884,6 @@ describe('FilterManagement Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInitFilters = createFilterState()
-    mockPortalOpenState = false
   })
 
   describe('Rendering', () => {

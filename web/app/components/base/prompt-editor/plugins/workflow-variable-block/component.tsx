@@ -3,6 +3,7 @@ import type {
 } from './index'
 import type { WorkflowNodesMap } from './node'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -17,7 +18,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { isRagVariableVar, isSpecialVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
@@ -151,13 +151,13 @@ const WorkflowVariableBlockComponent = ({
     />
   )
 
-  if (!node)
+  if (!node || !isShowAPart)
     return Item
 
   return (
-    <Tooltip>
-      <TooltipTrigger disabled={!isShowAPart} render={<div>{Item}</div>} />
-      <TooltipContent variant="plain">
+    <PreviewCard>
+      <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
+      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
@@ -169,8 +169,8 @@ const WorkflowVariableBlockComponent = ({
             : Type.string}
           nodeType={node?.type}
         />
-      </TooltipContent>
-    </Tooltip>
+      </PreviewCardContent>
+    </PreviewCard>
   )
 }
 

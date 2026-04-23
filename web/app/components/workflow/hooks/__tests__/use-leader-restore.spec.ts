@@ -2,6 +2,7 @@ import type { RestoreIntentData, RestoreRequestData } from '../../collaboration/
 import type { SyncDraftCallback } from '../../hooks-store/store'
 import type { Edge, Node } from '../../types'
 import { act, renderHook } from '@testing-library/react'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { ChatVarType } from '../../panel/chat-variable-panel/type'
 import { useLeaderRestore, useLeaderRestoreListener } from '../use-leader-restore'
 
@@ -66,15 +67,10 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     info: (...args: unknown[]) => mockToastInfo(...args),
   },
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => boolean) =>
-    selector({ systemFeatures: { enable_collaboration_mode: isCollaborationEnabled } }),
 }))
 
 vi.mock('../../store', () => ({
@@ -155,7 +151,9 @@ describe('useLeaderRestore', () => {
     const onSuccess = vi.fn()
     const onSettled = vi.fn()
 
-    const { result } = renderHook(() => useLeaderRestore())
+    const { result } = renderHookWithSystemFeatures(() => useLeaderRestore(), {
+      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    })
 
     await act(async () => {
       result.current.requestRestore(restoreData, { onSuccess, onSettled })
@@ -186,7 +184,9 @@ describe('useLeaderRestore', () => {
     const onError = vi.fn()
     const onSettled = vi.fn()
 
-    const { result } = renderHook(() => useLeaderRestore())
+    const { result } = renderHookWithSystemFeatures(() => useLeaderRestore(), {
+      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    })
 
     act(() => {
       result.current.requestRestore(restoreData, { onSuccess, onError, onSettled })

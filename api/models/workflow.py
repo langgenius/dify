@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -64,7 +64,10 @@ from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
-from .utils.file_input_compat import build_file_from_stored_mapping
+from .utils.file_input_compat import (
+    build_file_from_mapping_without_lookup,
+    build_file_from_stored_mapping,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -290,7 +293,7 @@ class Workflow(Base):  # bug
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
-        return NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
+        return NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
 
     @staticmethod
     def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
@@ -1688,7 +1691,7 @@ class WorkflowDraftVariable(Base):
                 return cast(Any, value)
             normalized_file = dict(value)
             normalized_file.pop("tenant_id", None)
-            return File.model_validate(normalized_file)
+            return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
         elif isinstance(value, list) and value:
             value_list = cast(list[Any], value)
             first: Any = value_list[0]
@@ -1698,7 +1701,7 @@ class WorkflowDraftVariable(Base):
             for item in value_list:
                 normalized_file = dict(cast(dict[str, Any], item))
                 normalized_file.pop("tenant_id", None)
-                file_list.append(File.model_validate(normalized_file))
+                file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
             return cast(Any, file_list)
         else:
             return cast(Any, value)

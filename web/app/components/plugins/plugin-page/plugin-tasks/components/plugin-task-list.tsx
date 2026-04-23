@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { useGetLanguage } from '@/context/i18n'
 import ErrorPluginItem from './error-plugin-item'
 import PluginSection from './plugin-section'

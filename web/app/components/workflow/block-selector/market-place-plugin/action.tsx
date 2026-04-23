@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
-import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useQueryClient } from '@tanstack/react-query'
+import { useTheme } from 'next-themes'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'

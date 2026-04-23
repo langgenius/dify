@@ -1,15 +1,18 @@
 import type { BlockEnum, CommonNodeType } from '../types'
 import type { TriggerDefaultValue } from './types'
 import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
+import {
   memo,
   useCallback,
   useEffect,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useAvailableNodesMetaData } from '../../workflow-app/hooks'
 import BlockIcon from '../block-icon'
 import { BlockEnum as BlockEnumValues } from '../types'
 // import { useNodeMetaData } from '../hooks'
@@ -33,7 +36,6 @@ const StartBlocks = ({
   const { t } = useTranslation()
   const nodes = useNodes()
   // const nodeMetaData = useNodeMetaData()
-  const availableNodesMetaData = useAvailableNodesMetaData()
 
   const filteredBlocks = useMemo(() => {
     // Check if Start node already exists in workflow
@@ -67,13 +69,34 @@ const StartBlocks = ({
     onContentStateChange?.(!isEmpty)
   }, [isEmpty, onContentStateChange])
 
+  // Preview is supplementary: the block icon, title and description all become
+  // reachable from the inspector + canvas once the row is clicked to insert
+  // the start node, so hover/focus-only activation is a11y-safe. See
+  // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
   const renderBlock = useCallback((block: typeof START_BLOCKS[number]) => (
-    <Tooltip
-      key={block.type}
-      position="right"
-      popupClassName="w-[224px] rounded-xl"
-      needsDelay={false}
-      popupContent={(
+    <PreviewCard key={block.type}>
+      <PreviewCardTrigger
+        delay={150}
+        closeDelay={150}
+        render={(
+          <div
+            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+            onClick={() => onSelect(block.type)}
+          >
+            <BlockIcon
+              className="mr-2 shrink-0"
+              type={block.type}
+            />
+            <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
+              <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
+              {block.type === BlockEnumValues.Start && (
+                <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+              )}
+            </div>
+          </div>
+        )}
+      />
+      <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
         <div>
           <BlockIcon
             size="md"
@@ -96,25 +119,9 @@ const StartBlocks = ({
             </div>
           )}
         </div>
-      )}
-    >
-      <div
-        className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-        onClick={() => onSelect(block.type)}
-      >
-        <BlockIcon
-          className="mr-2 shrink-0"
-          type={block.type}
-        />
-        <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
-          <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
-          {block.type === BlockEnumValues.Start && (
-            <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
-          )}
-        </div>
-      </div>
-    </Tooltip>
-  ), [availableNodesMetaData, onSelect, t])
+      </PreviewCardContent>
+    </PreviewCard>
+  ), [onSelect, t])
 
   if (isEmpty)
     return null

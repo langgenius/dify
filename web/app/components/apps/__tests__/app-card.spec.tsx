@@ -1,13 +1,23 @@
 import type { Mock } from 'vitest'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../app-card'
+
+let mockWebappAuthEnabled = false
+
+const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    webapp_auth: { enabled: mockWebappAuthEnabled },
+    branding: { enabled: false },
+  },
+})
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -34,7 +44,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 
@@ -65,16 +75,7 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock global public store - allow dynamic configuration
-let mockWebappAuthEnabled = false
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      branding: { enabled: false },
-    },
-  }),
-}))
+// systemFeatures is seeded into the QueryClient via the local render helper.
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
@@ -190,7 +191,7 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/dropdown-menu', () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   type DropdownMenuContextValue = {
     isOpen: boolean
     setOpen: (open: boolean) => void
@@ -1658,7 +1659,7 @@ describe('AppCard', () => {
 
     it('should reset delete input when dialog closes', async () => {
       vi.resetModules()
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1675,12 +1676,12 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('textbox')).toHaveValue('')
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
     })
 
     it('should keep delete input when dialog remains open', async () => {
       vi.resetModules()
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1694,13 +1695,13 @@ describe('AppCard', () => {
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
       expect(await screen.findByRole('textbox')).toHaveValue('partial name')
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
     })
 
     it('should keep delete dialog open when close is requested during deletion', async () => {
       vi.resetModules()
       mockDeleteMutationPending = true
-      vi.doMock('@/app/components/base/ui/alert-dialog', createMockAlertDialogModule)
+      vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
       const { default: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
@@ -1713,7 +1714,7 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
 
-      vi.doUnmock('@/app/components/base/ui/alert-dialog')
+      vi.doUnmock('@langgenius/dify-ui/alert-dialog')
       mockDeleteMutationPending = false
     })
   })

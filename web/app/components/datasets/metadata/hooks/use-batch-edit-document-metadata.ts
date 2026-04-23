@@ -1,9 +1,9 @@
 import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithEdit, MetadataItemWithValue } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { useMemo } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { UpdateType } from '../types'
 

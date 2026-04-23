@@ -1,13 +1,13 @@
 import type { Viewport } from '@/next'
+import { ToastHost } from '@langgenius/dify-ui/toast'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
+import AmplitudeProvider from '@/app/components/base/amplitude'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { ToastHost } from './components/base/ui/toast'
-import { TooltipProvider } from './components/base/ui/tooltip'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
 import CreateAppAttributionBootstrap from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -57,6 +57,7 @@ const LocaleLayout = async ({
         {...datasetMap}
       >
         <div className="isolate h-full">
+          <AmplitudeProvider />
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
@@ -70,11 +71,9 @@ const LocaleLayout = async ({
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
                     <PartnerStackCookieRecorder />
-                    <GlobalPublicStoreProvider>
-                      <TooltipProvider delay={300} closeDelay={200}>
-                        {children}
-                      </TooltipProvider>
-                    </GlobalPublicStoreProvider>
+                    <TooltipProvider delay={300} closeDelay={200}>
+                      {children}
+                    </TooltipProvider>
                   </I18nServerProvider>
                 </TanstackQueryInitializer>
               </NuqsAdapter>

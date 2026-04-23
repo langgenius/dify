@@ -1,17 +1,17 @@
 'use client'
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useReactFlow } from 'reactflow'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
@@ -72,10 +72,10 @@ const OnlineUsers = () => {
     const isCurrentUser = user.user_id === currentUserId
 
     return (
-      <span className={cn('inline-flex items-center gap-1', baseClassName)}>
-        <span>{baseName}</span>
+      <span className={cn('inline-flex min-w-0 items-center gap-1', baseClassName)}>
+        <span className="truncate">{baseName}</span>
         {isCurrentUser && (
-          <span className={suffixClassName}>
+          <span className={cn('shrink-0', suffixClassName)}>
             {currentUserSuffix}
           </span>
         )}
@@ -156,11 +156,11 @@ const OnlineUsers = () => {
                 <TooltipContent
                   placement="bottom"
                   sideOffset={4}
-                  className="flex h-[28px] w-[85px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+                  className="flex h-[28px] max-w-[220px] min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
                 >
                   {renderDisplayName(
                     user,
-                    'system-xs-medium text-text-secondary',
+                    'max-w-full system-xs-medium text-text-secondary',
                     'text-text-quaternary',
                   )}
                 </TooltipContent>

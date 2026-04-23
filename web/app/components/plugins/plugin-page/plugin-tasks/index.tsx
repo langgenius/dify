@@ -1,14 +1,14 @@
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import PluginTaskList from './components/plugin-task-list'
 import TaskStatusIndicator from './components/task-status-indicator'
@@ -97,6 +97,7 @@ const PluginTasks = () => {
         onOpenChange={setOpen}
       >
         <DropdownMenuTrigger
+          nativeButton={false}
           render={<div />}
           disabled={!canOpenMenu}
         >

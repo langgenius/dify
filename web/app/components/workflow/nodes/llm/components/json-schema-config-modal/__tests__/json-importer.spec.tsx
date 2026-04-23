@@ -52,7 +52,7 @@ vi.mock('../error-message', () => ({
   default: ({ message }: { message: string }) => <div data-testid="error-message">{message}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/popover', async () => {
+vi.mock('@langgenius/dify-ui/popover', async () => {
   const ReactModule = await vi.importActual<typeof import('react')>('react')
 
   const PopoverContext = ReactModule.createContext<{

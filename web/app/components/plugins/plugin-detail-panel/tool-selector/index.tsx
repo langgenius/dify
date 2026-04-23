@@ -10,6 +10,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line no-restricted-imports -- legacy overlay migration is handled separately from this change
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
