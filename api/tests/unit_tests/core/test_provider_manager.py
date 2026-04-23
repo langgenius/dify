@@ -1,4 +1,6 @@
-from unittest.mock import Mock, PropertyMock, patch
+from contextlib import contextmanager
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 
@@ -6,7 +8,14 @@ from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import ModelType
-from models.provider import LoadBalancingModelConfig, ProviderModelSetting
+from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
+from models.provider_ids import ModelProviderID
+
+
+@contextmanager
+def _build_session_context(session: Mock):
+    """Used with patch(Session, return_value=...) to emulate ``with Session(...) as s``."""
+    yield session
 
 
 @pytest.fixture
@@ -230,12 +239,12 @@ def test_get_default_model_uses_first_available_active_model():
         mock_session.commit.assert_called_once()
 
 
-def test_get_default_model_returns_none_when_no_default_or_active_models(mocker: MockerFixture):
+def test_get_default_model_returns_none_when_no_default_or_active_models():
     mock_session = Mock()
     mock_session.scalar.return_value = None
     provider_configurations = Mock()
     provider_configurations.get_models.return_value = []
-    manager = _build_provider_manager(mocker)
+    manager = ProviderManager()
 
     with (
         patch("core.provider_manager.db.session", mock_session),
@@ -251,7 +260,7 @@ def test_get_default_model_returns_none_when_no_default_or_active_models(mocker:
     mock_session.commit.assert_not_called()
 
 
-def test_get_default_model_uses_injected_runtime_for_existing_default_record(mocker: MockerFixture):
+def test_get_default_model_uses_tenant_id_factory_for_existing_default_record():
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
         provider_name="openai",
@@ -260,7 +269,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
     )
     mock_session = Mock()
     mock_session.scalar.return_value = existing_default_model
-    manager = _build_provider_manager(mocker)
+    manager = ProviderManager()
 
     with (
         patch("core.provider_manager.db.session", mock_session),
@@ -275,14 +284,14 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
 
         result = manager.get_default_model("tenant-id", ModelType.LLM)
 
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with("tenant-id")
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
 
 
-def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_get_configurations_uses_tenant_id_factory_and_adds_provider_aliases():
+    manager = ProviderManager()
     provider_records = {"openai": [SimpleNamespace(provider_name="openai")]}
     provider_model_records = {"openai": [SimpleNamespace(provider_name="openai")]}
     preferred_provider_records = {"openai": SimpleNamespace(preferred_provider_type="system")}
@@ -302,7 +311,7 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mock
         result = manager.get_configurations("tenant-id")
 
     expected_alias = str(ModelProviderID("openai"))
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with("tenant-id")
     assert result.tenant_id == "tenant-id"
     assert expected_alias in provider_records
     assert expected_alias in provider_model_records
@@ -321,18 +330,18 @@ def test_get_provider_names_returns_short_and_full_aliases(provider_name: str, e
     assert ProviderManager._get_provider_names(provider_name) == expected_provider_names
 
 
-def test_get_provider_model_bundle_raises_for_unknown_provider(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_get_provider_model_bundle_raises_for_unknown_provider():
+    manager = ProviderManager()
 
     with patch.object(manager, "get_configurations", return_value={}):
         with pytest.raises(ValueError, match="Provider openai does not exist."):
             manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
 
-def test_get_configurations_binds_manager_runtime_to_provider_configuration(
-    mocker: MockerFixture, mock_provider_entity
+def test_get_configurations_builds_provider_configuration(
+    mock_provider_entity,
 ):
-    manager = _build_provider_manager(mocker)
+    manager = ProviderManager()
     provider_configuration = Mock()
     provider_factory = Mock()
     provider_factory.get_providers.return_value = [mock_provider_entity]
@@ -351,15 +360,18 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
         patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
-        patch("core.provider_manager.ProviderConfiguration", return_value=provider_configuration),
+        patch("core.provider_manager.ProviderConfiguration", return_value=provider_configuration) as mock_pc,
     ):
         manager.get_configurations("tenant-id")
 
-    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    mock_pc.assert_called_once()
+    call_kw = mock_pc.call_args.kwargs
+    assert call_kw["tenant_id"] == "tenant-id"
+    assert call_kw["provider"] is mock_provider_entity
 
 
-def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerFixture, mock_provider_entity):
-    manager = _build_provider_manager(mocker)
+def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity):
+    manager = ProviderManager()
     provider_configuration = Mock()
     provider_factory = Mock()
     provider_factory.get_providers.return_value = [mock_provider_entity]
@@ -388,13 +400,12 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
 
     assert first is second
     mock_get_all_providers.assert_called_once_with("tenant-id")
-    mock_factory_cls.assert_called_once_with(model_runtime=manager._model_runtime)
+    mock_factory_cls.assert_called_once_with("tenant-id")
     mock_provider_configuration.assert_called_once()
-    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
-def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixture, mock_provider_entity):
-    manager = _build_provider_manager(mocker)
+def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_entity):
+    manager = ProviderManager()
     provider_factory = Mock()
     provider_factory.get_providers.return_value = [mock_provider_entity]
     custom_configuration = SimpleNamespace(provider=None, models=[])
@@ -426,12 +437,10 @@ def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixt
     assert first is not second
     assert mock_get_all_providers.call_count == 2
     assert mock_provider_configuration.call_count == 2
-    provider_configuration_first.bind_model_runtime.assert_called_once_with(manager._model_runtime)
-    provider_configuration_second.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
-def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_get_provider_model_bundle_returns_selected_model_type_instance():
+    manager = ProviderManager()
     provider_configuration = Mock()
     model_type_instance = Mock()
     provider_configuration.get_model_type_instance.return_value = model_type_instance
@@ -451,8 +460,8 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: 
     assert result is expected_bundle
 
 
-def test_get_first_provider_first_model_returns_none_when_no_models(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_get_first_provider_first_model_returns_none_when_no_models():
+    manager = ProviderManager()
     provider_configurations = Mock()
     provider_configurations.get_models.return_value = []
 
@@ -463,8 +472,8 @@ def test_get_first_provider_first_model_returns_none_when_no_models(mocker: Mock
     provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=False)
 
 
-def test_get_first_provider_first_model_returns_first_model_and_provider(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_get_first_provider_first_model_returns_first_model_and_provider():
+    manager = ProviderManager()
     provider_configurations = Mock()
     provider_configurations.get_models.return_value = [
         Mock(model="gpt-4", provider=Mock(provider="openai")),
@@ -477,16 +486,16 @@ def test_get_first_provider_first_model_returns_first_model_and_provider(mocker:
     assert result == ("openai", "gpt-4")
 
 
-def test_update_default_model_record_raises_for_unknown_provider(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_update_default_model_record_raises_for_unknown_provider():
+    manager = ProviderManager()
 
     with patch.object(manager, "get_configurations", return_value={}):
         with pytest.raises(ValueError, match="Provider openai does not exist."):
             manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
 
 
-def test_update_default_model_record_raises_for_unknown_model(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_update_default_model_record_raises_for_unknown_model():
+    manager = ProviderManager()
     provider_configurations = MagicMock()
     provider_configurations.__contains__.return_value = True
     provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
@@ -498,8 +507,8 @@ def test_update_default_model_record_raises_for_unknown_model(mocker: MockerFixt
     provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
 
 
-def test_update_default_model_record_updates_existing_record(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_update_default_model_record_updates_existing_record():
+    manager = ProviderManager()
     provider_configurations = MagicMock()
     provider_configurations.__contains__.return_value = True
     provider_configurations.get_models.return_value = [Mock(model="gpt-3.5-turbo")]
@@ -525,8 +534,8 @@ def test_update_default_model_record_updates_existing_record(mocker: MockerFixtu
     mock_session.add.assert_not_called()
 
 
-def test_update_default_model_record_creates_record_with_origin_model_type(mocker: MockerFixture):
-    manager = _build_provider_manager(mocker)
+def test_update_default_model_record_creates_new_record_stores_str_model_type_value():
+    manager = ProviderManager()
     provider_configurations = MagicMock()
     provider_configurations.__contains__.return_value = True
     provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
@@ -545,7 +554,8 @@ def test_update_default_model_record_creates_record_with_origin_model_type(mocke
     assert created_default_model.tenant_id == "tenant-id"
     assert created_default_model.provider_name == "openai"
     assert created_default_model.model_name == "gpt-4"
-    assert created_default_model.model_type == ModelType.LLM
+    # ProviderManager persists ``ModelType`` string value in DB, not the origin Dify key.
+    assert created_default_model.model_type == ModelType.LLM.value
     mock_session.commit.assert_called_once()
 
 
