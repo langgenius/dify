@@ -6,10 +6,6 @@ import pytest
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.llm_generator.prompts import (
-    DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-    DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
-)
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
@@ -102,8 +98,8 @@ class TestLLMGenerator:
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
         assert mock_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-            "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-            "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+            "max_tokens": 2560,
+            "temperature": 0.0,
         }
 
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
@@ -181,8 +177,8 @@ class TestLLMGenerator:
             model_type=ModelType.LLM,
         )
         assert default_model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {
-            "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
-            "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+            "max_tokens": 2560,
+            "temperature": 0.0,
         }
         assert default_model_instance.invoke_llm.call_args.kwargs["stop"] == []
 
