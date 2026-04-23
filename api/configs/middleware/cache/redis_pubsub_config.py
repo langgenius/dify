@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -144,3 +144,26 @@ class RedisPubSubConfig(BaseSettings):
         ),
         default=600,
     )
+
+    @field_validator(
+        "PUBSUB_REDIS_MODE",
+        "PUBSUB_REDIS_PORT",
+        "PUBSUB_REDIS_DB",
+        "PUBSUB_REDIS_USE_SSL",
+        "PUBSUB_REDIS_SENTINEL_SOCKET_TIMEOUT",
+        mode="before",
+    )
+    @classmethod
+    def _empty_string_is_none(cls, v: object) -> object:
+        """Allow empty string in env / .env to mean 'unset' (None).
+
+        Deployment templates (docker-compose, Helm) frequently expose env
+        vars via ``${VAR:-}`` which renders as an empty string when the
+        caller hasn't set one. For non-string-typed fields (Literal /
+        int / bool / float) pydantic would fail literal/int parsing on
+        ``""``; coerce it to ``None`` up front so the documented default
+        kicks in instead.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
