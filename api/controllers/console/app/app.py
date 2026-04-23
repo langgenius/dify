@@ -5,11 +5,9 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -31,13 +29,15 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from graphon.enums import WorkflowExecutionStatus
+from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import ImportMode
+from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -129,6 +129,7 @@ class AppNamePayload(BaseModel):
 
 class AppIconPayload(BaseModel):
     icon: str | None = Field(default=None, description="Icon data")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
@@ -159,15 +160,6 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     if isinstance(value, datetime):
         return int(value.timestamp())
     return value
-
-
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
 
 
 class Tag(ResponseModel):
@@ -292,7 +284,7 @@ class Site(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("icon_type", mode="before")
     @classmethod
@@ -342,7 +334,7 @@ class AppPartial(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -390,7 +382,7 @@ class AppDetailWithSite(AppDetail):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
@@ -632,7 +624,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -645,6 +637,13 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+                return result.model_dump(mode="json"), 400
+            if result.status == ImportStatus.PENDING:
+                session.rollback()
+                return result.model_dump(mode="json"), 202
+            session.commit()
 
             # Inherit web app permission from original app
             if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
@@ -693,6 +692,32 @@ class AppExportApi(Resource):
         return payload.model_dump(mode="json")
 
 
+@console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
+class AppPublishToCreatorsPlatformApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=None)
+    @edit_permission_required
+    def post(self, app_model):
+        """Publish app to Creators Platform"""
+        from configs import dify_config
+        from core.helper.creators import get_redirect_url, upload_dsl
+
+        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            return {"error": "Creators Platform features are not enabled"}, 403
+
+        current_user, _ = current_account_with_tenant()
+
+        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_bytes = dsl_content.encode("utf-8")
+
+        claim_code = upload_dsl(dsl_bytes)
+        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+
+        return {"redirect_url": redirect_url}
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @console_ns.doc("check_app_name")
@@ -731,7 +756,12 @@ class AppIconApi(Resource):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
+        app_model = app_service.update_app_icon(
+            app_model,
+            args.icon or "",
+            args.icon_background or "",
+            args.icon_type,
+        )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 

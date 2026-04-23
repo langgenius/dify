@@ -10,8 +10,9 @@ from flask import Flask
 
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AppUnavailableError
+from models.account import TenantStatus
 from models.model import App, AppMode
-from tests.unit_tests.conftest import setup_mock_tenant_account_query
+from tests.unit_tests.conftest import setup_mock_tenant_owner_execute_result
 
 
 class TestAppParameterApi:
@@ -62,7 +63,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock DB queries for app and tenant
         mock_db.session.get.side_effect = [
@@ -73,7 +74,7 @@ class TestAppParameterApi:
         # Mock tenant owner info for login
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -110,7 +111,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -119,7 +120,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -151,7 +152,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -160,7 +161,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -190,7 +191,7 @@ class TestAppParameterApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -199,7 +200,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -253,7 +254,7 @@ class TestAppMetaApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -262,7 +263,7 @@ class TestAppMetaApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/meta", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -321,7 +322,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app_model,
@@ -330,7 +331,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -378,7 +379,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -387,7 +388,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -424,7 +425,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -433,7 +434,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -476,7 +477,7 @@ class TestAppInfoApi:
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         mock_db.session.get.side_effect = [
             mock_app,
@@ -485,7 +486,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):

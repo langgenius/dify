@@ -108,8 +108,8 @@ describe('Slash Command Dual-Mode System', () => {
 
       const results = await handler?.search('', 'en')
       expect(results).toHaveLength(2)
-      expect(results?.[0].title).toBe('Light Theme')
-      expect(results?.[1].title).toBe('Dark Theme')
+      expect(results?.[0]!.title).toBe('Light Theme')
+      expect(results?.[1]!.title).toBe('Dark Theme')
     })
 
     it('should not have execute function for submenu mode', () => {

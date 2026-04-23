@@ -1,10 +1,9 @@
 from typing import Union
 
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessageTool, SystemPromptMessage, UserPromptMessage
-
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessageTool, SystemPromptMessage, UserPromptMessage
 
 
 class FunctionCallMultiDatasetRouter:
@@ -29,10 +28,10 @@ class FunctionCallMultiDatasetRouter:
                 SystemPromptMessage(content="You are a helpful AI assistant."),
                 UserPromptMessage(content=query),
             ]
-            result: LLMResult = model_instance.invoke_llm(
+            result: LLMResult = model_instance.invoke_llm(  # pyright: ignore[reportCallIssue, reportArgumentType]
                 prompt_messages=prompt_messages,
                 tools=dataset_tools,
-                stream=False,
+                stream=False,  # pyright: ignore[reportArgumentType]
                 model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
             )
             usage = result.usage or LLMUsage.empty_usage()

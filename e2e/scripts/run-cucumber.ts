@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
+import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
-import { waitForUrl, startLoggedProcess, stopManagedProcess } from '../support/process'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
 import { resetState, startMiddleware, stopMiddleware } from './setup'
@@ -17,12 +17,10 @@ const parseArgs = (argv: string[]): RunOptions => {
   let headed = false
   const forwardArgs: string[] = []
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-
+  for (const [index, arg] of argv.entries()) {
     if (arg === '--') {
       forwardArgs.push(...argv.slice(index + 1))
-      break
+      return { forwardArgs, full, headed }
     }
 
     if (arg === '--full') {
@@ -38,24 +36,22 @@ const parseArgs = (argv: string[]): RunOptions => {
     forwardArgs.push(arg)
   }
 
-  return {
-    forwardArgs,
-    full,
-    headed,
-  }
+  return { forwardArgs, full, headed }
 }
 
 const hasCustomTags = (forwardArgs: string[]) =>
-  forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
+  forwardArgs.some(arg => arg === '--tags' || arg.startsWith('--tags='))
 
 const main = async () => {
   const { forwardArgs, full, headed } = parseArgs(process.argv.slice(2))
   const startMiddlewareForRun = full
   const resetStateForRun = full
 
-  if (resetStateForRun) await resetState()
+  if (resetStateForRun)
+    await resetState()
 
-  if (startMiddlewareForRun) await startMiddleware()
+  if (startMiddlewareForRun)
+    await startMiddleware()
 
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
@@ -71,17 +67,27 @@ const main = async () => {
     logFilePath: path.join(logDir, 'cucumber-api.log'),
   })
 
+  const celeryProcess = await startLoggedProcess({
+    command: 'npx',
+    args: ['tsx', './scripts/setup.ts', 'celery'],
+    cwd: e2eDir,
+    label: 'celery worker',
+    logFilePath: path.join(logDir, 'cucumber-celery.log'),
+  })
+
   let cleanupPromise: Promise<void> | undefined
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
         await stopWebServer()
+        await stopManagedProcess(celeryProcess)
         await stopManagedProcess(apiProcess)
 
         if (startMiddlewareForRun) {
           try {
             await stopMiddleware()
-          } catch {
+          }
+          catch {
             // Cleanup should continue even if middleware shutdown fails.
           }
         }
@@ -103,7 +109,8 @@ const main = async () => {
   try {
     try {
       await waitForUrl(`${apiURL}/health`, 180_000, 1_000)
-    } catch {
+    }
+    catch {
       throw new Error(`API did not become ready at ${apiURL}/health.`)
     }
 
@@ -139,7 +146,8 @@ const main = async () => {
     })
 
     process.exitCode = result.exitCode
-  } finally {
+  }
+  finally {
     process.off('SIGINT', onTerminate)
     process.off('SIGTERM', onTerminate)
     await cleanup()

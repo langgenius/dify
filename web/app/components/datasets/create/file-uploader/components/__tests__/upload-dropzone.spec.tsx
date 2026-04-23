@@ -1,8 +1,16 @@
 import type { RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
+import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UploadDropzone from '../upload-dropzone'
+
+let mockEnableBilling = false
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: <T,>(selector: (state: Pick<ProviderContextState, 'enableBilling'>) => T): T =>
+    selector({ enableBilling: mockEnableBilling }),
+}))
 
 // Helper to create mock ref objects for testing
 const createMockRef = <T,>(value: T | null = null): RefObject<T | null> => ({ current: value })
@@ -27,6 +35,7 @@ describe('UploadDropzone', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEnableBilling = false
   })
 
   describe('rendering', () => {
@@ -46,7 +55,7 @@ describe('UploadDropzone', () => {
 
     it('should render upload icon', () => {
       render(<UploadDropzone {...defaultProps} />)
-      const icon = document.querySelector('svg')
+      const icon = document.querySelector('.i-ri-upload-cloud-2-line')
       expect(icon).toBeInTheDocument()
     })
 
@@ -64,6 +73,51 @@ describe('UploadDropzone', () => {
       render(<UploadDropzone {...defaultProps} />)
       const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip/)
       expect(tipText).toBeInTheDocument()
+    })
+  })
+
+  describe('tip rendering by billing state', () => {
+    it('should render tip without total count limit when billing is disabled', () => {
+      mockEnableBilling = false
+
+      render(<UploadDropzone {...defaultProps} />)
+
+      const tipWithoutTotal = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/)
+      expect(tipWithoutTotal).toBeInTheDocument()
+      expect(screen.queryByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/)).not.toBeInTheDocument()
+    })
+
+    it('should render tip with total count limit when billing is enabled', () => {
+      mockEnableBilling = true
+
+      render(<UploadDropzone {...defaultProps} />)
+
+      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/)).toBeInTheDocument()
+      expect(screen.queryByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/)).not.toBeInTheDocument()
+    })
+
+    it('should pass file size, batch count and supported types to tip when billing is disabled', () => {
+      mockEnableBilling = false
+
+      render(<UploadDropzone {...defaultProps} />)
+
+      const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip/).textContent ?? ''
+      expect(tipText).toContain('"size":15')
+      expect(tipText).toContain('"batchCount":5')
+      expect(tipText).toContain('"supportTypes":"PDF, DOCX, TXT"')
+      expect(tipText).not.toContain('"totalCount"')
+    })
+
+    it('should additionally pass total count to tip when billing is enabled', () => {
+      mockEnableBilling = true
+
+      render(<UploadDropzone {...defaultProps} />)
+
+      const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/).textContent ?? ''
+      expect(tipText).toContain('"size":15')
+      expect(tipText).toContain('"batchCount":5')
+      expect(tipText).toContain('"supportTypes":"PDF, DOCX, TXT"')
+      expect(tipText).toContain('"totalCount":10')
     })
   })
 

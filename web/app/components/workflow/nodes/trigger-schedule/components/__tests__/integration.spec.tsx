@@ -43,14 +43,10 @@ describe('trigger-schedule components', () => {
         />,
       )
 
-      const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
+      const trigger = screen.getByRole('combobox')
       await user.click(trigger)
-
-      await waitFor(() => {
-        expect(trigger).toHaveAttribute('aria-expanded', 'true')
-      })
-
-      await user.click(await screen.findByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('weekly')

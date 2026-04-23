@@ -7,9 +7,6 @@ from typing import Any, NotRequired, TypedDict
 
 import orjson
 from flask import request
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.file import FileTransferMethod
-from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,6 +28,9 @@ from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -38,6 +38,7 @@ from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
@@ -798,45 +799,47 @@ class WebhookService:
             Exception: If workflow execution fails
         """
         try:
-            with Session(db.engine) as session:
-                # Prepare inputs for the webhook node
-                # The webhook node expects webhook_data in the inputs
-                workflow_inputs = cls.build_workflow_inputs(webhook_data)
+            workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
-                # Create trigger data
-                trigger_data = WebhookTriggerData(
-                    app_id=webhook_trigger.app_id,
-                    workflow_id=workflow.id,
-                    root_node_id=webhook_trigger.node_id,  # Start from the webhook node
-                    inputs=workflow_inputs,
-                    tenant_id=webhook_trigger.tenant_id,
+            trigger_data = WebhookTriggerData(
+                app_id=webhook_trigger.app_id,
+                workflow_id=workflow.id,
+                root_node_id=webhook_trigger.node_id,
+                inputs=workflow_inputs,
+                tenant_id=webhook_trigger.tenant_id,
+            )
+
+            end_user = EndUserService.get_or_create_end_user_by_type(
+                type=InvokeFrom.TRIGGER,
+                tenant_id=webhook_trigger.tenant_id,
+                app_id=webhook_trigger.app_id,
+                user_id=None,
+            )
+
+            try:
+                quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
+            except QuotaExceededError:
+                AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                logger.info(
+                    "Tenant %s rate limited, skipping webhook trigger %s",
+                    webhook_trigger.tenant_id,
+                    webhook_trigger.webhook_id,
                 )
+                raise
 
-                end_user = EndUserService.get_or_create_end_user_by_type(
-                    type=InvokeFrom.TRIGGER,
-                    tenant_id=webhook_trigger.tenant_id,
-                    app_id=webhook_trigger.app_id,
-                    user_id=None,
-                )
-
-                # consume quota before triggering workflow execution
-                try:
-                    QuotaType.TRIGGER.consume(webhook_trigger.tenant_id)
-                except QuotaExceededError:
-                    AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
-                    logger.info(
-                        "Tenant %s rate limited, skipping webhook trigger %s",
-                        webhook_trigger.tenant_id,
-                        webhook_trigger.webhook_id,
+            try:
+                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
+                # trigger_workflow_async need to handle multipe session commits internally
+                with Session(db.engine, expire_on_commit=False) as session:
+                    AsyncWorkflowService.trigger_workflow_async(
+                        session,
+                        end_user,
+                        trigger_data,
                     )
-                    raise
-
-                # Trigger workflow execution asynchronously
-                AsyncWorkflowService.trigger_workflow_async(
-                    session,
-                    end_user,
-                    trigger_data,
-                )
+                quota_charge.commit()
+            except Exception:
+                quota_charge.refund()
+                raise
 
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)

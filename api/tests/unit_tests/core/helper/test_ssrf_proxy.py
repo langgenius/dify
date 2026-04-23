@@ -1,11 +1,17 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
+    SSRFProxy,
     _get_user_provided_host_header,
+    _to_graphon_http_response,
+    graphon_ssrf_proxy,
     make_request,
+    max_retries_exceeded_error,
+    request_error,
 )
 
 
@@ -174,3 +180,56 @@ class TestFollowRedirectsParameter:
 
         call_kwargs = mock_client.request.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
+
+
+def test_to_graphon_http_response_preserves_httpx_response_fields() -> None:
+    response = httpx.Response(
+        201,
+        headers={"X-Test": "1"},
+        content=b"payload",
+        request=httpx.Request("GET", "https://example.com/resource"),
+    )
+
+    wrapped = _to_graphon_http_response(response)
+
+    assert wrapped.status_code == 201
+    assert wrapped.headers == {"x-test": "1", "content-length": "7"}
+    assert wrapped.content == b"payload"
+    assert wrapped.url == "https://example.com/resource"
+    assert wrapped.reason_phrase == "Created"
+    assert wrapped.text == "payload"
+
+
+def test_ssrf_proxy_exposes_expected_error_types() -> None:
+    proxy = SSRFProxy()
+
+    assert proxy.max_retries_exceeded_error is max_retries_exceeded_error
+    assert proxy.request_error is request_error
+    assert graphon_ssrf_proxy.max_retries_exceeded_error is max_retries_exceeded_error
+    assert graphon_ssrf_proxy.request_error is request_error
+
+
+@pytest.mark.parametrize("method_name", ["get", "head", "post", "put", "delete", "patch"])
+def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
+    response = httpx.Response(
+        200,
+        headers={"X-Test": "1"},
+        content=b"ok",
+        request=httpx.Request("GET", "https://example.com/resource"),
+    )
+
+    with patch(f"core.helper.ssrf_proxy.{method_name}", return_value=response) as mock_method:
+        wrapped = getattr(graphon_ssrf_proxy, method_name)(
+            "https://example.com/resource",
+            max_retries=3,
+            headers={"X-Test": "1"},
+        )
+
+    mock_method.assert_called_once_with(
+        url="https://example.com/resource",
+        max_retries=3,
+        headers={"X-Test": "1"},
+    )
+    assert wrapped.status_code == 200
+    assert wrapped.url == "https://example.com/resource"
+    assert wrapped.content == b"ok"

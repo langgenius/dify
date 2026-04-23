@@ -1,4 +1,6 @@
 import type { Credential } from '../../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useMemo,
@@ -6,9 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 
 type CredentialItemProps = {
   credential: Credential
@@ -71,9 +71,9 @@ const CredentialItem = ({
             </div>
           )
         }
-        <Indicator className="ml-2 mr-1.5 shrink-0" />
+        <Indicator className="mr-1.5 ml-2 shrink-0" />
         <div
-          className="truncate text-text-secondary system-md-regular"
+          className="truncate system-md-regular text-text-secondary"
           title={credential.credential_name}
         >
           {credential.credential_name}

@@ -14,9 +14,6 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -24,7 +21,11 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
+from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
 
@@ -88,6 +89,19 @@ def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) 
 
 class EnabledConfig(TypedDict):
     enabled: bool
+
+
+class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
+    provider: str
+    name: str
+    mode: NotRequired[str]
+    completion_params: NotRequired[dict[str, Any]]
+
+
+class SuggestedQuestionsAfterAnswerConfig(TypedDict):
+    enabled: bool
+    model: NotRequired[SuggestedQuestionsAfterAnswerModelConfig]
+    prompt: NotRequired[str]
 
 
 class EmbeddingModelInfo(TypedDict):
@@ -219,7 +233,7 @@ class ModelConfig(TypedDict):
 class AppModelConfigDict(TypedDict):
     opening_statement: str | None
     suggested_questions: list[str]
-    suggested_questions_after_answer: EnabledConfig
+    suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
     text_to_speech: EnabledConfig
     retriever_resource: EnabledConfig
@@ -446,7 +460,8 @@ class App(Base):
 
     @property
     def api_base_url(self) -> str:
-        return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return normalize_api_base_url(base)
 
     @property
     def tenant(self) -> Tenant | None:
@@ -678,8 +693,13 @@ class AppModelConfig(TypeBase):
         return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
 
     @property
-    def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return self._get_enabled_config(self.suggested_questions_after_answer)
+    def suggested_questions_after_answer_dict(self) -> SuggestedQuestionsAfterAnswerConfig:
+        return cast(
+            SuggestedQuestionsAfterAnswerConfig,
+            json.loads(self.suggested_questions_after_answer)
+            if self.suggested_questions_after_answer
+            else {"enabled": False},
+        )
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:
@@ -1007,7 +1027,7 @@ class OAuthProviderApp(TypeBase):
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
+    app_label: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
@@ -1847,15 +1867,18 @@ class MessageAnnotation(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(
-        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
     )
     app_id: Mapped[str] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), default=None)
     message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -2159,7 +2182,7 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
             return result
 
 
-class UploadFile(Base):
+class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -2167,9 +2190,12 @@ class UploadFile(Base):
     )
 
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
-    # (especially when generating `source_url`).
-    # The `server_default` serves as a fallback mechanism.
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    # (especially when generating `source_url`) and keep model metadata portable across databases.
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        init=False,
+        default_factory=lambda: str(uuid4()),
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -2177,16 +2203,6 @@ class UploadFile(Base):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
-
-    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
-    # Its value is derived from the `CreatorUserRole` enumeration.
-    created_by_role: Mapped[CreatorUserRole] = mapped_column(
-        EnumText(CreatorUserRole, length=255),
-        nullable=False,
-        server_default=sa.text("'account'"),
-        default=CreatorUserRole.ACCOUNT,
-    )
-
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
@@ -2205,10 +2221,18 @@ class UploadFile(Base):
     # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
+    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # Its value is derived from the `CreatorUserRole` enumeration.
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255),
+        nullable=False,
+        server_default=sa.text("'account'"),
+        default=CreatorUserRole.ACCOUNT,
+    )
     # `used_by` may indicate the ID of the user who utilized this file.
-    used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
-    hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
+    hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     source_url: Mapped[str] = mapped_column(LongText, default="")
 
     def __init__(
@@ -2495,7 +2519,7 @@ class TraceAppConfig(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    tracing_config: Mapped[dict[str, Any] | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

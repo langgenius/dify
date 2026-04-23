@@ -5,12 +5,12 @@ import type {
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useState } from 'react'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { useState } from 'react'
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'

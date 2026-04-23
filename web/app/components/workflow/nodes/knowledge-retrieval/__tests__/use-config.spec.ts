@@ -423,16 +423,16 @@ describe('knowledge-retrieval/use-config', () => {
       expect(result.current.inputs.metadata_filtering_conditions?.conditions).toHaveLength(2)
     })
 
-    const firstCondition = result.current.inputs.metadata_filtering_conditions!.conditions[0]
+    const firstCondition = result.current.inputs.metadata_filtering_conditions!.conditions[0]!
 
     act(() => {
-      result.current.handleUpdateCondition(firstCondition.id, {
+      result.current.handleUpdateCondition(firstCondition!.id, {
         ...firstCondition,
         value: 'agent',
         comparison_operator: ComparisonOperator.contains,
       })
       result.current.handleToggleConditionLogicalOperator()
-      result.current.handleRemoveCondition(firstCondition.id)
+      result.current.handleRemoveCondition(firstCondition!.id)
       result.current.handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4.1-mini', mode: AppModeEnum.CHAT })
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })

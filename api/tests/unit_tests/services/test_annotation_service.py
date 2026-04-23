@@ -238,6 +238,8 @@ class TestAppAnnotationServiceUpInsert:
             assert result == annotation_instance
             mock_cls.assert_called_once_with(
                 app_id=app.id,
+                conversation_id=None,
+                message_id=None,
                 content="hello",
                 question="q1",
                 account_id=current_user.id,

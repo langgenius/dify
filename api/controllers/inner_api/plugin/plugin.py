@@ -1,5 +1,4 @@
 from flask_restx import Resource
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -30,6 +29,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import get_signed_file_url_for_plugin
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser

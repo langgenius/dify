@@ -1,5 +1,8 @@
 'use client'
 
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -7,17 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { setOAuthPendingRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useIsLogin, useUserProfile } from '@/service/use-common'
+import { isLegacyBase401, useLogout, userProfileQueryOptions } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {
@@ -61,20 +62,28 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { data: userProfileResp } = useUserProfile()
+  // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
+  // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
+  // service/base.ts prevents a redirect loop here.
+  const { data: userProfileResp, isPending: isProfileLoading, error: profileError } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
+  const { mutateAsync: logout } = useLogout()
   const hasNotifiedRef = useRef(false)
 
-  const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
-  const isLoading = isOAuthLoading || isIsLoginLoading
-  const onLoginSwitchClick = () => {
+  const isLoading = isOAuthLoading || isProfileLoading
+  const onLoginSwitchClick = async () => {
     try {
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
-      setPostLoginRedirect(returnUrl)
-      router.push('/signin')
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
+      setOAuthPendingRedirect(returnUrl)
+      if (isLoggedIn)
+        await logout()
+      router.push(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
     }
     catch {
       router.push('/signin')
@@ -122,13 +131,13 @@ export default function OAuthAuthorize() {
         </div>
       )}
 
-      <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
+      <div className={`mt-5 mb-4 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
           <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
-        <div className="text-text-secondary body-md-regular">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
+        <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
       </div>
 
       {isLoggedIn && userProfile && (
@@ -137,7 +146,7 @@ export default function OAuthAuthorize() {
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
-              <div className="text-text-tertiary system-xs-regular">{userProfile.email}</div>
+              <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
           <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>{t('switchAccount', { ns: 'oauth' })}</Button>
@@ -149,9 +158,9 @@ export default function OAuthAuthorize() {
           {authAppInfo!.scope.split(/\s+/).filter(Boolean).map((scope: string) => {
             const Icon = SCOPE_INFO_MAP[scope]
             return (
-              <div key={scope} className="flex items-center gap-2 text-text-secondary body-sm-medium">
+              <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
-                {Icon.label}
+                {Icon!.label}
               </div>
             )
           })}
@@ -182,7 +191,7 @@ export default function OAuthAuthorize() {
           </defs>
         </svg>
       </div>
-      <div className="mt-3 text-text-tertiary system-xs-regular">{t('tips.common', { ns: 'oauth' })}</div>
+      <div className="mt-3 system-xs-regular text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
     </div>
   )
 }

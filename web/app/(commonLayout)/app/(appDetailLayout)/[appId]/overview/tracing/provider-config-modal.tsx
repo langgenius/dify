@@ -1,20 +1,28 @@
 'use client'
 import type { FC } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogContent,
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-} from '@/app/components/base/portal-to-follow-elem'
-import { toast } from '@/app/components/base/ui/toast'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -145,7 +153,11 @@ const ProviderConfigModal: FC<Props> = ({
 
     return weaveConfigTemplate
   })())
-  const [isShowRemoveConfirm, {
+  const [isConfigDialogOpen, {
+    set: setIsConfigDialogOpen,
+  }] = useBoolean(true)
+  const [isRemoveDialogOpen, {
+    set: setIsRemoveDialogOpen,
     setTrue: showRemoveConfirm,
     setFalse: hideRemoveConfirm,
   }] = useBoolean(false)
@@ -283,13 +295,24 @@ const ProviderConfigModal: FC<Props> = ({
     }
   }, [appId, checkValid, config, isAdd, isEdit, isSaving, onChosen, onSaved, t, type])
 
+  // Defer onCancel to onOpenChangeComplete so the dialog's exit animation
+  // (scale/opacity transition) can finish before the parent unmounts this modal.
+  const handleConfigDialogOpenChangeComplete = useCallback((open: boolean) => {
+    if (!open)
+      onCancel()
+  }, [onCancel])
+
   return (
     <>
-      {!isShowRemoveConfirm
+      {!isRemoveDialogOpen
         ? (
-            <PortalToFollowElem open>
-              <PortalToFollowElemContent className="z-60 h-full w-full">
-                <div className="fixed inset-0 flex items-center justify-center bg-background-overlay">
+            <Dialog
+              open={isConfigDialogOpen}
+              onOpenChange={setIsConfigDialogOpen}
+              onOpenChangeComplete={handleConfigDialogOpenChangeComplete}
+            >
+              <DialogContent className="w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
+                <div className="flex items-center justify-center">
                   <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
                     <div className="px-8 pt-8">
                       <div className="mb-4 flex items-center justify-between">
@@ -621,7 +644,7 @@ const ProviderConfigModal: FC<Props> = ({
                       </div>
                       <div className="my-8 flex h-8 items-center justify-between">
                         <a
-                          className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-[#155EEF]"
+                          className="flex items-center space-x-1 text-xs leading-[18px] font-normal text-[#155EEF]"
                           target="_blank"
                           href={docURL[type]}
                         >
@@ -642,7 +665,7 @@ const ProviderConfigModal: FC<Props> = ({
                           )}
                           <Button
                             className="mr-2 h-9 text-sm font-medium text-text-secondary"
-                            onClick={onCancel}
+                            onClick={() => setIsConfigDialogOpen(false)}
                           >
                             {t('operation.cancel', { ns: 'common' })}
                           </Button>
@@ -675,18 +698,28 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
                   </div>
                 </div>
-              </PortalToFollowElemContent>
-            </PortalToFollowElem>
+              </DialogContent>
+            </Dialog>
           )
         : (
-            <Confirm
-              isShow
-              type="warning"
-              title={t(`${I18N_PREFIX}.removeConfirmTitle`, { ns: 'app', key: t(`tracing.${type}.title`, { ns: 'app' }) })!}
-              content={t(`${I18N_PREFIX}.removeConfirmContent`, { ns: 'app' })}
-              onConfirm={handleRemove}
-              onCancel={hideRemoveConfirm}
-            />
+            <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+              <AlertDialogContent>
+                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                  <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    {t(`${I18N_PREFIX}.removeConfirmTitle`, { ns: 'app', key: t(`tracing.${type}.title`, { ns: 'app' }) })!}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                    {t(`${I18N_PREFIX}.removeConfirmContent`, { ns: 'app' })}
+                  </AlertDialogDescription>
+                </div>
+                <AlertDialogActions>
+                  <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                  <AlertDialogConfirmButton onClick={handleRemove}>
+                    {t('operation.confirm', { ns: 'common' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogActions>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
     </>
   )

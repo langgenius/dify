@@ -18,7 +18,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn(),
     error: vi.fn(),
@@ -98,7 +98,7 @@ describe('value-content sections', () => {
     const onChange = vi.fn()
     render(<BoolArraySection values={[true, false]} onChange={onChange} />)
 
-    fireEvent.click(screen.getAllByText('True')[1])
+    fireEvent.click(screen.getAllByText('True')[1]!)
     expect(onChange).toHaveBeenCalledWith([true, true])
   })
 
@@ -123,8 +123,8 @@ describe('value-content sections', () => {
 
     fireEvent.change(screen.getByTestId('schema-editor'), { target: { value: '{"foo":1}' } })
     expect(onChange).toHaveBeenCalledWith('{"foo":1}')
-    expect(screen.getByText('Broken JSON')).toBeInTheDocument()
-    expect(screen.getByText('Too deep')).toBeInTheDocument()
+    expect(screen.getByText('Broken JSON'))!.toBeInTheDocument()
+    expect(screen.getByText('Too deep'))!.toBeInTheDocument()
   })
 
   it('should render chunk preview when the json editor has chunks', () => {
@@ -140,7 +140,7 @@ describe('value-content sections', () => {
       />,
     )
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument()
+    expect(screen.getByTestId('schema-editor'))!.toBeInTheDocument()
   })
 
   it('should render the file editor section', () => {

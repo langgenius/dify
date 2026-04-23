@@ -22,11 +22,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.graph_events import GraphRunFailedEvent
 
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from graphon.graph_events import GraphRunFailedEvent
 
 
 def _build_app_generate_entity() -> SimpleNamespace:
@@ -132,11 +132,8 @@ def test_run_pipeline_not_found(mocker):
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
-    query = MagicMock()
-    query.where.return_value.first.return_value = None
-
     session = MagicMock()
-    session.query.return_value = query
+    session.get.side_effect = [None, None]
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
@@ -157,11 +154,9 @@ def test_run_workflow_not_initialized(mocker):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = MagicMock(id="pipe")
-    query_pipeline = MagicMock()
-    query_pipeline.where.return_value.first.return_value = pipeline
 
     session = MagicMock()
-    session.query.return_value = query_pipeline
+    session.get.side_effect = [None, pipeline]
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(

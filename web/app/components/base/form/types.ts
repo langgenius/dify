@@ -14,7 +14,7 @@ export type TypeWithI18N<T = string> = {
   [key: string]: T
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -43,7 +43,7 @@ export type FormOption = {
   icon?: string
 }
 
-export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
+type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
 export enum FormItemValidateStatusEnum {
   Success = 'success',

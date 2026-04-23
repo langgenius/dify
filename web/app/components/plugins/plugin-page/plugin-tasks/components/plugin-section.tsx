@@ -35,7 +35,7 @@ const PluginSection: FC<PluginSectionProps> = ({
 
   return (
     <>
-      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary system-sm-semibold-uppercase">
+      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
         {title}
         {' '}
         (
@@ -43,7 +43,7 @@ const PluginSection: FC<PluginSectionProps> = ({
         )
         {headerAction}
       </div>
-      <div className="max-h-[300px] overflow-y-auto">
+      <div className="max-h-[300px] overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {plugins.map(plugin => (
           <PluginItem
             key={plugin.plugin_unique_identifier}

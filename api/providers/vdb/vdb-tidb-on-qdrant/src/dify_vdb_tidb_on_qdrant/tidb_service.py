@@ -1,3 +1,4 @@
+import logging
 import time
 import uuid
 from collections.abc import Sequence
@@ -12,6 +13,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
+logger = logging.getLogger(__name__)
+
 # Reuse a pooled HTTP client for all TiDB Cloud requests to minimize connection churn
 _tidb_http_client: httpx.Client = get_pooled_http_client(
     "tidb:cloud",
@@ -20,6 +23,46 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 
 class TidbService:
+    @staticmethod
+    def extract_qdrant_endpoint(cluster_response: dict) -> str | None:
+        """Extract the qdrant endpoint URL from a Get Cluster API response.
+
+        Reads ``endpoints.public.host`` (e.g. ``gateway01.xx.tidbcloud.com``),
+        prepends ``qdrant-`` and wraps it as an ``https://`` URL.
+        """
+        endpoints = cluster_response.get("endpoints") or {}
+        public = endpoints.get("public") or {}
+        host = public.get("host")
+        if host:
+            return f"https://qdrant-{host}"
+        return None
+
+    @staticmethod
+    def fetch_qdrant_endpoint(api_url: str, public_key: str, private_key: str, cluster_id: str) -> str | None:
+        """Call Get Cluster API and extract the qdrant endpoint.
+
+        Use ``extract_qdrant_endpoint`` instead when you already have
+        the cluster response to avoid a redundant API call.
+        """
+        try:
+            logger.info("Fetching qdrant endpoint for cluster %s", cluster_id)
+            cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
+            if not cluster_response:
+                logger.warning("Empty response from Get Cluster API for cluster %s", cluster_id)
+                return None
+            qdrant_url = TidbService.extract_qdrant_endpoint(cluster_response)
+            if qdrant_url:
+                logger.info("Resolved qdrant endpoint for cluster %s: %s", cluster_id, qdrant_url)
+                return qdrant_url
+            logger.warning(
+                "No endpoints.public.host found for cluster %s, response keys: %s",
+                cluster_id,
+                list(cluster_response.keys()),
+            )
+        except Exception:
+            logger.exception("Failed to fetch qdrant endpoint for cluster %s", cluster_id)
+        return None
+
     @staticmethod
     def create_tidb_serverless_cluster(
         project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, region: str
@@ -57,6 +100,7 @@ class TidbService:
             "rootPassword": password,
         }
 
+        logger.info("Creating TiDB serverless cluster: display_name=%s, region=%s", display_name, region)
         response = _tidb_http_client.post(
             f"{api_url}/clusters", json=cluster_data, auth=DigestAuth(public_key, private_key)
         )
@@ -64,21 +108,39 @@ class TidbService:
         if response.status_code == 200:
             response_data = response.json()
             cluster_id = response_data["clusterId"]
+            logger.info("Cluster created, cluster_id=%s, waiting for ACTIVE state", cluster_id)
             retry_count = 0
             max_retries = 30
             while retry_count < max_retries:
                 cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
                 if cluster_response["state"] == "ACTIVE":
                     user_prefix = cluster_response["userPrefix"]
+                    qdrant_endpoint = TidbService.extract_qdrant_endpoint(cluster_response)
+                    logger.info(
+                        "Cluster %s is ACTIVE, user_prefix=%s, qdrant_endpoint=%s",
+                        cluster_id,
+                        user_prefix,
+                        qdrant_endpoint,
+                    )
                     return {
                         "cluster_id": cluster_id,
                         "cluster_name": display_name,
                         "account": f"{user_prefix}.root",
                         "password": password,
+                        "qdrant_endpoint": qdrant_endpoint,
                     }
-                time.sleep(30)  # wait 30 seconds before retrying
+                logger.info(
+                    "Cluster %s state=%s, retry %d/%d",
+                    cluster_id,
+                    cluster_response["state"],
+                    retry_count + 1,
+                    max_retries,
+                )
+                time.sleep(30)
                 retry_count += 1
+            logger.error("Cluster %s did not become ACTIVE after %d retries", cluster_id, max_retries)
         else:
+            logger.error("Failed to create cluster: status=%d, body=%s", response.status_code, response.text)
             response.raise_for_status()
 
     @staticmethod
@@ -243,19 +305,29 @@ class TidbService:
         if response.status_code == 200:
             response_data = response.json()
             cluster_infos = []
+            logger.info("Batch created %d clusters", len(response_data.get("clusters", [])))
             for item in response_data["clusters"]:
                 cache_key = f"tidb_serverless_cluster_password:{item['displayName']}"
                 cached_password = redis_client.get(cache_key)
                 if not cached_password:
+                    logger.warning("No cached password for cluster %s, skipping", item["displayName"])
                     continue
+                qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
+                logger.info(
+                    "Batch cluster %s: qdrant_endpoint=%s",
+                    item["clusterId"],
+                    qdrant_endpoint,
+                )
                 cluster_info = {
                     "cluster_id": item["clusterId"],
                     "cluster_name": item["displayName"],
                     "account": "root",
                     "password": cached_password.decode("utf-8"),
+                    "qdrant_endpoint": qdrant_endpoint,
                 }
                 cluster_infos.append(cluster_info)
             return cluster_infos
         else:
+            logger.error("Batch create failed: status=%d, body=%s", response.status_code, response.text)
             response.raise_for_status()
             return []
