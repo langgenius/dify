@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import {
@@ -27,6 +27,20 @@ const ImportFromMarketplaceTemplateModal = ({
   const template = data?.data
   const [importing, setImporting] = useState(false)
   const isImportingRef = useRef(false)
+
+  const CATEGORY_I18N_MAP: Record<string, string> = useMemo(() => ({
+    marketing: t('marketplace.template.category.marketing', { ns: 'app' }),
+    sales: t('marketplace.template.category.sales', { ns: 'app' }),
+    support: t('marketplace.template.category.support', { ns: 'app' }),
+    operations: t('marketplace.template.category.operations', { ns: 'app' }),
+    it: t('marketplace.template.category.it', { ns: 'app' }),
+    knowledge: t('marketplace.template.category.knowledge', { ns: 'app' }),
+    design: t('marketplace.template.category.design', { ns: 'app' }),
+  }), [t])
+
+  const translateCategory = useCallback((slug: string) => {
+    return CATEGORY_I18N_MAP[slug] ?? slug
+  }, [CATEGORY_I18N_MAP])
 
   const handleConfirm = useCallback(async () => {
     if (isImportingRef.current)
@@ -112,7 +126,7 @@ const ImportFromMarketplaceTemplateModal = ({
                     {t('marketplace.template.categories', { ns: 'app' })}:
                   </span>
                   <span className="system-xs-regular text-text-secondary">
-                    {template.categories.join(', ')}
+                    {template.categories.map(translateCategory).join(', ')}
                   </span>
                 </div>
               )}
