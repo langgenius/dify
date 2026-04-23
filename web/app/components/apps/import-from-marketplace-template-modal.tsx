@@ -114,7 +114,7 @@ const ImportFromMarketplaceTemplateModal = ({
               <div className="flex flex-col">
                 <div className="system-md-semibold text-text-primary">{template.template_name}</div>
                 <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
-                  <span>{template.publisher_unique_handle}</span>
+                  <span>{t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher_unique_handle}</span>
                   <span>·</span>
                   <span>{t('marketplace.template.usageCount', { ns: 'app' })} {template.usage_count}</span>
                 </div>
