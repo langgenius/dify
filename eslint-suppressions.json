@@ -3542,11 +3542,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-page/debug-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-page/empty/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
