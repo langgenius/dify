@@ -119,25 +119,18 @@ const ImportFromMarketplaceTemplateModal = ({
               </div>
             )}
 
-            <div className="flex items-center gap-4">
-              {template.categories.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <span className="system-xs-medium text-text-tertiary">
-                    {t('marketplace.template.categories', { ns: 'app' })}:
-                  </span>
-                  <span className="system-xs-regular text-text-secondary">
-                    {template.categories.map(translateCategory).join(', ')}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <span className="system-xs-medium text-text-tertiary">
-                  {t('marketplace.template.usageCount', { ns: 'app' })}:
+            <div className="flex flex-wrap items-center gap-2">
+              {template.categories.map(cat => (
+                <span
+                  key={cat}
+                  className="inline-flex items-center rounded-full bg-components-label-gray px-2.5 py-1 system-sm-regular text-text-secondary"
+                >
+                  {translateCategory(cat)}
                 </span>
-                <span className="system-xs-regular text-text-secondary">
-                  {template.usage_count}
-                </span>
-              </div>
+              ))}
+              <span className="inline-flex items-center rounded-full bg-components-label-gray px-2.5 py-1 system-sm-regular text-text-secondary">
+                {t('marketplace.template.usageCount', { ns: 'app' })}: {template.usage_count}
+              </span>
             </div>
           </div>
         )}
