@@ -17,6 +17,11 @@ from redis.sentinel import Sentinel
 from typing_extensions import TypedDict
 
 from configs import dify_config
+from configs.middleware.cache.redis_connection_spec import (
+    RedisConnectionSpec,
+    build_main_redis_spec,
+    build_pubsub_spec,
+)
 from dify_app import DifyApp
 from extensions.redis_names import (
     normalize_redis_key_prefix,
@@ -216,30 +221,15 @@ redis_client: RedisClientWrapper = RedisClientWrapper()
 _pubsub_redis_client: redis.Redis | RedisCluster | None = None
 
 
-class RedisSSLParamsDict(TypedDict):
-    ssl_cert_reqs: int
-    ssl_ca_certs: str | None
-    ssl_certfile: str | None
-    ssl_keyfile: str | None
+class RedisTransportParamsDict(TypedDict):
+    """Runtime tuning parameters shared across all Redis client types.
 
+    These are business-level knobs (timeouts, retry policy, pool size,
+    protocol) that don't depend on the deployment topology. They are
+    read once from ``dify_config`` and passed alongside a
+    ``RedisConnectionSpec`` into every client constructor.
+    """
 
-class RedisHealthParamsDict(TypedDict):
-    retry: Retry
-    socket_timeout: float | None
-    socket_connect_timeout: float | None
-    health_check_interval: int | None
-
-
-class RedisClusterHealthParamsDict(TypedDict):
-    retry: Retry
-    socket_timeout: float | None
-    socket_connect_timeout: float | None
-
-
-class RedisBaseParamsDict(TypedDict):
-    username: str | None
-    password: str | None
-    db: int
     encoding: str
     encoding_errors: str
     decode_responses: bool
@@ -249,28 +239,29 @@ class RedisBaseParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    max_connections: int | None
 
 
-def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
-    """Get SSL configuration for Redis connection."""
-    if not dify_config.REDIS_USE_SSL:
-        return Connection, {}
+def _ssl_kwargs_from_spec(spec: RedisConnectionSpec) -> dict[str, Any]:
+    """Map the spec's SSL fields into ``ConnectionPool``-compatible kwargs.
+
+    Returns an empty dict when SSL is off so the caller can ``**kwargs``-
+    merge unconditionally.
+    """
+    if not spec.use_ssl:
+        return {}
 
     cert_reqs_map = {
         "CERT_NONE": ssl.CERT_NONE,
         "CERT_OPTIONAL": ssl.CERT_OPTIONAL,
         "CERT_REQUIRED": ssl.CERT_REQUIRED,
     }
-    ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
-
-    ssl_kwargs = {
-        "ssl_cert_reqs": ssl_cert_reqs,
-        "ssl_ca_certs": dify_config.REDIS_SSL_CA_CERTS,
-        "ssl_certfile": dify_config.REDIS_SSL_CERTFILE,
-        "ssl_keyfile": dify_config.REDIS_SSL_KEYFILE,
+    return {
+        "ssl_cert_reqs": cert_reqs_map.get(spec.ssl_cert_reqs, ssl.CERT_NONE),
+        "ssl_ca_certs": spec.ssl_ca_certs,
+        "ssl_certfile": spec.ssl_certfile,
+        "ssl_keyfile": spec.ssl_keyfile,
     }
-
-    return SSLConnection, ssl_kwargs
 
 
 def _get_cache_configuration() -> CacheConfig | None:
@@ -296,163 +287,163 @@ def _get_retry_policy() -> Retry:
     )
 
 
-def _get_connection_health_params() -> RedisHealthParamsDict:
-    """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
-    return RedisHealthParamsDict(
-        retry=_get_retry_policy(),
-        socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
-        socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
-        health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
-    )
+def _get_redis_transport_params() -> RedisTransportParamsDict:
+    """Read runtime tuning params (timeouts, retry, pool size) from config.
 
-
-def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
-    """Get retry and timeout parameters for Redis Cluster clients.
-
-    RedisCluster does not support ``health_check_interval`` as a constructor
-    keyword (it is silently stripped by ``cleanup_kwargs``), so it is excluded
-    here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
-    are passed through.
+    Does not include topology fields (host / nodes / credentials) — those
+    live on the ``RedisConnectionSpec`` and are supplied separately.
     """
-    health_params = _get_connection_health_params()
-    result: RedisClusterHealthParamsDict = {
-        "retry": health_params["retry"],
-        "socket_timeout": health_params["socket_timeout"],
-        "socket_connect_timeout": health_params["socket_connect_timeout"],
-    }
-    return result
-
-
-def _get_base_redis_params() -> RedisBaseParamsDict:
-    """Get base Redis connection parameters including retry and health policy."""
-    return RedisBaseParamsDict(
-        username=dify_config.REDIS_USERNAME,
-        password=dify_config.REDIS_PASSWORD or None,
-        db=dify_config.REDIS_DB,
+    return RedisTransportParamsDict(
         encoding="utf-8",
         encoding_errors="strict",
         decode_responses=False,
         protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
         cache_config=_get_cache_configuration(),
-        **_get_connection_health_params(),
+        retry=_get_retry_policy(),
+        socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
+        socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
+        health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+        max_connections=dify_config.REDIS_MAX_CONNECTIONS,
     )
 
 
-def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
-    """Create Redis client using Sentinel configuration."""
-    if not dify_config.REDIS_SENTINELS:
-        raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
-
-    if not dify_config.REDIS_SENTINEL_SERVICE_NAME:
-        raise ValueError("REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True")
-
-    sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
-
-    sentinel_kwargs = {
-        "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
-        "username": dify_config.REDIS_SENTINEL_USERNAME,
-        "password": dify_config.REDIS_SENTINEL_PASSWORD,
-    }
-
-    if dify_config.REDIS_MAX_CONNECTIONS:
-        sentinel_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
-
-    sentinel = Sentinel(
-        sentinel_hosts,
-        sentinel_kwargs=sentinel_kwargs,
-    )
-
-    params: dict[str, Any] = {**redis_params}
-    master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **params)
-    return master
-
-
-def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
-    """Create Redis cluster client."""
-    if not dify_config.REDIS_CLUSTERS:
-        raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
-
-    nodes = [
-        ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
-        for node in dify_config.REDIS_CLUSTERS.split(",")
-    ]
-
-    cluster_kwargs: dict[str, Any] = {
-        "startup_nodes": nodes,
-        "password": dify_config.REDIS_CLUSTERS_PASSWORD,
-        "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
-        "cache_config": _get_cache_configuration(),
-        **_get_cluster_connection_health_params(),
-    }
-    if dify_config.REDIS_MAX_CONNECTIONS:
-        cluster_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
-    cluster: RedisCluster = RedisCluster(**cluster_kwargs)
-    return cluster
-
-
-def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
-    """Create standalone Redis client."""
-    connection_class, ssl_kwargs = _get_ssl_configuration()
+def _create_standalone_client(
+    spec: RedisConnectionSpec,
+    transport: RedisTransportParamsDict,
+) -> redis.Redis:
+    """Build a standalone Redis client from a spec + transport params."""
+    connection_class: type[Union[Connection, SSLConnection]] = SSLConnection if spec.use_ssl else Connection
 
     params: dict[str, Any] = {
-        **redis_params,
-        "host": dify_config.REDIS_HOST,
-        "port": dify_config.REDIS_PORT,
+        "host": spec.host,
+        "port": spec.port,
+        "username": spec.username,
+        "password": spec.password,
+        "db": spec.db,
+        "encoding": transport["encoding"],
+        "encoding_errors": transport["encoding_errors"],
+        "decode_responses": transport["decode_responses"],
+        "protocol": transport["protocol"],
+        "cache_config": transport["cache_config"],
+        "retry": transport["retry"],
+        "socket_timeout": transport["socket_timeout"],
+        "socket_connect_timeout": transport["socket_connect_timeout"],
+        "health_check_interval": transport["health_check_interval"],
         "connection_class": connection_class,
+        **_ssl_kwargs_from_spec(spec),
     }
-
-    if dify_config.REDIS_MAX_CONNECTIONS:
-        params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
-
-    if ssl_kwargs:
-        params.update(ssl_kwargs)
+    if transport["max_connections"]:
+        params["max_connections"] = transport["max_connections"]
 
     pool = redis.ConnectionPool(**params)
-    client: redis.Redis = redis.Redis(connection_pool=pool)
-    return client
+    return redis.Redis(connection_pool=pool)
 
 
-def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
-    max_conns = dify_config.REDIS_MAX_CONNECTIONS
+def _create_sentinel_client(
+    spec: RedisConnectionSpec,
+    transport: RedisTransportParamsDict,
+) -> redis.Redis:
+    """Build a Sentinel-aware Redis client.
 
-    if use_clusters:
-        health_params = _get_cluster_connection_health_params()
-        kwargs: dict[str, Any] = {**health_params}
-        if max_conns:
-            kwargs["max_connections"] = max_conns
-        return RedisCluster.from_url(pubsub_url, **kwargs)
+    Returns a ``master_for`` handle — an implicit Redis client that
+    rediscovers the current master on each connection via the Sentinel
+    quorum. Callers treat it like a normal ``redis.Redis``.
+    """
+    # RedisConnectionSpec.__post_init__ guarantees these, but assert for the
+    # type checker (sentinel_service_name is declared ``str | None``).
+    assert spec.sentinel_service_name is not None
 
-    standalone_health_params: dict[str, Any] = dict(_get_connection_health_params())
-    kwargs = {**standalone_health_params}
-    if max_conns:
-        kwargs["max_connections"] = max_conns
-    return redis.Redis.from_url(pubsub_url, **kwargs)
+    sentinel_kwargs: dict[str, Any] = {
+        "socket_timeout": spec.sentinel_socket_timeout,
+        "username": spec.sentinel_username,
+        "password": spec.sentinel_password,
+    }
+    if transport["max_connections"]:
+        sentinel_kwargs["max_connections"] = transport["max_connections"]
+
+    sentinel = Sentinel(list(spec.sentinel_nodes), sentinel_kwargs=sentinel_kwargs)
+
+    master_params: dict[str, Any] = {
+        "username": spec.username,
+        "password": spec.password,
+        "db": spec.db,
+        "encoding": transport["encoding"],
+        "encoding_errors": transport["encoding_errors"],
+        "decode_responses": transport["decode_responses"],
+        "protocol": transport["protocol"],
+        "cache_config": transport["cache_config"],
+        "retry": transport["retry"],
+        "socket_timeout": transport["socket_timeout"],
+        "socket_connect_timeout": transport["socket_connect_timeout"],
+        "health_check_interval": transport["health_check_interval"],
+    }
+    return sentinel.master_for(spec.sentinel_service_name, **master_params)
+
+
+def _create_cluster_client(
+    spec: RedisConnectionSpec,
+    transport: RedisTransportParamsDict,
+) -> RedisCluster:
+    """Build a Redis Cluster client.
+
+    RedisCluster's constructor silently strips ``health_check_interval``
+    (via ``cleanup_kwargs``), so we omit it here rather than have it
+    passed-then-discarded.
+    """
+    nodes = [ClusterNode(host=host, port=port) for host, port in spec.cluster_nodes]
+    cluster_kwargs: dict[str, Any] = {
+        "startup_nodes": nodes,
+        "password": spec.password,
+        "protocol": transport["protocol"],
+        "cache_config": transport["cache_config"],
+        "retry": transport["retry"],
+        "socket_timeout": transport["socket_timeout"],
+        "socket_connect_timeout": transport["socket_connect_timeout"],
+    }
+    if transport["max_connections"]:
+        cluster_kwargs["max_connections"] = transport["max_connections"]
+    return RedisCluster(**cluster_kwargs)
+
+
+def _build_main_client(spec: RedisConnectionSpec) -> Union[redis.Redis, RedisCluster]:
+    """Dispatch to the right factory based on ``spec.mode``."""
+    transport = _get_redis_transport_params()
+    match spec.mode:
+        case "sentinel":
+            return _create_sentinel_client(spec, transport)
+        case "cluster":
+            return _create_cluster_client(spec, transport)
+        case _:
+            return _create_standalone_client(spec, transport)
 
 
 def init_app(app: DifyApp):
     """Initialize Redis client and attach it to the app."""
     global redis_client
 
-    # Determine Redis mode and create appropriate client
-    if dify_config.REDIS_USE_SENTINEL:
-        redis_params = _get_base_redis_params()
-        client = _create_sentinel_client(redis_params)
-    elif dify_config.REDIS_USE_CLUSTERS:
-        client = _create_cluster_client()
-    else:
-        redis_params = _get_base_redis_params()
-        client = _create_standalone_client(redis_params)
+    # Main client: derive a spec from env, then dispatch to the right
+    # factory. ``build_main_redis_spec`` rejects invalid combinations
+    # (e.g. Sentinel + Cluster both enabled) up front.
+    main_spec = build_main_redis_spec(dify_config)
+    client = _build_main_client(main_spec)
 
-    # Initialize the wrapper and attach to app
     redis_client.initialize(client)
     app.extensions["redis"] = redis_client
 
+    # Pub/sub client: resolve its spec relative to the main spec.
+    # When the pub/sub spec equals the main spec (the default
+    # "inherit" case) we reuse the main client object — essential
+    # for Sentinel, where the ``master_for`` handle already
+    # provides failover that a second client construction couldn't
+    # inherit through a URL. When pub/sub declares its own topology
+    # (via PUBSUB_REDIS_MODE or a legacy PUBSUB_REDIS_URL) we build
+    # an independent client through the same factory dispatch.
     global _pubsub_redis_client
-    _pubsub_redis_client = client
-    if dify_config.normalized_pubsub_redis_url:
-        _pubsub_redis_client = _create_pubsub_client(
-            dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
-        )
+    pubsub_spec = build_pubsub_spec(main_spec, dify_config)
+    if pubsub_spec == main_spec:
+        _pubsub_redis_client = client
+    else:
+        _pubsub_redis_client = _build_main_client(pubsub_spec)
 
 
 def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
