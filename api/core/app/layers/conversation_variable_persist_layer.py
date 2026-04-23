@@ -9,11 +9,10 @@ scope updates that matter to chat applications.
 
 import logging
 
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
-
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)

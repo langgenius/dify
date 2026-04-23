@@ -1,13 +1,10 @@
-import { fireEvent, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 
 vi.mock('../../hooks', () => ({
   PLUGIN_PAGE_TABS_MAP: {
@@ -20,11 +17,21 @@ vi.mock('../../hooks', () => ({
   ],
 }))
 
-const mockGlobalPublicStore = (enableMarketplace: boolean) => {
-  vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-    const state = { systemFeatures: { enable_marketplace: enableMarketplace } }
-    return selector(state as Parameters<typeof selector>[0])
+const renderWithProviders = (
+  ui: ReactElement,
+  options: { enableMarketplace: boolean, searchParams?: string } = { enableMarketplace: true },
+) => {
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: options.enableMarketplace },
   })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <SystemFeaturesWrapper>
+      <NuqsTestingAdapter searchParams={options.searchParams ?? ''}>
+        {children}
+      </NuqsTestingAdapter>
+    </SystemFeaturesWrapper>
+  )
+  return render(ui, { wrapper: Wrapper })
 }
 
 const Consumer = () => {
@@ -47,25 +54,22 @@ describe('PluginPageContextProvider', () => {
   })
 
   it('filters out the marketplace tab when the feature is disabled', () => {
-    mockGlobalPublicStore(false)
-
-    renderWithNuqs(
+    renderWithProviders(
       <PluginPageContextProvider>
         <Consumer />
       </PluginPageContextProvider>,
+      { enableMarketplace: false },
     )
 
     expect(screen.getByTestId('options-count')).toHaveTextContent('1')
   })
 
   it('keeps the query-state tab and updates the current plugin id', () => {
-    mockGlobalPublicStore(true)
-
-    renderWithNuqs(
+    renderWithProviders(
       <PluginPageContextProvider>
         <Consumer />
       </PluginPageContextProvider>,
-      { searchParams: '?tab=discover' },
+      { enableMarketplace: true, searchParams: '?tab=discover' },
     )
 
     fireEvent.click(screen.getByText('select plugin'))

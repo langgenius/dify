@@ -236,6 +236,41 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
         _ = DifyConfig().normalized_pubsub_redis_url
 
 
+def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.REDIS_KEY_PREFIX == ""
+
+
+def test_dify_config_reads_redis_key_prefix_from_env(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_KEY_PREFIX", "enterprise-a")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.REDIS_KEY_PREFIX == "enterprise-a"
+
+
 @pytest.mark.parametrize(
     ("broker_url", "expected_host", "expected_port", "expected_username", "expected_password", "expected_db"),
     [

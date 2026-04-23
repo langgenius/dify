@@ -1,7 +1,9 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import PluginPage from '@/app/components/plugins/plugin-page'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockFetchManifestFromMarketPlace = vi.fn()
 
@@ -32,17 +34,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      enable_marketplace: true,
-      plugin_installation_permission: {
-        restrict_to_marketplace_only: false,
-      },
-    },
   }),
 }))
 
@@ -104,13 +95,30 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 }))
 
 const renderPluginPage = (searchParams = '') => {
-  return renderWithNuqs(
-    <PluginPage
-      plugins={<div data-testid="plugins-view">plugins view</div>}
-      marketplace={<div data-testid="marketplace-view">marketplace view</div>}
-    />,
-    { searchParams },
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: {
+      enable_marketplace: true,
+      plugin_installation_permission: {
+        restrict_to_marketplace_only: false,
+      },
+    },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
   )
+  return {
+    ...render(
+      <PluginPage
+        plugins={<div data-testid="plugins-view">plugins view</div>}
+        marketplace={<div data-testid="marketplace-view">marketplace view</div>}
+      />,
+      { wrapper: Wrapper },
+    ),
+    onUrlUpdate,
+  }
 }
 
 describe('Plugin Page Shell Flow', () => {
@@ -132,16 +140,16 @@ describe('Plugin Page Shell Flow', () => {
   it('switches from installed plugins to marketplace and syncs the active tab into the URL', async () => {
     const { onUrlUpdate } = renderPluginPage()
 
-    expect(screen.getByTestId('plugins-view')).toBeInTheDocument()
+    expect(screen.getByTestId('plugins-view'))!.toBeInTheDocument()
     expect(screen.queryByTestId('marketplace-view')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('tab-item-discover'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('marketplace-view')).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-view'))!.toBeInTheDocument()
     })
 
-    const tabUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+    const tabUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
     expect(tabUpdate.searchParams.get('tab')).toBe('discover')
   })
 
@@ -150,13 +158,13 @@ describe('Plugin Page Shell Flow', () => {
 
     await waitFor(() => {
       expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('langgenius%2Fplugin-demo')
-      expect(screen.getByTestId('install-from-marketplace-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('install-from-marketplace-modal'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'close-install-modal' }))
 
     await waitFor(() => {
-      const clearUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const clearUpdate = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(clearUpdate.searchParams.has('package-ids')).toBe(false)
     })
   })

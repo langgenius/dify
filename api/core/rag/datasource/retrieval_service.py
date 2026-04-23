@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
@@ -24,6 +23,7 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -158,7 +158,7 @@ class RetrievalService:
                     )
 
             if futures:
-                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                for _ in concurrent.futures.as_completed(futures, timeout=3600):
                     if exceptions:
                         for f in futures:
                             f.cancel()
@@ -194,6 +194,23 @@ class RetrievalService:
             metadata_condition=metadata_condition,
         )
         return all_documents
+
+    @classmethod
+    def _filter_documents_by_vector_score_threshold(
+        cls, documents: list[Document], score_threshold: float | None
+    ) -> list[Document]:
+        """Keep documents whose stored retrieval score meets the threshold.
+
+        Used when hybrid search skips early vector thresholding but no rerank
+        runner applies a threshold afterward (same rule as ``calculate_vector_score``).
+        """
+        if score_threshold is None:
+            return documents
+        return [
+            document
+            for document in documents
+            if document.metadata and document.metadata.get("score", 0) >= score_threshold
+        ]
 
     @classmethod
     def _deduplicate_documents(cls, documents: list[Document]) -> list[Document]:
@@ -294,13 +311,20 @@ class RetrievalService:
 
                 vector = Vector(dataset=dataset)
                 documents = []
+                # Hybrid search merges keyword / full-text / vector hits and then reranks
+                # (weighted fusion or reranking model). Applying the user score threshold at
+                # vector retrieval time uses embedding similarity, which is not comparable to
+                # reranked or fused scores and incorrectly drops high-quality chunks (#35233).
+                embedding_score_threshold = (
+                    0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
+                )
                 if query_type == QueryType.TEXT_QUERY:
                     documents.extend(
                         vector.search_by_vector(
                             query,
                             search_type="similarity_score_threshold",
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=embedding_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
@@ -312,7 +336,7 @@ class RetrievalService:
                         vector.search_by_file(
                             file_id=query,
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=embedding_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
@@ -527,6 +551,7 @@ class RetrievalService:
                 child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
                 for i in child_index_nodes:
+                    assert i.index_node_id
                     segment_ids.append(i.segment_id)
                     if i.segment_id in child_chunk_map:
                         child_chunk_map[i.segment_id].append(i)
@@ -844,6 +869,10 @@ class RetrievalService:
                     top_n=top_k,
                     query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
                 )
+                if not data_post_processor.rerank_runner and score_threshold:
+                    all_documents_item = self._filter_documents_by_vector_score_threshold(
+                        all_documents_item, score_threshold
+                    )
 
             all_documents.extend(all_documents_item)
 

@@ -24,8 +24,8 @@ from enums.cloud_plan import CloudPlan
 from models.account import TenantStatus
 from models.model import ApiToken
 from tests.unit_tests.conftest import (
-    setup_mock_dataset_tenant_query,
-    setup_mock_tenant_account_query,
+    setup_mock_dataset_owner_execute_result,
+    setup_mock_tenant_owner_execute_result,
 )
 
 
@@ -141,14 +141,11 @@ class TestValidateAppToken:
         mock_account = Mock()
         mock_account.id = str(uuid.uuid4())
 
-        mock_ta = Mock()
-        mock_ta.account_id = mock_account.id
-
         # Use side_effect to return app first, then tenant via session.get()
         mock_db.session.get.side_effect = [mock_app, mock_tenant]
 
-        # Mock the tenant owner query (execute(select(...)).one_or_none())
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+        # Mock the tenant owner execute result (execute(select(...)).one_or_none())
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         @validate_app_token
         def protected_view(app_model):
@@ -471,7 +468,7 @@ class TestValidateDatasetToken:
         mock_account.current_tenant = mock_tenant
 
         # Mock the tenant account join query (execute(select(...)).one_or_none())
-        setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta)
+        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
 
         # Mock the account lookup via session.get()
         mock_db.session.get.return_value = mock_account

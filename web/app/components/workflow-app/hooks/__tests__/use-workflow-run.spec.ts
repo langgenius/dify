@@ -501,7 +501,8 @@ describe('useWorkflowRun', () => {
     windowWithDebugControllers.__allTriggersDebugAbortController = { abort: allTriggersAbort }
     const refController = new AbortController()
     const refAbortSpy = vi.spyOn(refController, 'abort')
-    const { getAbortController } = mocks.mockSsePost.mock.calls.at(-1)?.[2] as {
+    const lastCall = mocks.mockSsePost.mock.calls.at(-1)
+    const { getAbortController } = (lastCall?.[2] ?? {}) as {
       getAbortController?: (controller: AbortController) => void
     }
     getAbortController?.(refController)

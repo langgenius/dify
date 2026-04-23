@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteScroll } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -15,7 +16,6 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 
 type ISelectDataSetProps = {
   isShow: boolean
@@ -134,7 +134,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && 'max-w-[120px]! opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary">{t('unavailable', { ns: 'dataset' })}</span>
+                    <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">{t('unavailable', { ns: 'dataset' })}</span>
                   )}
                 </div>
                 {item.is_multimodal && (

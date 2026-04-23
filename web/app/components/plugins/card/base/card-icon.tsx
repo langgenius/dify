@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import { cn } from '@/utils/classnames'
 import { shouldUseMcpIcon } from '@/utils/mcp'
 
 const iconSizeMap = {

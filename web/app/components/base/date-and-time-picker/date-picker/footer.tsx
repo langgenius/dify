@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { DatePickerFooterProps } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import Button from '../../button'
 import { ViewType } from '../types'
 
 const Footer: FC<DatePickerFooterProps> = ({
@@ -27,8 +27,8 @@ const Footer: FC<DatePickerFooterProps> = ({
       {needTimePicker && (
         <button
           type="button"
-          className="system-xs-medium flex items-center gap-x-px rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5
-                      py-1 text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
+          className="flex items-center gap-x-px rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1
+                      system-xs-medium text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           onClick={handleClickTimePicker}
         >
           <RiTimeLine className="h-3.5 w-3.5" />
@@ -40,7 +40,7 @@ const Footer: FC<DatePickerFooterProps> = ({
         {/* Now */}
         <button
           type="button"
-          className="system-xs-medium flex items-center justify-center px-1.5 py-1 text-components-button-secondary-accent-text"
+          className="flex items-center justify-center px-1.5 py-1 system-xs-medium text-components-button-secondary-accent-text"
           onClick={handleSelectCurrentDate}
         >
           <span className="px-[3px]">{t('operation.now', { ns: 'time' })}</span>

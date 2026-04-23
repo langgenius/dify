@@ -1,5 +1,7 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme-context'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,8 +10,7 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Tooltip from '@/app/components/base/tooltip'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isClient } from '@/utils/client'
 import {
   useEmbeddedChatbotContext,
@@ -44,7 +45,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin
@@ -94,7 +95,7 @@ const Header: FC<IHeaderProps> = ({
                 )}
                 data-testid="webapp-brand"
               >
-                <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                     ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />

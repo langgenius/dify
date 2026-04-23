@@ -1,9 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAedFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import {
   DocumentProcessingPriority,
   Plan,
@@ -49,7 +49,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
     >
       <div
         className={cn(
-          'system-2xs-medium ml-1 inline-flex h-[18px] shrink-0 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary',
+          'ml-1 inline-flex h-[18px] shrink-0 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium text-text-accent-secondary',
           className,
         )}
       >

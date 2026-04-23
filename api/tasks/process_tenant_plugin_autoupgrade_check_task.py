@@ -11,6 +11,7 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
 from models.account import TenantPluginAutoUpgradeStrategy
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -171,14 +172,13 @@ def process_tenant_plugin_autoupgrade_check_task(
                                 fg="green",
                             )
                         )
-                        _ = manager.upgrade_plugin(
+                        # Use the service that downloads and uploads the package to the daemon
+                        # first; calling manager.upgrade_plugin directly skips that step and the
+                        # daemon fails because the package never reaches its local bucket.
+                        _ = PluginService.upgrade_plugin_with_marketplace(
                             tenant_id,
                             original_unique_identifier,
                             new_unique_identifier,
-                            PluginInstallationSource.Marketplace,
-                            {
-                                "plugin_unique_identifier": new_unique_identifier,
-                            },
                         )
                 except Exception as e:
                     click.echo(click.style(f"Error when upgrading plugin: {e}", fg="red"))

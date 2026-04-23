@@ -1,15 +1,20 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import {
   useStore,
@@ -17,7 +22,6 @@ import {
 } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import {
   useIsChatMode,
   useNodesInteractions,
@@ -61,52 +65,60 @@ const ViewHistory = ({
 
   return (
     (
-      <PortalToFollowElem
-        placement={withText ? 'bottom-start' : 'bottom-end'}
-        offset={{
-          mainAxis: 4,
-          crossAxis: withText ? -8 : 10,
-        }}
+      <Popover
         open={open}
         onOpenChange={setOpen}
       >
-        <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-          {
-            withText && (
-              <button
-                type="button"
-                aria-label={t('common.showRunHistory', { ns: 'workflow' })}
-                className={cn(
-                  'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
-                  'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
-                  open && 'bg-components-button-secondary-bg-hover',
+        {withText
+          ? (
+              <PopoverTrigger
+                render={(
+                  <button
+                    type="button"
+                    aria-label={t('common.showRunHistory', { ns: 'workflow' })}
+                    className={cn(
+                      'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
+                      'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
+                      open && 'bg-components-button-secondary-bg-hover',
+                    )}
+                  >
+                    <span className="mr-1 i-custom-vender-line-time-clock-play h-4 w-4" />
+                    {t('common.showRunHistory', { ns: 'workflow' })}
+                  </button>
                 )}
-              >
-                <span className="i-custom-vender-line-time-clock-play mr-1 h-4 w-4" />
-                {t('common.showRunHistory', { ns: 'workflow' })}
-              </button>
+              />
             )
-          }
-          {
-            !withText && (
-              <Tooltip
-                popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
-              >
-                <button
-                  type="button"
-                  aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
-                  className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
-                  onClick={() => {
-                    onClearLogAndMessageModal?.()
-                  }}
+          : (
+              <Tooltip>
+                <TooltipTrigger
+                  render={<div className="flex" />}
                 >
-                  <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
-                </button>
+                  <PopoverTrigger
+                    render={(
+                      <button
+                        type="button"
+                        aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
+                        className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+                        onClick={() => {
+                          onClearLogAndMessageModal?.()
+                        }}
+                      >
+                        <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
+                      </button>
+                    )}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('common.viewRunHistory', { ns: 'workflow' })}
+                </TooltipContent>
               </Tooltip>
-            )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-12">
+            )}
+        <PopoverContent
+          placement={withText ? 'bottom-start' : 'bottom-end'}
+          sideOffset={4}
+          alignOffset={withText ? -8 : 10}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div
             className="ml-2 flex w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
             style={{
@@ -140,7 +152,7 @@ const ViewHistory = ({
                   {
                     !data?.data.length && (
                       <div className="py-12">
-                        <span className="i-custom-vender-line-time-clock-play-slim mx-auto mb-2 h-8 w-8 text-text-quaternary" />
+                        <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
                           {t('common.notRunning', { ns: 'workflow' })}
                         </div>
@@ -171,23 +183,23 @@ const ViewHistory = ({
                       >
                         {
                           !isChatMode && [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(item.status) && (
-                            <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
+                            <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <span className="i-ri-error-warning-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <span className="i-ri-checkbox-circle-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
+                            <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>
                           <div
                             className={cn(
-                              'flex items-center text-[13px] font-medium leading-[18px] text-text-primary',
+                              'flex items-center text-[13px] leading-[18px] font-medium text-text-primary',
                               item.id === historyWorkflowData?.id && 'text-text-accent',
                             )}
                           >
@@ -207,8 +219,8 @@ const ViewHistory = ({
               )
             }
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     )
   )
 }

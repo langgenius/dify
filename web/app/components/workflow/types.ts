@@ -61,6 +61,7 @@ export enum BlockEnum {
 export enum ControlMode {
   Pointer = 'pointer',
   Hand = 'hand',
+  Comment = 'comment',
 }
 export enum ErrorHandleMode {
   Terminated = 'terminated',
@@ -497,7 +498,7 @@ export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-export const TRIGGER_NODE_TYPES = [
+const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,

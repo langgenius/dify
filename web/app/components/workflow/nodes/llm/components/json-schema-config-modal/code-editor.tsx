@@ -1,14 +1,13 @@
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Editor } from '@monaco-editor/react'
-import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type CodeEditorProps = {
   value: string
@@ -21,6 +20,10 @@ type CodeEditorProps = {
   onBlur?: () => void
   topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
+
+type EditorOnMount = NonNullable<ComponentProps<typeof Editor>['onMount']>
+type MonacoEditor = Parameters<EditorOnMount>[0]
+type Monaco = Parameters<EditorOnMount>[1]
 
 const CodeEditor: FC<CodeEditorProps> = ({
   value,
@@ -36,8 +39,8 @@ const CodeEditor: FC<CodeEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const monacoRef = useRef<any>(null)
-  const editorRef = useRef<any>(null)
+  const monacoRef = useRef<Monaco | null>(null)
+  const editorRef = useRef<MonacoEditor | null>(null)
   const [isMounted, setIsMounted] = React.useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -50,7 +53,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
     }
   }, [theme])
 
-  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
+  const handleEditorDidMount = useCallback<EditorOnMount>((editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
 
@@ -83,7 +86,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
     })
     monaco.editor.setTheme('light-theme')
     setIsMounted(true)
-  }, [])
+  }, [onBlur, onFocus])
 
   const formatJsonContent = useCallback(() => {
     if (editorRef.current)
@@ -116,30 +119,42 @@ const CodeEditor: FC<CodeEditorProps> = ({
   return (
     <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
       {!hideTopMenu && (
-        <div className="flex items-center justify-between pl-2 pr-1 pt-1">
-          <div className="system-xs-semibold-uppercase py-0.5 text-text-secondary">
+        <div className="flex items-center justify-between pt-1 pr-1 pl-2">
+          <div className="py-0.5 system-xs-semibold-uppercase text-text-secondary">
             <span className="px-1 py-0.5">JSON</span>
           </div>
           <div className="flex items-center gap-x-0.5">
             {showFormatButton && (
-              <Tooltip popupContent={t('operation.format', { ns: 'common' })}>
-                <button
-                  type="button"
-                  className="flex h-6 w-6 items-center justify-center"
-                  onClick={formatJsonContent}
-                >
-                  <RiIndentIncrease className="h-4 w-4 text-text-tertiary" />
-                </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      aria-label={t('operation.format', { ns: 'common' })}
+                      className="flex h-6 w-6 items-center justify-center"
+                      onClick={formatJsonContent}
+                    >
+                      <span aria-hidden className="i-ri-indent-increase h-4 w-4 text-text-tertiary" />
+                    </button>
+                  )}
+                />
+                <TooltipContent>{t('operation.format', { ns: 'common' })}</TooltipContent>
               </Tooltip>
             )}
-            <Tooltip popupContent={t('operation.copy', { ns: 'common' })}>
-              <button
-                type="button"
-                className="flex h-6 w-6 items-center justify-center"
-                onClick={() => copy(value)}
-              >
-                <RiClipboardLine className="h-4 w-4 text-text-tertiary" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    aria-label={t('operation.copy', { ns: 'common' })}
+                    className="flex h-6 w-6 items-center justify-center"
+                    onClick={() => copy(value)}
+                  >
+                    <span aria-hidden className="i-ri-clipboard-line h-4 w-4 text-text-tertiary" />
+                  </button>
+                )}
+              />
+              <TooltipContent>{t('operation.copy', { ns: 'common' })}</TooltipContent>
             </Tooltip>
           </div>
         </div>

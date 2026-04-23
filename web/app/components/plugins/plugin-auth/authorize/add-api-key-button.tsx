@@ -1,11 +1,11 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
-import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useState,
 } from 'react'
-import Button from '@/app/components/base/button'
 import ApiKeyModal from './api-key-modal'
 
 export type AddApiKeyButtonProps = {
@@ -25,20 +25,26 @@ const AddApiKeyButton = ({
   formSchemas = [],
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
+  const [isApiKeyModalMounted, setIsApiKeyModalMounted] = useState(false)
 
   return (
     <>
       <Button
         className="w-full"
         variant={buttonVariant}
-        onClick={() => setIsApiKeyModalOpen(true)}
+        onClick={() => {
+          setIsApiKeyModalMounted(true)
+          setIsApiKeyModalOpen(true)
+        }}
         disabled={disabled}
       >
         {buttonText}
       </Button>
       {
-        isApiKeyModalOpen && (
+        isApiKeyModalMounted && (
           <ApiKeyModal
+            open={isApiKeyModalOpen}
+            onOpenChange={setIsApiKeyModalOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
             onUpdate={onUpdate}

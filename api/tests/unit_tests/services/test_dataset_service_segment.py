@@ -89,7 +89,6 @@ class TestSegmentServiceChildChunks:
         document = _make_document()
         segment = _make_segment()
         existing_a = ChildChunk(
-            id="child-a",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -100,7 +99,6 @@ class TestSegmentServiceChildChunks:
             created_by="user-1",
         )
         existing_b = ChildChunk(
-            id="child-b",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -110,7 +108,8 @@ class TestSegmentServiceChildChunks:
             word_count=9,
             created_by="user-1",
         )
-
+        existing_a.id = "child-a"
+        existing_b.id = "child-b"
         with (
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-new"),
@@ -714,7 +713,6 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
         ):
-            segments_query = MagicMock()
             # execute().all() for segments_info (multi-column)
             execute_result = MagicMock()
             execute_result.all.return_value = [

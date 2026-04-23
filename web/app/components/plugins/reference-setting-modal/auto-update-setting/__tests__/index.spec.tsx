@@ -61,35 +61,78 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-// Mock portal component for ToolPicker and StrategyPicker
+// Mock popover component for ToolPicker and StrategyPicker
 let mockPortalOpen = false
 let forcePortalContentVisible = false // Allow tests to force content visibility
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
+let mockPortalOnOpenChange: ((open: boolean) => void) | undefined
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open = false, onOpenChange }: {
     children: React.ReactNode
-    open: boolean
-    onOpenChange: (open: boolean) => void
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
   }) => {
     mockPortalOpen = open
+    mockPortalOnOpenChange = onOpenChange
+    return (
+      <div data-testid="portal-elem" data-open={open}>{children}</div>
+    )
+  },
+  PopoverTrigger: ({ children, render, onClick, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
+    onClick?: (e: React.MouseEvent) => void
+    className?: string
+  }) => (
+    <div
+      data-testid="portal-trigger"
+      onClick={(e) => {
+        onClick?.(e)
+        if (!onClick)
+          mockPortalOnOpenChange?.(!mockPortalOpen)
+      }}
+      className={className}
+    >
+      {render ?? children}
+    </div>
+  ),
+  PopoverContent: ({ children, className, popupClassName }: {
+    children: React.ReactNode
+    className?: string
+    popupClassName?: string
+  }) => {
+    if (!mockPortalOpen && !forcePortalContentVisible)
+      return null
+    return <div data-testid="portal-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
+  },
+}))
+
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({ children, open = false, onOpenChange }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    mockPortalOpen = open
+    mockPortalOnOpenChange = onOpenChange
     return <div data-testid="portal-elem" data-open={open}>{children}</div>
   },
   PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: (e: React.MouseEvent) => void
+    children?: React.ReactNode
+    onClick?: (e: React.MouseEvent) => void
     className?: string
   }) => (
     <div data-testid="portal-trigger" onClick={onClick} className={className}>
       {children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children, className }: {
+  PortalToFollowElemContent: ({ children, className, popupClassName }: {
     children: React.ReactNode
     className?: string
+    popupClassName?: string
   }) => {
-    // Allow forcing content visibility for testing option selection
     if (!mockPortalOpen && !forcePortalContentVisible)
       return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
+    return <div data-testid="portal-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
   },
 }))
 
@@ -319,6 +362,7 @@ describe('auto-update-setting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPortalOpen = false
+    mockPortalOnOpenChange = undefined
     forcePortalContentVisible = false
     mockPluginsData.plugins = []
   })

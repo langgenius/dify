@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { checkForUpdates, fetchReleases, handleUpload } from '@/app/components/plugins/install-plugin/hooks'
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),

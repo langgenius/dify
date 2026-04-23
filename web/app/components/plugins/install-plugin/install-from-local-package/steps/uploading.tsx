@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { Dependency, PluginDeclaration } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'
 import Card from '../../../card'
 

@@ -119,7 +119,7 @@ vi.mock('../../readme-panel/entrance', () => ({
 }))
 
 // Mock classnames utility
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 

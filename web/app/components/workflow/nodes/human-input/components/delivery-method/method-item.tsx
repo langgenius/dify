@@ -4,6 +4,9 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -15,12 +18,9 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
@@ -89,22 +89,22 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     <>
       <div
         className={cn(
-          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-2 pl-1.5 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
           isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
         )}
       >
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
               <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
           {method.type === DeliveryMethodType.Email && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
-          <div className="system-xs-medium capitalize text-text-secondary">{method.type}</div>
+          <div className="system-xs-medium text-text-secondary capitalize">{method.type}</div>
           {method.type === DeliveryMethodType.Email
             && (method.config as EmailConfig)?.debug_mode
             && <Badge size="s" className="px-1! py-0.5!">DEBUG</Badge>}
@@ -160,8 +160,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (
             <Switch
-              value={method.enabled}
-              onChange={handleEnableStatusChange}
+              checked={method.enabled}
+              onCheckedChange={handleEnableStatusChange}
               disabled={readonly}
             />
           )}

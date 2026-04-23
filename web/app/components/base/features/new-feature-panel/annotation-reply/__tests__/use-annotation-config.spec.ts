@@ -101,7 +101,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.embedding_model.embedding_model_name).toBe('text-embedding-3-small')
   })
@@ -123,7 +123,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(false)
   })
 
@@ -158,7 +158,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.score_threshold).toBe(0.85)
   })
 
@@ -178,7 +178,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.score_threshold).toBe(0.95)
     expect(updatedConfig.embedding_model.embedding_provider_name).toBe('cohere')
   })
@@ -236,7 +236,7 @@ describe('useAnnotationConfig', () => {
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0][0]
+    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.score_threshold).toBeDefined()
   })

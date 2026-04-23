@@ -22,7 +22,7 @@ vi.mock('@/service/log', () => ({
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

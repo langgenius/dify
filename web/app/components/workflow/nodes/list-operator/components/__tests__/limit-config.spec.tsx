@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import LimitConfig from '../limit-config'
 
 type MockSwitchProps = {
-  value: boolean
-  onChange: (value: boolean) => void
+  checked: boolean
+  onCheckedChange: (value: boolean) => void
   disabled?: boolean
 }
 
@@ -19,15 +19,15 @@ type MockSliderProps = {
 const mockSwitch = vi.fn<(props: MockSwitchProps) => void>()
 const mockSlider = vi.fn<(props: MockSliderProps) => void>()
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: (props: MockSwitchProps) => {
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: MockSwitchProps) => {
     mockSwitch(props)
     return (
       <button
         type="button"
-        onClick={() => !props.disabled && props.onChange(!props.value)}
+        onClick={() => !props.disabled && props.onCheckedChange(!props.checked)}
       >
-        {`switch:${props.value}`}
+        {`switch:${props.checked}`}
       </button>
     )
   },
@@ -79,7 +79,7 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.listFilter.limit')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.listFilter.limit'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'slider:10:false' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'switch:false' }))
@@ -102,8 +102,8 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'slider:6:true' })).toBeInTheDocument()
-    expect(mockSlider.mock.calls[0][0]).toMatchObject({
+    expect(screen.getByRole('button', { name: 'slider:6:true' }))!.toBeInTheDocument()
+    expect(mockSlider.mock.calls[0]![0]).toMatchObject({
       value: 6,
       min: 1,
       max: 20,

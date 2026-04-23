@@ -46,7 +46,7 @@ const meta = {
     },
     extraButtonVariant: {
       control: 'select',
-      options: ['primary', 'warning', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
+      options: ['primary', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
       description: 'Visual style for the extra button.',
     },
     disabled: {
@@ -87,7 +87,7 @@ const meta = {
     cancelButtonText: 'Cancel',
     showExtraButton: false,
     extraButtonText: 'Disable temporarily',
-    extraButtonVariant: 'warning',
+    extraButtonVariant: 'primary',
     disabled: false,
     onClose: () => console.log('Modal closed'),
     onConfirm: () => console.log('Confirm pressed'),

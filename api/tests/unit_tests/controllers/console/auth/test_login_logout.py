@@ -110,7 +110,6 @@ class TestLoginApi:
         - Rate limit is reset after successful login
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -162,7 +161,6 @@ class TestLoginApi:
         - Authentication proceeds with invitation token
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
         mock_authenticate.return_value = mock_account
@@ -199,7 +197,6 @@ class TestLoginApi:
         - EmailPasswordLoginLimitError is raised when limit exceeded
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = True
         mock_get_invitation.return_value = None
 
@@ -228,7 +225,6 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_frozen.return_value = True
 
         # Act & Assert
@@ -268,7 +264,6 @@ class TestLoginApi:
         - Generic error message prevents user enumeration
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountPasswordError("Invalid password")
@@ -305,7 +300,6 @@ class TestLoginApi:
         - Login is prevented even with valid credentials
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountLoginError("Account is banned")
@@ -351,7 +345,6 @@ class TestLoginApi:
         - User cannot login without an assigned workspace
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -383,7 +376,6 @@ class TestLoginApi:
         - Security check prevents invitation token abuse
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "invited@example.com"}}
 
@@ -425,7 +417,6 @@ class TestLoginApi:
         mock_token_pair,
     ):
         """Test that login retries with lowercase email when uppercase lookup fails."""
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
@@ -459,7 +450,6 @@ class TestLoginApi:
         mock_db,
         app,
     ):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
@@ -513,7 +503,6 @@ class TestLogoutApi:
         - Success response is returned
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_current_account.return_value = (mock_account, MagicMock())
 
         # Act
@@ -539,7 +528,6 @@ class TestLogoutApi:
         - Success response is returned
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         # Create a mock anonymous user that will pass isinstance check
         anonymous_user = MagicMock()
         mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})
