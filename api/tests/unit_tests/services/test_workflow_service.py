@@ -1662,10 +1662,6 @@ class TestWorkflowServiceCredentialValidation:
             patch("services.workflow_service.db") as mock_db,
             patch("core.helper.credential_utils.check_credential_policy_compliance", side_effect=Exception("denied")),
         ):
-            ...
-                mock_provider
-            )
-
             # Act + Assert
             with pytest.raises(ValueError, match="Failed to validate default credential"):
                 service._check_default_tool_credential("tenant-1", "some-provider")
