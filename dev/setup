@@ -24,5 +24,4 @@ cp "$MIDDLEWARE_ENV_EXAMPLE" "$MIDDLEWARE_ENV"
 cd "$ROOT/api"
 uv sync --group dev
 
-cd "$ROOT/web"
-pnpm install
+pnpm --dir "$ROOT" install

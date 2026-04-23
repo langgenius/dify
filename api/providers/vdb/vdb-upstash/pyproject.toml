@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-upstash"
+version = "0.0.1"
+
+dependencies = [
+    "upstash-vector==0.8.0",
+]
+description = "Dify vector store backend (dify-vdb-upstash)."
+
+[project.entry-points."dify.vector_backends"]
+upstash = "dify_vdb_upstash.upstash_vector:UpstashVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

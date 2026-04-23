@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -21,7 +21,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
@@ -31,10 +31,10 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -50,7 +50,10 @@ logger = logging.getLogger(__name__)
 class IndexingRunner:
     def __init__(self):
         self.storage = storage
-        self.model_manager = ModelManager()
+
+    @staticmethod
+    def _get_model_manager(tenant_id: str) -> ModelManager:
+        return ModelManager.for_tenant(tenant_id=tenant_id)
 
     def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
         """Handle indexing errors by updating document status."""
@@ -75,7 +78,7 @@ class IndexingRunner:
                     continue
 
                 # get dataset
-                dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+                dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
                 if not dataset:
                     raise ValueError("no dataset found")
@@ -92,7 +95,7 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
                 # transform
-                current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+                current_user = db.session.get(Account, requeried_document.created_by)
                 if not current_user:
                     raise ValueError("no current user found")
                 current_user.set_tenant_id(dataset.tenant_id)
@@ -134,23 +137,24 @@ class IndexingRunner:
                 return
 
             # get dataset
-            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+            dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = (
-                db.session.query(DocumentSegment)
-                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
-                .all()
-            )
+            document_segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == requeried_document.id,
+                )
+            ).all()
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
                 if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     # delete child chunks
-                    db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
+                    db.session.execute(delete(ChildChunk).where(ChildChunk.segment_id == document_segment.id))
             db.session.commit()
             # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == requeried_document.dataset_process_rule_id)
@@ -164,7 +168,7 @@ class IndexingRunner:
             text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
             # transform
-            current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+            current_user = db.session.get(Account, requeried_document.created_by)
             if not current_user:
                 raise ValueError("no current user found")
             current_user.set_tenant_id(dataset.tenant_id)
@@ -204,17 +208,18 @@ class IndexingRunner:
                 return
 
             # get dataset
-            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+            dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = (
-                db.session.query(DocumentSegment)
-                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
-                .all()
-            )
+            document_segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == requeried_document.id,
+                )
+            ).all()
 
             documents = []
             if document_segments:
@@ -271,7 +276,7 @@ class IndexingRunner:
         doc_form: str | None = None,
         doc_language: str = "English",
         dataset_id: str | None = None,
-        indexing_technique: str = "economy",
+        indexing_technique: str = IndexTechniqueType.ECONOMY,
     ) -> IndexingEstimate:
         """
         Estimate the indexing for the document.
@@ -286,25 +291,25 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset_id:
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.get(Dataset, dataset_id)
             if not dataset:
                 raise ValueError("Dataset not found.")
-            if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
+            if IndexTechniqueType.HIGH_QUALITY in {dataset.indexing_technique, indexing_technique}:
                 if dataset.embedding_model_provider:
-                    embedding_model_instance = self.model_manager.get_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_model_instance(
                         tenant_id=tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
                     )
                 else:
-                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                         tenant_id=tenant_id,
                         model_type=ModelType.TEXT_EMBEDDING,
                     )
         else:
-            if indexing_technique == "high_quality":
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+            if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
@@ -573,8 +578,8 @@ class IndexingRunner:
         """
 
         embedding_model_instance = None
-        if dataset.indexing_technique == "high_quality":
-            embedding_model_instance = self.model_manager.get_model_instance(
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
                 model_type=ModelType.TEXT_EMBEDDING,
@@ -587,7 +592,7 @@ class IndexingRunner:
         create_keyword_thread = None
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
+            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
         ):
             # create keyword index
             create_keyword_thread = threading.Thread(
@@ -597,7 +602,7 @@ class IndexingRunner:
             create_keyword_thread.start()
 
         max_workers = 10
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
 
@@ -628,7 +633,7 @@ class IndexingRunner:
                     tokens += future.result()
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
+            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
             and create_keyword_thread is not None
         ):
             create_keyword_thread.join()
@@ -649,24 +654,26 @@ class IndexingRunner:
     @staticmethod
     def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.get(Dataset, dataset_id)
             if not dataset:
                 raise ValueError("no dataset found")
             keyword = Keyword(dataset)
             keyword.create(documents)
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 document_ids = [document.metadata["doc_id"] for document in documents]
-                db.session.query(DocumentSegment).where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.dataset_id == dataset_id,
-                    DocumentSegment.index_node_id.in_(document_ids),
-                    DocumentSegment.status == SegmentStatus.INDEXING,
-                ).update(
-                    {
-                        DocumentSegment.status: SegmentStatus.COMPLETED,
-                        DocumentSegment.enabled: True,
-                        DocumentSegment.completed_at: naive_utc_now(),
-                    }
+                db.session.execute(
+                    update(DocumentSegment)
+                    .where(
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.index_node_id.in_(document_ids),
+                        DocumentSegment.status == SegmentStatus.INDEXING,
+                    )
+                    .values(
+                        status=SegmentStatus.COMPLETED,
+                        enabled=True,
+                        completed_at=naive_utc_now(),
+                    )
                 )
 
                 db.session.commit()
@@ -700,17 +707,19 @@ class IndexingRunner:
             )
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
-            db.session.query(DocumentSegment).where(
-                DocumentSegment.document_id == dataset_document.id,
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.index_node_id.in_(document_ids),
-                DocumentSegment.status == SegmentStatus.INDEXING,
-            ).update(
-                {
-                    DocumentSegment.status: SegmentStatus.COMPLETED,
-                    DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: naive_utc_now(),
-                }
+            db.session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == SegmentStatus.INDEXING,
+                )
+                .values(
+                    status=SegmentStatus.COMPLETED,
+                    enabled=True,
+                    completed_at=naive_utc_now(),
+                )
             )
 
             db.session.commit()
@@ -726,15 +735,24 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: IndexingStatus, extra_update_params: dict | None = None
+        document_id: str,
+        after_indexing_status: IndexingStatus,
+        extra_update_params: Mapping[Any, Any] | None = None,
     ):
         """
         Update the document indexing status.
         """
-        count = db.session.query(DatasetDocument).filter_by(id=document_id, is_paused=True).count()
+        count = (
+            db.session.scalar(
+                select(func.count())
+                .select_from(DatasetDocument)
+                .where(DatasetDocument.id == document_id, DatasetDocument.is_paused == True)
+            )
+            or 0
+        )
         if count > 0:
             raise DocumentIsPausedError()
-        document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+        document = db.session.get(DatasetDocument, document_id)
         if not document:
             raise DocumentIsDeletedPausedError()
 
@@ -742,15 +760,17 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore
+        db.session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(update_params))  # type: ignore
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
+    def _update_segments_by_document(dataset_document_id: str, update_params: Mapping[Any, Any]):
         """
         Update the document segment by document id.
         """
-        db.session.query(DocumentSegment).filter_by(document_id=dataset_document_id).update(update_params)
+        db.session.execute(
+            update(DocumentSegment).where(DocumentSegment.document_id == dataset_document_id).values(update_params)
+        )
         db.session.commit()
 
     def _transform(
@@ -764,16 +784,16 @@ class IndexingRunner:
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
-                embedding_model_instance = self.model_manager.get_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                     tenant_id=dataset.tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
             else:
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_default_model_instance(
                     tenant_id=dataset.tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )

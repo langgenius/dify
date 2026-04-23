@@ -74,6 +74,26 @@ describe('ProviderIcon', () => {
     expect(screen.getByTestId('openai-icon')).toBeInTheDocument()
   })
 
+  it('should apply custom className to special provider wrappers', () => {
+    const { rerender, container } = render(
+      <ProviderIcon
+        provider={createProvider({ provider: 'langgenius/anthropic/anthropic' })}
+        className="custom-wrapper"
+      />,
+    )
+
+    expect(container.firstChild).toHaveClass('custom-wrapper')
+
+    rerender(
+      <ProviderIcon
+        provider={createProvider({ provider: 'langgenius/openai/openai' })}
+        className="custom-wrapper"
+      />,
+    )
+
+    expect(container.firstChild).toHaveClass('custom-wrapper')
+  })
+
   it('should render generic provider with image and label', () => {
     const provider = createProvider({ label: { en_US: 'Custom', zh_Hans: '自定义' } })
     render(<ProviderIcon provider={provider} />)
@@ -93,5 +113,20 @@ describe('ProviderIcon', () => {
     render(<ProviderIcon provider={provider} />)
     const img = screen.getByAltText('provider-icon') as HTMLImageElement
     expect(img.src).toBe('https://example.com/dark.png')
+  })
+
+  it('should fall back to localized labels when available', () => {
+    const mockLang = vi.mocked(useLanguage)
+    mockLang.mockReturnValue('zh_Hans')
+
+    render(
+      <ProviderIcon
+        provider={createProvider({
+          label: { en_US: 'Custom', zh_Hans: '自定义' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('自定义')).toBeInTheDocument()
   })
 })

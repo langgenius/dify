@@ -207,10 +207,10 @@ class TestMemberCancelInviteApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.query") as q,
+            patch("controllers.console.workspace.members.db.session.get") as get_mock,
             patch("controllers.console.workspace.members.TenantService.remove_member_from_tenant"),
         ):
-            q.return_value.where.return_value.first.return_value = member
+            get_mock.return_value = member
             result, status = method(api, member.id)
 
         assert status == 200
@@ -226,9 +226,9 @@ class TestMemberCancelInviteApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.query") as q,
+            patch("controllers.console.workspace.members.db.session.get") as get_mock,
         ):
-            q.return_value.where.return_value.first.return_value = None
+            get_mock.return_value = None
 
             with pytest.raises(HTTPException):
                 method(api, "x")
@@ -244,13 +244,13 @@ class TestMemberCancelInviteApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.query") as q,
+            patch("controllers.console.workspace.members.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
                 side_effect=services.errors.account.CannotOperateSelfError("x"),
             ),
         ):
-            q.return_value.where.return_value.first.return_value = member
+            get_mock.return_value = member
             result, status = method(api, member.id)
 
         assert status == 400
@@ -266,13 +266,13 @@ class TestMemberCancelInviteApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.query") as q,
+            patch("controllers.console.workspace.members.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
                 side_effect=services.errors.account.NoPermissionError("x"),
             ),
         ):
-            q.return_value.where.return_value.first.return_value = member
+            get_mock.return_value = member
             result, status = method(api, member.id)
 
         assert status == 403
@@ -288,13 +288,13 @@ class TestMemberCancelInviteApi:
         with (
             app.test_request_context("/"),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.query") as q,
+            patch("controllers.console.workspace.members.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
                 side_effect=services.errors.account.MemberNotInTenantError(),
             ),
         ):
-            q.return_value.where.return_value.first.return_value = member
+            get_mock.return_value = member
             result, status = method(api, member.id)
 
         assert status == 404

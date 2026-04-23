@@ -775,9 +775,6 @@ class TestNotionExtractorLastEditedTime:
             "last_edited_time": "2024-11-27T18:00:00.000Z",
         }
         mock_request.return_value = mock_response
-        mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
-        mock_query.filter_by.return_value = mock_query
 
         # Act
         extractor_page.update_last_edited_time(mock_document_model)
@@ -863,9 +860,6 @@ class TestNotionExtractorIntegration:
         }
 
         mock_request.side_effect = [last_edited_response, block_response]
-        mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
-        mock_query.filter_by.return_value = mock_query
 
         # Act
         documents = extractor.extract()
@@ -918,10 +912,6 @@ class TestNotionExtractorIntegration:
             "next_cursor": None,
         }
         mock_post.return_value = database_response
-
-        mock_query = Mock()
-        mock_db.session.query.return_value = mock_query
-        mock_query.filter_by.return_value = mock_query
 
         # Act
         documents = extractor.extract()

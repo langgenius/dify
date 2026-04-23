@@ -9,12 +9,13 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from dify_graph.nodes.human_input.entities import (
+from graphon.nodes.human_input.entities import (
     FormDefinition,
     FormInput,
     UserAction,
 )
-from dify_graph.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
+from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from services.human_input_service import (
     Form,
@@ -51,11 +52,11 @@ def sample_form_record():
             inputs=[],
             user_actions=[UserAction(id="submit", title="Submit")],
             rendered_content="<p>hello</p>",
-            expiration_time=datetime.utcnow() + timedelta(hours=1),
+            expiration_time=naive_utc_now() + timedelta(hours=1),
         ),
         rendered_content="<p>hello</p>",
-        created_at=datetime.utcnow(),
-        expiration_time=datetime.utcnow() + timedelta(hours=1),
+        created_at=naive_utc_now(),
+        expiration_time=naive_utc_now() + timedelta(hours=1),
         status=HumanInputFormStatus.WAITING,
         selected_action_id=None,
         submitted_data=None,
@@ -101,8 +102,8 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
     service = HumanInputService(session_factory)
     expired_record = dataclasses.replace(
         sample_form_record,
-        created_at=datetime.utcnow() - timedelta(hours=2),
-        expiration_time=datetime.utcnow() + timedelta(hours=2),
+        created_at=naive_utc_now() - timedelta(hours=2),
+        expiration_time=naive_utc_now() + timedelta(hours=2),
     )
     monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
 
@@ -391,7 +392,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
     service = HumanInputService(session_factory)
 
     # Submitted
-    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.utcnow())
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
     with pytest.raises(human_input_service_module.FormSubmittedError):
         service.ensure_form_active(Form(submitted_record))
 
@@ -402,7 +403,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
 
     # Expired time
     expired_time_record = dataclasses.replace(
-        sample_form_record, expiration_time=datetime.utcnow() - timedelta(minutes=1)
+        sample_form_record, expiration_time=naive_utc_now() - timedelta(minutes=1)
     )
     with pytest.raises(FormExpiredError):
         service.ensure_form_active(Form(expired_time_record))
@@ -411,7 +412,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
 def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
-    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.utcnow())
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
 
     with pytest.raises(human_input_service_module.FormSubmittedError):
         service._ensure_not_submitted(Form(submitted_record))

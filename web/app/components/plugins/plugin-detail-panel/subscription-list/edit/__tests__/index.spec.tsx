@@ -13,8 +13,16 @@ import { OAuthEditModal } from '../oauth-edit-modal'
 // ==================== Mock Setup ====================
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (params: unknown) => mockToastNotify(params) },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockParsePluginErrorMessage = vi.fn()
@@ -156,49 +164,6 @@ vi.mock('@/app/components/base/form/components/base', () => ({
       </div>
     )
   }),
-}))
-
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    title,
-    confirmButtonText,
-    onClose,
-    onCancel,
-    onConfirm,
-    disabled,
-    children,
-    showExtraButton,
-    extraButtonText,
-    onExtraButtonClick,
-    bottomSlot,
-  }: {
-    title: string
-    confirmButtonText: string
-    onClose: () => void
-    onCancel: () => void
-    onConfirm: () => void
-    disabled?: boolean
-    children: React.ReactNode
-    showExtraButton?: boolean
-    extraButtonText?: string
-    onExtraButtonClick?: () => void
-    bottomSlot?: React.ReactNode
-  }) => (
-    <div data-testid="modal" data-title={title} data-disabled={disabled}>
-      <div data-testid="modal-content">{children}</div>
-      <button data-testid="modal-confirm-button" onClick={onConfirm} disabled={disabled}>
-        {confirmButtonText}
-      </button>
-      <button data-testid="modal-cancel-button" onClick={onCancel}>Cancel</button>
-      <button data-testid="modal-close-button" onClick={onClose}>Close</button>
-      {showExtraButton && (
-        <button data-testid="modal-extra-button" onClick={onExtraButtonClick}>
-          {extraButtonText}
-        </button>
-      )}
-      {!!bottomSlot && <div data-testid="modal-bottom-slot">{bottomSlot}</div>}
-    </div>
-  ),
 }))
 
 // ==================== Test Utilities ====================

@@ -13,7 +13,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowSucceededEvent,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.llm_entities import LLMResult
 
 
 def test_publish_sets_stop_listen_and_raises_on_stopped(mocker):

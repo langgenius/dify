@@ -1,9 +1,8 @@
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { act, waitFor } from '@testing-library/react'
+import { useEdges, useNodes } from 'reactflow'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { useEdgesInteractions } from '../use-edges-interactions'
-
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 // useWorkflowHistory uses a debounced save — mock for synchronous assertions
 const mockSaveStateToHistory = vi.fn()
@@ -28,12 +27,67 @@ vi.mock('../../utils', () => ({
   getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
 }))
 
-// useNodesSyncDraft is used REAL — via renderWorkflowHook + hooksStoreProps
-function renderEdgesInteractions() {
+type EdgeRuntimeState = {
+  _hovering?: boolean
+  _isBundled?: boolean
+}
+
+type NodeRuntimeState = {
+  selected?: boolean
+  _isBundled?: boolean
+}
+
+const getEdgeRuntimeState = (edge?: { data?: unknown }): EdgeRuntimeState =>
+  (edge?.data ?? {}) as EdgeRuntimeState
+
+const getNodeRuntimeState = (node?: { data?: unknown }): NodeRuntimeState =>
+  (node?.data ?? {}) as NodeRuntimeState
+
+function createFlowNodes() {
+  return [
+    createNode({ id: 'n1' }),
+    createNode({ id: 'n2', position: { x: 100, y: 0 } }),
+  ]
+}
+
+function createFlowEdges() {
+  return [
+    createEdge({
+      id: 'e1',
+      source: 'n1',
+      target: 'n2',
+      sourceHandle: 'branch-a',
+      data: { _hovering: false },
+    }),
+    createEdge({
+      id: 'e2',
+      source: 'n1',
+      target: 'n2',
+      sourceHandle: 'branch-b',
+      data: { _hovering: false },
+    }),
+  ]
+}
+
+function renderEdgesInteractions(options?: {
+  nodes?: ReturnType<typeof createFlowNodes>
+  edges?: ReturnType<typeof createFlowEdges>
+  initialStoreState?: Record<string, unknown>
+}) {
   const mockDoSync = vi.fn().mockResolvedValue(undefined)
+  const { nodes = createFlowNodes(), edges = createFlowEdges(), initialStoreState } = options ?? {}
+
   return {
-    ...renderWorkflowHook(() => useEdgesInteractions(), {
+    ...renderWorkflowFlowHook(() => ({
+      ...useEdgesInteractions(),
+      nodes: useNodes(),
+      edges: useEdges(),
+    }), {
+      nodes,
+      edges,
+      initialStoreState,
       hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
+      reactFlowProps: { fitView: false },
     }),
     mockDoSync,
   }
@@ -42,73 +96,105 @@ function renderEdgesInteractions() {
 describe('useEdgesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    resetReactFlowMockState()
     mockReadOnly = false
-    rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, data: {} },
-      { id: 'n2', position: { x: 100, y: 0 }, data: {} },
-    ]
-    rfState.edges = [
-      { id: 'e1', source: 'n1', target: 'n2', sourceHandle: 'branch-a', data: { _hovering: false } },
-      { id: 'e2', source: 'n1', target: 'n2', sourceHandle: 'branch-b', data: { _hovering: false } },
-    ]
   })
 
-  it('handleEdgeEnter should set _hovering to true', () => {
+  it('handleEdgeEnter should set _hovering to true', async () => {
     const { result } = renderEdgesInteractions()
-    result.current.handleEdgeEnter({} as never, rfState.edges[0] as never)
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated.find((e: { id: string }) => e.id === 'e1').data._hovering).toBe(true)
-    expect(updated.find((e: { id: string }) => e.id === 'e2').data._hovering).toBe(false)
+    act(() => {
+      result.current.handleEdgeEnter({} as never, result.current.edges[0] as never)
+    })
+
+    await waitFor(() => {
+      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e1'))._hovering).toBe(true)
+      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e2'))._hovering).toBe(false)
+    })
   })
 
-  it('handleEdgeLeave should set _hovering to false', () => {
-    rfState.edges[0].data._hovering = true
+  it('handleEdgeLeave should set _hovering to false', async () => {
+    const { result } = renderEdgesInteractions({
+      edges: createFlowEdges().map(edge =>
+        edge.id === 'e1'
+          ? createEdge({ ...edge, data: { ...edge.data, _hovering: true } })
+          : edge,
+      ),
+    })
+
+    act(() => {
+      result.current.handleEdgeLeave({} as never, result.current.edges[0] as never)
+    })
+
+    await waitFor(() => {
+      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e1'))._hovering).toBe(false)
+    })
+  })
+
+  it('handleEdgesChange should update edge.selected for select changes', async () => {
     const { result } = renderEdgesInteractions()
-    result.current.handleEdgeLeave({} as never, rfState.edges[0] as never)
 
-    expect(rfState.setEdges.mock.calls[0][0].find((e: { id: string }) => e.id === 'e1').data._hovering).toBe(false)
+    act(() => {
+      result.current.handleEdgesChange([
+        { type: 'select', id: 'e1', selected: true },
+        { type: 'select', id: 'e2', selected: false },
+      ])
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges.find(edge => edge.id === 'e1')?.selected).toBe(true)
+      expect(result.current.edges.find(edge => edge.id === 'e2')?.selected).toBe(false)
+    })
   })
 
-  it('handleEdgesChange should update edge.selected for select changes', () => {
-    const { result } = renderEdgesInteractions()
-    result.current.handleEdgesChange([
-      { type: 'select', id: 'e1', selected: true },
-      { type: 'select', id: 'e2', selected: false },
-    ])
-
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated.find((e: { id: string }) => e.id === 'e1').selected).toBe(true)
-    expect(updated.find((e: { id: string }) => e.id === 'e2').selected).toBe(false)
-  })
-
-  it('handleEdgeContextMenu should select the clicked edge and open edgeMenu', () => {
+  it('handleEdgeContextMenu should select the clicked edge and open edgeMenu', async () => {
     const preventDefault = vi.fn()
-    const { result, store } = renderEdgesInteractions()
-    rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, data: { selected: true, _isBundled: true }, selected: true } as typeof rfState.nodes[number] & { selected: boolean },
-      { id: 'n2', position: { x: 100, y: 0 }, data: { _isBundled: true } },
-    ]
-    rfState.edges = [
-      { id: 'e1', source: 'n1', target: 'n2', sourceHandle: 'branch-a', data: { _hovering: false, _isBundled: true } },
-      { id: 'e2', source: 'n1', target: 'n2', sourceHandle: 'branch-b', data: { _hovering: false, _isBundled: true } },
-    ]
+    const { result, store } = renderEdgesInteractions({
+      nodes: [
+        createNode({
+          id: 'n1',
+          data: { selected: true, _isBundled: true },
+          selected: true,
+        }),
+        createNode({
+          id: 'n2',
+          position: { x: 100, y: 0 },
+          data: { _isBundled: true },
+        }),
+      ],
+      edges: [
+        createEdge({
+          id: 'e1',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-a',
+          data: { _hovering: false, _isBundled: true },
+        }),
+        createEdge({
+          id: 'e2',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-b',
+          data: { _hovering: false, _isBundled: true },
+        }),
+      ],
+    })
 
-    result.current.handleEdgeContextMenu({
-      preventDefault,
-      clientX: 320,
-      clientY: 180,
-    } as never, rfState.edges[1] as never)
+    act(() => {
+      result.current.handleEdgeContextMenu({
+        preventDefault,
+        clientX: 320,
+        clientY: 180,
+      } as never, result.current.edges[1] as never)
+    })
 
     expect(preventDefault).toHaveBeenCalled()
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated.find((e: { id: string }) => e.id === 'e1').selected).toBe(false)
-    expect(updated.find((e: { id: string }) => e.id === 'e2').selected).toBe(true)
-    expect(updated.every((e: { data: { _isBundled?: boolean } }) => !e.data._isBundled)).toBe(true)
-    const updatedNodes = rfState.setNodes.mock.calls[0][0]
-    expect(updatedNodes.every((node: { data: { selected?: boolean, _isBundled?: boolean }, selected?: boolean }) => !node.data.selected && !node.selected && !node.data._isBundled)).toBe(true)
+    await waitFor(() => {
+      expect(result.current.edges.find(edge => edge.id === 'e1')?.selected).toBe(false)
+      expect(result.current.edges.find(edge => edge.id === 'e2')?.selected).toBe(true)
+      expect(result.current.edges.every(edge => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
+      expect(result.current.nodes.every(node => !getNodeRuntimeState(node).selected && !node.selected && !getNodeRuntimeState(node)._isBundled)).toBe(true)
+    })
 
     expect(store.getState().edgeMenu).toEqual({
       clientX: 320,
@@ -120,70 +206,184 @@ describe('useEdgesInteractions', () => {
     expect(store.getState().selectionMenu).toBeUndefined()
   })
 
-  it('handleEdgeDelete should remove selected edge and trigger sync + history', () => {
-    ;(rfState.edges[0] as Record<string, unknown>).selected = true
-    const { result, store } = renderEdgesInteractions()
-    store.setState({
-      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+  it('handleEdgeDelete should remove selected edge and trigger sync + history', async () => {
+    const { result, store } = renderEdgesInteractions({
+      edges: [
+        createEdge({
+          id: 'e1',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-a',
+          selected: true,
+          data: { _hovering: false },
+        }),
+        createEdge({
+          id: 'e2',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-b',
+          data: { _hovering: false },
+        }),
+      ],
+      initialStoreState: {
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+      },
     })
 
-    result.current.handleEdgeDelete()
+    act(() => {
+      result.current.handleEdgeDelete()
+    })
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated).toHaveLength(1)
-    expect(updated[0].id).toBe('e2')
+    await waitFor(() => {
+      expect(result.current.edges).toHaveLength(1)
+      expect(result.current.edges[0]?.id).toBe('e2')
+    })
+
     expect(store.getState().edgeMenu).toBeUndefined()
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
   it('handleEdgeDelete should do nothing when no edge is selected', () => {
     const { result } = renderEdgesInteractions()
-    result.current.handleEdgeDelete()
-    expect(rfState.setEdges).not.toHaveBeenCalled()
-  })
 
-  it('handleEdgeDeleteById should remove the requested edge even when another edge is selected', () => {
-    ;(rfState.edges[0] as Record<string, unknown>).selected = true
-    const { result, store } = renderEdgesInteractions()
-    store.setState({
-      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e2' },
+    act(() => {
+      result.current.handleEdgeDelete()
     })
 
-    result.current.handleEdgeDeleteById('e2')
+    expect(result.current.edges).toHaveLength(2)
+  })
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated).toHaveLength(1)
-    expect(updated[0].id).toBe('e1')
-    expect(updated[0].selected).toBe(true)
+  it('handleEdgeDeleteById should remove the requested edge even when another edge is selected', async () => {
+    const { result, store } = renderEdgesInteractions({
+      edges: [
+        createEdge({
+          id: 'e1',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-a',
+          selected: true,
+          data: { _hovering: false },
+        }),
+        createEdge({
+          id: 'e2',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'branch-b',
+          data: { _hovering: false },
+        }),
+      ],
+      initialStoreState: {
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e2' },
+      },
+    })
+
+    act(() => {
+      result.current.handleEdgeDeleteById('e2')
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges).toHaveLength(1)
+      expect(result.current.edges[0]?.id).toBe('e1')
+      expect(result.current.edges[0]?.selected).toBe(true)
+    })
+
     expect(store.getState().edgeMenu).toBeUndefined()
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
-  it('handleEdgeDeleteByDeleteBranch should remove edges for the given branch', () => {
-    const { result, store } = renderEdgesInteractions()
-    store.setState({
-      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
-    })
-    result.current.handleEdgeDeleteByDeleteBranch('n1', 'branch-a')
+  it('handleEdgeDeleteById should ignore unknown edge ids', () => {
+    const { result } = renderEdgesInteractions()
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated).toHaveLength(1)
-    expect(updated[0].id).toBe('e2')
+    act(() => {
+      result.current.handleEdgeDeleteById('missing-edge')
+    })
+
+    expect(result.current.edges).toHaveLength(2)
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+  })
+
+  it('handleEdgeDeleteByDeleteBranch should remove edges for the given branch', async () => {
+    const { result, store } = renderEdgesInteractions({
+      initialStoreState: {
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+      },
+    })
+
+    act(() => {
+      result.current.handleEdgeDeleteByDeleteBranch('n1', 'branch-a')
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges).toHaveLength(1)
+      expect(result.current.edges[0]?.id).toBe('e2')
+    })
+
     expect(store.getState().edgeMenu).toBeUndefined()
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDeleteByDeleteBranch')
   })
 
-  it('handleEdgeSourceHandleChange should update sourceHandle and edge ID', () => {
-    rfState.edges = [
-      { id: 'n1-old-handle-n2-target', source: 'n1', target: 'n2', sourceHandle: 'old-handle', targetHandle: 'target', data: {} } as typeof rfState.edges[0],
-    ]
+  it('handleEdgeSourceHandleChange should update sourceHandle and edge ID', async () => {
+    const { result } = renderEdgesInteractions({
+      edges: [
+        createEdge({
+          id: 'n1-old-handle-n2-target',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'old-handle',
+          targetHandle: 'target',
+          data: {},
+        }),
+      ],
+    })
 
+    act(() => {
+      result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges[0]?.sourceHandle).toBe('new-handle')
+      expect(result.current.edges[0]?.id).toBe('n1-new-handle-n2-target')
+    })
+  })
+
+  it('handleEdgeSourceHandleChange should clear edgeMenu and save history for affected edges', async () => {
+    const { result, store } = renderEdgesInteractions({
+      edges: [
+        createEdge({
+          id: 'n1-old-handle-n2-target',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'old-handle',
+          targetHandle: 'target',
+          data: {},
+        }),
+      ],
+      initialStoreState: {
+        edgeMenu: { clientX: 120, clientY: 60, edgeId: 'n1-old-handle-n2-target' },
+      },
+    })
+
+    act(() => {
+      result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges[0]?.sourceHandle).toBe('new-handle')
+    })
+
+    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeSourceHandleChange')
+  })
+
+  it('handleEdgeSourceHandleChange should do nothing when no edges use the old handle', () => {
     const { result } = renderEdgesInteractions()
-    result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
 
-    const updated = rfState.setEdges.mock.calls[0][0]
-    expect(updated[0].sourceHandle).toBe('new-handle')
-    expect(updated[0].id).toBe('n1-new-handle-n2-target')
+    act(() => {
+      result.current.handleEdgeSourceHandleChange('n1', 'missing-handle', 'new-handle')
+    })
+
+    expect(result.current.edges.map(edge => edge.id)).toEqual(['e1', 'e2'])
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
   })
 
   describe('read-only mode', () => {
@@ -193,38 +393,97 @@ describe('useEdgesInteractions', () => {
 
     it('handleEdgeEnter should do nothing', () => {
       const { result } = renderEdgesInteractions()
-      result.current.handleEdgeEnter({} as never, rfState.edges[0] as never)
-      expect(rfState.setEdges).not.toHaveBeenCalled()
+
+      act(() => {
+        result.current.handleEdgeEnter({} as never, result.current.edges[0] as never)
+      })
+
+      expect(getEdgeRuntimeState(result.current.edges[0])._hovering).toBe(false)
     })
 
     it('handleEdgeDelete should do nothing', () => {
-      ;(rfState.edges[0] as Record<string, unknown>).selected = true
-      const { result } = renderEdgesInteractions()
-      result.current.handleEdgeDelete()
-      expect(rfState.setEdges).not.toHaveBeenCalled()
+      const { result } = renderEdgesInteractions({
+        edges: [
+          createEdge({
+            id: 'e1',
+            source: 'n1',
+            target: 'n2',
+            sourceHandle: 'branch-a',
+            selected: true,
+            data: { _hovering: false },
+          }),
+          createEdge({
+            id: 'e2',
+            source: 'n1',
+            target: 'n2',
+            sourceHandle: 'branch-b',
+            data: { _hovering: false },
+          }),
+        ],
+      })
+
+      act(() => {
+        result.current.handleEdgeDelete()
+      })
+
+      expect(result.current.edges).toHaveLength(2)
     })
 
     it('handleEdgeDeleteById should do nothing', () => {
       const { result } = renderEdgesInteractions()
-      result.current.handleEdgeDeleteById('e1')
-      expect(rfState.setEdges).not.toHaveBeenCalled()
+
+      act(() => {
+        result.current.handleEdgeDeleteById('e1')
+      })
+
+      expect(result.current.edges).toHaveLength(2)
     })
 
     it('handleEdgeContextMenu should do nothing', () => {
       const { result, store } = renderEdgesInteractions()
-      result.current.handleEdgeContextMenu({
-        preventDefault: vi.fn(),
-        clientX: 200,
-        clientY: 120,
-      } as never, rfState.edges[0] as never)
-      expect(rfState.setEdges).not.toHaveBeenCalled()
+
+      act(() => {
+        result.current.handleEdgeContextMenu({
+          preventDefault: vi.fn(),
+          clientX: 200,
+          clientY: 120,
+        } as never, result.current.edges[0] as never)
+      })
+
+      expect(result.current.edges.every(edge => !edge.selected)).toBe(true)
       expect(store.getState().edgeMenu).toBeUndefined()
     })
 
     it('handleEdgeDeleteByDeleteBranch should do nothing', () => {
       const { result } = renderEdgesInteractions()
-      result.current.handleEdgeDeleteByDeleteBranch('n1', 'branch-a')
-      expect(rfState.setEdges).not.toHaveBeenCalled()
+
+      act(() => {
+        result.current.handleEdgeDeleteByDeleteBranch('n1', 'branch-a')
+      })
+
+      expect(result.current.edges).toHaveLength(2)
+    })
+
+    it('handleEdgeSourceHandleChange should do nothing', () => {
+      const { result } = renderEdgesInteractions({
+        edges: [
+          createEdge({
+            id: 'n1-old-handle-n2-target',
+            source: 'n1',
+            target: 'n2',
+            sourceHandle: 'old-handle',
+            targetHandle: 'target',
+            data: {},
+          }),
+        ],
+      })
+
+      act(() => {
+        result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
+      })
+
+      expect(result.current.edges[0]?.sourceHandle).toBe('old-handle')
+      expect(mockSaveStateToHistory).not.toHaveBeenCalled()
     })
   })
 })

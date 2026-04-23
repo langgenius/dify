@@ -41,7 +41,8 @@ def guess_file_info_from_response(response: httpx.Response):
     # Try to extract filename from URL
     parsed_url = urllib.parse.urlparse(url)
     url_path = parsed_url.path
-    filename = os.path.basename(url_path)
+    # Decode percent-encoded characters in the path segment
+    filename = urllib.parse.unquote(os.path.basename(url_path))
 
     # If filename couldn't be extracted, use Content-Disposition header
     if not filename:

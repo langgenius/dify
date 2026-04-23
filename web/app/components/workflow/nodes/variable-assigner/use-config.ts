@@ -1,9 +1,7 @@
-import type { ValueSelector, Var } from '../../types'
+import type { ValueSelector } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
-import { v4 as uuid4 } from 'uuid'
 import {
   useNodesReadOnly,
   useWorkflow,
@@ -11,8 +9,16 @@ import {
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
-import { VarType } from '../../types'
 import { useGetAvailableVars } from './hooks'
+import {
+  addGroup,
+  filterVarByType,
+  removeGroupByIndex,
+  renameGroup,
+  toggleGroupEnabled,
+  updateNestedVarGroupItem,
+  updateRootVarGroupItem,
+} from './use-config.helpers'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const {
@@ -27,35 +33,16 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
 
   // Not Enable Group
   const handleListOrTypeChange = useCallback((payload: VarGroupItem) => {
-    setInputs({
-      ...inputs,
-      ...payload,
-    })
+    setInputs(updateRootVarGroupItem(inputs, payload))
   }, [inputs, setInputs])
 
   const handleListOrTypeChangeInGroup = useCallback((groupId: string) => {
     return (payload: VarGroupItem) => {
-      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-      const newInputs = produce(inputs, (draft) => {
-        draft.advanced_settings.groups[index] = {
-          ...draft.advanced_settings.groups[index],
-          ...payload,
-        }
-      })
-      setInputs(newInputs)
+      setInputs(updateNestedVarGroupItem(inputs, groupId, payload))
     }
   }, [inputs, setInputs])
 
   const getAvailableVars = useGetAvailableVars()
-  const filterVar = (varType: VarType) => {
-    return (v: Var) => {
-      if (varType === VarType.any)
-        return true
-      if (v.type === VarType.any)
-        return true
-      return v.type === varType
-    }
-  }
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
@@ -67,106 +54,79 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const [removedGroupIndex, setRemovedGroupIndex] = useState<number>(-1)
   const handleGroupRemoved = useCallback((groupId: string) => {
     return () => {
-      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-      if (isVarUsedInNodes([id, inputs.advanced_settings.groups[index].group_name, 'output'])) {
+      const groups = inputs.advanced_settings?.groups ?? []
+      const index = groups.findIndex(item => item.groupId === groupId)
+      if (index < 0)
+        return
+
+      const groupName = groups[index]!.group_name
+      if (isVarUsedInNodes([id, groupName, 'output'])) {
         showRemoveVarConfirm()
-        setRemovedVars([[id, inputs.advanced_settings.groups[index].group_name, 'output']])
+        setRemovedVars([[id, groupName, 'output']])
         setRemoveType('group')
         setRemovedGroupIndex(index)
         return
       }
-      const newInputs = produce(inputs, (draft) => {
-        draft.advanced_settings.groups.splice(index, 1)
-      })
-      setInputs(newInputs)
+      setInputs(removeGroupByIndex(inputs, index))
     }
   }, [id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const handleGroupEnabledChange = useCallback((enabled: boolean) => {
-    const newInputs = produce(inputs, (draft) => {
-      if (!draft.advanced_settings)
-        draft.advanced_settings = { group_enabled: false, groups: [] }
-      if (enabled) {
-        if (draft.advanced_settings.groups.length === 0) {
-          const DEFAULT_GROUP_NAME = 'Group1'
-          draft.advanced_settings.groups = [{
-            output_type: draft.output_type,
-            variables: draft.variables,
-            group_name: DEFAULT_GROUP_NAME,
-            groupId: uuid4(),
-          }]
+    const groups = inputs.advanced_settings?.groups ?? []
 
-          handleOutVarRenameChange(id, [id, 'output'], [id, DEFAULT_GROUP_NAME, 'output'])
+    if (enabled && groups.length === 0) {
+      handleOutVarRenameChange(id, [id, 'output'], [id, 'Group1', 'output'])
+    }
+
+    if (!enabled && groups.length > 0) {
+      if (groups.length > 1) {
+        const useVars = groups.filter((item, index) => index > 0 && isVarUsedInNodes([id, item.group_name, 'output']))
+        if (useVars.length > 0) {
+          showRemoveVarConfirm()
+          setRemovedVars(useVars.map(item => [id, item.group_name, 'output']))
+          setRemoveType('enableChanged')
+          return
         }
       }
-      else {
-        if (draft.advanced_settings.groups.length > 0) {
-          if (draft.advanced_settings.groups.length > 1) {
-            const useVars = draft.advanced_settings.groups.filter((item, index) => index > 0 && isVarUsedInNodes([id, item.group_name, 'output']))
-            if (useVars.length > 0) {
-              showRemoveVarConfirm()
-              setRemovedVars(useVars.map(item => [id, item.group_name, 'output']))
-              setRemoveType('enableChanged')
-              return
-            }
-          }
-          draft.output_type = draft.advanced_settings.groups[0].output_type
-          draft.variables = draft.advanced_settings.groups[0].variables
-          handleOutVarRenameChange(id, [id, draft.advanced_settings.groups[0].group_name, 'output'], [id, 'output'])
-        }
-      }
-      draft.advanced_settings.group_enabled = enabled
-    })
-    setInputs(newInputs)
+
+      handleOutVarRenameChange(id, [id, groups[0]!.group_name, 'output'], [id, 'output'])
+    }
+
+    setInputs(toggleGroupEnabled({ inputs, enabled }))
     deleteNodeInspectorVars(id)
   }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const handleAddGroup = useCallback(() => {
-    let maxInGroupName = 1
-    inputs.advanced_settings.groups.forEach((item) => {
-      const match = /(\d+)$/.exec(item.group_name)
-      if (match) {
-        const num = Number.parseInt(match[1], 10)
-        if (num > maxInGroupName)
-          maxInGroupName = num
-      }
-    })
-    const newInputs = produce(inputs, (draft) => {
-      draft.advanced_settings.groups.push({
-        output_type: VarType.any,
-        variables: [],
-        group_name: `Group${maxInGroupName + 1}`,
-        groupId: uuid4(),
-      })
-    })
-    setInputs(newInputs)
+    setInputs(addGroup(inputs))
     deleteNodeInspectorVars(id)
   }, [deleteNodeInspectorVars, id, inputs, setInputs])
 
   // record the first old name value
-  const oldNameRecord = useRef<Record<string, string>>({})
+  const oldNameRef = useRef<Record<string, string>>({})
 
   const {
     run: renameInspectNameWithDebounce,
   } = useDebounceFn(
     (id: string, newName: string) => {
-      const oldName = oldNameRecord.current[id]
-      renameInspectVarName(id, oldName, newName)
-      delete oldNameRecord.current[id]
+      const oldName = oldNameRef.current[id]
+      renameInspectVarName(id, oldName!, newName)
+      delete oldNameRef.current[id]
     },
     { wait: 500 },
   )
 
   const handleVarGroupNameChange = useCallback((groupId: string) => {
     return (name: string) => {
-      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-      const newInputs = produce(inputs, (draft) => {
-        draft.advanced_settings.groups[index].group_name = name
-      })
-      handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
-      setInputs(newInputs)
-      if (!(id in oldNameRecord.current))
-        oldNameRecord.current[id] = inputs.advanced_settings.groups[index].group_name
+      const groups = inputs.advanced_settings?.groups ?? []
+      const index = groups.findIndex(item => item.groupId === groupId)
+      if (index < 0)
+        return
+
+      const oldName = groups[index]!.group_name
+      handleOutVarRenameChange(id, [id, oldName, 'output'], [id, name, 'output'])
+      setInputs(renameGroup(inputs, groupId, name))
+      if (!(id in oldNameRef.current))
+        oldNameRef.current[id] = oldName
       renameInspectNameWithDebounce(id, name)
     }
   }, [handleOutVarRenameChange, id, inputs, renameInspectNameWithDebounce, setInputs])
@@ -177,19 +137,12 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     })
     hideRemoveVarConfirm()
     if (removeType === 'group') {
-      const newInputs = produce(inputs, (draft) => {
-        draft.advanced_settings.groups.splice(removedGroupIndex, 1)
-      })
-      setInputs(newInputs)
+      if (removedGroupIndex >= 0)
+        setInputs(removeGroupByIndex(inputs, removedGroupIndex))
     }
     else {
       // removeType === 'enableChanged' to enabled
-      const newInputs = produce(inputs, (draft) => {
-        draft.advanced_settings.group_enabled = false
-        draft.output_type = draft.advanced_settings.groups[0].output_type
-        draft.variables = draft.advanced_settings.groups[0].variables
-      })
-      setInputs(newInputs)
+      setInputs(toggleGroupEnabled({ inputs, enabled: false }))
     }
   }, [removedVars, hideRemoveVarConfirm, removeType, removeUsedVarInNodes, inputs, setInputs, removedGroupIndex])
 
@@ -207,7 +160,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
     getAvailableVars,
-    filterVar,
+    filterVar: filterVarByType,
   }
 }
 

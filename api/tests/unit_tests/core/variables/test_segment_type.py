@@ -1,8 +1,8 @@
 import pytest
 
-from dify_graph.variables.segment_group import SegmentGroup
-from dify_graph.variables.segments import StringSegment
-from dify_graph.variables.types import ArrayValidation, SegmentType
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import ArrayValidation, SegmentType
 
 
 class TestSegmentTypeIsArrayType:

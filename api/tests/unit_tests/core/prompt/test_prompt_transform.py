@@ -4,14 +4,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.prompt.prompt_transform import PromptTransform
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 # from core.app.app_config.entities import ModelConfigEntity
 # from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-# from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
-# from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
-# from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
-# from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+# from graphon.model_runtime.entities.message_entities import UserPromptMessage
+# from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
+# from graphon.model_runtime.entities.provider_entities import ProviderEntity
+# from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 # from core.prompt.prompt_transform import PromptTransform
 
 

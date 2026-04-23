@@ -9,14 +9,16 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.file.file_manager import file_manager
-from dify_graph.graph import Graph
-from dify_graph.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
+from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file.file_manager import file_manager
+from graphon.graph import Graph
+from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
+
+pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.http",)
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -54,7 +56,7 @@ def init_http_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -73,14 +75,15 @@ def init_http_node(config: dict):
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        config=HttpRequestNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(init_params.run_context),
     )
 
     return node
@@ -189,20 +192,20 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
-    from dify_graph.enums import BuiltinNodeTypes
-    from dify_graph.nodes.http_request.entities import (
+    from core.workflow.system_variables import build_system_variables
+    from graphon.enums import BuiltinNodeTypes
+    from graphon.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
         HttpRequestNodeTimeout,
     )
-    from dify_graph.nodes.http_request.exc import AuthorizationConfigError
-    from dify_graph.nodes.http_request.executor import Executor
-    from dify_graph.runtime import VariablePool
-    from dify_graph.system_variable import SystemVariable
+    from graphon.nodes.http_request.exc import AuthorizationConfigError
+    from graphon.nodes.http_request.executor import Executor
+    from graphon.runtime import VariablePool
 
     # Create variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="test", files=[]),
+        system_variables=build_system_variables(user_id="test", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -700,7 +703,7 @@ def test_nested_object_variable_selector(setup_http_mock):
 
     # Create independent variable pool for this test only
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -720,14 +723,15 @@ def test_nested_object_variable_selector(setup_http_mock):
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
-        id=str(uuid.uuid4()),
-        config=graph_config["nodes"][1],
+        node_id=str(uuid.uuid4()),
+        config=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(init_params.run_context),
     )
 
     result = node._run()

@@ -7,10 +7,10 @@ from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.file import File
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from core.workflow.file_reference import parse_file_reference
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:
@@ -428,12 +428,9 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
             return fake_tool_file
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
-    mocker.patch(
-        "core.datasource.datasource_manager.file_factory.get_file_type_by_mime_type", return_value=FileType.IMAGE
-    )
+    mocker.patch("core.datasource.datasource_manager.get_file_type_by_mime_type", return_value=FileType.IMAGE)
     built = File(
-        tenant_id="t1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="tool_file_1",
         extension=".png",
@@ -533,8 +530,7 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     file_in = File(
-        tenant_id="t1",
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="tf",
         extension=".pdf",
@@ -636,16 +632,6 @@ def test_get_upload_file_by_id_builds_file(mocker):
         source_url="http://x",
     )
 
-    class _Q:
-        def __init__(self, row):
-            self._row = row
-
-        def where(self, *_args, **_kwargs):
-            return self
-
-        def first(self):
-            return self._row
-
     class _S:
         def __init__(self, row):
             self._row = row
@@ -656,24 +642,19 @@ def test_get_upload_file_by_id_builds_file(mocker):
         def __exit__(self, *exc):
             return False
 
-        def query(self, *_):
-            return _Q(self._row)
+        def scalar(self, *_args, **_kwargs):
+            return self._row
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S(fake_row))
 
     f = DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")
     assert f.related_id == "fid"
     assert f.extension == ".txt"
+    assert parse_file_reference(f.reference).storage_key is None
+    assert f.storage_key == "k"
 
 
 def test_get_upload_file_by_id_raises_when_missing(mocker):
-    class _Q:
-        def where(self, *_args, **_kwargs):
-            return self
-
-        def first(self):
-            return None
-
     class _S:
         def __enter__(self):
             return self
@@ -681,8 +662,8 @@ def test_get_upload_file_by_id_raises_when_missing(mocker):
         def __exit__(self, *exc):
             return False
 
-        def query(self, *_):
-            return _Q()
+        def scalar(self, *_args, **_kwargs):
+            return None
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S())
 

@@ -3,14 +3,14 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, SystemVariableKey
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.template import Template
+from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.template import Template
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -18,8 +18,8 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 _INVOKE_FROM_DEBUGGER = "debugger"
@@ -31,12 +31,18 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: KnowledgeIndexNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
-        super().__init__(id, config, graph_init_params, graph_runtime_state)
+        super().__init__(
+            node_id=node_id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
 
@@ -45,21 +51,20 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         variable_pool = self.graph_runtime_state.variable_pool
 
         # get dataset id as string
-        dataset_id_segment = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
+        dataset_id_segment = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
         if not dataset_id_segment:
             raise KnowledgeIndexNodeError("Dataset ID is required.")
         dataset_id: str = dataset_id_segment.value
 
         # get document id as string (may be empty when not provided)
-        document_id_segment = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+        document_id_segment = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
         document_id: str = document_id_segment.value if document_id_segment else ""
 
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
         if not variable:
             raise KnowledgeIndexNodeError("Index chunk variable is required.")
-        invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
-        invoke_from_value = str(invoke_from.value) if invoke_from else None
+        invoke_from_value = get_system_text(variable_pool, SystemVariableKey.INVOKE_FROM)
         is_preview = invoke_from_value == _INVOKE_FROM_DEBUGGER
 
         chunks = variable.value
@@ -86,8 +91,8 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                     outputs=outputs.model_dump(exclude_none=True),
                 )
 
-            original_document_id_segment = variable_pool.get(["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID])
-            batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
+            original_document_id_segment = get_system_segment(variable_pool, SystemVariableKey.ORIGINAL_DOCUMENT_ID)
+            batch = get_system_segment(variable_pool, SystemVariableKey.BATCH)
             if not batch:
                 raise KnowledgeIndexNodeError("Batch is required.")
 
@@ -127,7 +132,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         is_preview: bool,
         batch: Any,
         chunks: Mapping[str, Any],
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")

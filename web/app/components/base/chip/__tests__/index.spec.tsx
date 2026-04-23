@@ -40,7 +40,7 @@ describe('Chip', () => {
 
   // Helper function to get the trigger element
   const getTrigger = (container: HTMLElement) => {
-    return container.querySelector('[data-state]')
+    return container.querySelector('[role="button"][aria-haspopup="menu"]') as HTMLElement | null
   }
 
   // Helper function to open dropdown panel
@@ -54,13 +54,13 @@ describe('Chip', () => {
     it('should render without crashing', () => {
       renderChip()
 
-      expect(screen.getByText('All Items')).toBeInTheDocument()
+      expect(screen.getByText('All Items'))!.toBeInTheDocument()
     })
 
     it('should display current selected item name', () => {
       renderChip({ value: 'active' })
 
-      expect(screen.getByText('Active')).toBeInTheDocument()
+      expect(screen.getByText('Active'))!.toBeInTheDocument()
     })
 
     it('should display empty content when value does not match any item', () => {
@@ -76,7 +76,7 @@ describe('Chip', () => {
   describe('Props', () => {
     it('should update displayed item name when value prop changes', () => {
       const { rerender } = renderChip({ value: 'all' })
-      expect(screen.getByText('All Items')).toBeInTheDocument()
+      expect(screen.getByText('All Items'))!.toBeInTheDocument()
 
       rerender(
         <Chip
@@ -86,7 +86,7 @@ describe('Chip', () => {
           onClear={onClear}
         />,
       )
-      expect(screen.getByText('Archived')).toBeInTheDocument()
+      expect(screen.getByText('Archived'))!.toBeInTheDocument()
     })
 
     it('should show left icon by default', () => {
@@ -94,7 +94,7 @@ describe('Chip', () => {
 
       // The filter icon should be visible
       const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
+      expect(svg)!.toBeInTheDocument()
     })
 
     it('should hide left icon when showLeftIcon is false', () => {
@@ -102,7 +102,7 @@ describe('Chip', () => {
 
       // When showLeftIcon is false, there should be no filter icon before the text
       const textElement = screen.getByText('All Items')
-      const parent = textElement.closest('div[data-state]')
+      const parent = textElement.closest('[role="button"]')
       const icons = parent?.querySelectorAll('svg')
 
       // Should only have the arrow icon, not the filter icon
@@ -114,7 +114,7 @@ describe('Chip', () => {
 
       renderChip({ leftIcon: <CustomIcon /> })
 
-      expect(screen.getByTestId('custom-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-icon'))!.toBeInTheDocument()
     })
 
     it('should apply custom className to trigger', () => {
@@ -123,7 +123,7 @@ describe('Chip', () => {
       const { container } = renderChip({ className: customClass })
 
       const chipElement = container.querySelector(`.${customClass}`)
-      expect(chipElement).toBeInTheDocument()
+      expect(chipElement)!.toBeInTheDocument()
     })
 
     it('should apply custom panelClassName to dropdown panel', () => {
@@ -134,7 +134,7 @@ describe('Chip', () => {
 
       // Panel is rendered in a portal, so check document.body
       const panel = document.body.querySelector(`.${customPanelClass}`)
-      expect(panel).toBeInTheDocument()
+      expect(panel)!.toBeInTheDocument()
     })
   })
 
@@ -142,20 +142,20 @@ describe('Chip', () => {
     it('should toggle dropdown panel on trigger click', () => {
       const { container } = renderChip()
 
-      // Initially closed - check data-state attribute
+      // Initially closed - check aria-expanded attribute
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Open panel
       openPanel(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
       // Panel items should be visible
       expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
 
       // Close panel
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should close panel after selecting an item', () => {
@@ -163,14 +163,14 @@ describe('Chip', () => {
 
       openPanel(container)
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
 
       // Click on an item in the dropdown panel
       const activeItems = screen.getAllByText('Active')
       // The second one should be in the dropdown
-      fireEvent.click(activeItems[activeItems.length - 1])
+      fireEvent.click(activeItems[activeItems.length - 1]!)
 
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
     })
   })
 
@@ -181,7 +181,7 @@ describe('Chip', () => {
       openPanel(container)
       // Get all "Active" texts and click the one in the dropdown (should be the last one)
       const activeItems = screen.getAllByText('Active')
-      fireEvent.click(activeItems[activeItems.length - 1])
+      fireEvent.click(activeItems[activeItems.length - 1]!)
 
       expect(onSelect).toHaveBeenCalledTimes(1)
       expect(onSelect).toHaveBeenCalledWith(items[1])
@@ -197,7 +197,7 @@ describe('Chip', () => {
       const closeIcon = svgs?.[svgs.length - 1]
       const clearButton = closeIcon?.parentElement
 
-      expect(clearButton).toBeInTheDocument()
+      expect(clearButton)!.toBeInTheDocument()
       if (clearButton)
         fireEvent.click(clearButton)
 
@@ -208,7 +208,7 @@ describe('Chip', () => {
       const { container } = renderChip({ value: 'active' })
 
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Find the close icon (last SVG) and click its parent
       const svgs = trigger?.querySelectorAll('svg')
@@ -219,7 +219,8 @@ describe('Chip', () => {
         fireEvent.click(clearButton)
 
       // Panel should remain closed
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      // Panel should remain closed
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
@@ -231,17 +232,17 @@ describe('Chip', () => {
       // Click 1: open
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
 
       // Click 2: close
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Click 3: open again
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
     })
   })
 
@@ -283,10 +284,11 @@ describe('Chip', () => {
       const trigger = getTrigger(container)
 
       // Closed by default
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      // Closed by default
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       openPanel(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
       // Items should be duplicated (once in trigger, once in panel)
       expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
     })
@@ -300,11 +302,11 @@ describe('Chip', () => {
       const allActiveTexts = screen.getAllByText('Active')
       // The dropdown item should be the last one
       const dropdownItem = allActiveTexts[allActiveTexts.length - 1]
-      const parentContainer = dropdownItem.parentElement
+      const parentContainer = dropdownItem!.parentElement
 
       // The check icon should be a sibling within the parent
       const checkIcon = parentContainer?.querySelector('svg')
-      expect(checkIcon).toBeInTheDocument()
+      expect(checkIcon)!.toBeInTheDocument()
     })
 
     it('should render all items in dropdown when open', () => {
@@ -325,15 +327,15 @@ describe('Chip', () => {
       const { container } = renderChip({ items: [], value: '' })
 
       // Trigger should still render
-      const trigger = container.querySelector('[data-state]')
-      expect(trigger).toBeInTheDocument()
+      const trigger = getTrigger(container)
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should handle value not in items list', () => {
       const { container } = renderChip({ value: 'nonexistent' })
 
       const trigger = getTrigger(container)
-      expect(trigger).toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
 
       // The trigger should not display any item name text
       expect(trigger?.textContent?.trim()).toBeFalsy()
@@ -346,7 +348,7 @@ describe('Chip', () => {
 
       // Click on the already selected item in the dropdown
       const activeItems = screen.getAllByText('Active')
-      fireEvent.click(activeItems[activeItems.length - 1])
+      fireEvent.click(activeItems[activeItems.length - 1]!)
 
       expect(onSelect).toHaveBeenCalledTimes(1)
       expect(onSelect).toHaveBeenCalledWith(items[1])
@@ -361,13 +363,13 @@ describe('Chip', () => {
 
       const { container } = renderChip({ value: 2, items: numericItems })
 
-      expect(screen.getByText('Second')).toBeInTheDocument()
+      expect(screen.getByText('Second'))!.toBeInTheDocument()
 
       // Open panel and select Third
       openPanel(container)
 
       const thirdItems = screen.getAllByText('Third')
-      fireEvent.click(thirdItems[thirdItems.length - 1])
+      fireEvent.click(thirdItems[thirdItems.length - 1]!)
 
       expect(onSelect).toHaveBeenCalledWith(numericItems[2])
     })
@@ -380,13 +382,13 @@ describe('Chip', () => {
 
       const { container } = renderChip({ value: 'a', items: itemsWithExtra })
 
-      expect(screen.getByText('Item A')).toBeInTheDocument()
+      expect(screen.getByText('Item A'))!.toBeInTheDocument()
 
       // Open panel and select Item B
       openPanel(container)
 
       const itemBs = screen.getAllByText('Item B')
-      fireEvent.click(itemBs[itemBs.length - 1])
+      fireEvent.click(itemBs[itemBs.length - 1]!)
 
       expect(onSelect).toHaveBeenCalledWith(itemsWithExtra[1])
     })

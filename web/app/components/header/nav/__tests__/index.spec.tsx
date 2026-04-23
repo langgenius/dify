@@ -7,11 +7,12 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { useRouter, useSelectedLayoutSegment } from 'next/navigation'
 import * as React from 'react'
+import { use } from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
+import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
 
@@ -23,14 +24,14 @@ vi.mock('@headlessui/react', () => {
     const [open, setOpen] = React.useState(false)
     const value = React.useMemo(() => ({ open, setOpen }), [open])
     return (
-      <MenuContext.Provider value={value}>
+      <MenuContext value={value}>
         {typeof children === 'function' ? children({ open }) : children}
-      </MenuContext.Provider>
+      </MenuContext>
     )
   }
 
   const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
+    const context = use(MenuContext)
     const handleClick = () => {
       context?.setOpen(!context.open)
       onClick?.()
@@ -43,7 +44,7 @@ vi.mock('@headlessui/react', () => {
   }
 
   const MenuItems = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
+    const context = use(MenuContext)
     if (!context?.open)
       return null
     return (
@@ -69,7 +70,7 @@ vi.mock('@headlessui/react', () => {
 })
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
   useRouter: vi.fn(),
 }))
@@ -82,6 +83,26 @@ vi.mock('@/app/components/app/store', () => ({
 // Mock app context
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
+}))
+
+vi.mock('@/next/link', () => ({
+  default: ({
+    href,
+    children,
+    onClick,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string, children?: React.ReactNode }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault()
+        onClick?.(event)
+      }}
+      {...props}
+    >
+      {children}
+    </a>
+  ),
 }))
 
 describe('Nav Component', () => {
@@ -277,11 +298,15 @@ describe('Nav Component', () => {
         fireEvent.click(selectorButton)
       })
 
-      const createButton = await screen.findByText('Create New')
-      await act(async () => {
-        fireEvent.click(createButton)
-      })
+      const openCreateMenu = async () => {
+        const createButton = await screen.findByText('Create New')
+        await act(async () => {
+          fireEvent.click(createButton)
+        })
+        return screen.findByText(/app\.newApp\.startFromBlank/i)
+      }
 
+      await openCreateMenu()
       const blankOption = await screen.findByText(
         /app\.newApp\.startFromBlank/i,
       )
@@ -290,6 +315,7 @@ describe('Nav Component', () => {
       })
       expect(mockOnCreate).toHaveBeenCalledWith('blank')
 
+      await openCreateMenu()
       const templateOption = await screen.findByText(
         /app\.newApp\.startFromTemplate/i,
       )
@@ -298,6 +324,7 @@ describe('Nav Component', () => {
       })
       expect(mockOnCreate).toHaveBeenCalledWith('template')
 
+      await openCreateMenu()
       const dslOption = await screen.findByText(/app\.importDSL/i)
       await act(async () => {
         fireEvent.click(dslOption)

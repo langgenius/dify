@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Any, cast
 
 from core.prompt.simple_prompt_transform import ModelMode
-from dify_graph.model_runtime.entities import (
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
     ImagePromptMessageContent,

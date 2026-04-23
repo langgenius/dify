@@ -9,25 +9,27 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import (
+from core.workflow.file_reference import parse_file_reference
+from graphon.entities import GraphInitParams
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base import LLMUsageTrackingMixin
-from dify_graph.nodes.base.node import Node
-from dify_graph.variables import (
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base import LLMUsageTrackingMixin
+from graphon.nodes.base.node import Node
+from graphon.variables import (
     ArrayFileSegment,
     FileSegment,
     StringSegment,
 )
-from dify_graph.variables.segments import ArrayObjectSegment
+from graphon.variables.segments import ArrayObjectSegment
 
 from .entities import (
     Condition,
@@ -41,10 +43,22 @@ from .exc import (
 from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.file import File
+    from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
+    if value is None or isinstance(value, (str, float)):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return str(value)
+
+
+def _normalize_metadata_filter_sequence_item(value: object) -> str:
+    return value if isinstance(value, str) else str(value)
 
 
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
@@ -56,13 +70,14 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: KnowledgeRetrievalNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-    ):
+    ) -> None:
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -159,7 +174,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -201,8 +216,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
-            reranking_model = None
-            weights = None
+            reranking_model: RerankingModelDict | None = None
+            weights: WeightsDict | None = None
             match node_data.multiple_retrieval_config.reranking_mode:
                 case "reranking_model":
                     if node_data.multiple_retrieval_config.reranking_model:
@@ -253,7 +268,13 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_model_config=node_data.metadata_model_config,
                     metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
-                    attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
+                    attachment_ids=[
+                        parsed_reference.record_id
+                        for attachment in attachments
+                        if (parsed_reference := parse_file_reference(attachment.reference)) is not None
+                    ]
+                    if attachments
+                    else None,
                 )
             )
 
@@ -273,18 +294,21 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         resolved_conditions: list[Condition] = []
         for cond in conditions.conditions or []:
             value = cond.value
+            resolved_value: str | Sequence[str] | int | float | None
             if isinstance(value, str):
                 segment_group = variable_pool.convert_template(value)
                 if len(segment_group.value) == 1:
-                    resolved_value = segment_group.value[0].to_object()
+                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                 else:
                     resolved_value = segment_group.text
             elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values = []
-                for v in value:  # type: ignore
+                resolved_values: list[str] = []
+                for v in value:
                     segment_group = variable_pool.convert_template(v)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(segment_group.value[0].to_object())
+                        resolved_values.append(
+                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                        )
                     else:
                         resolved_values.append(segment_group.text)
                 resolved_value = resolved_values

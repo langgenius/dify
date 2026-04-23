@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "np. Token dostępu 123",
   "mcp.modal.headers": "Nagłówki",
   "mcp.modal.headersTip": "Dodatkowe nagłówki HTTP do wysłania z żądaniami serwera MCP",
+  "mcp.modal.invalidServerIdentifier": "Proszę podać prawidłowy identyfikator serwera",
+  "mcp.modal.invalidServerUrl": "Proszę podać prawidłowy adres URL serwera",
   "mcp.modal.maskedHeadersTip": "Wartości nagłówków są ukryte dla bezpieczeństwa. Zmiany zaktualizują rzeczywiste wartości.",
   "mcp.modal.name": "Nazwa i ikona",
   "mcp.modal.namePlaceholder": "Nazwij swój serwer MCP",

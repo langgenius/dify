@@ -14,11 +14,11 @@ export enum InputFieldType {
   variableOrConstant = 'variableOrConstant',
 }
 
-export type InputTypeSelectConfiguration = {
+type InputTypeSelectConfiguration = {
   supportFile: boolean
 }
 
-export type NumberSliderConfiguration = {
+type NumberSliderConfiguration = {
   description: string
   max?: number
   min?: number

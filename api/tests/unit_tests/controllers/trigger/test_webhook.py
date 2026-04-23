@@ -23,6 +23,7 @@ def mock_jsonify():
 
 class DummyWebhookTrigger:
     webhook_id = "wh-1"
+    webhook_url = "http://localhost:5001/triggers/webhook/wh-1"
     tenant_id = "tenant-1"
     app_id = "app-1"
     node_id = "node-1"
@@ -104,7 +105,32 @@ class TestHandleWebhookDebug:
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
     @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
     @patch.object(module.WebhookService, "build_workflow_inputs", return_value={"x": 1})
-    @patch.object(module.TriggerDebugEventBus, "dispatch")
+    @patch.object(module.TriggerDebugEventBus, "dispatch", return_value=0)
+    def test_debug_requires_active_listener(
+        self,
+        mock_dispatch,
+        mock_build_inputs,
+        mock_extract,
+        mock_get,
+    ):
+        mock_get.return_value = (DummyWebhookTrigger(), None, "node_config")
+        mock_extract.return_value = {"method": "POST"}
+
+        response, status = module.handle_webhook_debug("wh-1")
+
+        assert status == 409
+        assert response["error"] == "No active debug listener"
+        assert response["message"] == (
+            "The webhook debug URL only works while the Variable Inspector is listening. "
+            "Use the published webhook URL to execute the workflow in Celery."
+        )
+        assert response["execution_url"] == DummyWebhookTrigger.webhook_url
+        mock_dispatch.assert_called_once()
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    @patch.object(module.WebhookService, "build_workflow_inputs", return_value={"x": 1})
+    @patch.object(module.TriggerDebugEventBus, "dispatch", return_value=1)
     @patch.object(module.WebhookService, "generate_webhook_response")
     def test_debug_success(
         self,

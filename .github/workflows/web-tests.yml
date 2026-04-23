@@ -2,16 +2,9 @@ name: Web Tests
 
 on:
   workflow_call:
-    inputs:
-      base_sha:
+    secrets:
+      CODECOV_TOKEN:
         required: false
-        type: string
-      diff_range_mode:
-        required: false
-        type: string
-      head_sha:
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -23,7 +16,7 @@ concurrency:
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     env:
       VITEST_COVERAGE_SCOPE: app-components
     strategy:
@@ -50,7 +43,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: blob-report-${{ matrix.shardIndex }}
           path: web/.vitest-reports/*
@@ -61,9 +54,9 @@ jobs:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
     needs: [test]
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     env:
-      VITEST_COVERAGE_SCOPE: app-components
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -73,7 +66,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup web environment
@@ -87,59 +79,26 @@ jobs:
           merge-multiple: true
 
       - name: Merge reports
-        run: vp test --merge-reports --reporter=json --reporter=agent --coverage
+        run: vp test --merge-reports --coverage --silent=passed-only
 
-      - name: Report app/components baseline coverage
-        run: node ./scripts/report-components-coverage-baseline.mjs
-
-      - name: Report app/components test touch
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: node ./scripts/report-components-test-touch.mjs
-
-      - name: Check app/components pure diff coverage
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: node ./scripts/check-components-diff-coverage.mjs
-
-      - name: Check Coverage Summary
-        if: always()
-        id: coverage-summary
-        run: |
-          set -eo pipefail
-
-          COVERAGE_FILE="coverage/coverage-final.json"
-          COVERAGE_SUMMARY_FILE="coverage/coverage-summary.json"
-
-          if [ -f "$COVERAGE_FILE" ] || [ -f "$COVERAGE_SUMMARY_FILE" ]; then
-            echo "has_coverage=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "has_coverage=false" >> "$GITHUB_OUTPUT"
-          echo "### 🚨 app/components Diff Coverage" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Coverage artifacts not found. Ensure Vitest merge reports ran with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload Coverage Artifact
-        if: steps.coverage-summary.outputs.has_coverage == 'true'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
-          name: web-coverage-report
-          path: web/coverage
-          retention-days: 30
-          if-no-files-found: error
+          directory: web/coverage
+          flags: web
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
 
-  web-build:
-    name: Web Build
-    runs-on: ubuntu-latest
+  dify-ui-test:
+    name: dify-ui Tests
+    runs-on: depot-ubuntu-24.04-4
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
-        working-directory: ./web
+        shell: bash
+        working-directory: ./packages/dify-ui
 
     steps:
       - name: Checkout code
@@ -147,20 +106,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
-        with:
-          files: |
-            web/**
-            .github/workflows/web-tests.yml
-            .github/actions/setup-web/**
-
       - name: Setup web environment
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Web build check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run build
+      - name: Install Chromium for Browser Mode
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run dify-ui tests
+        run: vp test run --coverage --silent=passed-only
+
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          directory: packages/dify-ui/coverage
+          flags: dify-ui
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}

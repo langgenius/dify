@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 import core.tools.utils.message_transformer as mt
@@ -13,7 +15,7 @@ class _FakeToolFile:
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict | None = None
+    last_call: dict[str, Any] | None = None
 
     def __init__(self, *args, **kwargs):
         pass
@@ -84,3 +86,24 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     # meta is preserved (still contains mime_type: None)
     assert "mime_type" in (o.meta or {})
     assert o.meta["mime_type"] is None
+    assert o.meta["tool_file_id"] == "fake-tool-file-id"
+
+
+def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
+    msg = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+        message=ToolInvokeMessage.TextMessage(text="/files/tools/existing-tool-file.png"),
+        meta={},
+    )
+
+    out = list(
+        mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
+            messages=_gen([msg]),
+            user_id="u1",
+            tenant_id="t1",
+            conversation_id="c1",
+        )
+    )
+
+    assert len(out) == 1
+    assert out[0].meta["tool_file_id"] == "existing-tool-file"

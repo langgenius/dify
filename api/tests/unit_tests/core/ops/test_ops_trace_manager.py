@@ -86,6 +86,7 @@ def make_message_data(**overrides):
     created_at = datetime(2025, 2, 20, 12, 0, 0)
     base = {
         "id": "msg-id",
+        "app_id": "app-id",
         "conversation_id": "conv-id",
         "created_at": created_at,
         "updated_at": created_at + timedelta(seconds=3),
@@ -156,17 +157,19 @@ def make_workflow_run():
     )
 
 
-def configure_db_query(session, *, message_file=None, workflow_app_log=None):
-    def _side_effect(model):
-        query = MagicMock()
-        query.filter_by.return_value.first.return_value = None
-        if message_file and model.__name__ == "MessageFile":
-            query.filter_by.return_value.first.return_value = message_file
-        if workflow_app_log and model.__name__ == "WorkflowAppLog":
-            query.filter_by.return_value.first.return_value = workflow_app_log
-        return query
+def configure_db_scalar(session, *, message_file=None, workflow_app_log=None):
+    """Configure session.scalar to return appropriate values for MessageFile/WorkflowAppLog lookups."""
+    original_scalar = session.scalar
 
-    session.query.side_effect = _side_effect
+    def _side_effect(stmt):
+        stmt_str = str(stmt)
+        if "message_file" in stmt_str.lower():
+            return message_file
+        if "workflow_app_log" in stmt_str.lower():
+            return workflow_app_log
+        return original_scalar(stmt)
+
+    session.scalar.side_effect = _side_effect
 
 
 class DummySessionContext:
@@ -182,12 +185,21 @@ class DummySessionContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
 
+    def execute(self, *args, **kwargs):
+        return self
+
     def scalar(self, *args, **kwargs):
         if self._index >= len(self._values):
             return None
         value = self._values[self._index]
         self._index += 1
         return value
+
+    def scalars(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return []
 
 
 @pytest.fixture(autouse=True)
@@ -253,7 +265,7 @@ def workflow_repo_fixture(monkeypatch):
 def trace_task_message(monkeypatch, mock_db):
     message_data = make_message_data()
     monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda msg_id: message_data)
-    configure_db_query(mock_db, message_file=FakeMessageFile(), workflow_app_log=SimpleNamespace(id="log-id"))
+    configure_db_scalar(mock_db, message_file=FakeMessageFile(), workflow_app_log=SimpleNamespace(id="log-id"))
     return message_data
 
 
@@ -297,56 +309,53 @@ def test_obfuscated_decrypt_token(encryption_mocks):
 
 def test_get_decrypted_tracing_config_returns_config(encryption_mocks, mock_db):
     trace_config_data = SimpleNamespace(tracing_config={"secret_value": "enc", "other_value": "info"})
-    mock_db.query.return_value.where.return_value.first.return_value = trace_config_data
     app = SimpleNamespace(id="app-id", tenant_id="tenant")
-    mock_db.scalar.return_value = app
+    mock_db.scalar.side_effect = [trace_config_data, app]
 
     decrypted = OpsTraceManager.get_decrypted_tracing_config("app-id", "dummy")
     assert decrypted["other_value"] == "info"
 
 
 def test_get_decrypted_tracing_config_missing_trace_config(mock_db):
-    mock_db.query.return_value.where.return_value.first.return_value = None
+    mock_db.scalar.return_value = None
     assert OpsTraceManager.get_decrypted_tracing_config("app-id", "dummy") is None
 
 
 def test_get_decrypted_tracing_config_raises_for_missing_app(mock_db):
     trace_config_data = SimpleNamespace(tracing_config={"secret_value": "enc"})
-    mock_db.query.return_value.where.return_value.first.return_value = trace_config_data
-    mock_db.scalar.return_value = None
+    mock_db.scalar.side_effect = [trace_config_data, None]
     with pytest.raises(ValueError, match="App not found"):
         OpsTraceManager.get_decrypted_tracing_config("app-id", "dummy")
 
 
 def test_get_decrypted_tracing_config_raises_for_none_config(mock_db):
     trace_config_data = SimpleNamespace(tracing_config=None)
-    mock_db.query.return_value.where.return_value.first.return_value = trace_config_data
-    mock_db.scalar.return_value = SimpleNamespace(tenant_id="tenant")
+    mock_db.scalar.side_effect = [trace_config_data, SimpleNamespace(tenant_id="tenant")]
     with pytest.raises(ValueError, match="Tracing config cannot be None"):
         OpsTraceManager.get_decrypted_tracing_config("app-id", "dummy")
 
 
 def test_get_ops_trace_instance_handles_none_app(mock_db):
-    mock_db.query.return_value.where.return_value.first.return_value = None
+    mock_db.get.return_value = None
     assert OpsTraceManager.get_ops_trace_instance("app-id") is None
 
 
 def test_get_ops_trace_instance_returns_none_when_disabled(mock_db, monkeypatch):
     app = SimpleNamespace(id="app-id", tracing=json.dumps({"enabled": False}))
-    mock_db.query.return_value.where.return_value.first.return_value = app
+    mock_db.get.return_value = app
     assert OpsTraceManager.get_ops_trace_instance("app-id") is None
 
 
 def test_get_ops_trace_instance_invalid_provider(mock_db, monkeypatch):
     app = SimpleNamespace(id="app-id", tracing=json.dumps({"enabled": True, "tracing_provider": "missing"}))
-    mock_db.query.return_value.where.return_value.first.return_value = app
+    mock_db.get.return_value = app
     monkeypatch.setattr("core.ops.ops_trace_manager.provider_config_map", FakeProviderMap({}))
     assert OpsTraceManager.get_ops_trace_instance("app-id") is None
 
 
 def test_get_ops_trace_instance_success(monkeypatch, mock_db):
     app = SimpleNamespace(id="app-id", tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
-    mock_db.query.return_value.where.return_value.first.return_value = app
+    mock_db.get.return_value = app
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.OpsTraceManager.get_decrypted_tracing_config",
         classmethod(lambda cls, aid, provider: {"secret_value": "decrypted", "other_value": "info"}),
@@ -380,7 +389,7 @@ def test_get_app_config_through_message_id_app_model_config(mock_db):
 
 
 def test_update_app_tracing_config_invalid_provider(mock_db, monkeypatch):
-    mock_db.query.return_value.where.return_value.first.return_value = None
+    mock_db.get.return_value = None
     with pytest.raises(ValueError, match="Invalid tracing provider"):
         OpsTraceManager.update_app_tracing_config("app", True, "bad")
     with pytest.raises(ValueError, match="App not found"):
@@ -389,26 +398,26 @@ def test_update_app_tracing_config_invalid_provider(mock_db, monkeypatch):
 
 def test_update_app_tracing_config_success(mock_db):
     app = SimpleNamespace(id="app-id", tracing="{}")
-    mock_db.query.return_value.where.return_value.first.return_value = app
+    mock_db.get.return_value = app
     OpsTraceManager.update_app_tracing_config("app-id", True, "dummy")
     assert app.tracing is not None
     mock_db.commit.assert_called_once()
 
 
 def test_get_app_tracing_config_errors_when_missing(mock_db):
-    mock_db.query.return_value.where.return_value.first.return_value = None
+    mock_db.get.return_value = None
     with pytest.raises(ValueError, match="App not found"):
         OpsTraceManager.get_app_tracing_config("app")
 
 
 def test_get_app_tracing_config_returns_defaults(mock_db):
-    mock_db.query.return_value.where.return_value.first.return_value = SimpleNamespace(tracing=None)
+    mock_db.get.return_value = SimpleNamespace(tracing=None)
     assert OpsTraceManager.get_app_tracing_config("app-id") == {"enabled": False, "tracing_provider": None}
 
 
 def test_get_app_tracing_config_returns_payload(mock_db):
     payload = {"enabled": True, "tracing_provider": "dummy"}
-    mock_db.query.return_value.where.return_value.first.return_value = SimpleNamespace(tracing=json.dumps(payload))
+    mock_db.get.return_value = SimpleNamespace(tracing=json.dumps(payload))
     assert OpsTraceManager.get_app_tracing_config("app-id") == payload
 
 
@@ -454,7 +463,7 @@ def test_trace_task_message_trace(trace_task_message, mock_db):
 
 def test_trace_task_workflow_trace(workflow_repo_fixture, mock_db):
     DummySessionContext.scalar_values = ["wf-app-log", "message-ref"]
-    execution = SimpleNamespace(id_="run-id")
+    execution = SimpleNamespace(id_="run-id", total_tokens=0)
     task = TraceTask(
         trace_type=TraceTaskName.WORKFLOW_TRACE, workflow_execution=execution, conversation_id="conv", user_id="user"
     )
@@ -491,7 +500,7 @@ def test_trace_task_dataset_retrieval_trace(trace_task_message):
 def test_trace_task_tool_trace(monkeypatch, mock_db):
     custom_message = make_message_data(agent_thoughts=[make_agent_thought("tool-a", datetime(2025, 2, 20, 12, 1, 0))])
     monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda _: custom_message)
-    configure_db_query(mock_db, message_file=FakeMessageFile())
+    configure_db_scalar(mock_db, message_file=FakeMessageFile())
     task = TraceTask(trace_type=TraceTaskName.TOOL_TRACE, message_id="msg-id")
     timer = {"start": 1, "end": 5}
     result = task.tool_trace("msg-id", timer, tool_name="tool-a", tool_inputs={"foo": 1}, tool_outputs="result")

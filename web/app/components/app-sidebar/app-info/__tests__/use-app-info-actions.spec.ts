@@ -2,7 +2,16 @@ import { act, renderHook } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { useAppInfoActions } from '../use-app-info-actions'
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+})
 const mockReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
 const mockInvalidateAppList = vi.fn()
@@ -11,8 +20,11 @@ const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
 const mockExportAppConfig = vi.fn()
 const mockDeleteApp = vi.fn()
+const mockFetchAppDetail = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
+const mockGetSocket = vi.fn()
+const mockOnAppMetaUpdate = vi.fn()
 
 let mockAppDetail: Record<string, unknown> | undefined = {
   id: 'app-1',
@@ -23,12 +35,8 @@ let mockAppDetail: Record<string, unknown> | undefined = {
   icon_background: '#FFEAD5',
 }
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
-}))
-
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -42,8 +50,16 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {},
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.api, {
+    success: vi.fn((message, options) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 
 vi.mock('@/service/use-apps', () => ({
@@ -55,6 +71,7 @@ vi.mock('@/service/apps', () => ({
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
   exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -69,6 +86,18 @@ vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
 
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: (...args: unknown[]) => mockGetSocket(...args),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppMetaUpdate: (...args: unknown[]) => mockOnAppMetaUpdate(...args),
+  },
+}))
+
 vi.mock('@/config', () => ({
   NEED_REFRESH_APP_LIST_KEY: 'test-refresh-key',
 }))
@@ -76,6 +105,8 @@ vi.mock('@/config', () => ({
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOnAppMetaUpdate.mockReturnValue(() => {})
+    mockGetSocket.mockReturnValue(null)
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',
@@ -175,7 +206,36 @@ describe('useAppInfoActions', () => {
 
       expect(mockUpdateAppInfo).toHaveBeenCalled()
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+    })
+
+    it('should emit app_meta_update after successful edit when collaboration socket exists', async () => {
+      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const socket = { emit: vi.fn() }
+      mockUpdateAppInfo.mockResolvedValue(updatedApp)
+      mockGetSocket.mockReturnValue(socket)
+
+      const { result } = renderHook(() => useAppInfoActions({}))
+
+      await act(async () => {
+        await result.current.onEdit({
+          name: 'Updated',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#fff',
+          description: '',
+          use_icon_as_answer_icon: false,
+        })
+      })
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(mockGetSocket).toHaveBeenCalledWith('app-1')
+      expect(socket.emit).toHaveBeenCalledWith(
+        'collaboration_event',
+        expect.objectContaining({
+          type: 'app_meta_update',
+        }),
+      )
     })
 
     it('should notify error on edit failure', async () => {
@@ -194,7 +254,7 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
     })
 
     it('should not call updateAppInfo when appDetail is undefined', async () => {
@@ -234,7 +294,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -252,7 +312,7 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
     })
   })
 
@@ -298,7 +358,7 @@ describe('useAppInfoActions', () => {
         await result.current.onExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -410,7 +470,7 @@ describe('useAppInfoActions', () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -456,7 +516,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockInvalidateAppList).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
@@ -483,10 +543,37 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })
+    })
+  })
+
+  describe('collaboration app meta updates', () => {
+    it('should refresh app detail when receiving app_meta_update', async () => {
+      const updated = { ...mockAppDetail, name: 'Remote Updated' }
+      const unsubscribe = vi.fn()
+      let onUpdate: (() => Promise<void>) | undefined
+
+      mockOnAppMetaUpdate.mockImplementation((callback: () => Promise<void>) => {
+        onUpdate = callback
+        return unsubscribe
+      })
+      mockFetchAppDetail.mockResolvedValue(updated)
+
+      const { unmount } = renderHook(() => useAppInfoActions({}))
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await act(async () => {
+        await onUpdate?.()
+      })
+
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetAppDetail).toHaveBeenCalledWith(updated)
+
+      unmount()
+      expect(unsubscribe).toHaveBeenCalled()
     })
   })
 })

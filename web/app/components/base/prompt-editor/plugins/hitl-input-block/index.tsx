@@ -14,6 +14,7 @@ import {
   useEffect,
 } from 'react'
 import { CustomTextNode } from '../custom-text/node'
+import { UPDATE_WORKFLOW_NODES_MAP as WORKFLOW_UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
 import {
   $createHITLInputNode,
   HITLInputNode,
@@ -21,16 +22,13 @@ import {
 
 export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand('INSERT_HITL_INPUT_BLOCK_COMMAND')
 export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand('DELETE_HITL_INPUT_BLOCK_COMMAND')
-export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
+export const UPDATE_WORKFLOW_NODES_MAP = WORKFLOW_UPDATE_WORKFLOW_NODES_MAP
 
-export type HITLInputProps = {
-  onInsert?: () => void
-  onDelete?: () => void
-}
 const HITLInputBlock = memo(({
   onInsert,
   onDelete,
-  workflowNodesMap,
+  workflowNodesMap = {},
+  variables: workflowAvailableVariables,
   getVarType,
   readonly,
 }: HITLInputBlockType) => {
@@ -38,9 +36,12 @@ const HITLInputBlock = memo(({
 
   useEffect(() => {
     editor.update(() => {
-      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: workflowNodesMap || {},
+        availableVariables: workflowAvailableVariables || [],
+      })
     })
-  }, [editor, workflowNodesMap])
+  }, [editor, workflowNodesMap, workflowAvailableVariables])
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))

@@ -1,13 +1,13 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiVolumeUpLine,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import { useParams, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import Tooltip from '@/app/components/base/tooltip'
+import { useParams, usePathname } from '@/next/navigation'
 
 type AudioBtnProps = {
   id?: string
@@ -78,20 +78,27 @@ const AudioBtn = ({
   }[audioState]
 
   return (
-    <Tooltip
-      popupContent={tooltipContent}
-    >
-      <ActionButton
-        state={
-          audioState === 'loading' || audioState === 'playing'
-            ? ActionButtonState.Active
-            : ActionButtonState.Default
-        }
-        onClick={handleToggle}
-        disabled={audioState === 'loading'}
-      >
-        <RiVolumeUpLine className="h-4 w-4" />
-      </ActionButton>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="inline-flex">
+            <ActionButton
+              state={
+                audioState === 'loading' || audioState === 'playing'
+                  ? ActionButtonState.Active
+                  : ActionButtonState.Default
+              }
+              onClick={handleToggle}
+              disabled={audioState === 'loading'}
+            >
+              <RiVolumeUpLine className="h-4 w-4" />
+            </ActionButton>
+          </span>
+        )}
+      />
+      <TooltipContent>
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   )
 }

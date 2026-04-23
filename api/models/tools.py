@@ -11,14 +11,19 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    ToolProviderType,
+    WorkflowToolParameterConfiguration,
+)
 
 from .base import TypeBase
 from .engine import db
 from .model import Account, App, Tenant
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from core.entities.mcp_provider import MCPProviderEntity
@@ -105,8 +110,11 @@ class BuiltinToolProvider(TypeBase):
     )
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     # credential type, e.g., "api-key", "oauth2"
-    credential_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=sa.text("'api-key'"), default="api-key"
+    credential_type: Mapped[CredentialType] = mapped_column(
+        EnumText(CredentialType, length=32),
+        nullable=False,
+        server_default=sa.text("'api-key'"),
+        default=CredentialType.API_KEY,
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
 
@@ -141,7 +149,9 @@ class ApiToolProvider(TypeBase):
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
     schema: Mapped[str] = mapped_column(LongText, nullable=False)
-    schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
+    schema_type_str: Mapped[ApiProviderSchemaType] = mapped_column(
+        EnumText(ApiProviderSchemaType, length=40), nullable=False
+    )
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -208,7 +218,7 @@ class ToolLabelBinding(TypeBase):
     # tool id
     tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # tool type
-    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[ToolProviderType] = mapped_column(EnumText(ToolProviderType, length=40), nullable=False)
     # label name
     label_name: Mapped[str] = mapped_column(String(40), nullable=False)
 
@@ -346,7 +356,7 @@ class MCPToolProvider(TypeBase):
             return {}
 
     @property
-    def headers(self) -> dict[str, Any]:
+    def headers(self) -> dict[str, str]:
         if self.encrypted_headers is None:
             return {}
         try:
@@ -386,7 +396,7 @@ class ToolModelInvoke(TypeBase):
     # provider
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # type
-    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[ToolProviderType] = mapped_column(EnumText(ToolProviderType, length=40), nullable=False)
     # tool name
     tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
     # invoke parameters

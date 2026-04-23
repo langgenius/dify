@@ -1,10 +1,12 @@
 import logging
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.tool.entities import ToolEntity
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from events.app_event import app_draft_workflow_was_synced
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.tool.entities import ToolEntity
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,11 @@ def handle(sender, **kwargs):
     for node_data in synced_draft_workflow.graph_dict.get("nodes", []):
         if node_data.get("data", {}).get("type") == BuiltinNodeTypes.TOOL:
             try:
-                tool_entity = ToolEntity.model_validate(node_data["data"])
+                adapted_node_data = adapt_node_config_for_graph(node_data)
+                tool_entity = ToolEntity.model_validate(adapted_node_data["data"])
+                provider_type = ToolProviderType(tool_entity.provider_type.value)
                 tool_runtime = ToolManager.get_tool_runtime(
-                    provider_type=tool_entity.provider_type,
+                    provider_type=provider_type,
                     provider_id=tool_entity.provider_id,
                     tool_name=tool_entity.tool_name,
                     tenant_id=app.tenant_id,
@@ -30,7 +34,7 @@ def handle(sender, **kwargs):
                     tenant_id=app.tenant_id,
                     tool_runtime=tool_runtime,
                     provider_name=tool_entity.provider_name,
-                    provider_type=tool_entity.provider_type,
+                    provider_type=provider_type,
                     identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
                 )
                 manager.delete_tool_parameters_cache()

@@ -148,7 +148,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('prompt context')
+      expect(result.current[0]!.group).toBe('prompt context')
     })
 
     it('should render the context PromptMenuItem without crashing', () => {
@@ -157,7 +157,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       // renderMenuOption returns a React element – just verify it's truthy
-      const el = result.current[0].renderMenuOption(renderProps)
+      const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -175,7 +175,7 @@ describe('usePromptOptions', () => {
       )
 
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).toHaveBeenCalledTimes(1)
     })
 
@@ -192,7 +192,7 @@ describe('usePromptOptions', () => {
       )
 
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).not.toHaveBeenCalled()
     })
   })
@@ -215,7 +215,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('prompt query')
+      expect(result.current[0]!.group).toBe('prompt query')
     })
 
     it('should render the query PromptMenuItem without crashing', () => {
@@ -223,7 +223,7 @@ describe('usePromptOptions', () => {
         () => usePromptOptions(undefined, makeQueryBlock()),
         { wrapper },
       )
-      const el = result.current[0].renderMenuOption(renderProps)
+      const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -238,7 +238,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).toHaveBeenCalledTimes(1)
     })
 
@@ -253,7 +253,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).not.toHaveBeenCalled()
     })
   })
@@ -276,7 +276,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('request URL')
+      expect(result.current[0]!.group).toBe('request URL')
     })
 
     it('should render the requestURL PromptMenuItem without crashing', () => {
@@ -284,7 +284,7 @@ describe('usePromptOptions', () => {
         () => usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock()),
         { wrapper },
       )
-      const el = result.current[0].renderMenuOption(renderProps)
+      const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -299,7 +299,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).toHaveBeenCalledTimes(1)
     })
 
@@ -314,7 +314,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).not.toHaveBeenCalled()
     })
   })
@@ -337,7 +337,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('prompt history')
+      expect(result.current[0]!.group).toBe('prompt history')
     })
 
     it('should render the history PromptMenuItem without crashing', () => {
@@ -345,7 +345,7 @@ describe('usePromptOptions', () => {
         () => usePromptOptions(undefined, undefined, makeHistoryBlock()),
         { wrapper },
       )
-      const el = result.current[0].renderMenuOption(renderProps)
+      const el = result.current[0]!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -360,7 +360,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).toHaveBeenCalledTimes(1)
     })
 
@@ -375,7 +375,7 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       expect(spy).not.toHaveBeenCalled()
     })
   })
@@ -398,11 +398,11 @@ describe('usePromptOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(4)
-      expect(result.current[0].group).toBe('prompt context')
-      expect(result.current[1].group).toBe('prompt query')
+      expect(result.current[0]!.group).toBe('prompt context')
+      expect(result.current[1]!.group).toBe('prompt query')
       // requestURL is pushed 3rd – before historyBlock
-      expect(result.current[2].group).toBe('request URL')
-      expect(result.current[3].group).toBe('prompt history')
+      expect(result.current[2]!.group).toBe('request URL')
+      expect(result.current[3]!.group).toBe('prompt history')
     })
   })
 })
@@ -455,7 +455,7 @@ describe('useVariableOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('prompt variable')
+      expect(result.current[0]!.group).toBe('prompt variable')
     })
   })
 
@@ -474,8 +474,8 @@ describe('useVariableOptions', () => {
       )
       // 2 variable options + 1 addOption = 3
       expect(result.current).toHaveLength(3)
-      expect(result.current[0].key).toBe('alpha')
-      expect(result.current[1].key).toBe('beta')
+      expect(result.current[0]!.key).toBe('alpha')
+      expect(result.current[1]!.key).toBe('beta')
     })
 
     it('should render variable VariableMenuItems without crashing', () => {
@@ -485,7 +485,7 @@ describe('useVariableOptions', () => {
         { wrapper },
       )
       // Pass a queryString so we exercise the highlight splitting code path in VariableMenuItem
-      const el = result.current[0].renderMenuOption({ ...renderProps, queryString: 'my' })
+      const el = result.current[0]!.renderMenuOption({ ...renderProps, queryString: 'my' })
       expect(el).toBeTruthy()
     })
 
@@ -501,7 +501,7 @@ describe('useVariableOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       // The command payload wraps the value in {{ }}
       expect(spy).toHaveBeenCalledWith(expect.anything(), '{{myvar}}')
     })
@@ -523,8 +523,8 @@ describe('useVariableOptions', () => {
       )
       // 'alpha' regex (case-insensitive) matches 'alpha' and 'ALPHA_UPPER'; addOption is always appended
       expect(result.current).toHaveLength(3)
-      expect(result.current[0].key).toBe('alpha')
-      expect(result.current[1].key).toBe('ALPHA_UPPER')
+      expect(result.current[0]!.key).toBe('alpha')
+      expect(result.current[1]!.key).toBe('ALPHA_UPPER')
     })
 
     it('should return only addOption when no variables match the queryString', () => {
@@ -554,7 +554,7 @@ describe('useVariableOptions', () => {
         { wrapper },
       )
       const lastOption = result.current[result.current.length - 1]
-      const el = lastOption.renderMenuOption(renderProps)
+      const el = lastOption!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -570,7 +570,7 @@ describe('useVariableOptions', () => {
       )
       const spy = vi.spyOn(capturedEditor!, 'update')
       const lastOption = result.current[result.current.length - 1]
-      lastOption.onSelectMenuOption()
+      lastOption!.onSelectMenuOption()
       expect(spy).toHaveBeenCalledTimes(1)
     })
   })
@@ -630,7 +630,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
-      expect(result.current[0].group).toBe('external tool')
+      expect(result.current[0]!.group).toBe('external tool')
     })
   })
 
@@ -648,8 +648,8 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(3)
-      expect(result.current[0].key).toBe('tool-a')
-      expect(result.current[1].key).toBe('tool-b')
+      expect(result.current[0]!.key).toBe('tool-a')
+      expect(result.current[1]!.key).toBe('tool-b')
     })
 
     it('should render tool VariableMenuItem (with AppIcon and variableName extra element) without crashing', () => {
@@ -658,7 +658,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       // pass a queryString to also exercise the highlighting code path
-      const el = result.current[0].renderMenuOption({ ...renderProps, queryString: 'wea' })
+      const el = result.current[0]!.renderMenuOption({ ...renderProps, queryString: 'wea' })
       expect(el).toBeTruthy()
     })
 
@@ -673,7 +673,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       const spy = vi.spyOn(capturedEditor!, 'dispatchCommand')
-      result.current[0].onSelectMenuOption()
+      result.current[0]!.onSelectMenuOption()
       // variableName is 'weather_tool', wrapped in {{ }}
       expect(spy).toHaveBeenCalledWith(expect.anything(), '{{weather_tool}}')
     })
@@ -694,7 +694,7 @@ describe('useExternalToolOptions', () => {
       )
       // 'weather' regex matches 'WeatherTool'; addOption is always appended
       expect(result.current).toHaveLength(2)
-      expect(result.current[0].key).toBe('WeatherTool')
+      expect(result.current[0]!.key).toBe('WeatherTool')
     })
 
     it('should return only addOption when no tools match', () => {
@@ -718,7 +718,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       const lastOption = result.current[result.current.length - 1]
-      const el = lastOption.renderMenuOption(renderProps)
+      const el = lastOption!.renderMenuOption(renderProps)
       expect(el).toBeTruthy()
     })
 
@@ -729,7 +729,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       const lastOption = result.current[result.current.length - 1]
-      lastOption.onSelectMenuOption()
+      lastOption!.onSelectMenuOption()
       expect(onAddExternalTool).toHaveBeenCalledTimes(1)
     })
 
@@ -742,7 +742,7 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       const lastOption = result.current[result.current.length - 1]
-      expect(() => lastOption.onSelectMenuOption()).not.toThrow()
+      expect(() => lastOption!.onSelectMenuOption()).not.toThrow()
     })
   })
 })
@@ -828,7 +828,7 @@ describe('useOptions', () => {
         { wrapper },
       )
       expect(result.current.workflowVariableOptions).toHaveLength(1)
-      expect(result.current.workflowVariableOptions[0].nodeId).toBe('node-1')
+      expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('node-1')
     })
   })
 
@@ -873,9 +873,9 @@ describe('useOptions', () => {
         ),
         { wrapper },
       )
-      expect(result.current.workflowVariableOptions[0].nodeId).toBe('error_message')
-      expect(result.current.workflowVariableOptions[0].vars[0].variable).toBe('error_message')
-      expect(result.current.workflowVariableOptions[0].vars[0].type).toBe(VarType.string)
+      expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('error_message')
+      expect(result.current.workflowVariableOptions[0]!.vars[0]!.variable).toBe('error_message')
+      expect(result.current.workflowVariableOptions[0]!.vars[0]!.type).toBe(VarType.string)
     })
 
     it('should NOT inject error_message when already present in variables', () => {
@@ -942,8 +942,8 @@ describe('useOptions', () => {
         ),
         { wrapper },
       )
-      expect(result.current.workflowVariableOptions[0].nodeId).toBe('last_run')
-      expect(result.current.workflowVariableOptions[0].vars[0].type).toBe(VarType.object)
+      expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('last_run')
+      expect(result.current.workflowVariableOptions[0]!.vars[0]!.type).toBe(VarType.object)
     })
 
     it('should NOT inject last_run when already present in variables', () => {
@@ -1014,7 +1014,7 @@ describe('useOptions', () => {
       const currentNode = result.current.workflowVariableOptions.find(v => v.nodeId === 'current')
       expect(currentNode).toBeDefined()
       expect(currentNode!.title).toBe('current_prompt')
-      expect(currentNode!.vars[0].type).toBe(VarType.string)
+      expect(currentNode!.vars[0]!.type).toBe(VarType.string)
     })
 
     it('should prepend current node with title "current_code" when generatorType is not prompt', () => {
@@ -1153,10 +1153,10 @@ describe('useOptions', () => {
 
       // workflowVariableOptions: current + last_run + error_message + node-x = 4
       expect(result.current.workflowVariableOptions).toHaveLength(4)
-      expect(result.current.workflowVariableOptions[0].nodeId).toBe('current')
-      expect(result.current.workflowVariableOptions[1].nodeId).toBe('last_run')
-      expect(result.current.workflowVariableOptions[2].nodeId).toBe('error_message')
-      expect(result.current.workflowVariableOptions[3].nodeId).toBe('node-x')
+      expect(result.current.workflowVariableOptions[0]!.nodeId).toBe('current')
+      expect(result.current.workflowVariableOptions[1]!.nodeId).toBe('last_run')
+      expect(result.current.workflowVariableOptions[2]!.nodeId).toBe('error_message')
+      expect(result.current.workflowVariableOptions[3]!.nodeId).toBe('node-x')
     })
   })
 })

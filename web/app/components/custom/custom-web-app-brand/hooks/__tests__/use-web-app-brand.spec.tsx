@@ -1,11 +1,11 @@
 import type { ChangeEvent } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import type { SystemFeatures } from '@/types/feature'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import {
@@ -14,14 +14,38 @@ import {
   useAppContext,
   userProfilePlaceholder,
 } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
-import { defaultSystemFeatures } from '@/types/feature'
 import useWebAppBrand from '../use-web-app-brand'
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(),
+let currentBrandingOverrides: Partial<SystemFeatures['branding']> = {}
+const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
+  renderHookWithSystemFeatures(callback, {
+    systemFeatures: {
+      branding: {
+        enabled: true,
+        workspace_logo: 'https://example.com/workspace-logo.png',
+        ...currentBrandingOverrides,
+      },
+    },
+  })
+
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
 }))
 vi.mock('@/service/common', () => ({
   updateCurrentWorkspace: vi.fn(),
@@ -36,20 +60,14 @@ vi.mock('@/context/app-context', async (importOriginal) => {
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 vi.mock('@/app/components/base/image-uploader/utils', () => ({
   imageUpload: vi.fn(),
   getImageUploadErrorMessage: vi.fn(),
 }))
 
-const mockNotify = vi.fn()
-const mockUseToastContext = vi.mocked(useToastContext)
 const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
 const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
 
@@ -68,16 +86,6 @@ const createProviderContext = ({
     },
   })
 }
-
-const createSystemFeatures = (brandingOverrides: Partial<SystemFeatures['branding']> = {}): SystemFeatures => ({
-  ...defaultSystemFeatures,
-  branding: {
-    ...defaultSystemFeatures.branding,
-    enabled: true,
-    workspace_logo: 'https://example.com/workspace-logo.png',
-    ...brandingOverrides,
-  },
-})
 
 const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
   const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
@@ -111,22 +119,16 @@ const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppCon
 
 describe('useWebAppBrand', () => {
   let appContextValue: AppContextValue
-  let systemFeatures: SystemFeatures
 
   beforeEach(() => {
     vi.clearAllMocks()
 
     appContextValue = createAppContextValue()
-    systemFeatures = createSystemFeatures()
+    currentBrandingOverrides = {}
 
-    mockUseToastContext.mockReturnValue({ notify: mockNotify } as unknown as ReturnType<typeof useToastContext>)
     mockUpdateCurrentWorkspace.mockResolvedValue(appContextValue.currentWorkspace)
     mockUseAppContext.mockImplementation(() => appContextValue)
     mockUseProviderContext.mockReturnValue(createProviderContext())
-    mockUseGlobalPublicStore.mockImplementation(selector => selector({
-      systemFeatures,
-      setSystemFeatures: vi.fn(),
-    }))
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 
@@ -164,10 +166,7 @@ describe('useWebAppBrand', () => {
     })
 
     it('should fall back to an empty workspace logo when branding is disabled', () => {
-      systemFeatures = createSystemFeatures({
-        enabled: false,
-        workspace_logo: '',
-      })
+      currentBrandingOverrides = { enabled: false, workspace_logo: '' }
 
       const { result } = renderHook(() => useWebAppBrand())
 

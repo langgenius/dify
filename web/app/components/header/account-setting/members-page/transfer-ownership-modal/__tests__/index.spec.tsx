@@ -3,15 +3,29 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
 import TransferOwnershipModal from '../index'
 
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+}))
+
 vi.mock('@/context/app-context')
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => toastMocks.mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => toastMocks.mockNotify({ type: 'success', message }),
+    error: (message: string) => toastMocks.mockNotify({ type: 'error', message }),
+    warning: (message: string) => toastMocks.mockNotify({ type: 'warning', message }),
+    info: (message: string) => toastMocks.mockNotify({ type: 'info', message }),
+  },
+}))
 
 vi.mock('../member-selector', () => ({
   default: ({ onSelect }: { onSelect: (id: string) => void }) => (
@@ -21,7 +35,7 @@ vi.mock('../member-selector', () => ({
 
 describe('TransferOwnershipModal', () => {
   const mockOnClose = vi.fn()
-  const mockNotify = vi.fn()
+  const { mockNotify } = toastMocks
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -52,9 +66,9 @@ describe('TransferOwnershipModal', () => {
   })
 
   const renderModal = () => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       <TransferOwnershipModal show onClose={mockOnClose} />
-    </ToastContext.Provider>,
+    </>,
   )
 
   const mockEmailVerification = ({
@@ -169,18 +183,20 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show error when sending verification email fails', async () => {
+  it('should not show a modal-level toast and should stay on start step when sending verification email fails', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(new Error('network error'))
     renderModal()
     await user.click(screen.getByTestId('transfer-modal-send-code'))
 
+    // The base service layer surfaces the real backend error. The modal itself
+    // must NOT show an additional toast (e.g. "Error sending verification code: undefined").
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('network error'),
-      }))
+      expect(sendOwnerEmail).toHaveBeenCalled()
     })
+    expect(mockNotify).not.toHaveBeenCalled()
+    // Should remain on the start step instead of advancing to the verify step.
+    expect(screen.getByTestId('transfer-modal-send-code')).toBeInTheDocument()
   })
 
   it('should show error when ownership transfer fails', async () => {
@@ -215,7 +231,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show fallback error prefix when sendOwnerEmail throws null', async () => {
+  it('should swallow null rejection from sendOwnerEmail without showing a modal-level toast', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(null)
 
@@ -223,11 +239,10 @@ describe('TransferOwnershipModal', () => {
     await user.click(screen.getByTestId('transfer-modal-send-code'))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('Error sending verification code:'),
-      }))
+      expect(sendOwnerEmail).toHaveBeenCalled()
     })
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(screen.getByTestId('transfer-modal-send-code')).toBeInTheDocument()
   })
 
   it('should show fallback error prefix when verifyOwnerEmail throws null', async () => {

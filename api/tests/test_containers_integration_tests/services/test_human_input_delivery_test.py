@@ -4,14 +4,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    HumanInputNodeData,
 )
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -54,7 +54,7 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
         enabled=True,
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[ExternalRecipient(email="recipient@example.com")],
             ),
             subject="Test {{recipient_email}}",

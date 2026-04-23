@@ -11,7 +11,6 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 
@@ -27,6 +26,7 @@ import {
   useAccountSettingModal,
   usePricingModal,
 } from '@/hooks/use-query-params'
+import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import {
   ModalContext,
@@ -122,7 +122,7 @@ export const ModalContextProvider = ({
 
   const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<AccountSettingTab> | null>) => {
     const currentState = accountSettingTab
-      ? { payload: accountSettingTab, ...(accountSettingCallbacksRef.current ?? {}) }
+      ? { payload: accountSettingTab, ...accountSettingCallbacksRef.current }
       : null
     const resolvedState = typeof next === 'function' ? next(currentState) : next
     if (!resolvedState) {
@@ -169,13 +169,13 @@ export const ModalContextProvider = ({
       showModelModal.onCancelCallback()
   }, [showModelModal])
 
-  const handleSaveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleSaveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onSaveCallback)
       showModelModal.onSaveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
   }, [showModelModal])
 
-  const handleRemoveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleRemoveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onRemoveCallback)
       showModelModal.onRemoveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
@@ -266,8 +266,8 @@ export const ModalContextProvider = ({
           accountSettingTab && (
             <AccountSetting
               activeTab={accountSettingTab}
-              onCancel={handleCancelAccountSettingModal}
-              onTabChange={handleAccountSettingTabChange}
+              onCancelAction={handleCancelAccountSettingModal}
+              onTabChangeAction={handleAccountSettingTabChange}
             />
           )
         }
@@ -369,7 +369,7 @@ export const ModalContextProvider = ({
               }}
               onSave={() => {
                 setShowUpdatePluginModal(null)
-                showUpdatePluginModal.onSaveCallback?.({} as any)
+                showUpdatePluginModal.onSaveCallback?.()
               }}
             />
           )
@@ -405,5 +405,3 @@ export const ModalContextProvider = ({
     </ModalContext.Provider>
   )
 }
-
-export default ModalContext

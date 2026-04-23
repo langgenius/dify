@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
@@ -39,9 +39,10 @@ const removeEndThink = (children: any): any => {
 
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
+  const endThinkDetected = hasEndThink(children)
   const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [isComplete, setIsComplete] = useState(false)
+  const [isComplete, setIsComplete] = useState(() => endThinkDetected)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -61,11 +62,10 @@ const useThinkTimer = (children: any) => {
   useEffect(() => {
     // Stop timer when:
     // 1. Content has [ENDTHINKFLAG] marker (normal completion)
-    // 2. isResponding is explicitly false (user clicked stop button)
-    // Note: Don't stop when isResponding is undefined (component used outside ChatContextProvider)
-    if (hasEndThink(children) || isResponding === false)
+    // 2. isResponding is not true (false = user clicked stop, undefined = historical conversation)
+    if (endThinkDetected || !isResponding)
       setIsComplete(true)
-  }, [children, isResponding])
+  }, [endThinkDetected, isResponding])
 
   return { elapsedTime, isComplete }
 }
@@ -90,7 +90,7 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
       className={cn('group', className)}
       open={isComplete ? open : true}
     >
-      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
+      <summary className="flex cursor-pointer list-none items-center pl-2 font-bold whitespace-nowrap text-text-secondary select-none">
         <div className="flex shrink-0 items-center">
           <svg
             className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"

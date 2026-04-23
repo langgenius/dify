@@ -146,7 +146,7 @@ def discover_protected_resource_metadata(
                 return ProtectedResourceMetadata.model_validate(response.json())
             elif response.status_code == 404:
                 continue  # Try next URL
-        except (RequestError, ValidationError):
+        except (RequestError, ValidationError, json.JSONDecodeError):
             continue  # Try next URL
 
     return None
@@ -166,7 +166,7 @@ def discover_oauth_authorization_server_metadata(
                 return OAuthMetadata.model_validate(response.json())
             elif response.status_code == 404:
                 continue  # Try next URL
-        except (RequestError, ValidationError):
+        except (RequestError, ValidationError, json.JSONDecodeError):
             continue  # Try next URL
 
     return None
@@ -276,7 +276,7 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
             else:
                 return False, ""
         return False, ""
-    except RequestError:
+    except (RequestError, json.JSONDecodeError, IndexError):
         # Not support resource discovery, fall back to well-known OAuth metadata
         return False, ""
 

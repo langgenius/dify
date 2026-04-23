@@ -12,10 +12,10 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
-import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -30,9 +30,9 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useParams, usePathname } from '@/next/navigation'
 import {
   sseGet,
   ssePost,
@@ -65,7 +65,6 @@ export const useChat = (
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { notify } = useToastContext()
   const conversationIdRef = useRef('')
   const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -88,30 +87,54 @@ export const useChat = (
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
 
+  const processedOpeningContent = config?.opening_statement
+    ? getIntroduction(config.opening_statement)
+    : undefined
+  const processedSuggestionsKey = config?.suggested_questions
+    ? JSON.stringify(config.suggested_questions.map(q => getIntroduction(q)))
+    : undefined
+
+  const openingStatementItem = useMemo<ChatItemInTree | null>(() => {
+    if (!processedOpeningContent)
+      return null
+    return {
+      id: 'opening-statement',
+      content: processedOpeningContent,
+      isAnswer: true,
+      isOpeningStatement: true,
+      suggestedQuestions: processedSuggestionsKey
+        ? JSON.parse(processedSuggestionsKey) as string[]
+        : undefined,
+    }
+  }, [processedOpeningContent, processedSuggestionsKey])
+
+  const threadOpener = useMemo(
+    () => threadMessages.find(item => item.isOpeningStatement) ?? null,
+    [threadMessages],
+  )
+
+  const mergedOpeningItem = useMemo<ChatItemInTree | null>(() => {
+    if (!threadOpener || !openingStatementItem)
+      return null
+    return {
+      ...threadOpener,
+      content: openingStatementItem.content,
+      suggestedQuestions: openingStatementItem.suggestedQuestions,
+    }
+  }, [threadOpener, openingStatementItem])
+
   /** Final chat list that will be rendered */
   const chatList = useMemo(() => {
     const ret = [...threadMessages]
-    if (config?.opening_statement) {
+    if (openingStatementItem) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-      if (index > -1) {
-        ret[index] = {
-          ...ret[index],
-          content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
-        }
-      }
-      else {
-        ret.unshift({
-          id: 'opening-statement',
-          content: getIntroduction(config.opening_statement),
-          isAnswer: true,
-          isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
-        })
-      }
+      if (index > -1 && mergedOpeningItem)
+        ret[index] = mergedOpeningItem
+      else if (index === -1)
+        ret.unshift(openingStatementItem)
     }
     return ret
-  }, [threadMessages, config, getIntroduction])
+  }, [threadMessages, openingStatementItem, mergedOpeningItem])
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -509,7 +532,7 @@ export const useChat = (
           if (responseItem.workflowProcess?.tracing) {
             const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
             if (currentTracingIndex > -1)
-              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+              responseItem.workflowProcess.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           }
         })
       },
@@ -532,7 +555,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },
@@ -612,7 +635,7 @@ export const useChat = (
     setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -1075,7 +1098,7 @@ export const useChat = (
         }
         const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
         if (currentTracingIndex > -1) {
-          responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          responseItem.workflowProcess!.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1105,7 +1128,7 @@ export const useChat = (
       onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1151,7 +1174,6 @@ export const useChat = (
     config?.suggested_questions_after_answer,
     updateCurrentQAOnTree,
     updateChatTreeNode,
-    notify,
     handleResponding,
     formatTime,
     createAudioPlayerManager,
@@ -1159,8 +1181,8 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
@@ -1168,22 +1190,22 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: answer,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         logAnnotation: undefined,
       } as any,
     })
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
     })
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
         id: annotationId,
         authorName,
@@ -1200,12 +1222,12 @@ export const useChat = (
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationRemoved = useCallback((index: number) => {
-    const targetAnswerId = chatList[index].id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         id: '',
       } as Annotation,
     })

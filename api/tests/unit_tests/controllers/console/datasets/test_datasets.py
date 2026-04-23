@@ -28,6 +28,8 @@ from controllers.console.datasets.datasets import (
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import ApiToken, UploadFile
 from services.dataset_service import DatasetPermissionService, DatasetService
@@ -415,7 +417,7 @@ class TestDatasetApiGet:
                 "check_dataset_permission",
                 return_value=None,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             # embedding models exist → embedding_available stays True
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
@@ -519,7 +521,7 @@ class TestDatasetApiGet:
                 "check_dataset_permission",
                 return_value=None,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             # embedding model NOT configured
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
@@ -578,7 +580,7 @@ class TestDatasetApiGet:
                 "get_dataset_partial_member_list",
                 return_value=partial_members,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
 
@@ -1121,7 +1123,7 @@ class TestDatasetIndexingEstimateApi:
     def _upload_file(self, *, tenant_id: str = "tenant-1", file_id: str = "file-1") -> UploadFile:
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key="key",
             name="name.txt",
             size=1,
@@ -1145,7 +1147,7 @@ class TestDatasetIndexingEstimateApi:
             },
             "process_rule": {"chunk_size": 100},
             "indexing_technique": "high_quality",
-            "doc_form": "text_model",
+            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
             "doc_language": "English",
             "dataset_id": None,
         }
@@ -1474,8 +1476,8 @@ class TestDatasetIndexingStatusApi:
                 return_value=MagicMock(all=lambda: [document]),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 3)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=3,
             ),
         ):
             response, status = method(api, "dataset-1")
@@ -1524,13 +1526,6 @@ class TestDatasetIndexingStatusApi:
         document.error = None
         document.stopped_at = None
 
-        # First count = completed segments, second = total segments
-        query_mock = MagicMock()
-        query_mock.where.side_effect = [
-            MagicMock(count=lambda: 2),
-            MagicMock(count=lambda: 5),
-        ]
-
         with (
             app.test_request_context("/"),
             patch(
@@ -1542,8 +1537,8 @@ class TestDatasetIndexingStatusApi:
                 return_value=MagicMock(all=lambda: [document]),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=query_mock,
+                "controllers.console.datasets.datasets.db.session.scalar",
+                side_effect=[2, 5],
             ),
         ):
             response, status = method(api, "dataset-1")
@@ -1560,7 +1555,17 @@ class TestDatasetApiKeyApi:
         method = unwrap(api.get)
 
         mock_key_1 = MagicMock(spec=ApiToken)
+        mock_key_1.id = "key-1"
+        mock_key_1.type = "dataset"
+        mock_key_1.token = "ds-abc"
+        mock_key_1.last_used_at = None
+        mock_key_1.created_at = None
         mock_key_2 = MagicMock(spec=ApiToken)
+        mock_key_2.id = "key-2"
+        mock_key_2.type = "dataset"
+        mock_key_2.token = "ds-def"
+        mock_key_2.last_used_at = None
+        mock_key_2.created_at = None
 
         with (
             app.test_request_context("/"),
@@ -1575,12 +1580,25 @@ class TestDatasetApiKeyApi:
         ):
             response = method(api)
 
-        assert "items" in response
-        assert response["items"] == [mock_key_1, mock_key_2]
+        assert "data" in response
+        assert len(response["data"]) == 2
+        assert response["data"][0]["id"] == "key-1"
+        assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][1]["id"] == "key-2"
+        assert response["data"][1]["token"] == "ds-def"
 
     def test_post_create_api_key_success(self, app):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
+
+        mock_token = MagicMock()
+        mock_token.id = "new-key-id"
+        mock_token.last_used_at = None
+        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
+
+        mock_api_token_cls = MagicMock()
+        mock_api_token_cls.return_value = mock_token
+        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
 
         with (
             app.test_request_context("/"),
@@ -1589,12 +1607,12 @@ class TestDatasetApiKeyApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 3)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=3,
             ),
             patch(
-                "controllers.console.datasets.datasets.ApiToken.generate_api_key",
-                return_value="dataset-abc123",
+                "controllers.console.datasets.datasets.ApiToken",
+                mock_api_token_cls,
             ),
             patch(
                 "controllers.console.datasets.datasets.db.session.add",
@@ -1608,9 +1626,11 @@ class TestDatasetApiKeyApi:
             response, status = method(api)
 
         assert status == 200
-        assert isinstance(response, ApiToken)
-        assert response.token == "dataset-abc123"
-        assert response.type == "dataset"
+        assert isinstance(response, dict)
+        assert response["id"] == "new-key-id"
+        assert response["token"] == "dataset-abc123"
+        assert response["type"] == "dataset"
+        assert response["created_at"] is not None
 
     def test_post_exceed_max_keys(self, app):
         api = DatasetApiKeyApi()
@@ -1623,8 +1643,8 @@ class TestDatasetApiKeyApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 10)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=10,
             ),
         ):
             with pytest.raises(BadRequest) as exc_info:
@@ -1651,8 +1671,8 @@ class TestDatasetApiDeleteApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(first=lambda: mock_key)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=mock_key,
             ),
             patch(
                 "controllers.console.datasets.datasets.db.session.commit",
@@ -1679,8 +1699,8 @@ class TestDatasetApiDeleteApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(first=lambda: None)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=None,
             ),
         ):
             with pytest.raises(NotFound):
@@ -1751,6 +1771,21 @@ class TestDatasetApiBaseUrlApi:
             response = method(api)
 
         assert response["api_base_url"] == "http://localhost:5000/v1"
+
+    def test_get_api_base_url_no_double_v1(self, app):
+        api = DatasetApiBaseUrlApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets.dify_config.SERVICE_API_URL",
+                "https://example.com/v1",
+            ),
+        ):
+            response = method(api)
+
+        assert response["api_base_url"] == "https://example.com/v1"
 
 
 class TestDatasetRetrievalSettingApi:

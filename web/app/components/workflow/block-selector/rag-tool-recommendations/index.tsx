@@ -3,13 +3,13 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { RiMoreLine } from '@remixicon/react'
-import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { isServer } from '@/utils/client'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -80,7 +80,7 @@ const RAGToolRecommendations = ({
     <div className="flex flex-col p-1">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-3 pb-0.5 pt-1 text-left text-text-tertiary"
+        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
@@ -95,7 +95,7 @@ const RAGToolRecommendations = ({
             </div>
           )}
           {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
-            <p className="system-xs-regular px-3 py-1 text-text-tertiary">
+            <p className="px-3 py-1 system-xs-regular text-text-tertiary">
               <Trans
                 i18nKey="ragToolSuggestions.noRecommendationPlugins"
                 ns="pipeline"
@@ -121,7 +121,7 @@ const RAGToolRecommendations = ({
                 viewType={viewType}
               />
               <div
-                className="flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2"
+                className="flex cursor-pointer items-center gap-x-2 py-1 pr-2 pl-3"
                 onClick={loadMore}
               >
                 <div className="px-1">

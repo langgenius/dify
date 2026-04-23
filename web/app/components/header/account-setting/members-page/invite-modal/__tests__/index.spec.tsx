@@ -1,11 +1,15 @@
 import type { InvitationResponse } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
 import InviteModal from '../index'
+
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: vi.fn(),
@@ -14,6 +18,11 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
@@ -37,7 +46,6 @@ describe('InviteModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSend = vi.fn()
   const mockRefreshLicenseLimit = vi.fn()
-  const mockNotify = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -49,10 +57,11 @@ describe('InviteModal', () => {
   })
 
   const renderModal = (isEmailSetup = true) => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />
-    </ToastContext.Provider>,
+    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
   )
+  const fillEmails = (value: string) => {
+    fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
+  }
 
   it('should render invite modal content', async () => {
     renderModal()
@@ -68,12 +77,8 @@ describe('InviteModal', () => {
   })
 
   it('should enable send button after entering an email', async () => {
-    const user = userEvent.setup()
-
     renderModal()
-
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
   })
@@ -84,7 +89,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    await user.type(screen.getByTestId('mock-email-input'), 'user@example.com')
+    fillEmails('user@example.com')
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -103,8 +108,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -116,8 +120,6 @@ describe('InviteModal', () => {
   })
 
   it('should keep send button disabled when license limit is exceeded', async () => {
-    const user = userEvent.setup()
-
     vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
       licenseLimit: { workspace_members: { size: 10, limit: 10 } },
       refreshLicenseLimit: mockRefreshLicenseLimit,
@@ -125,8 +127,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeDisabled()
   })
@@ -144,15 +145,11 @@ describe('InviteModal', () => {
     const user = userEvent.setup()
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
     // Use an email that passes basic validation but fails our strict regex (needs 2+ char TLD)
-    await user.type(input, 'invalid@email.c')
+    fillEmails('invalid@email.c')
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
-    expect(mockNotify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'common.members.emailInvalid',
-    })
+    expect(toast.error).toHaveBeenCalledWith('common.members.emailInvalid')
     expect(inviteMember).not.toHaveBeenCalled()
   })
 
@@ -160,8 +157,7 @@ describe('InviteModal', () => {
     const user = userEvent.setup()
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     expect(screen.getByText('user@example.com')).toBeInTheDocument()
 
@@ -203,7 +199,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    await user.type(screen.getByTestId('mock-email-input'), 'user@example.com')
+    fillEmails('user@example.com')
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -214,8 +210,6 @@ describe('InviteModal', () => {
   })
 
   it('should show destructive text color when used size exceeds limit', async () => {
-    const user = userEvent.setup()
-
     vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
       licenseLimit: { workspace_members: { size: 10, limit: 10 } },
       refreshLicenseLimit: mockRefreshLicenseLimit,
@@ -223,8 +217,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     // usedSize = 10 + 1 = 11 > limit 10 → destructive color
     const counter = screen.getByText('11')
@@ -241,8 +234,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -264,8 +256,6 @@ describe('InviteModal', () => {
   })
 
   it('should show destructive color and disable send button when limit is exactly met with one email', async () => {
-    const user = userEvent.setup()
-
     // size=10, limit=10 - adding 1 email makes usedSize=11 > limit=10
     vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
       licenseLimit: { workspace_members: { size: 10, limit: 10 } },
@@ -274,8 +264,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     // isLimitExceeded=true → button is disabled, cannot submit
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
@@ -293,8 +282,7 @@ describe('InviteModal', () => {
 
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -320,11 +308,9 @@ describe('InviteModal', () => {
       refreshLicenseLimit: mockRefreshLicenseLimit,
     } as unknown as Parameters<typeof selector>[0]))
 
-    const user = userEvent.setup()
     renderModal()
 
-    const input = screen.getByTestId('mock-email-input')
-    await user.type(input, 'user@example.com')
+    fillEmails('user@example.com')
 
     // isLimited=false → no destructive color
     const counter = screen.getByText('1')

@@ -248,6 +248,19 @@ describe('InputsFormContent', () => {
     expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(expect.objectContaining({ sel: 'A' }))
   })
 
+  it('renders select dropdown on the shared dify-ui overlay layer', async () => {
+    const user = userEvent.setup()
+    const context = createMockContext({
+      inputsForms: [{ variable: 'sel', type: InputVarType.select, label: 'Sel', options: ['A', 'B'], default: 'B' }],
+      currentConversationInputs: {},
+    })
+
+    renderWithContext(<InputsFormContent />, context)
+    await user.click(screen.getByText('B'))
+
+    expect(screen.getByText('A').closest('.z-1002')).not.toBeNull()
+  })
+
   it('handles select input with existing value (value not in options -> shows placeholder)', () => {
     const context = createMockContext({
       inputsForms: [{ variable: 'sel', type: InputVarType.select, label: 'Sel', options: ['A'], default: undefined }],
@@ -257,7 +270,7 @@ describe('InputsFormContent', () => {
     renderWithContext(<InputsFormContent />, context)
     const selNodes = screen.getAllByText('Sel')
     expect(selNodes.length).toBeGreaterThan(0)
-    expect(screen.queryByText('existing')).toBeNull()
+    expect(screen.getByText('existing')).toBeInTheDocument()
   })
 
   it('handles select input empty branches (no current value -> show placeholder)', () => {

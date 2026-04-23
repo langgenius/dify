@@ -35,6 +35,8 @@
   "error.emailEmpty": "郵箱不能為空",
   "error.emailInValid": "請輸入有效的郵箱地址",
   "error.invalidEmailOrPassword": "無效的電子郵件或密碼。",
+  "error.invalidRedirectUrlOrAppCode": "無效的重定向 URL 或應用程式代碼",
+  "error.invalidSSOProtocol": "無效的 SSO 協定",
   "error.nameEmpty": "使用者名稱不能為空",
   "error.passwordEmpty": "密碼不能為空",
   "error.passwordInvalid": "密碼必須包含字母和數字，且長度不小於 8 位",

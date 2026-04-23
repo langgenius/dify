@@ -354,12 +354,41 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_del_closes_temp_file():
+def test_close_closes_temp_file():
     extractor = object.__new__(WordExtractor)
+    extractor._closed = False
     extractor.temp_file = MagicMock()
 
-    WordExtractor.__del__(extractor)
+    extractor.close()
 
+    extractor.temp_file.close.assert_called_once()
+
+
+def test_close_is_idempotent():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+
+    extractor.close()
+    extractor.close()
+
+    extractor.temp_file.close.assert_called_once()
+
+
+async def _async_close() -> None:
+    return None
+
+
+def test_close_closes_awaitable_close_result():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+    close_result = _async_close()
+    extractor.temp_file.close = MagicMock(return_value=close_result)
+
+    extractor.close()
+
+    assert close_result.cr_frame is None
     extractor.temp_file.close.assert_called_once()
 
 

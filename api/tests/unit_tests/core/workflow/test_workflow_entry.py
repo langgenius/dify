@@ -4,26 +4,26 @@ import pytest
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.constants import (
+from core.workflow.system_variables import build_system_variables, default_system_variables
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.file.enums import FileType
-from dify_graph.file.models import File, FileTransferMethod
-from dify_graph.nodes.code.code_node import CodeNode
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.variables import StringVariable
+from core.workflow.workflow_entry import WorkflowEntry
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import VariablePool
+from graphon.variables.variables import StringVariable
 
 
 @pytest.fixture(autouse=True)
 def _mock_ssrf_head(monkeypatch):
     """Avoid any real network requests during tests.
 
-    file_factory._get_remote_file_info() uses ssrf_proxy.head to inspect
+    factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head
+    to inspect
     remote files. We stub it to return a minimal response object with
     headers so filename/mime/size can be derived deterministically.
     """
@@ -56,7 +56,7 @@ class TestWorkflowEntry:
         """Test mapping system variables from user inputs to variable pool."""
         # Initialize variable pool with system variables
         variable_pool = VariablePool(
-            system_variables=SystemVariable(
+            system_variables=build_system_variables(
                 user_id="test_user_id",
                 app_id="test_app_id",
                 workflow_id="test_workflow_id",
@@ -128,7 +128,7 @@ class TestWorkflowEntry:
                 return NodeConfigDictAdapter.validate_python(node_config)
 
         workflow = StubWorkflow()
-        variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})
+        variable_pool = VariablePool(system_variables=default_system_variables(), user_inputs={})
         expected_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -158,7 +158,7 @@ class TestWorkflowEntry:
         # Initialize variable pool with environment variables
         env_var = StringVariable(name="API_KEY", value="existing_key")
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             environment_variables=[env_var],
             user_inputs={},
         )
@@ -199,7 +199,7 @@ class TestWorkflowEntry:
         # Initialize variable pool with conversation variables
         conv_var = StringVariable(name="last_message", value="Hello")
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             conversation_variables=[conv_var],
             user_inputs={},
         )
@@ -240,7 +240,7 @@ class TestWorkflowEntry:
         """Test mapping regular node variables from user inputs to variable pool."""
         # Initialize empty variable pool
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -282,7 +282,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_file_handling(self):
         """Test mapping file inputs from user inputs to variable pool."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -341,7 +341,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_missing_variable_error(self):
         """Test that mapping raises error when required variable is missing."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -367,7 +367,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_alternative_key_format(self):
         """Test mapping with alternative key format (without node prefix)."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -397,7 +397,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_complex_selectors(self):
         """Test mapping with complex node variable keys."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -433,7 +433,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_invalid_node_variable(self):
         """Test that mapping handles invalid node variable format."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -464,7 +464,7 @@ class TestWorkflowEntry:
         conv_var = StringVariable(name="session_id", value="session123")
 
         variable_pool = VariablePool(
-            system_variables=SystemVariable(
+            system_variables=build_system_variables(
                 user_id="test_user",
                 app_id="test_app",
                 query="initial query",

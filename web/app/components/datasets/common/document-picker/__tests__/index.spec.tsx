@@ -5,34 +5,7 @@ import * as React from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentPicker from '../index'
 
-// Mock portal-to-follow-elem - always render content for testing
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: {
-    children: React.ReactNode
-    open?: boolean
-  }) => (
-    <div data-testid="portal-elem" data-open={String(open || false)}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
-    </div>
-  ),
-  // Always render content to allow testing document selection
-  PortalToFollowElemContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <div data-testid="portal-content" className={className}>
-      {children}
-    </div>
-  ),
-}))
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 // Mock useDocumentList hook with controllable return value
 let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
@@ -152,6 +125,10 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof DocumentPick
   }
 }
 
+const openPopover = () => {
+  fireEvent.click(screen.getByTestId('popover-trigger'))
+}
+
 describe('DocumentPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -165,7 +142,7 @@ describe('DocumentPicker', () => {
     it('should render without crashing', () => {
       renderComponent()
 
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should render document name when provided', () => {
@@ -273,7 +250,7 @@ describe('DocumentPicker', () => {
         onChange,
       })
 
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle value with all fields', () => {
@@ -318,13 +295,13 @@ describe('DocumentPicker', () => {
     it('should initialize with popup closed', () => {
       renderComponent()
 
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
 
     it('should open popup when trigger is clicked', () => {
       renderComponent()
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Verify click handler is called
@@ -430,7 +407,7 @@ describe('DocumentPicker', () => {
       )
 
       // The component should use the new callback
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should memoize handleChange callback with useCallback', () => {
@@ -440,7 +417,7 @@ describe('DocumentPicker', () => {
       renderComponent({ onChange })
 
       // Verify component renders correctly, callback memoization is internal
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 
@@ -518,7 +495,7 @@ describe('DocumentPicker', () => {
     it('should toggle popup when trigger is clicked', () => {
       renderComponent()
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Trigger click should be handled
@@ -591,7 +568,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // When loading, component should still render without crashing
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should fetch documents on mount', () => {
@@ -611,7 +588,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Component should render without crashing
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle undefined data response', () => {
@@ -620,7 +597,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Should not crash
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 
@@ -732,13 +709,13 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Should not crash
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle rapid toggle clicks', () => {
       renderComponent()
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
 
       // Rapid clicks
       fireEvent.click(trigger)
@@ -795,7 +772,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Should not crash
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle document list mapping with various data_source_detail_dict states', () => {
@@ -819,7 +796,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Should not crash during mapping
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 
@@ -829,13 +806,13 @@ describe('DocumentPicker', () => {
       it('should handle empty datasetId', () => {
         renderComponent({ datasetId: '' })
 
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByTestId('popover')).toBeInTheDocument()
       })
 
       it('should handle UUID format datasetId', () => {
         renderComponent({ datasetId: '123e4567-e89b-12d3-a456-426614174000' })
 
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByTestId('popover')).toBeInTheDocument()
       })
     })
 
@@ -926,6 +903,7 @@ describe('DocumentPicker', () => {
       const onChange = vi.fn()
 
       renderComponent({ onChange })
+      openPopover()
 
       fireEvent.click(screen.getByText('Document 2'))
 
@@ -939,6 +917,7 @@ describe('DocumentPicker', () => {
       mockDocumentListData = { data: docs }
 
       renderComponent()
+      openPopover()
 
       // Documents should be rendered in the list
       expect(screen.getByText('Document 1')).toBeInTheDocument()
@@ -978,14 +957,14 @@ describe('DocumentPicker', () => {
 
       // The mapping: d.data_source_detail_dict?.upload_file?.extension || ''
       // Should extract 'pdf' from the document
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should render trigger with SearchInput integration', () => {
       renderComponent()
 
       // The trigger is always rendered
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger')).toBeInTheDocument()
     })
 
     it('should integrate FileIcon component', () => {
@@ -1001,7 +980,7 @@ describe('DocumentPicker', () => {
       })
 
       // FileIcon should render an SVG icon for the file extension
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       expect(trigger.querySelector('svg')).toBeInTheDocument()
     })
   })
@@ -1010,9 +989,10 @@ describe('DocumentPicker', () => {
   describe('Visual States', () => {
     it('should render portal content for document selection', () => {
       renderComponent()
+      openPopover()
 
-      // Portal content is rendered in our mock for testing
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Popover content is rendered after opening the trigger in our mock
+      expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     })
   })
 })

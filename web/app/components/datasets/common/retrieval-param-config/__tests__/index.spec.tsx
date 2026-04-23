@@ -5,9 +5,9 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: { type: string, message: string }) => mockNotify(params),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify(message),
   },
 }))
 
@@ -122,21 +122,15 @@ vi.mock('@/app/components/base/radio-card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange?: (v: boolean) => void }) => (
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
     <button
       data-testid="rerank-switch"
-      data-checked={value}
-      onClick={() => onChange?.(!value)}
+      data-checked={checked}
+      onClick={() => onCheckedChange?.(!checked)}
     >
       Switch
     </button>
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: React.ReactNode }) => (
-    <div data-testid="tooltip">{popupContent}</div>
   ),
 }))
 
@@ -173,7 +167,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch')).toBeInTheDocument()
+      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
     })
 
     it('should render model selector when reranking is enabled', () => {
@@ -186,7 +180,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
     })
 
     it('should not render model selector when reranking is disabled', () => {
@@ -212,8 +206,8 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item')).toBeInTheDocument()
-      expect(screen.getByTestId('top-k-item')).toHaveAttribute('data-value', '5')
+      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('top-k-item'))!.toHaveAttribute('data-value', '5')
     })
 
     it('should render score threshold item when reranking is enabled', () => {
@@ -226,7 +220,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('score-threshold-item')).toBeInTheDocument()
+      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
     })
 
     it('should toggle reranking enable', () => {
@@ -260,10 +254,7 @@ describe('RetrievalParamConfig', () => {
 
       fireEvent.click(screen.getByTestId('rerank-switch'))
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.errorMsg.rerankModelRequired',
-      })
+      expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
 
     it('should update reranking model on selection', () => {
@@ -352,7 +343,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip')).toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
     })
 
     it('should not show multimodal tip when showMultiModalTip is false', () => {
@@ -381,7 +372,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch')).toBeInTheDocument()
+      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
     })
 
     it('should hide score threshold when reranking is disabled for full text search', () => {
@@ -413,7 +404,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('score-threshold-item')).toBeInTheDocument()
+      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
     })
   })
 
@@ -454,7 +445,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item')).toBeInTheDocument()
+      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
     })
 
     it('should not render score threshold for keyword search', () => {
@@ -499,7 +490,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('dataset.weightedScore.title')).toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
     })
 
     it('should have RerankingModel option', () => {
@@ -511,7 +502,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     })
 
     it('should show model selector when RerankingModel mode is selected', () => {
@@ -523,7 +514,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
     })
 
     it('should show WeightedScore component when WeightedScore mode is selected', () => {
@@ -550,7 +541,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('weighted-score')).toBeInTheDocument()
+      expect(screen.getByTestId('weighted-score'))!.toBeInTheDocument()
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
 
@@ -568,7 +559,7 @@ describe('RetrievalParamConfig', () => {
       fireEvent.click(weightedScoreCard!)
 
       expect(mockOnChange).toHaveBeenCalled()
-      const calledWith = mockOnChange.mock.calls[0][0]
+      const calledWith = mockOnChange.mock.calls[0]![0]
       expect(calledWith.reranking_mode).toBe(RerankingModeEnum.WeightedScore)
       expect(calledWith.weights).toBeDefined()
     })
@@ -618,10 +609,7 @@ describe('RetrievalParamConfig', () => {
       const rerankModelCard = radioCards.find(card => card.getAttribute('data-title') === 'common.modelProvider.rerankModel.key')
       fireEvent.click(rerankModelCard!)
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.errorMsg.rerankModelRequired',
-      })
+      expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
 
     it('should update weights when WeightedScore changes', () => {
@@ -651,7 +639,7 @@ describe('RetrievalParamConfig', () => {
       fireEvent.click(screen.getByTestId('change-weights-btn'))
 
       expect(mockOnChange).toHaveBeenCalled()
-      const calledWith = mockOnChange.mock.calls[0][0]
+      const calledWith = mockOnChange.mock.calls[0]![0]
       expect(calledWith.weights.vector_setting.vector_weight).toBe(0.6)
       expect(calledWith.weights.keyword_setting.keyword_weight).toBe(0.4)
     })
@@ -665,8 +653,8 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item')).toBeInTheDocument()
-      expect(screen.getByTestId('score-threshold-item')).toBeInTheDocument()
+      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
     })
 
     it('should update top_k for hybrid search', () => {
@@ -730,7 +718,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip')).toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
     })
 
     it('should not show multimodal tip for hybrid search with WeightedScore', () => {
@@ -805,7 +793,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByLabelText('common.modelProvider.rerankModel.tip'))!.toBeInTheDocument()
     })
   })
 
@@ -820,7 +808,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     })
   })
 
@@ -844,7 +832,7 @@ describe('RetrievalParamConfig', () => {
       fireEvent.click(weightedScoreCard!)
 
       expect(mockOnChange).toHaveBeenCalled()
-      const calledWith = mockOnChange.mock.calls[0][0]
+      const calledWith = mockOnChange.mock.calls[0]![0]
       expect(calledWith.weights).toBeDefined()
       expect(calledWith.weights.weight_type).toBe(WeightedScoreEnum.Customized)
     })
@@ -878,7 +866,7 @@ describe('RetrievalParamConfig', () => {
       fireEvent.click(weightedScoreCard!)
 
       expect(mockOnChange).toHaveBeenCalled()
-      const calledWith = mockOnChange.mock.calls[0][0]
+      const calledWith = mockOnChange.mock.calls[0]![0]
       expect(calledWith.weights.vector_setting.vector_weight).toBe(0.8)
     })
   })

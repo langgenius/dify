@@ -1,10 +1,10 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
@@ -105,10 +105,7 @@ const OnlineDrive = ({
           isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          Toast.notify({
-            type: 'error',
-            message: error.error,
-          })
+          toast.error(error.error)
           setIsLoading(false)
           isLoadingRef.current = false
         },

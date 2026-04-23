@@ -1,27 +1,89 @@
 from collections.abc import Generator, Mapping, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.enums import NodeType
-from dify_graph.file import File, FileUploadConfig
-from dify_graph.repositories.draft_variable_repository import (
+from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
-from dify_graph.variables.input_entities import VariableEntityType
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from extensions.ext_database import db
 from factories import file_factory
+from graphon.enums import NodeType
+from graphon.file import File, FileUploadConfig
+from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
-    from dify_graph.variables.input_entities import VariableEntity
+    from graphon.variables.input_entities import VariableEntity
+
+
+@final
+class _DebuggerDraftVariableSaver:
+    """Adapter that binds SQLAlchemy session setup outside the saver port."""
+
+    def __init__(
+        self,
+        *,
+        account: Account,
+        app_id: str,
+        node_id: str,
+        node_type: NodeType,
+        node_execution_id: str,
+        enclosing_node_id: str | None = None,
+    ) -> None:
+        self._account = account
+        self._app_id = app_id
+        self._node_id = node_id
+        self._node_type = node_type
+        self._node_execution_id = node_execution_id
+        self._enclosing_node_id = enclosing_node_id
+
+    def save(self, process_data: Mapping[str, Any] | None, outputs: Mapping[str, Any] | None) -> None:
+        with Session(db.engine) as session, session.begin():
+            DraftVariableSaverImpl(
+                session=session,
+                app_id=self._app_id,
+                node_id=self._node_id,
+                node_type=self._node_type,
+                node_execution_id=self._node_execution_id,
+                enclosing_node_id=self._enclosing_node_id,
+                user=self._account,
+            ).save(process_data, outputs)
 
 
 class BaseAppGenerator:
+    _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _bind_file_access_scope(
+        *,
+        tenant_id: str,
+        user: Account | EndUser,
+        invoke_from: InvokeFrom,
+    ) -> AbstractContextManager[None]:
+        """Bind request-scoped file ownership markers for downstream file lookups."""
+
+        user_id = getattr(user, "id", None)
+        if not isinstance(user_id, str) or not user_id:
+            return nullcontext()
+
+        user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
+        return bind_file_access_scope(
+            FileAccessScope(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            )
+        )
+
     def _prepare_user_inputs(
         self,
         *,
@@ -50,6 +112,7 @@ class BaseAppGenerator:
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
                 strict_type_validation=strict_type_validation,
+                access_controller=self._file_access_controller,
             )
             for k, v in user_inputs.items()
             if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
@@ -64,6 +127,7 @@ class BaseAppGenerator:
                     allowed_file_extensions=entity_dictionary[k].allowed_file_extensions or [],
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
+                access_controller=self._file_access_controller,
             )
             for k, v in user_inputs.items()
             if isinstance(v, list)
@@ -226,32 +290,30 @@ class BaseAppGenerator:
             assert isinstance(account, Account)
 
             def draft_var_saver_factory(
-                session: Session,
                 app_id: str,
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
                 enclosing_node_id: str | None = None,
             ) -> DraftVariableSaver:
-                return DraftVariableSaverImpl(
-                    session=session,
+                return _DebuggerDraftVariableSaver(
+                    account=account,
                     app_id=app_id,
                     node_id=node_id,
                     node_type=node_type,
                     node_execution_id=node_execution_id,
                     enclosing_node_id=enclosing_node_id,
-                    user=account,
                 )
         else:
 
             def draft_var_saver_factory(
-                session: Session,
                 app_id: str,
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
                 enclosing_node_id: str | None = None,
             ) -> DraftVariableSaver:
+                _ = app_id, node_id, node_type, node_execution_id, enclosing_node_id
                 return NoopDraftVariableSaver()
 
         return draft_var_saver_factory

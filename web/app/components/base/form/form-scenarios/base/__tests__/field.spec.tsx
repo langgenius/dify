@@ -6,7 +6,7 @@ import { useAppForm } from '../../..'
 import BaseField from '../field'
 import { BaseFieldType } from '../types'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 

@@ -18,13 +18,12 @@ describe('PresetsParameter', () => {
     expect(onSelect).toHaveBeenCalledWith(1)
   })
 
-  // open=true: trigger has bg-state-base-hover class
-  it('should apply hover background class when open is true', () => {
+  it('should mark trigger as open when dropdown is expanded', () => {
     render(<PresetsParameter onSelect={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i }))
 
     const button = screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i })
-    expect(button).toHaveClass('bg-state-base-hover')
+    expect(button).toHaveAttribute('data-popup-open')
   })
 
   // Tone map branch 2: Balanced → Scales02 icon

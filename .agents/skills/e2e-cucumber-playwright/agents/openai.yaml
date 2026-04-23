@@ -1,0 +1,4 @@
+interface:
+  display_name: "E2E Cucumber + Playwright"
+  short_description: "Write and review Dify E2E scenarios."
+  default_prompt: "Use $e2e-cucumber-playwright to write or review a Dify E2E scenario under e2e/."

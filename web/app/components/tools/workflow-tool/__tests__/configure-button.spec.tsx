@@ -9,9 +9,11 @@ import WorkflowToolConfigureButton from '../configure-button'
 import WorkflowToolAsModal from '../index'
 import MethodSelector from '../method-selector'
 
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+
 // Mock Next.js navigation
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: vi.fn(),
@@ -49,9 +51,12 @@ vi.mock('@/service/use-tools', () => ({
 
 // Mock Toast - need to verify notification calls
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (options: { type: string, message: string }) => mockToastNotify(options),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 
@@ -80,12 +85,11 @@ vi.mock('@/app/components/base/drawer-plus', () => ({
   },
 }))
 
-// Mock EmojiPicker - simplified for testing
-vi.mock('@/app/components/base/emoji-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => (
+// Mock EmojiPickerInner - simplified for testing
+vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
+  default: ({ onSelect }: { onSelect: (icon: string, background: string) => void }) => (
     <div data-testid="emoji-picker">
       <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#f0f0f0')}>Select Emoji</button>
-      <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
     </div>
   ),
 }))
@@ -107,29 +111,6 @@ vi.mock('@/app/components/tools/labels/selector', () => ({
       <button data-testid="add-label" onClick={() => onChange([...value, 'new-label'])}>Add Label</button>
     </div>
   ),
-}))
-
-// Mock PortalToFollowElem for dropdown tests
-let mockPortalOpenState = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => {
-    mockPortalOpenState = open
-    return (
-      <div data-testid="portal-elem" data-open={open} onClick={() => onOpenChange(!open)}>
-        {children}
-      </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
-  },
 }))
 
 // Test data factories
@@ -242,7 +223,6 @@ const createDefaultModalPayload = (overrides: Partial<WorkflowToolModalPayload> 
 describe('WorkflowToolConfigureButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,
@@ -260,7 +240,8 @@ describe('WorkflowToolConfigureButton', () => {
       render(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
 
     it('should render configure required badge when not published', () => {
@@ -271,7 +252,8 @@ describe('WorkflowToolConfigureButton', () => {
       render(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
-      expect(screen.getByText('workflow.common.configureRequired')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('workflow.common.configureRequired'))!.toBeInTheDocument()
     })
 
     it('should not render configure required badge when published', async () => {
@@ -296,7 +278,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       const container = document.querySelector('.cursor-not-allowed')
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should render disabledReason when provided', () => {
@@ -309,7 +291,8 @@ describe('WorkflowToolConfigureButton', () => {
       render(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
-      expect(screen.getByText('Please save the workflow first')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Please save the workflow first'))!.toBeInTheDocument()
     })
 
     it('should render loading state when published and fetching details', () => {
@@ -322,7 +305,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       const loadingElement = document.querySelector('.pt-2')
-      expect(loadingElement).toBeInTheDocument()
+      expect(loadingElement)!.toBeInTheDocument()
     })
 
     it('should render configure and manage buttons when published', async () => {
@@ -334,8 +317,8 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
-        expect(screen.getByText('workflow.common.manageInTools')).toBeInTheDocument()
+        expect(screen.getByText('workflow.common.configure'))!.toBeInTheDocument()
+        expect(screen.getByText('workflow.common.manageInTools'))!.toBeInTheDocument()
       })
     })
 
@@ -349,7 +332,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       const textElement = screen.getByText('workflow.common.workflowAsTool')
-      expect(textElement).toHaveClass('text-text-tertiary')
+      expect(textElement)!.toHaveClass('text-text-tertiary')
     })
   })
 
@@ -402,7 +385,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
       })
     })
 
@@ -418,6 +401,37 @@ describe('WorkflowToolConfigureButton', () => {
       await user.click(triggerArea!)
 
       // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
     })
 
@@ -430,13 +444,44 @@ describe('WorkflowToolConfigureButton', () => {
       render(<WorkflowToolConfigureButton {...props} />)
 
       await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
+        expect(screen.getByText('workflow.common.configure'))!.toBeInTheDocument()
       })
 
       // Click the main area (should not open modal)
       const mainArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(mainArea!)
 
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
+      // Should not open modal from main click
       // Should not open modal from main click
       expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
 
@@ -445,7 +490,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
       })
     })
   })
@@ -461,7 +506,7 @@ describe('WorkflowToolConfigureButton', () => {
       render(<WorkflowToolConfigureButton {...props} />)
 
       await waitFor(() => {
-        expect(screen.getByText('workflow.common.manageInTools')).toBeInTheDocument()
+        expect(screen.getByText('workflow.common.manageInTools'))!.toBeInTheDocument()
       })
 
       await user.click(screen.getByText('workflow.common.manageInTools'))
@@ -492,7 +537,8 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Assert - should not crash
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      // Assert - should not crash
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
 
     it('should handle paragraph type input conversion', async () => {
@@ -510,7 +556,7 @@ describe('WorkflowToolConfigureButton', () => {
 
       // Assert - should render without error
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
       })
     })
   })
@@ -542,7 +588,7 @@ describe('WorkflowToolConfigureButton', () => {
       // Assert
       await waitFor(() => {
         const configureButton = screen.getByText('workflow.common.configure')
-        expect(configureButton).toBeDisabled()
+        expect(configureButton)!.toBeDisabled()
       })
     })
   })
@@ -554,7 +600,6 @@ describe('WorkflowToolConfigureButton', () => {
 describe('WorkflowToolAsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering Tests (REQUIRED)
@@ -571,7 +616,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('drawer-title')).toHaveTextContent('workflow.common.workflowAsTool')
+      // Assert
+      expect(screen.getByTestId('drawer-title'))!.toHaveTextContent('workflow.common.workflowAsTool')
     })
 
     it('should render name input field', () => {
@@ -586,7 +632,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))!.toBeInTheDocument()
     })
 
     it('should render name for tool call input', () => {
@@ -601,7 +648,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder'))!.toBeInTheDocument()
     })
 
     it('should render description textarea', () => {
@@ -616,7 +664,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render tool input table', () => {
@@ -631,7 +680,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByText('tools.createTool.toolInput.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.toolInput.title'))!.toBeInTheDocument()
     })
 
     it('should render tool output table', () => {
@@ -646,7 +696,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByText('tools.createTool.toolOutput.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.toolOutput.title'))!.toBeInTheDocument()
     })
 
     it('should render reserved output parameters', () => {
@@ -661,9 +712,10 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByText('text')).toBeInTheDocument()
-      expect(screen.getByText('files')).toBeInTheDocument()
-      expect(screen.getByText('json')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('text'))!.toBeInTheDocument()
+      expect(screen.getByText('files'))!.toBeInTheDocument()
+      expect(screen.getByText('json'))!.toBeInTheDocument()
     })
 
     it('should render label selector', () => {
@@ -678,7 +730,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('label-selector')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('label-selector'))!.toBeInTheDocument()
     })
 
     it('should render privacy policy input', () => {
@@ -693,7 +746,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render delete button when editing and onRemove provided', () => {
@@ -709,7 +763,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
     })
 
     it('should not render delete button when adding', () => {
@@ -724,6 +779,37 @@ describe('WorkflowToolAsModal', () => {
       // Act
       render(<WorkflowToolAsModal {...props} />)
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
@@ -748,9 +834,10 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByDisplayValue('Custom Label')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('custom_name')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Custom description')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByDisplayValue('Custom Label'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('custom_name'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Custom description'))!.toBeInTheDocument()
     })
 
     it('should pass labels to label selector', () => {
@@ -766,7 +853,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('label-values')).toHaveTextContent('tag1,tag2')
+      // Assert
+      expect(screen.getByTestId('label-values'))!.toHaveTextContent('tag1,tag2')
     })
   })
 
@@ -787,7 +875,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(labelInput, 'New Label')
 
       // Assert
-      expect(labelInput).toHaveValue('New Label')
+      // Assert
+      expect(labelInput)!.toHaveValue('New Label')
     })
 
     it('should update name state on input change', async () => {
@@ -805,7 +894,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(nameInput, 'new_name')
 
       // Assert
-      expect(nameInput).toHaveValue('new_name')
+      // Assert
+      expect(nameInput)!.toHaveValue('new_name')
     })
 
     it('should update description state on textarea change', async () => {
@@ -823,7 +913,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(descInput, 'New description')
 
       // Assert
-      expect(descInput).toHaveValue('New description')
+      // Assert
+      expect(descInput)!.toHaveValue('New description')
     })
 
     it('should show emoji picker on icon click', async () => {
@@ -841,7 +932,8 @@ describe('WorkflowToolAsModal', () => {
       await user.click(iconButton)
 
       // Assert
-      expect(screen.getByTestId('emoji-picker')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
     })
 
     it('should update emoji on selection', async () => {
@@ -862,11 +954,12 @@ describe('WorkflowToolAsModal', () => {
 
       // Select emoji
       await user.click(screen.getByTestId('select-emoji'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
       // Assert
       const updatedIcon = screen.getByTestId('app-icon')
-      expect(updatedIcon).toHaveAttribute('data-icon', '🚀')
-      expect(updatedIcon).toHaveAttribute('data-background', '#f0f0f0')
+      expect(updatedIcon)!.toHaveAttribute('data-icon', '🚀')
+      expect(updatedIcon)!.toHaveAttribute('data-background', '#f0f0f0')
     })
 
     it('should close emoji picker on close button', async () => {
@@ -884,10 +977,41 @@ describe('WorkflowToolAsModal', () => {
       const iconButton = screen.getByTestId('app-icon')
       await user.click(iconButton)
 
-      expect(screen.getByTestId('emoji-picker')).toBeInTheDocument()
+      expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('close-emoji-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument()
     })
@@ -906,7 +1030,8 @@ describe('WorkflowToolAsModal', () => {
       await user.click(screen.getByTestId('add-label'))
 
       // Assert
-      expect(screen.getByTestId('label-values')).toHaveTextContent('initial,new-label')
+      // Assert
+      expect(screen.getByTestId('label-values'))!.toHaveTextContent('initial,new-label')
     })
 
     it('should update privacy policy on input change', async () => {
@@ -924,7 +1049,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(privacyInput, 'https://example.com/privacy')
 
       // Assert
-      expect(privacyInput).toHaveValue('https://example.com/privacy')
+      // Assert
+      expect(privacyInput)!.toHaveValue('https://example.com/privacy')
     })
   })
 
@@ -1022,7 +1148,8 @@ describe('WorkflowToolAsModal', () => {
       await user.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
     })
 
     it('should call onSave after confirm in edit mode', async () => {
@@ -1070,7 +1197,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(descInput, 'New parameter description')
 
       // Assert
-      expect(descInput).toHaveValue('New parameter description')
+      // Assert
+      expect(descInput)!.toHaveValue('New parameter description')
     })
   })
 
@@ -1133,7 +1261,8 @@ describe('WorkflowToolAsModal', () => {
       await user.type(nameInput, 'invalid name with spaces')
 
       // Assert
-      expect(screen.getByText('tools.createTool.nameForToolCallTip')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.nameForToolCallTip'))!.toBeInTheDocument()
     })
 
     it('should accept valid name format', async () => {
@@ -1150,6 +1279,37 @@ describe('WorkflowToolAsModal', () => {
       const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
       await user.type(nameInput, 'valid_name_123')
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByText('tools.createTool.nameForToolCallTip')).not.toBeInTheDocument()
     })
@@ -1201,7 +1361,8 @@ describe('WorkflowToolAsModal', () => {
       render(<WorkflowToolAsModal {...props} />)
 
       // Assert - __image should show method as text, not selector
-      expect(screen.getByText('tools.createTool.toolInput.methodParameter')).toBeInTheDocument()
+      // Assert - __image should show method as text, not selector
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
     })
 
     it('should show warning for reserved output parameter name collision', () => {
@@ -1242,7 +1403,7 @@ describe('WorkflowToolAsModal', () => {
 
       // Show confirm modal
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
       })
 
       // Assert - should not crash
@@ -1279,12 +1440,12 @@ describe('WorkflowToolAsModal', () => {
       await user.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
       })
 
       // Click cancel in confirm modal
       const cancelButtons = screen.getAllByText('common.operation.cancel')
-      await user.click(cancelButtons[cancelButtons.length - 1])
+      await user.click(cancelButtons[cancelButtons.length - 1]!)
 
       // Assert
       await waitFor(() => {
@@ -1300,7 +1461,6 @@ describe('WorkflowToolAsModal', () => {
 describe('MethodSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering Tests (REQUIRED)
@@ -1316,7 +1476,8 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // Assert
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should display parameter method text when value is llm', () => {
@@ -1330,7 +1491,8 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // Assert
-      expect(screen.getByText('tools.createTool.toolInput.methodParameter')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.toolInput.methodParameter'))!.toBeInTheDocument()
     })
 
     it('should display setting method text when value is form', () => {
@@ -1344,7 +1506,8 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // Assert
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
 
     it('should display setting method text when value is undefined', () => {
@@ -1358,7 +1521,8 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // Assert
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
   })
 
@@ -1374,10 +1538,11 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange with llm when parameter option clicked', async () => {
@@ -1391,10 +1556,10 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       const paramOption = screen.getAllByText('tools.createTool.toolInput.methodParameter')[0]
-      await user.click(paramOption)
+      await user.click(paramOption!)
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('llm')
@@ -1411,7 +1576,7 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       const settingOption = screen.getByText('tools.createTool.toolInput.methodSetting')
       await user.click(settingOption)
@@ -1432,12 +1597,12 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // First click - open
-      await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      await user.click(screen.getByTestId('popover-trigger'))
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Second click - close
-      await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('popover-trigger'))
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 
@@ -1453,11 +1618,11 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert - the first option (llm) should have a check icon container
-      const content = screen.getByTestId('portal-content')
-      expect(content).toBeInTheDocument()
+      const content = screen.getByTestId('popover-content')
+      expect(content)!.toBeInTheDocument()
     })
 
     it('should show check icon for selected form value', async () => {
@@ -1470,11 +1635,11 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert
-      const content = screen.getByTestId('portal-content')
-      expect(content).toBeInTheDocument()
+      const content = screen.getByTestId('popover-content')
+      expect(content)!.toBeInTheDocument()
     })
   })
 
@@ -1495,7 +1660,8 @@ describe('MethodSelector', () => {
       rerender(<MethodSelector {...props} value="form" />)
 
       // Assert - should not crash
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting')).toBeInTheDocument()
+      // Assert - should not crash
+      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
     })
 
     it('should handle empty string value', () => {
@@ -1517,7 +1683,6 @@ describe('MethodSelector', () => {
 describe('Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,
@@ -1542,7 +1707,7 @@ describe('Integration Tests', () => {
       await user.click(triggerArea!)
 
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
       })
 
       // Fill form
@@ -1591,14 +1756,14 @@ describe('Integration Tests', () => {
 
       // Wait for detail to load
       await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
+        expect(screen.getByText('workflow.common.configure'))!.toBeInTheDocument()
       })
 
       // Open modal
       await user.click(screen.getByText('workflow.common.configure'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
       })
 
       // Modify description
@@ -1611,7 +1776,7 @@ describe('Integration Tests', () => {
 
       // Confirm
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
       })
       await user.click(screen.getByText('common.operation.confirm'))
 
@@ -1640,7 +1805,8 @@ describe('Integration Tests', () => {
       rerender(<WorkflowToolConfigureButton {...props} />)
 
       // Assert - component should not crash and callbacks should be stable
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      // Assert - component should not crash and callbacks should be stable
+      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
   })
 })

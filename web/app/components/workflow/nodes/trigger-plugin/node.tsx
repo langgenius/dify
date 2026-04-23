@@ -2,10 +2,9 @@ import type { FC } from 'react'
 import type { PluginTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import useConfig from './use-config'
@@ -54,21 +53,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
     onInstallSuccess,
     shouldDim,
   } = useNodePluginInstallation(data)
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
-
-  useEffect(() => {
-    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
-      return
-    handleNodeDataUpdate({
-      id,
-      data: {
-        _pluginInstallLocked: shouldLock,
-        _dimmed: shouldDim,
-      },
-    })
-  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const { t } = useTranslation()
 
@@ -79,7 +64,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
+        <div className="pointer-events-auto absolute top-[-32px] right-3 z-40">
           <InstallPluginButton
             size="small"
             extraIdentifiers={[
@@ -87,7 +72,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
               data.provider_id,
               data.provider_name,
             ].filter(Boolean) as string[]}
-            className="!font-medium !text-text-accent"
+            className="font-medium! text-text-accent!"
             uniqueIdentifier={uniqueIdentifier!}
             onSuccess={onInstallSuccess}
           />
@@ -102,7 +87,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
           >
             <div
               title={key}
-              className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary"
+              className="max-w-[100px] shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
             >
               {key}
             </div>

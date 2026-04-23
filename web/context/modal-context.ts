@@ -28,8 +28,8 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
-  onSaveCallback?: (newPayload?: T, formValues?: Record<string, any>) => void
-  onRemoveCallback?: (newPayload?: T, formValues?: Record<string, any>) => void
+  onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
+  onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
   isEditMode?: boolean
@@ -88,5 +88,3 @@ export const useModalContext = () => useContext(ModalContext)
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useModalContextSelector = <T>(selector: (state: ModalContextState) => T): T =>
   useContextSelector(ModalContext, selector)
-
-export default ModalContext

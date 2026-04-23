@@ -1,21 +1,26 @@
-import sys
+import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired
+from typing import NotRequired, TypedDict
 
 import httpx
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
-if sys.version_info >= (3, 12):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
+from core.helper.http_client_pooling import get_pooled_http_client
 
-JsonObject = dict[str, object]
-JsonObjectList = list[JsonObject]
+logger = logging.getLogger(__name__)
 
-JSON_OBJECT_ADAPTER = TypeAdapter(JsonObject)
-JSON_OBJECT_LIST_ADAPTER = TypeAdapter(JsonObjectList)
+type JsonObject = dict[str, object]
+type JsonObjectList = list[JsonObject]
+
+JSON_OBJECT_ADAPTER: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
+JSON_OBJECT_LIST_ADAPTER: TypeAdapter[JsonObjectList] = TypeAdapter(JsonObjectList)
+
+# Reuse a pooled httpx.Client for OAuth flows (public endpoints, no SSRF proxy).
+_http_client: httpx.Client = get_pooled_http_client(
+    "oauth:default",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class AccessTokenResponse(TypedDict, total=False):
@@ -25,13 +30,14 @@ class AccessTokenResponse(TypedDict, total=False):
 class GitHubEmailRecord(TypedDict, total=False):
     email: str
     primary: bool
+    verified: bool
 
 
 class GitHubRawUserInfo(TypedDict):
     id: int | str
     login: str
-    name: NotRequired[str]
-    email: NotRequired[str]
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
 
 
 class GoogleRawUserInfo(TypedDict):
@@ -111,7 +117,7 @@ class GitHubOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
         access_token = response_json.get("access_token")
@@ -123,22 +129,56 @@ class GitHubOAuth(OAuth):
 
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"token {token}"}
-        response = httpx.get(self._USER_INFO_URL, headers=headers)
+        response = _http_client.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
-        email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
-        email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
-        primary_email = next((email for email in email_info if email.get("primary") is True), None)
+        # Only call the /user/emails endpoint when the profile email is absent,
+        # i.e. the user has "Keep my email addresses private" enabled.
+        resolved_email = user_info.get("email") or ""
+        if not resolved_email:
+            resolved_email = self._get_email_from_emails_endpoint(headers)
 
-        return {**user_info, "email": primary_email.get("email", "") if primary_email else ""}
+        return {**user_info, "email": resolved_email}
+
+    @staticmethod
+    def _get_email_from_emails_endpoint(headers: dict[str, str]) -> str:
+        """Fetch the best available email from GitHub's /user/emails endpoint.
+
+        Prefers the primary email, then falls back to any verified email.
+        Returns an empty string when no usable email is found.
+        """
+        try:
+            email_response = _http_client.get(GitHubOAuth._EMAIL_INFO_URL, headers=headers)
+            email_response.raise_for_status()
+            email_records = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
+        except (httpx.HTTPStatusError, ValidationError):
+            logger.warning("Failed to retrieve email from GitHub /user/emails endpoint", exc_info=True)
+            return ""
+
+        primary = next((r for r in email_records if r.get("primary") is True), None)
+        if primary:
+            return primary.get("email", "")
+
+        # No primary email; try any verified email as a fallback.
+        verified = next((r for r in email_records if r.get("verified") is True), None)
+        if verified:
+            return verified.get("email", "")
+
+        return ""
 
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
-        email = payload.get("email")
+        email = payload.get("email") or ""
         if not email:
-            email = f"{payload['id']}+{payload['login']}@users.noreply.github.com"
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name", "")), email=email)
+            # When no email is available from the profile or /user/emails endpoint,
+            # fall back to GitHub's noreply address so sign-in can still proceed.
+            # Use only the numeric ID (not the login) so the address stays stable
+            # even if the user renames their GitHub account.
+            github_id = payload["id"]
+            email = f"{github_id}@users.noreply.github.com"
+            logger.info("GitHub user %s has no public email; using noreply address", payload["login"])
+        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
 
 
 class GoogleOAuth(OAuth):
@@ -166,7 +206,7 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
         }
         headers = {"Accept": "application/json"}
-        response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
         access_token = response_json.get("access_token")
@@ -178,7 +218,7 @@ class GoogleOAuth(OAuth):
 
     def get_raw_user_info(self, token: str) -> JsonObject:
         headers = {"Authorization": f"Bearer {token}"}
-        response = httpx.get(self._USER_INFO_URL, headers=headers)
+        response = _http_client.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         return _json_object(response)
 

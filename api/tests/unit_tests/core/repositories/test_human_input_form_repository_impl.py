@@ -14,16 +14,18 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    FormDefinition,
     MemberRecipient,
+)
+from graphon.nodes.human_input.entities import (
+    FormDefinition,
     UserAction,
 )
-from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -89,9 +91,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
-                    MemberRecipient(user_id="member-1"),
+                    MemberRecipient(reference_id="member-1"),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -125,9 +127,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
-                    MemberRecipient(user_id="missing-member"),
+                    MemberRecipient(reference_id="missing-member"),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -156,7 +158,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                whole_workspace=True,
+                include_bound_group=True,
                 items=[],
             ),
         )
@@ -182,7 +184,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
                     ExternalRecipient(email="external@example.com"),
                     ExternalRecipient(email="external@example.com"),
@@ -212,9 +214,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
-                    MemberRecipient(user_id="member-1"),
+                    MemberRecipient(reference_id="member-1"),
                     ExternalRecipient(email="shared@example.com"),
                 ],
             ),
@@ -243,7 +245,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(
-                    whole_workspace=True,
+                    include_bound_group=True,
                     items=[ExternalRecipient(email="external@example.com")],
                 ),
                 subject="subject",
@@ -272,7 +274,7 @@ def _make_form_definition() -> str:
         inputs=[],
         user_actions=[UserAction(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
-        expiration_time=datetime.utcnow(),
+        expiration_time=naive_utc_now(),
     ).model_dump_json()
 
 
@@ -421,22 +423,22 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, [recipient]])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
 
-        entity = repo.get_form(form.workflow_run_id, form.node_id)
+        entity = repo.get_form(form.node_id)
 
         assert entity is not None
         assert entity.id == form.id
-        assert entity.web_app_token == "token-123"
+        assert entity.submission_token == "token-123"
         assert len(entity.recipients) == 1
         assert entity.recipients[0].token == "token-123"
 
     def test_get_form_returns_none_when_missing(self, monkeypatch: pytest.MonkeyPatch):
         session = _FakeSession(scalars_results=[None])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id="run-1")
 
-        assert repo.get_form("run-1", "node-1") is None
+        assert repo.get_form("node-1") is None
 
     def test_get_form_returns_unsubmitted_state(self, monkeypatch: pytest.MonkeyPatch):
         form = _DummyForm(
@@ -451,9 +453,9 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, []])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
 
-        entity = repo.get_form(form.workflow_run_id, form.node_id)
+        entity = repo.get_form(form.node_id)
 
         assert entity is not None
         assert entity.submitted is False
@@ -476,9 +478,9 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, []])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
 
-        entity = repo.get_form(form.workflow_run_id, form.node_id)
+        entity = repo.get_form(form.node_id)
 
         assert entity is not None
         assert entity.submitted is True

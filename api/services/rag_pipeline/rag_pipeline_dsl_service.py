@@ -5,8 +5,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from enum import StrEnum
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -15,28 +14,30 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
 from packaging import version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.tool.entities import ToolNodeData
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -53,18 +54,6 @@ DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
 
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
-
-
 class RagPipelineImportInfo(BaseModel):
     id: str
     status: ImportStatus
@@ -73,10 +62,6 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
-
-
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -298,7 +283,9 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
-                        datasets = self._session.query(Dataset).filter_by(tenant_id=account.current_tenant_id).all()
+                        datasets = self._session.scalars(
+                            select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
+                        ).all()
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
@@ -311,15 +298,15 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
-                    if knowledge_configuration.indexing_technique == "high_quality":
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
@@ -327,7 +314,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -343,7 +330,7 @@ class RagPipelineDslService:
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
@@ -443,20 +430,20 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     else:
-                        dataset.indexing_technique = knowledge_configuration.indexing_technique
+                        dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
                         dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
                         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
-                    if knowledge_configuration.indexing_technique == "high_quality":
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
@@ -464,7 +451,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -480,7 +467,7 @@ class RagPipelineDslService:
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
@@ -539,7 +526,7 @@ class RagPipelineDslService:
         self,
         *,
         pipeline: Pipeline | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         dependencies: list[PluginDependency] | None = None,
     ) -> Pipeline:
@@ -606,14 +593,14 @@ class RagPipelineDslService:
                 IMPORT_INFO_REDIS_EXPIRY,
                 CheckDependenciesPendingData(pipeline_id=pipeline.id, dependencies=dependencies).model_dump_json(),
             )
-        workflow = (
-            self._session.query(Workflow)
+        workflow = self._session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
+            .limit(1)
         )
 
         # create draft workflow if not found
@@ -673,21 +660,21 @@ class RagPipelineDslService:
 
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
-    def _append_workflow_export_data(self, *, export_data: dict, pipeline: Pipeline, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        self, *, export_data: dict[str, Any], pipeline: Pipeline, include_secret: bool
+    ) -> None:
         """
         Append workflow export data
         :param export_data: export data
         :param pipeline: Pipeline instance
         """
 
-        workflow = (
-            self._session.query(Workflow)
-            .where(
+        workflow = self._session.scalar(
+            select(Workflow).where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
         )
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
@@ -772,7 +759,7 @@ class RagPipelineDslService:
                         )
                     case _ if typ == KNOWLEDGE_INDEX_NODE_TYPE:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
-                        if knowledge_index_entity.indexing_technique == "high_quality":
+                        if knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                             if knowledge_index_entity.embedding_model_provider:
                                 dependencies.append(
                                     DependenciesAnalysisService.analyze_model_provider_dependency(
@@ -919,15 +906,16 @@ class RagPipelineDslService:
     ):
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
-            if (
-                self._session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
+            if self._session.scalar(
+                select(Dataset).where(
+                    Dataset.name == rag_pipeline_dataset_create_entity.name,
+                    Dataset.tenant_id == tenant_id,
+                )
             ):
                 raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
         else:
             # generate a random name as Untitled 1 2 3 ...
-            datasets = self._session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            datasets = self._session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all()
             names = [dataset.name for dataset in datasets]
             rag_pipeline_dataset_create_entity.name = generate_incremental_name(
                 names,

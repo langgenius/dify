@@ -1,16 +1,13 @@
 import threading
 from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
-from sqlalchemy import column
 
-from core.app.app_config.entities import (
-    Condition as AppCondition,
-)
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -25,7 +22,9 @@ from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
@@ -34,9 +33,10 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
+from models.enums import CreatorUserRole
 
 # ==================== Helper Functions ====================
 
@@ -46,7 +46,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -1106,11 +1106,11 @@ class TestRetrievalService:
 
     def test_deduplicate_documents_non_dify_provider(self):
         """
-        Test deduplication with non-dify provider documents.
+        Test deduplication with non-dify provider documents that have no doc_id.
 
         Verifies:
-        - External provider documents use content-based deduplication
-        - Different providers are handled correctly
+        - External provider documents without doc_id use content-based deduplication
+        - Identical content from the same provider is collapsed to one result
         """
         # Arrange
         doc1 = Document(
@@ -1131,7 +1131,96 @@ class TestRetrievalService:
 
         # Assert
         # External documents without doc_id should use content-based dedup
-        assert len(result) >= 1
+        assert len(result) == 1
+
+    def test_deduplicate_documents_non_dify_provider_with_doc_id_different_sources(self):
+        """
+        Regression test for issue #35707.
+
+        Two chunks from different source documents share identical text content but carry
+        different doc_ids. Before the fix, non-dify providers were forced into content-based
+        deduplication and the second chunk was silently dropped. After the fix, doc_id is used
+        as the dedup key for any provider that exposes it, so both chunks must be retained.
+
+        Verifies:
+        - Non-dify provider documents with different doc_ids are NOT deduplicated even when
+          their page_content is identical.
+        """
+        # Arrange — same content, different doc_ids, non-dify provider (e.g. Weaviate / Qdrant)
+        doc_a = Document(
+            page_content="Shared identical content",
+            metadata={"doc_id": "doc-from-file-a", "score": 0.85},
+            provider="weaviate",
+        )
+        doc_b = Document(
+            page_content="Shared identical content",
+            metadata={"doc_id": "doc-from-file-b", "score": 0.82},
+            provider="weaviate",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc_a, doc_b])
+
+        # Assert — both documents must be kept; losing either silently drops a source citation
+        assert len(result) == 2
+        doc_ids = {doc.metadata["doc_id"] for doc in result}
+        assert doc_ids == {"doc-from-file-a", "doc-from-file-b"}
+
+    def test_deduplicate_documents_non_dify_provider_with_same_doc_id(self):
+        """
+        Test that non-dify provider documents sharing the same doc_id are deduplicated by
+        doc_id key (not by content), and the higher-scored duplicate is retained.
+
+        Verifies:
+        - doc_id-based deduplication now applies to any provider, not only "dify"
+        - The document with the highest score wins when doc_ids collide
+        """
+        # Arrange
+        doc_low = Document(
+            page_content="Content A",
+            metadata={"doc_id": "chunk-1", "score": 0.5},
+            provider="qdrant",
+        )
+        doc_high = Document(
+            page_content="Content A",
+            metadata={"doc_id": "chunk-1", "score": 0.9},
+            provider="qdrant",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc_low, doc_high])
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.9
+
+    def test_deduplicate_documents_dify_provider_without_doc_id_falls_back_to_content(self):
+        """
+        Test that a dify provider document without doc_id still falls back to content-based
+        deduplication (no regression from original behaviour).
+
+        Verifies:
+        - Absence of doc_id triggers content-based dedup regardless of provider
+        - First occurrence is kept when content is identical
+        """
+        # Arrange — dify docs with no doc_id, same content
+        doc1 = Document(
+            page_content="Same content",
+            metadata={"score": 0.8},
+            provider="dify",
+        )
+        doc2 = Document(
+            page_content="Same content",
+            metadata={"score": 0.9},
+            provider="dify",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc1, doc2])
+
+        # Assert — collapsed to one; first-seen wins (no score comparison in content branch)
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.8
 
     # ==================== Metadata Filtering Tests ====================
 
@@ -2022,7 +2111,7 @@ def create_mock_document_methods(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -2417,12 +2506,11 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                             mock_document.data_source_type = "upload_file"
                             mock_document.doc_metadata = {}
 
-                            mock_session.query.return_value.filter.return_value.all.return_value = [
-                                mock_dataset_from_db
-                            ]
-                            mock_session.query.return_value.filter.return_value.all.__iter__ = lambda self: iter(
-                                [mock_dataset_from_db, mock_document]
-                            )
+                            mock_datasets = MagicMock()
+                            mock_datasets.all.return_value = [mock_dataset_from_db]
+                            mock_documents = MagicMock()
+                            mock_documents.all.return_value = [mock_document]
+                            mock_session.scalars.side_effect = [mock_datasets, mock_documents]
 
                             # Act
                             result = dataset_retrieval.knowledge_retrieval(request)
@@ -3746,6 +3834,24 @@ class TestDatasetRetrievalAdditionalHelpers:
             mock_session.add_all.assert_called()
             mock_session.commit.assert_called()
 
+    def test_on_query_normalizes_workflow_end_user_role(self, retrieval: DatasetRetrieval) -> None:
+        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+            retrieval._on_query(
+                query="python",
+                attachment_ids=None,
+                dataset_ids=["d1"],
+                app_id="a1",
+                user_from="end-user",
+                user_id="u1",
+            )
+
+            mock_session.add_all.assert_called_once()
+            added_queries = mock_session.add_all.call_args.args[0]
+
+            assert len(added_queries) == 1
+            assert added_queries[0].created_by_role == CreatorUserRole.END_USER
+            mock_session.commit.assert_called_once()
+
     def test_handle_invoke_result(self, retrieval: DatasetRetrieval) -> None:
         usage = LLMUsage.empty_usage()
         chunk_1 = SimpleNamespace(
@@ -3835,7 +3941,7 @@ class TestDatasetRetrievalAdditionalHelpers:
         model_instance.model_type_instance.get_model_schema.return_value = Mock()
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_manager,
             patch("core.rag.retrieval.dataset_retrieval.ModelConfigWithCredentialsEntity") as mock_cfg_entity,
         ):
             mock_manager.return_value.get_model_instance.return_value = model_instance
@@ -3951,11 +4057,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
-        db_query = Mock()
-        db_query.where.return_value = db_query
-        db_query.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -3971,7 +4076,7 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         automatic_filters = [{"condition": "contains", "metadata_name": "author", "value": "Alice"}]
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query),
+            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result),
             patch.object(retrieval, "_automatic_metadata_filter_func", return_value=automatic_filters),
         ):
             mapping, condition = retrieval.get_metadata_filter_condition(
@@ -3992,7 +4097,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             logical_operator="and",
             conditions=[AppCondition(name="author", comparison_operator="contains", value="{{name}}")],
         )
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -4007,7 +4112,7 @@ class TestDatasetRetrievalAdditionalHelpers:
         assert condition is not None
         assert condition.conditions[0].value == "Alice"
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             with pytest.raises(ValueError, match="Invalid metadata filtering mode"):
                 retrieval.get_metadata_filter_condition(
                     dataset_ids=["d1"],
@@ -4022,21 +4127,9 @@ class TestDatasetRetrievalAdditionalHelpers:
 
     def test_get_available_datasets(self, retrieval: DatasetRetrieval) -> None:
         session = Mock()
-        subquery_query = Mock()
-        subquery_query.where.return_value = subquery_query
-        subquery_query.group_by.return_value = subquery_query
-        subquery_query.having.return_value = subquery_query
-        subquery_query.subquery.return_value = SimpleNamespace(
-            c=SimpleNamespace(
-                dataset_id=column("dataset_id"), available_document_count=column("available_document_count")
-            )
-        )
-
-        dataset_query = Mock()
-        dataset_query.outerjoin.return_value = dataset_query
-        dataset_query.where.return_value = dataset_query
-        dataset_query.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
-        session.query.side_effect = [subquery_query, dataset_query]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
+        session.scalars.return_value = scalars_result
 
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
@@ -4087,7 +4180,7 @@ def _doc(
     dataset_id: str = "dataset-1",
     document_id: str = "document-1",
     doc_id: str = "node-1",
-    extra: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> Document:
     metadata = {
         "score": score,
@@ -4221,11 +4314,12 @@ class TestKnowledgeRetrievalCoverage:
         with (
             patch.object(retrieval, "_check_knowledge_rate_limit"),
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="dataset-1")]),
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
             with pytest.raises(Exception) as exc_info:
                 retrieval.knowledge_retrieval(request)
+            mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
             assert error_cls in type(exc_info.value).__name__
 
 
@@ -4278,9 +4372,13 @@ class TestRetrieveCoverage:
             ),
         )
         model_config = self._build_model_config()
-        model_config.provider_model_bundle.model_type_instance.get_model_schema.return_value = None
-        with patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager:
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+        model_instance = Mock()
+        model_instance.model_name = "gpt-4"
+        model_instance.credentials = {"api_key": "secret"}
+        model_instance.provider_model_bundle = Mock()
+        model_instance.model_type_instance.get_model_schema.return_value = None
+        with patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager:
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
             result = retrieval.retrieve(
                 app_id="app-1",
                 user_id="user-1",
@@ -4293,7 +4391,57 @@ class TestRetrieveCoverage:
                 hit_callback=Mock(),
                 message_id="m1",
             )
+        mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
         assert result == (None, [])
+
+    def test_retrieve_uses_bound_model_instance_schema_and_updates_model_config(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        config = DatasetEntity(
+            dataset_ids=["d1"],
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE,
+                metadata_filtering_mode="disabled",
+            ),
+        )
+        model_config = self._build_model_config(features=[])
+        model_config.provider_model_bundle.model_type_instance.get_model_schema.return_value = None
+        bound_schema = SimpleNamespace(features=[ModelFeature.TOOL_CALL])
+        bound_bundle = Mock()
+        bound_model_instance = Mock()
+        bound_model_instance.model_name = "gpt-4"
+        bound_model_instance.credentials = {"api_key": "secret"}
+        bound_model_instance.provider_model_bundle = bound_bundle
+        bound_model_instance.model_type_instance.get_model_schema.return_value = bound_schema
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
+            patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "single_retrieve", return_value=[]) as mock_single_retrieve,
+        ):
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
+            context, files = retrieval.retrieve(
+                app_id="app-1",
+                user_id="user-1",
+                tenant_id="tenant-1",
+                model_config=model_config,
+                config=config,
+                query="python",
+                invoke_from=InvokeFrom.WEB_APP,
+                show_retrieve_source=False,
+                hit_callback=Mock(),
+                message_id="m1",
+            )
+
+        mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
+        mock_single_retrieve.assert_called_once()
+        assert mock_single_retrieve.call_args.args[8] == PlanningStrategy.ROUTER
+        assert model_config.provider_model_bundle is bound_bundle
+        assert model_config.credentials == {"api_key": "secret"}
+        assert model_config.model_schema is bound_schema
+        assert context == ""
+        assert files == []
 
     def test_single_strategy_with_external_documents(self, retrieval: DatasetRetrieval) -> None:
         retrieve_config = DatasetRetrieveConfigEntity(
@@ -4311,12 +4459,17 @@ class TestRetrieveCoverage:
             extra={"title": "External", "dataset_name": "External DS"},
         )
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
             patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             patch.object(retrieval, "single_retrieve", return_value=[external_doc]),
         ):
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+            bound_model_instance = Mock()
+            bound_model_instance.model_name = "gpt-4"
+            bound_model_instance.credentials = {}
+            bound_model_instance.provider_model_bundle = Mock()
+            bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
             context, files = retrieval.retrieve(
                 app_id="app-1",
                 user_id="user-1",
@@ -4401,7 +4554,7 @@ class TestRetrieveCoverage:
         hit_callback = Mock()
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
             patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             patch.object(retrieval, "multiple_retrieve", return_value=[external_doc, dify_doc]),
@@ -4412,7 +4565,14 @@ class TestRetrieveCoverage:
             patch("core.rag.retrieval.dataset_retrieval.sign_upload_file", return_value="https://signed"),
             patch("core.rag.retrieval.dataset_retrieval.db.session.execute") as mock_execute,
         ):
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+            bound_model_instance = Mock()
+            bound_model_instance.model_name = "gpt-4"
+            bound_model_instance.credentials = {}
+            bound_model_instance.provider_model_bundle = Mock()
+            bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
+                features=[ModelFeature.TOOL_CALL]
+            )
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
             mock_execute.side_effect = [execute_attachments, execute_docs, execute_datasets]
             context, files = retrieval.retrieve(
                 app_id="app-1",
@@ -4686,7 +4846,10 @@ class TestSingleAndMultipleRetrieveCoverage:
             extra={"dataset_name": "Ext", "title": "Ext"},
         )
         app = Flask(__name__)
-        weights = {"vector_setting": {}}
+        weights: WeightsDict = {
+            "vector_setting": {"vector_weight": 0.5, "embedding_provider_name": "", "embedding_model_name": ""},
+            "keyword_setting": {"keyword_weight": 0.5},
+        }
 
         def fake_multiple_thread(**kwargs):
             if kwargs["query"]:
@@ -4796,8 +4959,8 @@ class TestInternalHooksCoverage:
         dataset_docs = [
             SimpleNamespace(id="doc-a", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
             SimpleNamespace(id="doc-b", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
-            SimpleNamespace(id="doc-c", doc_form="qa_model"),
-            SimpleNamespace(id="doc-d", doc_form="qa_model"),
+            SimpleNamespace(id="doc-c", doc_form=IndexStructureType.QA_INDEX),
+            SimpleNamespace(id="doc-d", doc_form=IndexStructureType.QA_INDEX),
         ]
         child_chunks = [SimpleNamespace(index_node_id="idx-a", segment_id="seg-a")]
         segments = [SimpleNamespace(index_node_id="idx-c", id="seg-c")]
@@ -4815,22 +4978,21 @@ class TestInternalHooksCoverage:
             _scalars(segments),
             _scalars(bindings),
         ]
-        query = Mock()
-        query.where.return_value = query
-        session.query.return_value = query
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False
 
+        sessionmaker_ctx = MagicMock()
+        sessionmaker_ctx.begin.return_value = session_ctx
+
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.retrieval.dataset_retrieval.Session", return_value=session_ctx),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=sessionmaker_ctx),
             patch.object(retrieval, "_send_trace_task") as mock_trace,
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
 
-        query.update.assert_called_once()
-        session.commit.assert_called_once()
+        session.execute.assert_called_once()
         mock_trace.assert_called_once()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:

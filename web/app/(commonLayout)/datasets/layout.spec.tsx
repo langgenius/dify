@@ -6,7 +6,7 @@ import DatasetsLayout from './layout'
 const mockReplace = vi.fn()
 const mockUseAppContext = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
