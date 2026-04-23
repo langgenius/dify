@@ -188,7 +188,7 @@ describe('node-handle', () => {
       const addNodeButton = getAddNodeButton()
 
       expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).toHaveClass('hidden')
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(addNodeButton)
@@ -200,7 +200,7 @@ describe('node-handle', () => {
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).toHaveClass('hidden')
 
       fireEvent.click(getSelectNodeButton())
 
@@ -263,7 +263,8 @@ describe('node-handle', () => {
       const handle = screen.getByTestId('handle-source-handle')
       const addNodeButton = getAddNodeButton()
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).toHaveClass('hidden')
+      expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(addNodeButton)
 
@@ -285,7 +286,7 @@ describe('node-handle', () => {
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).toHaveClass('hidden')
     })
 
     it('should keep the source add trigger visible when the node is selected', () => {
@@ -345,7 +346,7 @@ describe('node-handle', () => {
 
       renderSourceHandle({ type: BlockEnum.Start })
 
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
+      expect(getAddNodeButton()).toHaveClass('hidden')
       expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
       expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
     })
@@ -366,7 +367,7 @@ describe('node-handle', () => {
 
       renderSourceHandle({ type: BlockEnum.Code })
 
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
+      expect(getAddNodeButton()).toHaveClass('hidden')
       expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
       expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
       expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()

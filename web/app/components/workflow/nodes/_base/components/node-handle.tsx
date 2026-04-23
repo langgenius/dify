@@ -112,8 +112,9 @@ export const NodeTargetHandle = memo(({
               onSelect={handleSelect}
               asChild
               placement="left"
+              // Keep the trigger out of hit-testing so drag-to-connect still lands on the React Flow handle.
               triggerClassName={open => `
-                absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
+                hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
                 group-hover:opacity-100
                 ${data.selected && 'opacity-100'}
@@ -230,8 +231,9 @@ export const NodeSourceHandle = memo(({
             onOpenChange={handleOpenChange}
             onSelect={handleSelect}
             asChild
+            // Keep the trigger out of hit-testing so drag-to-connect still lands on the React Flow handle.
             triggerClassName={open => `
-              absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
+              hidden absolute top-0 left-0 pointer-events-none
               ${nodeSelectorClassName}
               group-hover:opacity-100
               ${data.selected && 'opacity-100'}
