@@ -629,12 +629,16 @@ class WorkflowDraftVariableService:
         """"""
         draft_conv_vars: list[WorkflowDraftVariable] = []
         for conv_var in workflow.conversation_variables:
+            # Truncate description to 255 characters to match database column constraint
+            # Workflow._conversation_variables stores descriptions as LongText, but
+            # WorkflowDraftVariable.description is varchar(255)
+            truncated_description = (conv_var.description or "")[:255]
             draft_var = WorkflowDraftVariable.new_conversation_variable(
                 app_id=workflow.app_id,
                 user_id=user_id,
                 name=conv_var.name,
                 value=conv_var,
-                description=conv_var.description,
+                description=truncated_description,
             )
             draft_conv_vars.append(draft_var)
         _batch_upsert_draft_variable(
