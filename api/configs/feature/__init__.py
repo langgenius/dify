@@ -29,6 +29,14 @@ class SecurityConfig(BaseSettings):
         default="",
     )
 
+    SESSION_REVOCATION_STORAGE: str = Field(
+        description=(
+            "Session revocation storage backend for JWT jti revocation checks. "
+            "Options: 'null' (default, disabled) or 'redis' (use configured Redis)."
+        ),
+        default="null",
+    )
+
     RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
