@@ -3415,16 +3415,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -3438,15 +3428,7 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3472,9 +3454,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3486,11 +3465,6 @@
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/subscription-card.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
