@@ -189,6 +189,24 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `total_price` (decimal) optional 总费用
           - `currency` (string) optional 货币，如 `USD` / `RMB`
         - `created_at` (timestamp) 开始时间
+    - `event: human_input_required` Workflow 已暂停，等待 Human-in-the-Loop 输入
+      - `task_id` (string) 任务 ID，用于请求跟踪
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `human_input_required`
+      - `data` (object) 详细内容
+        - `form_id` (string) 人工输入表单 ID
+        - `node_id` (string) Human Input 节点 ID
+        - `node_title` (string) Human Input 节点标题
+        - `form_content` (string) 渲染后的表单内容
+        - `inputs` (array[object]) 表单输入项定义
+        - `actions` (array[object]) 用户可选动作按钮
+          - `id` (string) 动作 ID
+          - `title` (string) 按钮文案
+          - `button_style` (string) 按钮样式
+        - `display_in_ui` (bool) 是否需要在 UI 展示该表单
+        - `form_token` (string) 用于 `/form/human_input/:form_token` 接口的令牌
+        - `resolved_default_values` (object) 运行时解析后的默认值
+        - `expiration_time` (timestamp) 表单过期时间（Unix 秒级时间戳）
     - `event: workflow_finished` workflow 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `workflow_run_id` (string) workflow 执行 ID
@@ -253,6 +271,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 }'`}
     />
     ### 阻塞模式
+    阻塞模式可能返回普通聊天响应，也可能返回暂停中的工作流响应。
+
+    当 Advanced Chat 因 Human-in-the-Loop 暂停时，`event` 会变为 `workflow_paused`。
+    响应仍然包含 `message_id`、`conversation_id`、`answer` 和 `workflow_run_id`，并且 `data` 中会新增 `paused_nodes` 和 `reasons`。
+    对于 `human_input_required`，每个 reason 都会包含 `form_id` 和 `expiration_time`。
+
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -295,6 +319,83 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     }
     ```
     </CodeGroup>
+    <CodeGroup title="Paused Response Example">
+    ```json {{ title: 'Paused Response Example' }}
+    {
+        "event": "workflow_paused",
+        "task_id": "8a9cbfcf-e7e0-4b17-aeef-24de57a2659a",
+        "id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+        "message_id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+        "conversation_id": "098e19be-356a-435d-9ec3-a406f4f1a97a",
+        "mode": "advanced-chat",
+        "answer": "",
+        "metadata": {
+            "annotation_reply": null,
+            "retriever_resources": [],
+            "usage": null
+        },
+        "created_at": 1776074715,
+        "workflow_run_id": "7a4d6509-8a65-4c7d-a4fd-cf081dcf169f",
+        "data": {
+            "id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+            "mode": "advanced-chat",
+            "conversation_id": "098e19be-356a-435d-9ec3-a406f4f1a97a",
+            "message_id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+            "workflow_run_id": "7a4d6509-8a65-4c7d-a4fd-cf081dcf169f",
+            "answer": "",
+            "metadata": {
+                "annotation_reply": null,
+                "retriever_resources": [],
+                "usage": null
+            },
+            "created_at": 1776074715,
+            "paused_nodes": [
+                "1775724080699"
+            ],
+            "reasons": [
+                {
+                    "form_id": "019d864d-6f55-752c-9f4c-feee67508d5b",
+                    "form_content": "this is form 2:\n\n{{#$output.some_field_2#}}\n",
+                    "inputs": [
+                        {
+                            "type": "paragraph",
+                            "output_variable_name": "some_field_2",
+                            "default": {
+                                "type": "constant",
+                                "selector": [],
+                                "value": ""
+                            }
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": "approve",
+                            "title": "yes",
+                            "button_style": "default"
+                        },
+                        {
+                            "id": "reject",
+                            "title": "no",
+                            "button_style": "default"
+                        }
+                    ],
+                    "display_in_ui": true,
+                    "node_id": "1775724080699",
+                    "node_title": "Human Input 2",
+                    "resolved_default_values": {},
+                    "form_token": "0dvwTdpTFXgCZmAo2FoiJ5",
+                    "type": "human_input_required",
+                    "expiration_time": 1776333914
+                }
+            ],
+            "status": "paused",
+            "elapsed_time": 0.034081,
+            "total_tokens": 0,
+            "total_steps": 2
+        }
+    }
+    ```
+    </CodeGroup>
     ### 流式模式
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
@@ -311,6 +412,220 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}
       data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    流式模式同样可能因为 Human-in-the-Loop 而暂停。此时 SSE 流会先返回 `human_input_required`，随后返回 `workflow_paused`。
+
+    <CodeGroup title="Paused Streaming Response Example">
+    ```streaming {{ title: 'Paused Streaming Response Example' }}
+    event: ping
+
+    data: {
+      "event": "workflow_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "created_at": 1776129228,
+        "reason": "initial"
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "node_finished",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "inputs_truncated": false,
+        "process_data": {},
+        "process_data_truncated": false,
+        "outputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "outputs_truncated": false,
+        "status": "succeeded",
+        "error": null,
+        "elapsed_time": 0.000097,
+        "execution_metadata": null,
+        "created_at": 1776129228,
+        "finished_at": 1776129228,
+        "files": [],
+        "iteration_id": null,
+        "loop_id": null
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "c09ff568-1d55-4f0d-9a07-512bcbfeb289",
+        "node_id": "1775717346519",
+        "node_type": "human-input",
+        "title": "Human Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "human_input_required",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+        "node_id": "1775717346519",
+        "node_title": "Human Input",
+        "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+        "inputs": [
+          {
+            "type": "paragraph",
+            "output_variable_name": "some_field",
+            "default": {
+              "type": "variable",
+              "selector": [
+                "sys",
+                "workflow_run_id"
+              ],
+              "value": ""
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "approve",
+            "title": "YES",
+            "button_style": "default"
+          },
+          {
+            "id": "reject",
+            "title": "NO",
+            "button_style": "default"
+          }
+        ],
+        "display_in_ui": true,
+        "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+        "resolved_default_values": {
+          "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "expiration_time": 1776388428
+      }
+    }
+
+    data: {
+      "event": "workflow_paused",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "paused_nodes": [
+          "1775717346519"
+        ],
+        "outputs": {},
+        "reasons": [
+          {
+            "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+            "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+            "inputs": [
+              {
+                "type": "paragraph",
+                "output_variable_name": "some_field",
+                "default": {
+                  "type": "variable",
+                  "selector": [
+                    "sys",
+                    "workflow_run_id"
+                  ],
+                  "value": ""
+                }
+              }
+            ],
+            "actions": [
+              {
+                "id": "approve",
+                "title": "YES",
+                "button_style": "default"
+              },
+              {
+                "id": "reject",
+                "title": "NO",
+                "button_style": "default"
+              }
+            ],
+            "display_in_ui": true,
+            "node_id": "1775717346519",
+            "node_title": "Human Input",
+            "resolved_default_values": {
+              "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+            },
+            "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+            "type": "human_input_required",
+            "expiration_time": 1776388428
+          }
+        ],
+        "status": "paused",
+        "created_at": 1776129228,
+        "elapsed_time": 0.070478,
+        "total_tokens": 0,
+        "total_steps": 2
+      }
+    }
     ```
     </CodeGroup>
   </Col>
@@ -570,6 +885,198 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='GET'
+  title='获取人工输入表单'
+  name='#get-human-input-form'
+/>
+<Row>
+  <Col>
+    通过 `form_token` 获取待处理的 Human-in-the-Loop 表单。
+
+    当流式事件返回 `human_input_required`（包含 `form_token`）时，可调用此接口拉取表单详情。
+
+    ### Path
+    - `form_token` (string) 必填，暂停事件返回的表单 token
+
+    ### Response
+    - `form_content` (string) 已渲染的表单内容（markdown/plain text）
+    - `inputs` (array[object]) 表单输入项定义
+    - `resolved_default_values` (object) 已解析的默认值（字符串）
+    - `user_actions` (array[object]) 操作按钮列表
+    - `expiration_time` (timestamp) 表单过期时间（Unix 秒）
+
+    ### Errors
+    - 404，表单不存在或不属于当前应用
+    - 412，`human_input_form_submitted`，表单已被提交
+    - 412，`human_input_form_expired`，表单已过期
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "form_content": "请确认最终结果：{{#$output.answer#}}",
+      "inputs": [
+        {
+          "label": "答案",
+          "type": "text-input",
+          "required": true,
+          "output_variable_name": "answer"
+        }
+      ],
+      "resolved_default_values": {
+        "answer": "初始值"
+      },
+      "user_actions": [
+        { "id": "approve", "title": "通过", "button_style": "primary" },
+        { "id": "reject", "title": "拒绝", "button_style": "warning" }
+      ],
+      "expiration_time": 1735689600
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='POST'
+  title='提交人工输入表单'
+  name='#submit-human-input-form'
+/>
+<Row>
+  <Col>
+    提交待处理的 Human-in-the-Loop 表单。
+
+    ### Path
+    - `form_token` (string) 必填，暂停事件返回的表单 token
+
+    ### Request Body
+    - `inputs` (object) 必填，表单字段的 key/value
+    - `action` (string) 必填，从 `user_actions` 中选择的动作 ID
+    - `user` (string) 必填，终端用户标识
+
+    ### Response
+    成功时返回空对象。
+
+    ### Errors
+    - 400，`invalid_form_data`，提交数据与表单 schema 不匹配
+    - 404，表单不存在或不属于当前应用
+    - 412，`human_input_form_submitted`，表单已被提交
+    - 412，`human_input_form_expired`，表单已过期
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {"answer": "已确认答案"},
+  "action": "approve",
+  "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflow/:task_id/events'
+  method='GET'
+  title='获取恢复后的 Workflow 事件流'
+  name='#get-workflow-resume-events'
+/>
+<Row>
+  <Col>
+    在提交人工输入表单后，继续订阅工作流后续执行事件。
+
+    返回 `text/event-stream`，可持续接收直到工作流结束。
+
+    ### Path
+    - `task_id` (string) 必填，workflow 运行 ID（`workflow_run_id`）
+
+    ### Query
+    - `user` (string) 必填，终端用户标识
+    - `include_state_snapshot` (bool) 可选，设为 `true` 时会先回放持久化状态快照，再继续实时事件
+    - `continue_on_pause` (bool) 可选，设为 `true` 时，流会在 `workflow_paused` 事件之间保持连接，直到 `workflow_finished` 才结束
+
+    ### Response
+    Server-Sent Events 流（`text/event-stream`）。
+    常见事件包括 `workflow_paused`、`node_started`、`node_finished`、`human_input_form_filled`、`human_input_form_timeout`、`workflow_finished`。
+    如果调用该接口时工作流已经结束，服务端会立即返回单个完成事件。
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflow/:task_id/events"
+      targetCode={`curl -N -X GET '${props.appDetail.api_base_url}/workflow/{workflow_run_id}/events?user=abc-123&continue_on_pause=true' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+    event: ping
+
+    data: {"event":"workflow_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","sys.timestamp":1776087863},"created_at":1776087863,"reason":"initial"}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"succeeded","error":null,"elapsed_time":0.00032,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"paused","error":null,"elapsed_time":0.007381,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_paused","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","paused_nodes":["1775717346519"],"outputs":{},"reasons":[{"form_id":"019d8716-0fde-75da-8207-1458ccde76e5","form_content":"this is form 1:\n{{#$output.some_field#}}\n","inputs":[{"type":"paragraph","output_variable_name":"some_field","default":{"type":"variable","selector":["sys","workflow_run_id"],"value":""}}],"actions":[{"id":"approve","title":"YES","button_style":"default"},{"id":"reject","title":"NO","button_style":"default"}],"display_in_ui":true,"node_id":"1775717346519","node_title":"Human Input","resolved_default_values":{"some_field":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"form_token":"n7hFG4ZDYdGcgZ5VDc7EGM","type":"human_input_required"}],"status":"paused","created_at":1776087863,"elapsed_time":0.0,"total_tokens":0,"total_steps":2}}
+
+    data: {"event":"workflow_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"created_at":1776087877,"reason":"resumption"}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"human_input_form_filled","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"node_id":"1775717346519","node_title":"Human Input","rendered_content":"this is form 1:\nfield 1 filled!\n","action_id":"approve","action_text":"YES"}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":{},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"some_field":"field 1 filled!","some_field_2":"from bruno with love","__action_id":"approve","__rendered_content":"this is form 1:\nfield 1 filled!\n"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.004431,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"text_chunk","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"text":"field 1 filled!","from_variable_selector":["1775717350710","output"]}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":{"some_field":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.264614,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":{"output":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.00003,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","status":"succeeded","outputs":{"output":"field 1 filled!"},"error":null,"elapsed_time":0.364935,"total_tokens":0,"total_steps":5,"created_by":{"id":"7932d34c-dcf4-4fba-b770-f2a9de88c0a0","user":"abc-123"},"created_at":1776087877,"finished_at":1776087877,"exceptions_count":0,"files":[]}}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 ---
 
 <Heading

@@ -6,6 +6,7 @@ which handles retrieval testing operations for datasets, including internal
 dataset retrieval and external knowledge base retrieval.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -30,7 +31,7 @@ class HitTestingTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
-        retrieval_model: dict | None = None,
+        retrieval_model: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         """
@@ -83,7 +84,7 @@ class HitTestingTestDataFactory:
     @staticmethod
     def create_document_mock(
         content: str = "Test document content",
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         """

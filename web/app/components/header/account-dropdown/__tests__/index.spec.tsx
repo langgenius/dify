@@ -1,16 +1,22 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { SystemFeatures } from '@/types/feature'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
+
+type DeepPartial<T> = T extends Array<infer U>
+  ? Array<U>
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -35,10 +41,6 @@ vi.mock('@/app/components/base/theme-switcher', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -79,15 +81,19 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
     },
   },
 }))
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-  get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
-  get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
-  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-  get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
-  IS_DEV: false,
-  IS_CE_EDITION: false,
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+    get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
+    get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
+    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+    get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
+    IS_DEV: false,
+    IS_CE_EDITION: false,
+  }
+})
 vi.mock('@/env', () => mockEnv)
 
 const baseAppContextValue: AppContextValue = {
@@ -136,20 +142,13 @@ describe('AccountDropdown', () => {
   const mockLogout = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
 
-  const renderWithRouter = (ui: React.ReactElement) => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+  const renderWithRouter = (
+    ui: React.ReactElement,
+    options: { systemFeatures?: DeepPartial<SystemFeatures> } = {},
+  ) => {
+    return renderWithSystemFeatures(ui, {
+      systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
     })
-
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>,
-    )
   }
 
   beforeEach(() => {
@@ -159,10 +158,6 @@ describe('AccountDropdown', () => {
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
-      const fullState = { systemFeatures: { branding: { enabled: false } }, setSystemFeatures: vi.fn() }
-      return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
-    })
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
@@ -316,14 +311,10 @@ describe('AccountDropdown', () => {
 
   describe('Branding and Environment', () => {
     it('should hide sections when branding is enabled', () => {
-      // Arrange
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
-        const fullState = { systemFeatures: { branding: { enabled: true } }, setSystemFeatures: vi.fn() }
-        return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
-      })
-
       // Act
-      renderWithRouter(<AppSelector />)
+      renderWithRouter(<AppSelector />, {
+        systemFeatures: { branding: { enabled: true } },
+      })
       fireEvent.click(screen.getByRole('button'))
 
       // Assert

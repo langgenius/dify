@@ -2,12 +2,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
 
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-const mockTrackEvent = vi.fn()
+const mockTrackCreateApp = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
 const toastMocks = vi.hoisted(() => ({
@@ -43,8 +44,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -82,7 +83,7 @@ vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (...args: unknown[]) => toastMocks.call(...args),
     {
@@ -136,10 +137,10 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('importFromDSL')).toBeInTheDocument()
+    expect(screen.getByText('importApp'))!.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
   })
 
@@ -158,9 +159,9 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('importFromDSLUrl'))
     })
-    expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
 
-    const closeTrigger = screen.getByText('importFromDSL').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
+    const closeTrigger = screen.getByText('importApp').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
@@ -172,7 +173,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
-      app_mode: 'chat',
+      app_mode: AppModeEnum.CHAT,
     })
 
     render(
@@ -196,10 +197,7 @@ describe('CreateFromDSLModal', () => {
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
     })
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_dsl', expect.objectContaining({
-      creation_method: 'dsl_url',
-      has_warnings: false,
-    }))
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.CHAT })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
@@ -212,7 +210,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-2',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
-      app_mode: 'chat',
+      app_mode: AppModeEnum.CHAT,
     })
 
     render(
@@ -224,7 +222,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
     await act(async () => {
@@ -247,7 +245,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
     const removeButton = screen.getByText('demo.yml').closest('.group')?.querySelector('button') as HTMLButtonElement
@@ -257,10 +255,11 @@ describe('CreateFromDSLModal', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('demo.yml')).not.toBeInTheDocument()
-      expect(getCreateButton()).toBeDisabled()
+      expect(getCreateButton())!.toBeDisabled()
     })
 
-    ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
+    const latestHandlerAfterRemove = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
+    latestHandlerAfterRemove?.handler()
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
@@ -275,7 +274,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
-      app_mode: 'workflow',
+      app_mode: AppModeEnum.WORKFLOW,
     })
 
     render(
@@ -296,15 +295,16 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    expect(screen.getAllByText('newApp.appCreateDSLErrorTitle')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('newApp.appCreateDSLErrorTitle')[0])!.toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
 
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.WORKFLOW })
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
@@ -332,7 +332,7 @@ describe('CreateFromDSLModal', () => {
         id: 'import-in-flight',
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
-        app_mode: 'chat',
+        app_mode: AppModeEnum.CHAT,
       })
     })
 
@@ -387,8 +387,9 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('apps-full')).toBeInTheDocument()
-    ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
+    expect(screen.getByText('apps-full'))!.toBeInTheDocument()
+    const latestPlanLimitHandler = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
+    latestPlanLimitHandler?.handler()
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
   })
 
@@ -462,12 +463,12 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
     expect(toastMocks.error).toHaveBeenCalledWith('newApp.appCreateFailed')
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
   })

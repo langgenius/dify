@@ -1,17 +1,10 @@
-import {
-  RiBold,
-  RiItalic,
-  RiLink,
-  RiListUnordered,
-  RiStrikethrough,
-} from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
 
@@ -32,15 +25,15 @@ const Command = ({
   const icon = useMemo(() => {
     switch (type) {
       case 'bold':
-        return <RiBold className={cn('h-4 w-4', selectedIsBold && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-bold h-4 w-4', selectedIsBold && 'text-primary-600')} />
       case 'italic':
-        return <RiItalic className={cn('h-4 w-4', selectedIsItalic && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-italic h-4 w-4', selectedIsItalic && 'text-primary-600')} />
       case 'strikethrough':
-        return <RiStrikethrough className={cn('h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-strikethrough h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')} />
       case 'link':
-        return <RiLink className={cn('h-4 w-4', selectedIsLink && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-link h-4 w-4', selectedIsLink && 'text-primary-600')} />
       case 'bullet':
-        return <RiListUnordered className={cn('h-4 w-4', selectedIsBullet && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-list-unordered h-4 w-4', selectedIsBullet && 'text-primary-600')} />
     }
   }, [type, selectedIsBold, selectedIsItalic, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 
@@ -60,22 +53,27 @@ const Command = ({
   }, [type, t])
 
   return (
-    <Tooltip
-      popupContent={tip}
-    >
-      <div
-        className={cn(
-          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent',
-          type === 'bold' && selectedIsBold && 'bg-state-accent-active',
-          type === 'italic' && selectedIsItalic && 'bg-state-accent-active',
-          type === 'strikethrough' && selectedIsStrikeThrough && 'bg-state-accent-active',
-          type === 'link' && selectedIsLink && 'bg-state-accent-active',
-          type === 'bullet' && selectedIsBullet && 'bg-state-accent-active',
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <button
+            type="button"
+            aria-label={tip}
+            className={cn(
+              'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent',
+              type === 'bold' && selectedIsBold && 'bg-state-accent-active',
+              type === 'italic' && selectedIsItalic && 'bg-state-accent-active',
+              type === 'strikethrough' && selectedIsStrikeThrough && 'bg-state-accent-active',
+              type === 'link' && selectedIsLink && 'bg-state-accent-active',
+              type === 'bullet' && selectedIsBullet && 'bg-state-accent-active',
+            )}
+            onClick={() => handleCommand(type)}
+          >
+            {icon}
+          </button>
         )}
-        onClick={() => handleCommand(type)}
-      >
-        {icon}
-      </div>
+      />
+      <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
   )
 }

@@ -1,3 +1,4 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { TOGGLE_LINK_COMMAND } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -5,9 +6,14 @@ import { escape } from 'es-toolkit/string'
 import { CLICK_COMMAND, COMMAND_PRIORITY_LOW } from 'lexical'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
+
+const getClickedLinkElement = (target: EventTarget | null) => {
+  return target instanceof HTMLElement
+    ? target.closest('.note-editor-theme_link') as HTMLElement | null
+    : null
+}
 
 export const useOpenLink = () => {
   const [editor] = useLexicalComposerContext()
@@ -30,11 +36,34 @@ export const useOpenLink = () => {
       })
     }), editor.registerCommand(CLICK_COMMAND, (payload) => {
       setTimeout(() => {
-        const { selectedLinkUrl, selectedIsLink, setLinkAnchorElement, setLinkOperatorShow } = noteEditorStore.getState()
+        const {
+          selectedLinkUrl,
+          selectedIsLink,
+          setLinkAnchorElement,
+          setLinkOperatorShow,
+          setSelectedLinkUrl,
+          setSelectedIsLink,
+        } = noteEditorStore.getState()
+        const clickedLinkElement = getClickedLinkElement(payload.target)
+        const clickedLinkUrl = clickedLinkElement?.getAttribute('href') || selectedLinkUrl
+
+        if (clickedLinkElement && clickedLinkUrl) {
+          if (payload.metaKey || payload.ctrlKey) {
+            window.open(clickedLinkUrl, '_blank')
+            return
+          }
+
+          setSelectedLinkUrl(clickedLinkUrl)
+          setSelectedIsLink(true)
+          setLinkAnchorElement(clickedLinkElement)
+          setLinkOperatorShow(true)
+          return
+        }
+
         if (selectedIsLink) {
           if ((payload.metaKey || payload.ctrlKey) && selectedLinkUrl) {
             window.open(selectedLinkUrl, '_blank')
-            return true
+            return
           }
           setLinkAnchorElement(true)
           if (selectedLinkUrl)
@@ -47,7 +76,7 @@ export const useOpenLink = () => {
           setLinkOperatorShow(false)
         }
       })
-      return false
+      return !!getClickedLinkElement(payload.target)
     }, COMMAND_PRIORITY_LOW))
   }, [editor, noteEditorStore])
 }

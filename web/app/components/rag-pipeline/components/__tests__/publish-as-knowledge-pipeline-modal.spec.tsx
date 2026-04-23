@@ -22,8 +22,8 @@ vi.mock('@/app/components/base/modal', () => ({
     isShow ? <div data-testid="modal">{children}</div> : null,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} disabled={disabled as boolean} {...props}>
       {children as string}
     </button>

@@ -280,7 +280,7 @@ class TestGetOauthClient:
 
         assert result == {"client_id": "id", "client_secret": "secret"}
 
-    @patch(f"{MODULE}.decrypt_system_oauth_params", return_value={"sys_key": "sys_val"})
+    @patch(f"{MODULE}.decrypt_system_params", return_value={"sys_key": "sys_val"})
     @patch(f"{MODULE}.PluginService")
     @patch(f"{MODULE}.create_provider_encrypter")
     @patch(f"{MODULE}.ToolManager")

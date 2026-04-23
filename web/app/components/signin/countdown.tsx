@@ -41,7 +41,7 @@ export default function Countdown({ onResend }: CountdownProps) {
         </span>
       )}
       {
-        time <= 0 && <span className="system-xs-medium cursor-pointer text-text-accent-secondary" onClick={resend}>{t('checkCode.resend', { ns: 'login' })}</span>
+        time <= 0 && <span className="cursor-pointer system-xs-medium text-text-accent-secondary" onClick={resend}>{t('checkCode.resend', { ns: 'login' })}</span>
       }
     </p>
   )

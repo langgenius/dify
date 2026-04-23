@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-import { cn } from '@/utils/classnames'
 
 type ISelectTypeItemProps = {
   type: InputVarType
@@ -33,7 +33,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
     <div
       className={cn(
         'flex h-[58px] flex-col items-center justify-center space-y-1 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
-        selected ? 'system-xs-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs' : ' system-xs-regular cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        selected ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-xs-medium shadow-xs' : 'cursor-pointer system-xs-regular hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
       )}
       onClick={onClick}
     >

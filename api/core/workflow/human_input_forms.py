@@ -12,20 +12,16 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.workflow.human_input_policy import HumanInputSurface, get_preferred_form_token
 from extensions.ext_database import db
 from models.human_input import HumanInputFormRecipient, RecipientType
-
-_FORM_TOKEN_PRIORITY = {
-    RecipientType.BACKSTAGE: 0,
-    RecipientType.CONSOLE: 1,
-    RecipientType.STANDALONE_WEB_APP: 2,
-}
 
 
 def load_form_tokens_by_form_id(
     form_ids: Sequence[str],
     *,
     session: Session | None = None,
+    surface: HumanInputSurface | None = None,
 ) -> dict[str, str]:
     """Load the preferred access token for each human input form."""
     unique_form_ids = list(dict.fromkeys(form_ids))
@@ -33,23 +29,43 @@ def load_form_tokens_by_form_id(
         return {}
 
     if session is not None:
-        return _load_form_tokens_by_form_id(session, unique_form_ids)
+        return _load_form_tokens_by_form_id(session, unique_form_ids, surface=surface)
 
     with Session(bind=db.engine, expire_on_commit=False) as new_session:
-        return _load_form_tokens_by_form_id(new_session, unique_form_ids)
+        return _load_form_tokens_by_form_id(new_session, unique_form_ids, surface=surface)
 
 
-def _load_form_tokens_by_form_id(session: Session, form_ids: Sequence[str]) -> dict[str, str]:
-    tokens_by_form_id: dict[str, tuple[int, str]] = {}
+def _load_form_tokens_by_form_id(
+    session: Session,
+    form_ids: Sequence[str],
+    *,
+    surface: HumanInputSurface | None = None,
+) -> dict[str, str]:
+    recipients_by_form_id: dict[str, list[tuple[RecipientType, str]]] = {}
     stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
     for recipient in session.scalars(stmt):
-        priority = _FORM_TOKEN_PRIORITY.get(recipient.recipient_type)
-        if priority is None or not recipient.access_token:
+        if not recipient.access_token:
             continue
+        recipients_by_form_id.setdefault(recipient.form_id, []).append(
+            (recipient.recipient_type, recipient.access_token)
+        )
 
-        candidate = (priority, recipient.access_token)
-        current = tokens_by_form_id.get(recipient.form_id)
-        if current is None or candidate[0] < current[0]:
-            tokens_by_form_id[recipient.form_id] = candidate
+    tokens_by_form_id: dict[str, str] = {}
+    for form_id, recipients in recipients_by_form_id.items():
+        token = _get_surface_form_token(recipients, surface=surface)
+        if token is not None:
+            tokens_by_form_id[form_id] = token
+    return tokens_by_form_id
 
-    return {form_id: token for form_id, (_, token) in tokens_by_form_id.items()}
+
+def _get_surface_form_token(
+    recipients: Sequence[tuple[RecipientType, str]],
+    *,
+    surface: HumanInputSurface | None,
+) -> str | None:
+    if surface == HumanInputSurface.SERVICE_API:
+        for recipient_type, token in recipients:
+            if recipient_type == RecipientType.STANDALONE_WEB_APP and token:
+                return token
+
+    return get_preferred_form_token(recipients)

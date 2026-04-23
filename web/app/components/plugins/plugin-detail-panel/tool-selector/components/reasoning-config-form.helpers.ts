@@ -7,13 +7,13 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
-export type ReasoningConfigInputValue = {
+type ReasoningConfigInputValue = {
   type?: VarKindType
   value?: unknown
   [key: string]: unknown
 } | null
 
-export type ReasoningConfigInput = {
+type ReasoningConfigInput = {
   value: ReasoningConfigInputValue
   auto?: 0 | 1
 }
@@ -112,7 +112,7 @@ export const updateVariableTypeValue = (
   defaultValue: unknown,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: newType,
       value: newType === VarKindType.variable ? '' : defaultValue,
     }
@@ -126,7 +126,7 @@ export const updateReasoningValue = (
   newValue: unknown,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: getVarKindType(type),
       value: newValue,
     }
@@ -139,8 +139,8 @@ export const mergeReasoningValue = (
   newValue: Record<string, unknown>,
 ) => {
   return produce(value, (draft) => {
-    const currentValue = draft[variable].value as Record<string, unknown> | undefined
-    draft[variable].value = {
+    const currentValue = draft[variable]!.value as Record<string, unknown> | undefined
+    draft[variable]!.value = {
       ...currentValue,
       ...newValue,
     }
@@ -153,7 +153,7 @@ export const updateVariableSelectorValue = (
   newValue: ValueSelector | string,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: VarKindType.variable,
       value: newValue,
     }

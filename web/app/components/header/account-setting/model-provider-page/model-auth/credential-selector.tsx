@@ -58,9 +58,9 @@ const CredentialSelector = ({
             selectedCredential && (
               <div className="flex items-center">
                 {
-                  !selectedCredential.addNewCredential && <Indicator className="ml-1 mr-2 shrink-0" />
+                  !selectedCredential.addNewCredential && <Indicator className="mr-2 ml-1 shrink-0" />
                 }
-                <div className="truncate text-components-input-text-filled system-sm-regular" title={selectedCredential.credential_name}>{selectedCredential.credential_name}</div>
+                <div className="truncate system-sm-regular text-components-input-text-filled" title={selectedCredential.credential_name}>{selectedCredential.credential_name}</div>
                 {
                   selectedCredential.from_enterprise && (
                     <Badge className="shrink-0">Enterprise</Badge>
@@ -71,7 +71,7 @@ const CredentialSelector = ({
           }
           {
             !selectedCredential && (
-              <div className="grow truncate text-components-input-text-placeholder system-sm-regular">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
+              <div className="grow truncate system-sm-regular text-components-input-text-placeholder">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
             )
           }
           <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
@@ -98,7 +98,7 @@ const CredentialSelector = ({
           {
             !notAllowAddNewCredential && (
               <div
-                className="flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 text-text-accent-light-mode-only system-xs-medium"
+                className="flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 system-xs-medium text-text-accent-light-mode-only"
                 onClick={handleAddNewCredential}
               >
                 <RiAddLine className="mr-1 h-4 w-4" />

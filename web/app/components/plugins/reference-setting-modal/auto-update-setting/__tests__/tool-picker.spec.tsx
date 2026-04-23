@@ -4,8 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
 
-let portalOpen = false
-
 const mockInstalledPluginList = vi.hoisted(() => ({
   data: {
     plugins: [] as PluginDetail[],
@@ -21,33 +19,51 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading">loading</div>,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
+vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => (
+    <PopoverContext.Provider value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}>
+      {children}
+    </PopoverContext.Provider>
+  )
+
+  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    return (
+      <div onClick={() => setOpen(!open)}>
+        {render}
+      </div>
+    )
+  }
+
+  const PopoverContent = ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => {
+    const { open } = React.useContext(PopoverContext)
+    return open ? <div data-testid="popover-content" className={className}>{children}</div> : null
+  }
+
   return {
-    PortalToFollowElem: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children: React.ReactNode
-    }) => {
-      portalOpen = open
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: () => void
-    }) => <button data-testid="trigger" onClick={onClick}>{children}</button>,
-    PortalToFollowElemContent: ({
-      children,
-      className,
-    }: {
-      children: React.ReactNode
-      className?: string
-    }) => portalOpen ? <div data-testid="portal-content" className={className}>{children}</div> : null,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
   }
 })
 
@@ -118,7 +134,6 @@ const createPlugin = (
 describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
     mockInstalledPluginList.data = {
       plugins: [],
     }
@@ -137,7 +152,7 @@ describe('ToolPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('trigger'))
 
     expect(onShowChange).toHaveBeenCalledWith(true)
   })

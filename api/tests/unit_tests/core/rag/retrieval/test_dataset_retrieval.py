@@ -1,13 +1,12 @@
 import threading
 from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelFeature
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -34,6 +33,8 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 
@@ -45,7 +46,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -2021,7 +2022,7 @@ def create_mock_document_methods(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -2416,12 +2417,11 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                             mock_document.data_source_type = "upload_file"
                             mock_document.doc_metadata = {}
 
-                            mock_session.query.return_value.filter.return_value.all.return_value = [
-                                mock_dataset_from_db
-                            ]
-                            mock_session.query.return_value.filter.return_value.all.__iter__ = lambda self: iter(
-                                [mock_dataset_from_db, mock_document]
-                            )
+                            mock_datasets = MagicMock()
+                            mock_datasets.all.return_value = [mock_dataset_from_db]
+                            mock_documents = MagicMock()
+                            mock_documents.all.return_value = [mock_document]
+                            mock_session.scalars.side_effect = [mock_datasets, mock_documents]
 
                             # Act
                             result = dataset_retrieval.knowledge_retrieval(request)
@@ -4091,7 +4091,7 @@ def _doc(
     dataset_id: str = "dataset-1",
     document_id: str = "document-1",
     doc_id: str = "node-1",
-    extra: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> Document:
     metadata = {
         "score": score,

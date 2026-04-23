@@ -100,8 +100,8 @@ describe('SubscriptionList', () => {
     it('should render list view by default', () => {
       render(<SubscriptionList />)
 
-      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/)).toBeInTheDocument()
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/))!.toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should render loading state when subscriptions are loading', () => {
@@ -112,7 +112,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
       expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
     })
 
@@ -121,7 +121,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList pluginDetail={pluginDetail} />)
 
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should render without list entries when subscriptions are empty', () => {
@@ -141,7 +141,7 @@ describe('SubscriptionList', () => {
     it('should render selector view when mode is selector', () => {
       render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
 
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should visually distinguish selected subscription from unselected', () => {
@@ -182,7 +182,7 @@ describe('SubscriptionList', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
-      const [selectedSubscription, callback] = onSelect.mock.calls[0]
+      const [selectedSubscription, callback] = (onSelect.mock.calls[0] ?? []) as [any, any]
       expect(selectedSubscription).toMatchObject({ id: 'sub-1', name: 'Subscription One' })
       expect(typeof callback).toBe('function')
 
@@ -212,7 +212,7 @@ describe('SubscriptionList', () => {
       fireEvent.click(deleteButton)
 
       expect(onSelect).not.toHaveBeenCalled()
-      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/))!.toBeInTheDocument()
     })
   })
 
@@ -222,7 +222,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList />)
 
-      expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+      expect(await screen.findByText('Something went wrong'))!.toBeInTheDocument()
     })
   })
 })

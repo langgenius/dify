@@ -75,7 +75,7 @@ export type AppTokenCostsResponse = {
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-export type ApiKeyItemResponse = {
+type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string
@@ -103,6 +103,20 @@ export type AppVoicesListResponse = [{
   name: string
   value: string
 }]
+
+export type WorkflowOnlineUser = {
+  user_id?: string
+  username?: string
+  avatar?: string | null
+  sid?: string
+}
+
+export type WorkflowOnlineUsersResponse = {
+  data: Record<string, WorkflowOnlineUser[]> | Array<{
+    app_id: string
+    users: WorkflowOnlineUser[]
+  }>
+}
 
 export type TracingStatus = {
   enabled: boolean

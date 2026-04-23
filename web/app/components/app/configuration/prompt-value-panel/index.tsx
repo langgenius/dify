@@ -2,6 +2,9 @@
 import type { FC } from 'react'
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -12,17 +15,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 export type IPromptValuePanelProps = {
   appType: AppModeEnum
@@ -117,11 +117,11 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
           </div>
           {!userInputFieldCollapse && (
-            <div className="system-xs-regular mt-1 text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
-          <div className="px-4 pb-4 pt-3">
+          <div className="px-4 pt-3 pb-4">
             {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
               <div
                 key={key}
@@ -129,7 +129,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               >
                 <div>
                   {type !== 'checkbox' && (
-                    <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                       <div className="truncate">{name || key}</div>
                       {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
@@ -156,14 +156,26 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[key] as string}
-                        onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                        items={(options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                        bgClassName="bg-gray-50"
+                        value={inputs[key] ? String(inputs[key]) : null}
                         disabled={readonly}
-                      />
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputValueChange(key, nextValue)
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-gray-50">
+                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent popupClassName="w-(--anchor-width)">
+                          {(options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {type === 'number' && (
                       <Input

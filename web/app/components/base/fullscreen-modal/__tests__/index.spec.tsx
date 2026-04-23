@@ -50,7 +50,7 @@ describe('FullScreenModal Component', () => {
       await screen.findByRole('dialog')
       const element = document.querySelector('.custom-wrapper-class')
       expect(element).toBeInTheDocument()
-      expect(element).toHaveClass('modal-dialog')
+      expect(element).toHaveClass('relative', 'z-50')
     })
 
     it('should apply className to the inner panel', async () => {
@@ -154,7 +154,7 @@ describe('FullScreenModal Component', () => {
         </FullScreenModal>,
       )
 
-      const dialog = document.querySelector('.modal-dialog')
+      const dialog = document.querySelector('.relative.z-50')
       if (dialog) {
         await user.click(dialog)
         expect(onClose).toHaveBeenCalled()

@@ -8,14 +8,15 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment
-
-from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
@@ -108,8 +109,8 @@ def tool_node(monkeypatch) -> ToolNode:
     runtime = _StubToolRuntime()
 
     node = ToolNode(
-        id="node-instance",
-        config=config,
+        node_id="node-instance",
+        config=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
@@ -118,13 +119,13 @@ def tool_node(monkeypatch) -> ToolNode:
     return node
 
 
-def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
+def _collect_events(generator: Generator) -> list[Any]:
     events: list[Any] = []
     try:
         while True:
             events.append(next(generator))
-    except StopIteration as stop:
-        return events, stop.value
+    except StopIteration:
+        return events
 
 
 def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
@@ -135,12 +136,15 @@ def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[li
         node_id=tool_node._node_id,
         tool_runtime=ToolRuntimeHandle(raw=object()),
     )
-    return _collect_events(generator)
+    events = _collect_events(generator)
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert completed_events
+    return events, completed_events[-1].node_run_result.llm_usage
 
 
 def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
     file_obj = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="file-id",
         filename="demo.pdf",
@@ -195,7 +199,7 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
 
 def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
     file_obj = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="file-id",
         filename="demo.pdf",

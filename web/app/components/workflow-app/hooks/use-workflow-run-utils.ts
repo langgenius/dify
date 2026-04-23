@@ -2,15 +2,15 @@ import type { Features as FeaturesData } from '@/app/components/base/features/ty
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
-import { toast } from '@/app/components/base/ui/toast'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { AppModeEnum } from '@/types/app'
 
-export type HandleRunMode = TriggerType
+type HandleRunMode = TriggerType
 export type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string

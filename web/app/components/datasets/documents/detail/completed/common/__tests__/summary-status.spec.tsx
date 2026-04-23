@@ -9,9 +9,6 @@ vi.mock('@/app/components/base/badge', () => ({
 vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
   SearchLinesSparkle: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="sparkle-icon" {...props} />,
 }))
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
 
 describe('SummaryStatus', () => {
   it('should render badge for SUMMARIZING status', () => {

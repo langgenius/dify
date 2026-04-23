@@ -14,7 +14,7 @@ const mockHandleNodeSelect = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockRestoreWorkflow = vi.fn()
+const mockRequestRestore = vi.fn()
 const mockNotify = vi.fn()
 const mockRunAndHistory = vi.fn()
 const mockViewHistory = vi.fn()
@@ -32,6 +32,9 @@ vi.mock('../../hooks', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
+  }),
+  useLeaderRestore: () => ({
+    requestRestore: mockRequestRestore,
   }),
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: vi.fn(),
@@ -55,12 +58,9 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
-  useRestoreWorkflow: () => ({
-    mutateAsync: mockRestoreWorkflow,
-  }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -75,6 +75,10 @@ vi.mock('../editing-title', () => ({
 
 vi.mock('../scroll-to-selected-node-button', () => ({
   default: () => <div>scroll-button</div>,
+}))
+
+vi.mock('../online-users', () => ({
+  default: () => <div data-testid="online-users" />,
 }))
 
 vi.mock('../env-button', () => ({
@@ -162,7 +166,13 @@ describe('Header layout components', () => {
     mockNodesReadOnly = false
     mockTheme = 'light'
     mockUseNodes.mockReturnValue([])
-    mockRestoreWorkflow.mockResolvedValue(undefined)
+    mockRequestRestore.mockImplementation((_payload: unknown, callbacks?: {
+      onSuccess?: () => void
+      onSettled?: () => void
+    }) => {
+      callbacks?.onSuccess?.()
+      callbacks?.onSettled?.()
+    })
   })
 
   describe('HeaderInNormal', () => {
@@ -267,7 +277,7 @@ describe('Header layout components', () => {
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(mockRequestRestore).toHaveBeenCalledTimes(1)
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()

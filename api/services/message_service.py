@@ -1,6 +1,7 @@
+import logging
 from collections.abc import Sequence
+from typing import cast
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -14,10 +15,20 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, EndUser, Message, MessageFeedback
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+    EndUser,
+    Message,
+    MessageFeedback,
+    SuggestedQuestionsAfterAnswerConfig,
+)
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -32,6 +43,7 @@ from services.errors.message import (
 from services.workflow_service import WorkflowService
 
 _app_model_config_adapter: TypeAdapter[AppModelConfigDict] = TypeAdapter(AppModelConfigDict)
+logger = logging.getLogger(__name__)
 
 
 def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
@@ -252,6 +264,7 @@ class MessageService:
         )
 
         model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
+        suggested_questions_after_answer_config: SuggestedQuestionsAfterAnswerConfig = {"enabled": False}
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
@@ -271,9 +284,11 @@ class MessageService:
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=app_model.tenant_id, model_type=ModelType.LLM
-            )
+            suggested_questions_after_answer = workflow.features_dict.get("suggested_questions_after_answer")
+            if isinstance(suggested_questions_after_answer, dict):
+                suggested_questions_after_answer_config = cast(
+                    SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
+                )
         else:
             if not conversation.override_model_configs:
                 app_model_config = db.session.scalar(
@@ -293,16 +308,14 @@ class MessageService:
             if not app_model_config:
                 raise ValueError("did not find app model config")
 
-            suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
-            if suggested_questions_after_answer.get("enabled", False) is False:
+            suggested_questions_after_answer_config = app_model_config.suggested_questions_after_answer_dict
+            if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-            model_instance = model_manager.get_model_instance(
-                tenant_id=app_model.tenant_id,
-                provider=app_model_config.model_dict["provider"],
-                model_type=ModelType.LLM,
-                model=app_model_config.model_dict["name"],
-            )
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=app_model.tenant_id,
+            model_type=ModelType.LLM,
+        )
 
         # get memory of conversation (read-only)
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
@@ -312,9 +325,17 @@ class MessageService:
             message_limit=3,
         )
 
+        instruction_prompt = suggested_questions_after_answer_config.get("prompt")
+        if not isinstance(instruction_prompt, str) or not instruction_prompt.strip():
+            instruction_prompt = None
+
+        configured_model = suggested_questions_after_answer_config.get("model")
         with measure_time() as timer:
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
-                tenant_id=app_model.tenant_id, histories=histories
+                tenant_id=app_model.tenant_id,
+                histories=histories,
+                instruction_prompt=instruction_prompt,
+                model_config=configured_model,
             )
             questions: list[str] = list(questions_sequence)
 
