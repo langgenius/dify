@@ -13,18 +13,24 @@ type OAuthPendingRedirect = {
 const getCurrentUnixTimestamp = () => Math.floor(Date.now() / 1000)
 
 function removeOAuthPendingRedirect() {
-  try { localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY) } catch {}
+  try {
+    localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY)
+  }
+  catch {}
 }
 
 function getOAuthPendingRedirect(): string | null {
   try {
     const raw = localStorage.getItem(OAUTH_AUTHORIZE_PENDING_KEY)
-    if (!raw) return null
+    if (!raw)
+      return null
     removeOAuthPendingRedirect()
     const item: OAuthPendingRedirect = JSON.parse(raw)
-    if (!item.value || typeof item.expiry !== 'number') return null
+    if (!item.value || typeof item.expiry !== 'number')
+      return null
     return getCurrentUnixTimestamp() > item.expiry ? null : item.value
-  } catch {
+  }
+  catch {
     removeOAuthPendingRedirect()
     return null
   }
@@ -37,7 +43,8 @@ export function setOAuthPendingRedirect(url: string, ttlSeconds: number = 300) {
       expiry: getCurrentUnixTimestamp() + ttlSeconds,
     }
     localStorage.setItem(OAUTH_AUTHORIZE_PENDING_KEY, JSON.stringify(item))
-  } catch {}
+  }
+  catch {}
 }
 
 export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams) => {
@@ -47,7 +54,8 @@ export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams)
       try {
         removeOAuthPendingRedirect()
         return decodeURIComponent(redirectUrl)
-      } catch {
+      }
+      catch {
         removeOAuthPendingRedirect()
         return redirectUrl
       }
