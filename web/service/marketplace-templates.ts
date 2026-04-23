@@ -1,9 +1,6 @@
-import type { MarketplaceTemplate } from '@/types/marketplace-template'
 import { useQuery } from '@tanstack/react-query'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { marketplaceQuery } from './client'
-
-export type { MarketplaceTemplate }
 
 export const useMarketplaceTemplateDetail = (templateId: string | null) => {
   return useQuery({

@@ -1,4 +1,4 @@
-import type { ReadonlyURLSearchParams } from 'next/navigation'
+import type { ReadonlyURLSearchParams } from '@/next/navigation'
 
 const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending_redirect'
 const REDIRECT_URL_KEY = 'redirect_url'

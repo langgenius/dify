@@ -17,7 +17,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import SuggestedAction from './suggested-action'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -37,6 +36,7 @@ import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
+import SuggestedAction from './suggested-action'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -223,14 +223,15 @@ const AppPublisher = ({
   }, [appDetail, setAppDetail])
 
   const handlePublishToMarketplace = useCallback(async () => {
-    if (!appDetail?.id || publishingToMarketplace) return
+    if (!appDetail?.id || publishingToMarketplace)
+      return
     setPublishingToMarketplace(true)
     try {
       const res = await publishToCreatorsPlatform({ appID: appDetail.id })
       if (res.redirect_url)
         window.open(res.redirect_url, '_blank')
     }
-    catch (error: any) {
+    catch {
       toast.error(t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
     }
     finally {
