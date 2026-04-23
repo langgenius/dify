@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-from typing import Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import func, select
 
@@ -135,6 +135,55 @@ class BaseAgentRunner(AppRunner):
 
         return app_generate_entity
 
+    @staticmethod
+    def _ensure_array_items(schema: dict[str, Any]) -> dict[str, Any]:
+        """
+        Recursively ensure every ``"type": "array"`` node in a JSON-Schema
+        dict carries an ``"items"`` field.  OpenAI's function-calling API
+        rejects array schemas that lack ``items``; this adds a safe default
+        (``{"type": "string"}``) where it is missing.
+
+        The input dict is never mutated – a shallow copy is returned when
+        changes are needed.
+        """
+        if not isinstance(schema, dict):
+            return schema
+
+        changed = False
+        result = schema
+
+        # If this node is an array without items, add a default.
+        if schema.get("type") == "array" and "items" not in schema:
+            result = {**schema, "items": {"type": "string"}}
+            changed = True
+
+        # Recurse into "items" (could itself be an array).
+        if "items" in result and isinstance(result["items"], dict):
+            fixed_items = BaseAgentRunner._ensure_array_items(result["items"])
+            if fixed_items is not result["items"]:
+                if not changed:
+                    result = {**result}
+                result["items"] = fixed_items
+
+        # Recurse into "properties" (object schemas may contain arrays).
+        if "properties" in result and isinstance(result["properties"], dict):
+            new_props: dict[str, Any] = {}
+            props_changed = False
+            for key, value in result["properties"].items():
+                if isinstance(value, dict):
+                    fixed = BaseAgentRunner._ensure_array_items(value)
+                    new_props[key] = fixed
+                    if fixed is not value:
+                        props_changed = True
+                else:
+                    new_props[key] = value
+            if props_changed:
+                if result is schema:
+                    result = {**result}
+                result["properties"] = new_props
+
+        return result
+
     def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
         """
         convert tool to prompt message tool
@@ -173,14 +222,15 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            message_tool.parameters["properties"][parameter.name] = (
-                {
+            if parameter.input_schema is None:
+                message_tool.parameters["properties"][parameter.name] = {
                     "type": parameter_type,
                     "description": parameter.llm_description or "",
                 }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
+            else:
+                message_tool.parameters["properties"][parameter.name] = self._ensure_array_items(
+                    parameter.input_schema
+                )
 
             if len(enum) > 0:
                 message_tool.parameters["properties"][parameter.name]["enum"] = enum
@@ -270,14 +320,15 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            prompt_tool.parameters["properties"][parameter.name] = (
-                {
+            if parameter.input_schema is None:
+                prompt_tool.parameters["properties"][parameter.name] = {
                     "type": parameter_type,
                     "description": parameter.llm_description or "",
                 }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
+            else:
+                prompt_tool.parameters["properties"][parameter.name] = self._ensure_array_items(
+                    parameter.input_schema
+                )
 
             if len(enum) > 0:
                 prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
