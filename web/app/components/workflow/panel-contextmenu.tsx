@@ -137,7 +137,7 @@ const PanelContextmenu = () => {
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
-          {t('common.importDSL', { ns: 'workflow' })}
+          {t('importApp', { ns: 'app' })}
         </div>
       </div>
     </div>

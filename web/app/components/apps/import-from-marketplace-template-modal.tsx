@@ -1,0 +1,155 @@
+'use client'
+
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiCloseLine } from '@remixicon/react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Modal from '@/app/components/base/modal'
+import {
+  fetchMarketplaceTemplateDSL,
+  useMarketplaceTemplateDetail,
+} from '@/service/marketplace-templates'
+
+type ImportFromMarketplaceTemplateModalProps = {
+  templateId: string
+  onClose: () => void
+  onConfirm: (dslContent: string) => void
+}
+
+const ImportFromMarketplaceTemplateModal = ({
+  templateId,
+  onClose,
+  onConfirm,
+}: ImportFromMarketplaceTemplateModalProps) => {
+  const { t } = useTranslation()
+  const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
+  const template = data?.data
+  const [importing, setImporting] = useState(false)
+  const isImportingRef = useRef(false)
+
+  const handleConfirm = useCallback(async () => {
+    if (isImportingRef.current)
+      return
+    isImportingRef.current = true
+    setImporting(true)
+    try {
+      const dsl = await fetchMarketplaceTemplateDSL(templateId)
+      onConfirm(dsl)
+    }
+    catch {
+      toast.error(t('marketplace.template.importFailed', { ns: 'app' }))
+    }
+    finally {
+      setImporting(false)
+      isImportingRef.current = false
+    }
+  }, [templateId, onConfirm, t])
+
+  return (
+    <Modal
+      className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
+      isShow
+      onClose={onClose}
+    >
+      <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
+        {t('marketplace.template.modalTitle', { ns: 'app' })}
+        <div
+          className="flex h-8 w-8 cursor-pointer items-center"
+          onClick={onClose}
+        >
+          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+        </div>
+      </div>
+
+      <div className="px-6 py-4">
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="system-md-regular text-text-tertiary">Loading...</div>
+          </div>
+        )}
+
+        {isError && (
+          <div className="flex items-center justify-center py-8">
+            <div className="system-md-regular text-text-destructive">
+              {t('marketplace.template.fetchFailed', { ns: 'app' })}
+            </div>
+          </div>
+        )}
+
+        {template && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
+                style={{ background: template.icon_background }}
+              >
+                {template.icon}
+              </div>
+              <div className="flex flex-col">
+                <div className="system-md-semibold text-text-primary">{template.name}</div>
+                <div className="system-xs-regular text-text-tertiary">
+                  {t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher}
+                </div>
+              </div>
+            </div>
+
+            {template.description && (
+              <div className="system-sm-regular text-text-secondary">
+                {template.description}
+              </div>
+            )}
+
+            {template.overview && (
+              <div className="flex flex-col gap-1">
+                <div className="system-xs-medium-uppercase text-text-tertiary">
+                  {t('marketplace.template.overview', { ns: 'app' })}
+                </div>
+                <div className="system-sm-regular text-text-secondary">
+                  {template.overview}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              {template.categories.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="system-xs-medium text-text-tertiary">
+                    {t('marketplace.template.categories', { ns: 'app' })}:
+                  </span>
+                  <span className="system-xs-regular text-text-secondary">
+                    {template.categories.join(', ')}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <span className="system-xs-medium text-text-tertiary">
+                  {t('marketplace.template.usageCount', { ns: 'app' })}:
+                </span>
+                <span className="system-xs-regular text-text-secondary">
+                  {template.usage_count}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end px-6 py-5">
+        <Button className="mr-2" onClick={onClose}>
+          {t('newApp.Cancel', { ns: 'app' })}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={isLoading || isError || importing}
+          loading={importing}
+          onClick={handleConfirm}
+        >
+          {t('marketplace.template.importConfirm', { ns: 'app' })}
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
+export default ImportFromMarketplaceTemplateModal
