@@ -51,11 +51,19 @@ vi.mock('../invited-modal', () => ({
     </div>
   ),
 }))
-vi.mock('../operation', () => ({
-  default: () => <div>Member Operation</div>,
+vi.mock('../role-badges', () => ({
+  default: ({ roles }: { roles: string[] }) => (
+    <div data-testid="role-badges">{roles.join(',')}</div>
+  ),
 }))
-vi.mock('../operation/transfer-ownership', () => ({
-  default: ({ onOperate }: { onOperate: () => void }) => <button onClick={onOperate}>Transfer ownership</button>,
+vi.mock('../member-menu', () => ({
+  default: ({ member, onTransferOwnership, canTransferOwnership }: { member: Member, onTransferOwnership?: () => void, canTransferOwnership?: boolean }) => (
+    <div data-testid="member-menu">
+      {canTransferOwnership && member.role === 'owner' && onTransferOwnership && (
+        <button onClick={onTransferOwnership}>Transfer ownership</button>
+      )}
+    </div>
+  ),
 }))
 vi.mock('../transfer-ownership-modal', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
