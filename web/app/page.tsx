@@ -8,7 +8,8 @@ const Home = async ({ searchParams }: HomePageProps) => {
   const resolvedSearchParams = await searchParams
   const urlSearchParams = new URLSearchParams()
   Object.entries(resolvedSearchParams).forEach(([key, value]) => {
-    if (value === undefined) return
+    if (value === undefined)
+      return
     if (Array.isArray(value)) {
       value.forEach(item => urlSearchParams.append(key, item))
       return
