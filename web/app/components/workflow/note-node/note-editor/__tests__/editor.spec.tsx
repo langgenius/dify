@@ -1,4 +1,7 @@
 import type { EditorState, LexicalEditor } from 'lexical'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { $createLinkNode } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
@@ -7,6 +10,10 @@ import { NoteEditorContextProvider } from '../context'
 import Editor from '../editor'
 
 const emptyValue = JSON.stringify({ root: { children: [] } })
+const themeCss = readFileSync(
+  resolve(process.cwd(), 'app/components/workflow/note-node/note-editor/theme/theme.css'),
+  'utf8',
+)
 
 const EditorProbe = ({
   onReady,
@@ -51,6 +58,35 @@ describe('Editor', () => {
 
       expect(screen.getByText('Type note')).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should render linked text with distinct link styling', async () => {
+      let editor: LexicalEditor | null = null
+
+      renderEditor({}, instance => (editor = instance))
+
+      await waitFor(() => {
+        expect(editor).not.toBeNull()
+      })
+
+      act(() => {
+        editor!.update(() => {
+          const root = $getRoot()
+          root.clear()
+          const paragraph = $createParagraphNode()
+          const link = $createLinkNode('https://example.com/docs')
+          link.append($createTextNode('Linked docs'))
+          paragraph.append(link)
+          root.append(paragraph)
+        }, { discrete: true })
+      })
+
+      const link = await screen.findByRole('link', { name: 'Linked docs' })
+
+      expect(link).toHaveClass('note-editor-theme_link')
+      expect(themeCss).toContain('.note-editor-theme_link')
+      expect(themeCss).toContain('font-weight: 500;')
+      expect(themeCss).toContain('text-decoration: underline;')
     })
   })
 
