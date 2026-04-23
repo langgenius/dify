@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, g
@@ -16,8 +16,7 @@ def app():
     return flask_app
 
 
-def _mock_wraps_db(mock_db):
-    ...
+def _mock_wraps_db(mock_db): ...
 
 
 def _build_feature_flags():

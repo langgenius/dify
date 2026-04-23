@@ -24,8 +24,7 @@ def app():
     return app
 
 
-def _mock_wraps_db(mock_db):
-    ...
+def _mock_wraps_db(mock_db): ...
 
 
 def _build_account(email: str, account_id: str = "acc", tenant: object | None = None) -> Account:
