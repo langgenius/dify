@@ -1926,7 +1926,7 @@ class DocumentService:
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type and knowledge_config.data_source:
-            dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
+            dataset.data_source_type = DataSourceType(knowledge_config.data_source.info_list.data_source_type)
 
         if not dataset.indexing_technique:
             if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
