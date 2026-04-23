@@ -87,18 +87,12 @@ const ImportFromMarketplaceTemplateModal = ({
                 {template.icon}
               </div>
               <div className="flex flex-col">
-                <div className="system-md-semibold text-text-primary">{template.name}</div>
+                <div className="system-md-semibold text-text-primary">{template.template_name}</div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher}
+                  {t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher_unique_handle}
                 </div>
               </div>
             </div>
-
-            {template.description && (
-              <div className="system-sm-regular text-text-secondary">
-                {template.description}
-              </div>
-            )}
 
             {template.overview && (
               <div className="flex flex-col gap-1">
