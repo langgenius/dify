@@ -16,14 +16,15 @@ class RedisPubSubConfig(BaseSettings):
     Connection-topology resolution (see ``build_pubsub_spec`` in
     ``redis_connection_spec.py``):
 
-    1. ``PUBSUB_REDIS_MODE`` set → structured mode (supports Sentinel)
-    2. ``PUBSUB_REDIS_URL`` set → legacy URL-based mode (backward compat,
-       standalone / cluster only)
-    3. Otherwise → inherit the main Redis spec
+    1. ``PUBSUB_REDIS_MODE`` set → build a dedicated spec from the
+       structured ``PUBSUB_REDIS_*`` fields (all three topologies,
+       including independent Sentinel).
+    2. Otherwise → inherit the main Redis spec so the pub/sub client
+       reuses the main client object and its failover-aware handle.
     """
 
     # ------------------------------------------------------------------
-    # Structured mode selector (preferred since refactor)
+    # Structured mode selector
     # ------------------------------------------------------------------
 
     PUBSUB_REDIS_MODE: Literal["standalone", "sentinel", "cluster"] | None = Field(
@@ -36,35 +37,6 @@ class RedisPubSubConfig(BaseSettings):
             "Also accepts ENV: EVENT_BUS_REDIS_MODE."
         ),
         default=None,
-    )
-
-    # ------------------------------------------------------------------
-    # Legacy URL (backward-compat)
-    # ------------------------------------------------------------------
-    # Retained so existing .env files keep working. Cannot encode Sentinel
-    # topology — for that, use PUBSUB_REDIS_MODE=sentinel plus the
-    # PUBSUB_REDIS_SENTINELS / PUBSUB_REDIS_SENTINEL_SERVICE_NAME fields.
-
-    PUBSUB_REDIS_URL: str | None = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_URL", "PUBSUB_REDIS_URL"),
-        description=(
-            "Redis connection URL for streaming events between API and celery worker. "
-            "Backward-compatibility field; prefer PUBSUB_REDIS_MODE + structured fields "
-            "for new deployments, especially Sentinel topologies which cannot be "
-            "expressed in a single URL. Also accepts ENV: EVENT_BUS_REDIS_URL."
-        ),
-        default=None,
-    )
-
-    PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
-        description=(
-            "Backward-compatibility flag for the legacy PUBSUB_REDIS_URL path: set True "
-            "when the URL's netloc contains multiple cluster nodes. For new deployments "
-            "use PUBSUB_REDIS_MODE=cluster instead. "
-            "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
-        ),
-        default=False,
     )
 
     # ------------------------------------------------------------------
