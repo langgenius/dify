@@ -180,9 +180,16 @@ def test_db_session_timezone_override_can_disable_app_level_timezone_injection(m
     }
 
 
-def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+def test_pubsub_defaults_inherit_main_spec(monkeypatch: pytest.MonkeyPatch):
+    """With no pub/sub override set, the pub/sub spec must equal the
+    main spec — this is the property that lets ``ext_redis.init_app``
+    reuse the main client object (critical for Sentinel failover)."""
+    from configs.middleware.cache.redis_connection_spec import (
+        build_main_redis_spec,
+        build_pubsub_spec,
+    )
 
+    os.environ.clear()
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
     monkeypatch.setenv("DB_USERNAME", "postgres")
@@ -199,13 +206,25 @@ def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
 
     config = DifyConfig()
 
-    assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
+    main_spec = build_main_redis_spec(config)
+    pubsub_spec = build_pubsub_spec(main_spec, config)
+
+    assert pubsub_spec == main_spec
+    assert main_spec.mode == "standalone"
+    assert main_spec.host == "redis.example.com"
+    assert main_spec.password == "pass@word"
+    assert main_spec.use_ssl is True
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
 
 
 def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
-    os.environ.clear()
+    """Legacy ``PUBSUB_REDIS_URL`` keeps working (backward compat)."""
+    from configs.middleware.cache.redis_connection_spec import (
+        build_main_redis_spec,
+        build_pubsub_spec,
+    )
 
+    os.environ.clear()
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
     monkeypatch.setenv("DB_USERNAME", "postgres")
@@ -216,13 +235,60 @@ def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
 
     config = DifyConfig()
+    main_spec = build_main_redis_spec(config)
+    pubsub_spec = build_pubsub_spec(main_spec, config)
 
-    assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
+    assert pubsub_spec.mode == "standalone"
+    assert pubsub_spec.host == "pubsub-host"
+    assert pubsub_spec.port == 6381
+    assert pubsub_spec.db == 5
 
 
-def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
+def test_pubsub_explicit_sentinel_mode(monkeypatch: pytest.MonkeyPatch):
+    """The headline capability unlocked by the refactor: pub/sub can
+    declare its own Sentinel topology independently of the main
+    Redis client — which the old URL-only contract could not express."""
+    from configs.middleware.cache.redis_connection_spec import (
+        build_main_redis_spec,
+        build_pubsub_spec,
+    )
+
     os.environ.clear()
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    # Main Redis is a simple standalone
+    monkeypatch.setenv("REDIS_HOST", "main-redis")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    # Pub/sub goes through an independent Sentinel cluster
+    monkeypatch.setenv("PUBSUB_REDIS_MODE", "sentinel")
+    monkeypatch.setenv("PUBSUB_REDIS_SENTINELS", "ps1:26379,ps2:26379")
+    monkeypatch.setenv("PUBSUB_REDIS_SENTINEL_SERVICE_NAME", "pubsub-master")
 
+    config = DifyConfig()
+    main_spec = build_main_redis_spec(config)
+    pubsub_spec = build_pubsub_spec(main_spec, config)
+
+    assert main_spec.mode == "standalone"
+    assert pubsub_spec.mode == "sentinel"
+    assert pubsub_spec.sentinel_nodes == (("ps1", 26379), ("ps2", 26379))
+    assert pubsub_spec.sentinel_service_name == "pubsub-master"
+    # And they must not compare equal — ``ext_redis.init_app`` uses the
+    # inequality to decide "build a dedicated client" vs "reuse main".
+    assert pubsub_spec != main_spec
+
+
+def test_build_main_spec_fails_when_standalone_host_missing(monkeypatch: pytest.MonkeyPatch):
+    """Standalone mode with empty ``REDIS_HOST`` is a misconfiguration
+    and must fail fast at spec construction (not later when the client
+    is actually used)."""
+    from configs.middleware.cache.redis_connection_spec import build_main_redis_spec
+
+    os.environ.clear()
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
     monkeypatch.setenv("DB_USERNAME", "postgres")
@@ -232,8 +298,8 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("REDIS_HOST", "")
 
-    with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
-        _ = DifyConfig().normalized_pubsub_redis_url
+    with pytest.raises(ValueError, match="host"):
+        build_main_redis_spec(DifyConfig())
 
 
 def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
