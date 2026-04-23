@@ -193,7 +193,7 @@ export const removeTracingConfig = ({ appId, provider }: { appId: string, provid
   return del<CommonResponse>(`/apps/${appId}/trace-config?tracing_provider=${provider}`)
 }
 
-export type PublishToCreatorsPlatformResponse = {
+type PublishToCreatorsPlatformResponse = {
   redirect_url: string
 }
 
