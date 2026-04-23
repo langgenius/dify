@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -15,12 +16,17 @@ from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 class DifyCredentialsProvider:
     tenant_id: str
     provider_manager: ProviderManager
+    credentials_cache: dict[tuple[str, str], dict[str, Any]]
 
     def __init__(self, tenant_id: str, provider_manager: ProviderManager | None = None) -> None:
         self.tenant_id = tenant_id
         self.provider_manager = provider_manager or ProviderManager()
+        self.credentials_cache = {}
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
+        if (provider_name, model_name) in self.credentials_cache:
+            return deepcopy(self.credentials_cache[(provider_name, model_name)])
+
         provider_configurations = self.provider_manager.get_configurations(self.tenant_id)
         provider_configuration = provider_configurations.get(provider_name)
         if not provider_configuration:
@@ -35,6 +41,7 @@ class DifyCredentialsProvider:
         if credentials is None:
             raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
+        self.credentials_cache[(provider_name, model_name)] = deepcopy(credentials)
         return credentials
 
 
@@ -44,7 +51,7 @@ class DifyModelFactory:
 
     def __init__(self, tenant_id: str, model_manager: ModelManager | None = None) -> None:
         self.tenant_id = tenant_id
-        self.model_manager = model_manager or ModelManager()
+        self.model_manager = model_manager or ModelManager(enable_credentials_cache=True)
 
     def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance:
         return self.model_manager.get_model_instance(

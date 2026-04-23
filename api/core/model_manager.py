@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from copy import deepcopy
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
 from configs import dify_config
@@ -33,11 +34,13 @@ class ModelInstance:
     Model instance class
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str, credentials: dict | None = None):
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
-        self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        if credentials is None:
+            credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        self.credentials = credentials
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
         self.stop: Sequence[str] = ()
@@ -477,8 +480,10 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self):
+    def __init__(self, enable_credentials_cache: bool = False):
         self._provider_manager = ProviderManager()
+        self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
+        self._enable_credentials_cache = enable_credentials_cache
 
     def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
         """
@@ -496,7 +501,19 @@ class ModelManager:
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
 
-        return ModelInstance(provider_model_bundle, model)
+        cred_cache_key = (tenant_id, provider, model_type.value, model)
+
+        if cred_cache_key in self._credentials_cache:
+            return ModelInstance(
+                provider_model_bundle, 
+                model, 
+                deepcopy(self._credentials_cache[cred_cache_key]),
+            )
+
+        ret = ModelInstance(provider_model_bundle, model)
+        if self._enable_credentials_cache:
+            self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
+        return ret
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
