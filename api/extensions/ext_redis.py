@@ -434,10 +434,10 @@ def init_app(app: DifyApp):
     # When the pub/sub spec equals the main spec (the default
     # "inherit" case) we reuse the main client object — essential
     # for Sentinel, where the ``master_for`` handle already
-    # provides failover that a second client construction couldn't
-    # inherit through a URL. When pub/sub declares its own topology
-    # (via PUBSUB_REDIS_MODE or a legacy PUBSUB_REDIS_URL) we build
-    # an independent client through the same factory dispatch.
+    # provides failover that a second client construction could
+    # not reproduce. When pub/sub declares its own topology via
+    # ``PUBSUB_REDIS_MODE`` we build an independent client through
+    # the same factory dispatch.
     global _pubsub_redis_client
     pubsub_spec = build_pubsub_spec(main_spec, dify_config)
     if pubsub_spec == main_spec:
