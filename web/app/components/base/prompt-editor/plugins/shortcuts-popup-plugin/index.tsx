@@ -273,6 +273,9 @@ export default function ShortcutsPopupPlugin({
       /* v8 ignore next 2 -- outside-click listener can race with ref cleanup during close/unmount; null-ref path is a safety guard. @preserve */
       if (!portalRef.current)
         return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('[data-base-ui-portal]'))
+        return
       if (!portalRef.current.contains(e.target as Node))
         closePortal()
     }
