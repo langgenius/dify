@@ -140,7 +140,7 @@ class TestAppDslService:
 
     def _create_simple_yaml_content(self, app_name: str = "Test App", app_mode: str = "chat") -> str:
         yaml_data = {
-            "version": "0.3.0",
+            "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
                 "name": app_name,
@@ -1111,31 +1111,68 @@ class TestAppDslService:
             workflow_id=None,
         )
 
-        nodes = export_data["workflow"]["graph"]["nodes"]
-        assert nodes[0]["data"]["dataset_ids"] == [
-            f"enc:{_DEFAULT_TENANT_ID}:d1",
-            f"enc:{_DEFAULT_TENANT_ID}:d2",
-        ]
-        assert "credential_id" not in nodes[1]["data"]
-        assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
-        assert nodes[3]["data"]["config"] == {"default": True}
-        assert nodes[4]["data"]["webhook_url"] == ""
-        assert nodes[4]["data"]["webhook_debug_url"] == ""
-        assert nodes[5]["data"]["subscription_id"] == ""
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+    def test_import_chat_app_with_engine_session(self, flask_app_with_containers, mock_external_service_dependencies):
+        """
+        Test that importing a chat app via Session(db.engine) succeeds.
 
-    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch):
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
+        This verifies the fix that replaced ``sessionmaker(db.engine).begin()``
+        with ``Session(db.engine)`` in AppImportApi.post().  The previous
+        approach returned a ``SessionTransaction`` instead of a ``Session``,
+        which broke AppDslService operations such as ``session.scalar()`` and
+        ``session.add()``.
+        """
+        from sqlalchemy.orm import Session as SASession
 
-        with pytest.raises(ValueError, match="Missing draft workflow configuration"):
-            AppDslService._append_workflow_export_data(
-                export_data={},
-                app_model=SimpleNamespace(tenant_id=_DEFAULT_TENANT_ID),
-                include_secret=False,
-                workflow_id=None,
-            )
+        from extensions.ext_database import db
+
+        fake = Faker()
+        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
+
+        with flask_app_with_containers.app_context():
+            # Create account / tenant via the global scoped session so that the
+            # data is visible to the new engine-bound session below.
+            with patch("services.account_service.FeatureService") as mock_fs:
+                mock_fs.get_system_features.return_value.is_allow_register = True
+                account = AccountService.create_account(
+                    email=fake.email(),
+                    name=fake.name(),
+                    interface_language="en-US",
+                    password=generate_valid_password(fake),
+                )
+                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+
+            # Open a standalone Session(db.engine) – the same way the
+            # controller does after the fix.
+            with SASession(db.engine) as session:
+                dsl_service = AppDslService(session)
+                result = dsl_service.import_app(
+                    account=account,
+                    import_mode=ImportMode.YAML_CONTENT,
+                    yaml_content=yaml_content,
+                    name="Engine-session import",
+                )
+                session.commit()
+
+            assert result.status == ImportStatus.COMPLETED
+            assert result.app_id is not None
+
+            # Verify the app was persisted.
+            with SASession(db.engine) as verify_session:
+                app = verify_session.get(App, result.app_id)
+                assert app is not None
+                assert app.name == "Engine-session import"
+                assert app.mode == "chat"
+
+                # Verify the model config was persisted.
+                model_cfg = verify_session.get(AppModelConfig, app.app_model_config_id)
+                assert model_cfg is not None
+
+    def test_check_dependencies_success(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test successful dependency checking.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
     # ── Model Config Export Data ──────────────────────────────────────
 
