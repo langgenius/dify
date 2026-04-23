@@ -961,9 +961,6 @@
     }
   },
   "web/app/components/base/chat/chat/citation/index.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
