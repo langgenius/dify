@@ -6,6 +6,7 @@ import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
@@ -94,16 +95,28 @@ const ImportFromMarketplaceTemplateModal = ({
         {template && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
-                style={{ background: template.icon_background }}
-              >
-                {template.icon}
-              </div>
+              {template.icon_file_key
+                ? (
+                  <img
+                    src={`${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`}
+                    alt={template.template_name}
+                    className="h-10 w-10 rounded-lg object-cover"
+                  />
+                )
+                : (
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
+                    style={{ background: template.icon_background || '#F3F4F6' }}
+                  >
+                    {template.icon || '📄'}
+                  </div>
+                )}
               <div className="flex flex-col">
                 <div className="system-md-semibold text-text-primary">{template.template_name}</div>
-                <div className="system-xs-regular text-text-tertiary">
-                  {t('marketplace.template.publishedBy', { ns: 'app' })} {template.publisher_unique_handle}
+                <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
+                  <span>{template.publisher_unique_handle}</span>
+                  <span>·</span>
+                  <span>{t('marketplace.template.usageCount', { ns: 'app' })} {template.usage_count}</span>
                 </div>
               </div>
             </div>
@@ -119,19 +132,18 @@ const ImportFromMarketplaceTemplateModal = ({
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
-              {template.categories.map(cat => (
-                <span
-                  key={cat}
-                  className="inline-flex items-center rounded-full bg-components-label-gray px-2.5 py-1 system-sm-regular text-text-secondary"
-                >
-                  {translateCategory(cat)}
-                </span>
-              ))}
-              <span className="inline-flex items-center rounded-full bg-components-label-gray px-2.5 py-1 system-sm-regular text-text-secondary">
-                {t('marketplace.template.usageCount', { ns: 'app' })}: {template.usage_count}
-              </span>
-            </div>
+            {template.categories.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {template.categories.map(cat => (
+                  <span
+                    key={cat}
+                    className="inline-flex items-center rounded-full bg-components-label-gray px-2.5 py-1 system-sm-regular text-text-secondary"
+                  >
+                    {translateCategory(cat)}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
