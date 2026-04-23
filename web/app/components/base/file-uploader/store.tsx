@@ -4,6 +4,7 @@ import type {
 import {
   createContext,
   useContext,
+  useEffect,
   useRef,
 } from 'react'
 import {
@@ -58,6 +59,23 @@ export const FileContextProvider = ({
 
   if (!storeRef.current)
     storeRef.current = createFileStore(value, onChange)
+
+  // 当外部传入的value发生变化时，同步更新store中的files
+  useEffect(() => {
+    if (storeRef.current && value) {
+      // 检查当前存储的文件和传入的值是否不同
+      const currentFiles = storeRef.current.getState().files
+      const isDifferent = currentFiles.length !== value.length
+        || currentFiles.some((file, index) => file.id !== value[index]?.id)
+
+      if (isDifferent)
+        storeRef.current.getState().setFiles(value)
+    }
+    else if (storeRef.current && !value) {
+      // 如果value为空，清空store中的文件
+      storeRef.current.getState().setFiles([])
+    }
+  }, [value])
 
   return (
     <FileContext.Provider value={storeRef.current}>
