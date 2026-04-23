@@ -78,7 +78,7 @@ export default function AccountSetting({
           key: ACCOUNT_SETTING_TAB.PERMISSIONS,
           name: t('settings.permissions', { ns: 'common' }),
           icon: <span className={cn('i-ri-user-settings-line', iconClassName)} />,
-          activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-user-settings-fill', iconClassName)} />,
         },
         {
           key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
