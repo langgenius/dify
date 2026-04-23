@@ -253,7 +253,7 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
           {tempPayload.option_source.type === 'variable'
             ? (
-                <div className="relative rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
+                <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
                   <VarReferencePicker
                     nodeId={nodeId}
                     value={tempPayload.option_source.selector}

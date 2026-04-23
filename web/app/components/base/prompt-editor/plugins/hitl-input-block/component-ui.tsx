@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import {
   createDefaultParagraphFormInput,
   isFileFormInput,
-  isFileListFormInput,
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
@@ -128,11 +127,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
-    const fileTypes = resolvedFormInput.allowed_file_types.join(', ')
-    if (isFileListFormInput(resolvedFormInput))
-      return [fileTypes, resolvedFormInput.max_upload_count ? `${t(`${i18nPrefix}.maxUploads`, { ns: 'workflow' })}: ${resolvedFormInput.max_upload_count}` : null].filter(Boolean).join(' · ') || inputTypeLabel
-
-    return fileTypes || inputTypeLabel
+    return inputTypeLabel
   }, [inputTypeLabel, paragraphDefault?.value, resolvedFormInput, t])
 
   return (

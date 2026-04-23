@@ -148,8 +148,8 @@ describe('HITLInputComponentUI', () => {
       expect(summary.compareDocumentPosition(typeLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
-    it('should render file-list summary with max uploads', () => {
-      const { getByText } = renderComponent({
+    it('should render file-list placeholder instead of selected file details', () => {
+      const { getAllByText, queryByText } = renderComponent({
         formInput: {
           type: InputVarType.multiFiles,
           output_variable_name: 'customer_name',
@@ -160,8 +160,24 @@ describe('HITLInputComponentUI', () => {
         } satisfies FormInputItem,
       })
 
-      expect(getByText(/document/)).toBeInTheDocument()
-      expect(getByText(/4/)).toBeInTheDocument()
+      expect(getAllByText('appDebug.variableConfig.multi-files')).toHaveLength(2)
+      expect(queryByText(/document/)).not.toBeInTheDocument()
+      expect(queryByText(/4/)).not.toBeInTheDocument()
+    })
+
+    it('should render single-file placeholder instead of selected file details', () => {
+      const { getAllByText, queryByText } = renderComponent({
+        formInput: {
+          type: InputVarType.singleFile,
+          output_variable_name: 'customer_name',
+          allowed_file_extensions: ['.pdf'],
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_upload_methods: [TransferMethod.local_file],
+        } satisfies FormInputItem,
+      })
+
+      expect(getAllByText('appDebug.variableConfig.single-file')).toHaveLength(2)
+      expect(queryByText(/document/)).not.toBeInTheDocument()
     })
   })
 
