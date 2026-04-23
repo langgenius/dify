@@ -116,9 +116,9 @@ export const NodeTargetHandle = memo(({
               triggerClassName={open => `
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
-                group-hover:opacity-100
-                ${data.selected && 'opacity-100'}
-                ${open && 'opacity-100'}
+                group-hover:flex!
+                ${data.selected && 'flex!'}
+                ${open && 'flex!'}
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -235,9 +235,9 @@ export const NodeSourceHandle = memo(({
             triggerClassName={open => `
               hidden absolute top-0 left-0 pointer-events-none
               ${nodeSelectorClassName}
-              group-hover:opacity-100
-              ${data.selected && 'opacity-100'}
-              ${open && 'opacity-100'}
+              group-hover:flex!
+              ${data.selected && 'flex!'}
+              ${open && 'flex!'}
             `}
             availableBlocksTypes={availableNextBlocks}
           />

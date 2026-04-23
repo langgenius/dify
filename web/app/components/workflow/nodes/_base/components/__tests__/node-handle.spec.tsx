@@ -193,9 +193,7 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
-      // Trigger stays pointer-events-none so it never steals mousedown from
-      // the underlying React Flow handle (drag-to-connect must keep working).
+      expect(addNodeButton).toHaveClass('flex!')
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(handle)
@@ -237,7 +235,7 @@ describe('node-handle', () => {
         selected: true,
       })
 
-      expect(getAddNodeButton()).toHaveClass('opacity-100')
+      expect(getAddNodeButton()).toHaveClass('flex!')
       expect(getAddNodeButton()).toHaveClass('pointer-events-none')
     })
 
@@ -268,7 +266,7 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveClass('flex!')
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(getSelectNodeButton())
@@ -297,7 +295,7 @@ describe('node-handle', () => {
       const addNodeButton = getAddNodeButton()
 
       expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveClass('flex!')
       expect(addNodeButton).toHaveClass('pointer-events-none')
     })
 
@@ -334,7 +332,7 @@ describe('node-handle', () => {
 
       const addNodeButton = getAddNodeButton()
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveClass('flex!')
       expect(addNodeButton).toHaveClass('pointer-events-none')
       expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
