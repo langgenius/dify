@@ -64,7 +64,7 @@ export const useUpdateAccessMode = () => {
 
 // Component only adds UI behavior.
 updateAccessMode({ appId, mode }, {
-  onSuccess: () => Toast.notify({ type: 'success', message: '...' }),
+  onSuccess: () => toast.success('...'),
 })
 
 // Avoid putting invalidation knowledge in the component.
@@ -114,10 +114,7 @@ try {
   router.push(`/orders/${order.id}`)
 }
 catch (error) {
-  Toast.notify({
-    type: 'error',
-    message: error instanceof Error ? error.message : 'Unknown error',
-  })
+  toast.error(error instanceof Error ? error.message : 'Unknown error')
 }
 ```
 

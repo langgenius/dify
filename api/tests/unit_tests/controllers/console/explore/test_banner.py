@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import controllers.console.explore.banner as banner_module
+from models.enums import BannerStatus
 
 
 def unwrap(func):
@@ -20,16 +21,11 @@ class TestBannerApi:
         banner.content = {"text": "hello"}
         banner.link = "https://example.com"
         banner.sort = 1
-        banner.status = "enabled"
+        banner.status = BannerStatus.ENABLED
         banner.created_at = datetime(2024, 1, 1)
 
-        query = MagicMock()
-        query.where.return_value = query
-        query.order_by.return_value = query
-        query.all.return_value = [banner]
-
         session = MagicMock()
-        session.query.return_value = query
+        session.scalars.return_value.all.return_value = [banner]
 
         with app.test_request_context("/?language=fr-FR"), patch.object(banner_module.db, "session", session):
             result = method(api)
@@ -54,19 +50,17 @@ class TestBannerApi:
         banner.content = {"text": "fallback"}
         banner.link = None
         banner.sort = 1
-        banner.status = "enabled"
+        banner.status = BannerStatus.ENABLED
         banner.created_at = None
 
-        query = MagicMock()
-        query.where.return_value = query
-        query.order_by.return_value = query
-        query.all.side_effect = [
+        scalars_result = MagicMock()
+        scalars_result.all.side_effect = [
             [],
             [banner],
         ]
 
         session = MagicMock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with app.test_request_context("/?language=es-ES"), patch.object(banner_module.db, "session", session):
             result = method(api)
@@ -86,13 +80,8 @@ class TestBannerApi:
         api = banner_module.BannerApi()
         method = unwrap(api.get)
 
-        query = MagicMock()
-        query.where.return_value = query
-        query.order_by.return_value = query
-        query.all.return_value = []
-
         session = MagicMock()
-        session.query.return_value = query
+        session.scalars.return_value.all.return_value = []
 
         with app.test_request_context("/"), patch.object(banner_module.db, "session", session):
             result = method(api)

@@ -3,13 +3,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from core.model_manager import ModelManager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.enums import SegmentType
 
 
 class DatasetDocumentStore:
@@ -62,17 +64,15 @@ class DatasetDocumentStore:
         return output
 
     def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
-        max_position = (
-            db.session.query(func.max(DocumentSegment.position))
-            .where(DocumentSegment.document_id == self._document_id)
-            .scalar()
+        max_position = db.session.scalar(
+            select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == self._document_id)
         )
 
         if max_position is None:
             max_position = 0
         embedding_model = None
-        if self._dataset.indexing_technique == "high_quality":
-            model_manager = ModelManager()
+        if self._dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
                 provider=self._dataset.embedding_model_provider,
@@ -128,6 +128,7 @@ class DatasetDocumentStore:
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
+                            assert self._document_id
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
@@ -138,7 +139,7 @@ class DatasetDocumentStore:
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
                                 word_count=len(child.page_content),
-                                type="automatic",
+                                type=SegmentType.AUTOMATIC,
                                 created_by=self._user_id,
                             )
                             db.session.add(child_segment)
@@ -154,14 +155,17 @@ class DatasetDocumentStore:
                 )
                 if save_child and doc.children:
                     # delete the existing child chunks
-                    db.session.query(ChildChunk).where(
-                        ChildChunk.tenant_id == self._dataset.tenant_id,
-                        ChildChunk.dataset_id == self._dataset.id,
-                        ChildChunk.document_id == self._document_id,
-                        ChildChunk.segment_id == segment_document.id,
-                    ).delete()
+                    db.session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.tenant_id == self._dataset.tenant_id,
+                            ChildChunk.dataset_id == self._dataset.id,
+                            ChildChunk.document_id == self._document_id,
+                            ChildChunk.segment_id == segment_document.id,
+                        )
+                    )
                     # add new child chunks
                     for position, child in enumerate(doc.children, start=1):
+                        assert self._document_id
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -172,7 +176,7 @@ class DatasetDocumentStore:
                             index_node_hash=child.metadata.get("doc_hash"),
                             content=child.page_content,
                             word_count=len(child.page_content),
-                            type="automatic",
+                            type=SegmentType.AUTOMATIC,
                             created_by=self._user_id,
                         )
                         db.session.add(child_segment)
@@ -243,7 +247,7 @@ class DatasetDocumentStore:
         return document_segment
 
     def add_multimodel_documents_binding(self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None):
-        if multimodel_documents:
+        if multimodel_documents and self._document_id is not None:
             for multimodel_document in multimodel_documents:
                 binding = SegmentAttachmentBinding(
                     tenant_id=self._dataset.tenant_id,

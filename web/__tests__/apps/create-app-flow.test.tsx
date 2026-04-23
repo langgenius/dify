@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 /**
  * Integration test: Create App Flow
  *
@@ -9,11 +10,12 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import List from '@/app/components/apps/list'
 import { AccessMode } from '@/models/access-control'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -35,7 +37,7 @@ const mockRouterPush = vi.fn()
 const mockRouterReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
@@ -49,13 +51,6 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    return selector ? selector(state) : state
-  },
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -78,6 +73,10 @@ vi.mock('@/app/components/base/tag-management/store', () => ({
 
 vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/service/apps', () => ({
+  fetchWorkflowOnlineUsers: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/service/use-apps', () => ({
@@ -117,7 +116,7 @@ vi.mock('ahooks', async () => {
 })
 
 // Mock dynamically loaded modals with test stubs
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
@@ -218,7 +217,16 @@ const createPage = (apps: App[]): AppListResponse => ({
 })
 
 const renderList = () => {
-  return renderWithNuqs(<List controlRefreshList={0} />)
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: mockSystemFeatures,
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper()
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
+  )
+  return { ...render(<List controlRefreshList={0} />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
 describe('Create App Flow', () => {

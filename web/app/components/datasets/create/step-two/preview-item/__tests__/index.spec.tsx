@@ -597,7 +597,7 @@ describe('PreviewItem', () => {
 
   // Styling Tests - Verify correct CSS classes applied
   describe('Styling', () => {
-    it('should have rounded container with gray background', () => {
+    it('should have rounded-sm container with gray background', () => {
       const props = createDefaultProps()
 
       const { container } = render(<PreviewItem {...props} />)

@@ -18,10 +18,10 @@ def fake_request(args: dict):
 
 
 class DummyToolFile:
-    def __init__(self, mimetype="text/plain", size=10, name="tool.txt"):
-        self.mimetype = mimetype
+    def __init__(self, mime_type="text/plain", size=10, filename="tool.txt"):
+        self.mime_type = mime_type
         self.size = size
-        self.name = name
+        self.filename = filename
 
 
 @pytest.fixture(autouse=True)
@@ -87,8 +87,8 @@ class TestToolFileApi:
 
         stream = iter([b"data"])
         tool_file = DummyToolFile(
-            mimetype="application/pdf",
-            name="doc.pdf",
+            mime_type="application/pdf",
+            filename="doc.pdf",
         )
 
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.return_value = (

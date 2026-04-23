@@ -16,22 +16,6 @@ export enum Theme {
   system = 'system',
 }
 
-export enum ProviderType {
-  openai = 'openai',
-  anthropic = 'anthropic',
-  azure_openai = 'azure_openai',
-  replicate = 'replicate',
-  huggingface_hub = 'huggingface_hub',
-  minimax = 'minimax',
-  tongyi = 'tongyi',
-  spark = 'spark',
-}
-
-export enum AppType {
-  chat = 'chat',
-  completion = 'completion',
-}
-
 export enum ModelModeType {
   chat = 'chat',
   completion = 'completion',
@@ -51,12 +35,6 @@ export enum RETRIEVE_METHOD {
   keywordSearch = 'keyword_search',
 }
 
-export type VariableInput = {
-  key: string
-  name: string
-  value: string
-}
-
 /**
  * App modes
  */
@@ -72,8 +50,7 @@ export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEn
 /**
  * Variable type
  */
-export const VariableTypes = ['string', 'number', 'select'] as const
-export type VariableType = typeof VariableTypes[number]
+type VariableType = 'string' | 'number' | 'select'
 
 /**
  * Prompt variable parameter
@@ -91,7 +68,7 @@ export type PromptVariable = {
   max_length?: number
 }
 
-export type TextTypeFormItem = {
+type TextTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -100,7 +77,7 @@ export type TextTypeFormItem = {
   hide: boolean
 }
 
-export type SelectTypeFormItem = {
+type SelectTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -222,6 +199,8 @@ export type ModelConfig = {
   }
   suggested_questions_after_answer: {
     enabled: boolean
+    model?: Model
+    prompt?: string
   }
   speech_to_text: {
     enabled: boolean
@@ -386,20 +365,6 @@ export type App = {
 
 export type AppSSO = {
   enable_sso: boolean
-}
-
-/**
- * App Template
- */
-export type AppTemplate = {
-  /** Name */
-  name: string
-  /** Description */
-  description: string
-  /** Mode */
-  mode: AppModeEnum
-  /** Model */
-  model_config: ModelConfig
 }
 
 export enum Resolution {

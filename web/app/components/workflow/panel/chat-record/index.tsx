@@ -128,7 +128,7 @@ const ChatRecord = () => {
               showPromptLog
               switchSibling={switchSibling}
               noSpacing
-              chatAnswerContainerInner="!pr-2"
+              chatAnswerContainerInner="pr-2!"
             />
           </div>
         </>

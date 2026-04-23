@@ -1,9 +1,10 @@
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import Toast from '../../base/toast'
 import { PermissionType } from '../types'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
@@ -29,10 +30,7 @@ const useReferenceSetting = () => {
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
     onSuccess: () => {
       invalidateReferenceSettings()
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
@@ -48,7 +46,10 @@ const useReferenceSetting = () => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const { canManagement } = useReferenceSetting()
 
   const canInstallPluginFromMarketplace = useMemo(() => {

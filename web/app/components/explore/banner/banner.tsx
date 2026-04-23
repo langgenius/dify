@@ -1,7 +1,10 @@
 import type { FC } from 'react'
+import type { Banner as BannerType } from '@/models/app'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Carousel } from '@/app/components/base/carousel'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { Carousel, useCarousel } from '@/app/components/base/carousel'
+import { useSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
@@ -20,12 +23,53 @@ const LoadingState: FC = () => (
   </div>
 )
 
+type BannerImpressionTrackerProps = {
+  banners: BannerType[]
+  accountId?: string
+  language: string
+  trackedBannerIdsRef: React.MutableRefObject<Set<string>>
+}
+
+const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
+  banners,
+  accountId,
+  language,
+  trackedBannerIdsRef,
+}) => {
+  const { selectedIndex } = useCarousel()
+
+  useEffect(() => {
+    if (!accountId)
+      return
+
+    const currentBanner = banners[selectedIndex]
+    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id))
+      return
+
+    trackEvent('explore_banner_impression', {
+      banner_id: currentBanner.id,
+      title: currentBanner.content.title,
+      sort: selectedIndex + 1,
+      link: currentBanner.link,
+      page: 'explore',
+      language,
+      account_id: accountId,
+      event_time: Date.now(),
+    })
+    trackedBannerIdsRef.current.add(currentBanner.id)
+  }, [accountId, banners, language, selectedIndex, trackedBannerIdsRef])
+
+  return null
+}
+
 const Banner: FC = () => {
   const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
+  const accountId = useSelector(s => s.userProfile.id)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const trackedBannerIdsRef = useRef<Set<string>>(new Set())
 
   const enabledBanners = useMemo(
     () => banners?.filter(banner => banner.status === 'enabled') ?? [],
@@ -76,13 +120,22 @@ const Banner: FC = () => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      <BannerImpressionTracker
+        banners={enabledBanners}
+        accountId={accountId}
+        language={locale}
+        trackedBannerIdsRef={trackedBannerIdsRef}
+      />
       <Carousel.Content>
-        {enabledBanners.map(banner => (
+        {enabledBanners.map((banner, index) => (
           <Carousel.Item key={banner.id}>
             <BannerItem
               banner={banner}
               autoplayDelay={AUTOPLAY_DELAY}
               isPaused={isPaused}
+              sort={index + 1}
+              language={locale}
+              accountId={accountId}
             />
           </Carousel.Item>
         ))}

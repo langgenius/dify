@@ -2,20 +2,19 @@
 import type { FC } from 'react'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Button from '@/app/components/base/button'
-import AddButton from '@/app/components/base/button/add-button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Select from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
@@ -54,10 +53,7 @@ const AddExtractParameter: FC<Props> = ({
       if (key === 'name') {
         const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
         if (!isValid) {
-          Toast.notify({
-            type: 'error',
-            message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-          })
+          toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
           return
         }
       }
@@ -106,10 +102,7 @@ const AddExtractParameter: FC<Props> = ({
       errMessage = t(`${errorI18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' }) })
 
     if (errMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errMessage,
-      })
+      toast.error(errMessage)
       return false
     }
     return true
@@ -126,14 +119,16 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <AddButton className="mx-1" onClick={showAddModal} />
+        <div className="mx-1 cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={showAddModal} data-testid="add-button">
+          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+        </div>
       )}
       {isShowModal && (
         <Modal
           title={t(`${i18nPrefix}.addExtractParameter`, { ns: 'workflow' })}
           isShow
           onClose={hideModal}
-          className="!w-[400px] !max-w-[400px] !p-4"
+          className="w-[400px]! max-w-[400px]! p-4!"
         >
           <div>
             <div className="space-y-2">
@@ -146,18 +141,21 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.type`, { ns: 'workflow' })}>
                 <Select
-                  defaultValue={param.type}
-                  allowSearch={false}
-                  // bgClassName='bg-gray-100'
-                  onSelect={v => handleParamChange('type')(v.value)}
-                  optionClassName="capitalize"
-                  items={
-                    TYPES.map(type => ({
-                      value: type,
-                      name: type,
-                    }))
-                  }
-                />
+                  value={param.type}
+                  onValueChange={value => value && handleParamChange('type')(value)}
+                >
+                  <SelectTrigger className="w-full capitalize">
+                    {param.type}
+                  </SelectTrigger>
+                  <SelectContent popupClassName="w-(--anchor-width)">
+                    {TYPES.map(type => (
+                      <SelectItem key={type} value={type} className="capitalize">
+                        <SelectItemText className="capitalize">{type}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               {param.type === ParamType.select && (
                 <Field title={t('variableConfig.options', { ns: 'appDebug' })}>
@@ -173,14 +171,14 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}>
                 <>
-                  <div className="mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
-                  <Switch size="lg" value={param.required ?? false} onChange={handleParamChange('required')} />
+                  <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
+                  <Switch size="lg" checked={param.required ?? false} onCheckedChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>
             <div className="mt-4 flex justify-end space-x-2">
-              <Button className="!w-[95px]" onClick={hideModal}>{t('operation.cancel', { ns: 'common' })}</Button>
-              <Button className="!w-[95px]" variant="primary" onClick={handleSave}>{isAdd ? t('operation.add', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</Button>
+              <Button className="w-[95px]!" onClick={hideModal}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button className="w-[95px]!" variant="primary" onClick={handleSave}>{isAdd ? t('operation.add', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</Button>
             </div>
           </div>
         </Modal>

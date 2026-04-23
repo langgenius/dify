@@ -184,8 +184,8 @@ describe('useDocLink', () => {
       vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/api-reference/application/get-application-basic-information')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション情報/アプリケーションの基本情報を取得`)
+      const url = result.current('/api-reference/applications/get-app-info')
+      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション設定/アプリケーションの基本情報を取得`)
     })
 
     it('should not translate API reference path for English locale', () => {

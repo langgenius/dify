@@ -1,15 +1,12 @@
-import type { EdgeChange, ReactFlowProps } from 'reactflow'
 import type { Edge, Node } from '../types'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
 import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
+import { ControlMode } from '../types'
 import { renderWorkflowComponent } from './workflow-test-env'
-
-const reactFlowState = vi.hoisted(() => ({
-  lastProps: null as ReactFlowProps | null,
-}))
 
 type WorkflowUpdateEvent = {
   type: string
@@ -21,6 +18,36 @@ type WorkflowUpdateEvent = {
 
 const eventEmitterState = vi.hoisted(() => ({
   subscription: null as null | ((payload: WorkflowUpdateEvent) => void),
+}))
+
+const reactFlowBridge = vi.hoisted(() => ({
+  store: null as null | ReturnType<typeof useStoreApi>,
+}))
+
+const collaborationBridge = vi.hoisted(() => ({
+  graphImportHandler: null as null | ((payload: { nodes: Node[], edges: Edge[] }) => void),
+  historyActionHandler: null as null | ((payload: unknown) => void),
+}))
+
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+const workflowCommentState = vi.hoisted(() => ({
+  comments: [] as Array<Record<string, unknown>>,
+  pendingComment: null as null | { elementX: number, elementY: number },
+  activeComment: null as null | Record<string, unknown>,
+  activeCommentLoading: false,
+  replySubmitting: false,
+  replyUpdating: false,
+  handleCommentSubmit: vi.fn(),
+  handleCommentCancel: vi.fn(),
+  handleCommentIconClick: vi.fn(),
+  handleActiveCommentClose: vi.fn(),
+  handleCommentResolve: vi.fn(),
+  handleCommentDelete: vi.fn(async () => {}),
+  handleCommentReply: vi.fn(),
+  handleCommentReplyUpdate: vi.fn(),
+  handleCommentReplyDelete: vi.fn(async () => {}),
+  handleCommentPositionUpdate: vi.fn(),
 }))
 
 const workflowHookMocks = vi.hoisted(() => ({
@@ -52,89 +79,69 @@ const workflowHookMocks = vi.hoisted(() => ({
   useWorkflowSearch: vi.fn(),
 }))
 
+function createInitializedNode(id: string, x: number, label: string) {
+  return {
+    id,
+    position: { x, y: 0 },
+    positionAbsolute: { x, y: 0 },
+    width: 160,
+    height: 40,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+    data: { label },
+    [internalsSymbol]: {
+      positionAbsolute: { x, y: 0 },
+      handleBounds: {
+        source: [{
+          id: null,
+          nodeId: id,
+          type: 'source',
+          position: Position.Right,
+          x: 160,
+          y: 0,
+          width: 0,
+          height: 40,
+        }],
+        target: [{
+          id: null,
+          nodeId: id,
+          type: 'target',
+          position: Position.Left,
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 40,
+        }],
+      },
+      z: 0,
+    },
+  }
+}
+
 const baseNodes = [
-  {
-    id: 'node-1',
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    data: {},
-  },
+  createInitializedNode('node-1', 0, 'Workflow node node-1'),
+  createInitializedNode('node-2', 240, 'Workflow node node-2'),
 ] as unknown as Node[]
 
 const baseEdges = [
   {
     id: 'edge-1',
+    type: 'custom',
     source: 'node-1',
     target: 'node-2',
     data: { sourceType: 'start', targetType: 'end' },
   },
 ] as unknown as Edge[]
 
-const edgeChanges: EdgeChange[] = [{ id: 'edge-1', type: 'remove' }]
-
-function createMouseEvent() {
-  return {
-    preventDefault: vi.fn(),
-    clientX: 24,
-    clientY: 48,
-  } as unknown as React.MouseEvent<Element, MouseEvent>
-}
-
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
-vi.mock('reactflow', async () => {
-  const mod = await import('./reactflow-mock-state')
-  const base = mod.createReactFlowModuleMock()
-  const ReactFlowMock = (props: ReactFlowProps) => {
-    reactFlowState.lastProps = props
-    return React.createElement(
-      'div',
-      { 'data-testid': 'reactflow-mock' },
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit edge mouse enter',
-        'onClick': () => props.onEdgeMouseEnter?.(createMouseEvent(), baseEdges[0]),
-      }),
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit edge mouse leave',
-        'onClick': () => props.onEdgeMouseLeave?.(createMouseEvent(), baseEdges[0]),
-      }),
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit edges change',
-        'onClick': () => props.onEdgesChange?.(edgeChanges),
-      }),
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit edge context menu',
-        'onClick': () => props.onEdgeContextMenu?.(createMouseEvent(), baseEdges[0]),
-      }),
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit node context menu',
-        'onClick': () => props.onNodeContextMenu?.(createMouseEvent(), baseNodes[0]),
-      }),
-      React.createElement('button', {
-        'type': 'button',
-        'aria-label': 'Emit pane context menu',
-        'onClick': () => props.onPaneContextMenu?.(createMouseEvent()),
-      }),
-      props.children,
-    )
-  }
-
-  return {
-    ...base,
-    SelectionMode: {
-      Partial: 'partial',
-    },
-    ReactFlow: ReactFlowMock,
-    default: ReactFlowMock,
-  }
-})
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({
+    appId: 'app-1',
+  }),
+}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -157,6 +164,109 @@ vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    info: toastInfoMock,
+  },
+}))
+
+vi.mock('../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onGraphImport: (handler: (payload: { nodes: Node[], edges: Edge[] }) => void) => {
+      collaborationBridge.graphImportHandler = handler
+      return vi.fn()
+    },
+    onHistoryAction: (handler: (payload: unknown) => void) => {
+      collaborationBridge.historyActionHandler = handler
+      return vi.fn()
+    },
+  },
+}))
+
+vi.mock('../comment-manager', () => ({
+  default: () => <div data-testid="comment-manager" />,
+}))
+
+vi.mock('../comment/cursor', () => ({
+  CommentCursor: () => <div data-testid="comment-cursor" />,
+}))
+
+vi.mock('../comment/comment-input', () => ({
+  CommentInput: ({ disabled, onCancel }: { disabled?: boolean, onCancel?: () => void }) => (
+    <button
+      type="button"
+      data-testid={disabled ? 'comment-input-preview' : 'comment-input-active'}
+      onClick={onCancel}
+    >
+      comment-input
+    </button>
+  ),
+}))
+
+vi.mock('../comment/comment-icon', () => ({
+  CommentIcon: ({
+    comment,
+    onClick,
+    onPositionUpdate,
+  }: {
+    comment: { id: string }
+    onClick?: () => void
+    onPositionUpdate?: (position: { elementX: number, elementY: number }) => void
+  }) => (
+    <button
+      type="button"
+      data-testid={`comment-icon-${comment.id}`}
+      onClick={() => {
+        onClick?.()
+        onPositionUpdate?.({ elementX: 1, elementY: 2 })
+      }}
+    >
+      icon
+    </button>
+  ),
+}))
+
+vi.mock('../comment/thread', () => ({
+  CommentThread: ({
+    onDelete,
+    onReplyDelete,
+    onNext,
+  }: {
+    onDelete?: () => void
+    onReplyDelete?: (replyId: string) => void
+    onNext?: () => void
+  }) => (
+    <div data-testid="comment-thread">
+      <button type="button" onClick={onDelete}>delete-thread</button>
+      <button type="button" onClick={() => onReplyDelete?.('reply-1')}>delete-reply</button>
+      <button type="button" onClick={onNext}>next-comment</button>
+    </div>
+  ),
+}))
+
+vi.mock('../hooks/use-workflow-comment', () => ({
+  useWorkflowComment: () => workflowCommentState,
+}))
+
+vi.mock('../base/confirm', () => ({
+  default: ({
+    isShow,
+    onConfirm,
+    onCancel,
+  }: {
+    isShow: boolean
+    onConfirm: () => void
+    onCancel: () => void
+  }) => isShow
+    ? (
+        <div data-testid="confirm-dialog">
+          <button type="button" onClick={onConfirm}>confirm</button>
+          <button type="button" onClick={onCancel}>cancel</button>
+        </div>
+      )
+    : null,
+}))
+
 vi.mock('../candidate-node', () => ({
   default: () => null,
 }))
@@ -166,7 +276,10 @@ vi.mock('../custom-connection-line', () => ({
 }))
 
 vi.mock('../custom-edge', () => ({
-  default: () => null,
+  default: () => React.createElement(BaseEdge, {
+    id: 'edge-1',
+    path: 'M 0 0 L 100 0',
+  }),
 }))
 
 vi.mock('../help-line', () => ({
@@ -182,7 +295,7 @@ vi.mock('../node-contextmenu', () => ({
 }))
 
 vi.mock('../nodes', () => ({
-  default: () => null,
+  default: ({ id }: { id: string }) => React.createElement('div', { 'data-testid': `workflow-node-${id}` }, `Workflow node ${id}`),
 }))
 
 vi.mock('../nodes/data-source-empty', () => ({
@@ -277,6 +390,7 @@ vi.mock('../hooks', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
+  useLeaderRestoreListener: vi.fn(),
 }))
 
 vi.mock('../hooks/use-workflow-search', () => ({
@@ -289,17 +403,24 @@ vi.mock('../nodes/_base/components/variable/use-match-schema-type', () => ({
   }),
 }))
 
-vi.mock('../workflow-history-store', () => ({
-  WorkflowHistoryProvider: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-}))
+function renderSubject(options?: {
+  nodes?: Node[]
+  edges?: Edge[]
+  initialStoreState?: Record<string, unknown>
+}) {
+  const { nodes = baseNodes, edges = baseEdges, initialStoreState } = options ?? {}
 
-function renderSubject() {
   return renderWorkflowComponent(
-    <Workflow
-      nodes={baseNodes}
-      edges={baseEdges}
-    />,
+    <ReactFlowProvider>
+      <Workflow
+        nodes={nodes}
+        edges={edges}
+      >
+        <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
+      </Workflow>
+    </ReactFlowProvider>,
     {
+      initialStoreState,
       hooksStoreProps: {
         configsMap: {
           flowId: 'flow-1',
@@ -311,75 +432,114 @@ function renderSubject() {
   )
 }
 
+function ReactFlowEdgeBootstrap({ nodes, edges }: { nodes: Node[], edges: Edge[] }) {
+  const store = useStoreApi()
+
+  React.useEffect(() => {
+    store.setState({
+      edges,
+      width: 500,
+      height: 500,
+      nodeInternals: new Map(nodes.map(node => [node.id, node])),
+    })
+    reactFlowBridge.store = store
+
+    return () => {
+      reactFlowBridge.store = null
+    }
+  }, [edges, nodes, store])
+
+  return null
+}
+
+function getPane(container: HTMLElement) {
+  const pane = container.querySelector('.react-flow__pane') as HTMLElement | null
+
+  if (!pane)
+    throw new Error('Expected a rendered React Flow pane')
+
+  return pane
+}
+
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    reactFlowState.lastProps = null
     eventEmitterState.subscription = null
+    reactFlowBridge.store = null
+    collaborationBridge.graphImportHandler = null
+    collaborationBridge.historyActionHandler = null
+    workflowCommentState.comments = []
+    workflowCommentState.pendingComment = null
+    workflowCommentState.activeComment = null
+    workflowCommentState.activeCommentLoading = false
+    workflowCommentState.replySubmitting = false
+    workflowCommentState.replyUpdating = false
   })
 
-  it('should forward React Flow edge events to workflow handlers when emitted by the canvas', () => {
-    renderSubject()
+  it('should forward pane, node and edge-change events to workflow handlers when emitted by the canvas', async () => {
+    const { container } = renderSubject()
+    const pane = getPane(container)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Emit edge mouse enter' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Emit edge mouse leave' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Emit edges change' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Emit edge context menu' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Emit node context menu' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Emit pane context menu' }))
+    act(() => {
+      fireEvent.contextMenu(screen.getByText('Workflow node node-1'), { clientX: 24, clientY: 48 })
+      fireEvent.contextMenu(pane, { clientX: 24, clientY: 48 })
+    })
 
-    expect(workflowHookMocks.handleEdgeEnter).toHaveBeenCalledWith(expect.objectContaining({
-      clientX: 24,
-      clientY: 48,
-    }), baseEdges[0])
-    expect(workflowHookMocks.handleEdgeLeave).toHaveBeenCalledWith(expect.objectContaining({
-      clientX: 24,
-      clientY: 48,
-    }), baseEdges[0])
-    expect(workflowHookMocks.handleEdgesChange).toHaveBeenCalledWith(edgeChanges)
-    expect(workflowHookMocks.handleEdgeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
-      clientX: 24,
-      clientY: 48,
-    }), baseEdges[0])
-    expect(workflowHookMocks.handleNodeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
-      clientX: 24,
-      clientY: 48,
-    }), baseNodes[0])
-    expect(workflowHookMocks.handlePaneContextMenu).toHaveBeenCalledWith(expect.objectContaining({
-      clientX: 24,
-      clientY: 48,
-    }))
+    await waitFor(() => {
+      expect(reactFlowBridge.store?.getState().onEdgesChange).toBeTypeOf('function')
+    })
+
+    act(() => {
+      reactFlowBridge.store?.getState().onEdgesChange?.([{ id: 'edge-1', type: 'select', selected: true }])
+    })
+
+    await waitFor(() => {
+      expect(workflowHookMocks.handleEdgesChange).toHaveBeenCalledWith(expect.arrayContaining([
+        expect.objectContaining({ id: 'edge-1', type: 'select' }),
+      ]))
+      expect(workflowHookMocks.handleNodeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
+        clientX: 24,
+        clientY: 48,
+      }), expect.objectContaining({ id: 'node-1' }))
+      expect(workflowHookMocks.handlePaneContextMenu).toHaveBeenCalledWith(expect.objectContaining({
+        clientX: 24,
+        clientY: 48,
+      }))
+    })
   })
 
-  it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', () => {
-    renderSubject()
+  it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', async () => {
+    renderSubject({
+      edges: [
+        {
+          ...baseEdges[0],
+          selected: true,
+        } as Edge,
+      ],
+    })
 
-    expect(reactFlowState.lastProps?.deleteKeyCode).toBeNull()
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'Delete' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
+    })
+    expect(workflowHookMocks.handleEdgesChange).not.toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'edge-1', type: 'remove' }),
+    ]))
   })
 
   it('should clear edgeMenu when workflow data updates remove the current edge', () => {
-    const { store } = renderWorkflowComponent(
-      <Workflow
-        nodes={baseNodes}
-        edges={baseEdges}
-      />,
-      {
-        initialStoreState: {
-          edgeMenu: {
-            clientX: 320,
-            clientY: 180,
-            edgeId: 'edge-1',
-          },
-        },
-        hooksStoreProps: {
-          configsMap: {
-            flowId: 'flow-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {},
-          },
+    const { store } = renderSubject({
+      initialStoreState: {
+        edgeMenu: {
+          clientX: 320,
+          clientY: 180,
+          edgeId: 'edge-1',
         },
       },
-    )
+    })
 
     act(() => {
       eventEmitterState.subscription?.({
@@ -392,5 +552,141 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().edgeMenu).toBeUndefined()
+  })
+
+  it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const onConfirm = vi.fn()
+    const { store } = renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          desc: 'Confirm description',
+          onConfirm,
+        },
+      },
+    })
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Confirm title')).toBeInTheDocument()
+    expect(screen.getByText('Confirm description')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(store.getState().showConfirm).toBeUndefined()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('should call showConfirm.onConfirm when confirm is clicked', () => {
+    const onConfirm = vi.fn()
+
+    renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          onConfirm,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('should sync graph import events and show history action toast', async () => {
+    renderSubject()
+
+    const importedNodes = [createInitializedNode('node-3', 480, 'Workflow node node-3')] as unknown as Node[]
+
+    act(() => {
+      collaborationBridge.graphImportHandler?.({
+        nodes: importedNodes,
+        edges: [],
+      })
+      collaborationBridge.historyActionHandler?.({ action: 'undo' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Workflow node node-3')).toBeInTheDocument()
+      expect(toastInfoMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('should render comment overlays and execute comment actions in comment mode', async () => {
+    workflowCommentState.comments = [
+      { id: 'comment-1', resolved: false },
+      { id: 'comment-2', resolved: false },
+    ]
+    workflowCommentState.activeComment = { id: 'comment-1', resolved: false }
+    workflowCommentState.pendingComment = { elementX: 20, elementY: 30 }
+
+    const { container, store } = renderSubject({
+      initialStoreState: {
+        controlMode: ControlMode.Comment,
+        showUserComments: true,
+        showResolvedComments: false,
+        isCommentPlacing: true,
+        pendingComment: null,
+        isCommentPreviewHovering: true,
+        mousePosition: {
+          pageX: 100,
+          pageY: 120,
+          elementX: 40,
+          elementY: 60,
+        },
+      },
+    })
+
+    const pane = getPane(container)
+    act(() => {
+      fireEvent.mouseMove(pane, { clientX: 150, clientY: 180 })
+    })
+
+    expect(screen.getByTestId('comment-cursor')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-input-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-input-active')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-icon-comment-1')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-icon-comment-2')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-thread')).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'next-comment' }))
+    })
+    expect(workflowCommentState.handleCommentIconClick).toHaveBeenCalledWith({ id: 'comment-2', resolved: false })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'delete-thread' }))
+    })
+    expect(store.getState().showConfirm).toBeDefined()
+
+    await act(async () => {
+      await store.getState().showConfirm?.onConfirm()
+    })
+    expect(workflowCommentState.handleCommentDelete).toHaveBeenCalledWith('comment-1')
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'delete-reply' }))
+    })
+    expect(store.getState().showConfirm).toBeDefined()
+    await act(async () => {
+      await store.getState().showConfirm?.onConfirm()
+    })
+    expect(workflowCommentState.handleCommentReplyDelete).toHaveBeenCalledWith('comment-1', 'reply-1')
+
+    const wheelEvent = new WheelEvent('wheel', {
+      cancelable: true,
+      ctrlKey: true,
+    })
+    act(() => {
+      window.dispatchEvent(wheelEvent)
+    })
+
+    const gestureEvent = new Event('gesturestart', { cancelable: true })
+    act(() => {
+      window.dispatchEvent(gestureEvent)
+    })
   })
 })

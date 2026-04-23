@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -122,11 +123,11 @@ describe('AppIconPicker', () => {
     })
   }
 
-  const renderPicker = () => {
+  const renderPicker = (props: Partial<ComponentProps<typeof AppIconPicker>> = {}) => {
     const onSelect = vi.fn()
     const onClose = vi.fn()
 
-    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} />)
+    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} {...props} />)
 
     return { onSelect, onClose, container }
   }
@@ -156,10 +157,10 @@ describe('AppIconPicker', () => {
     it('should render emoji and image tabs when upload is enabled', async () => {
       renderPicker()
 
-      expect(await screen.findByText(/emoji/i)).toBeInTheDocument()
-      expect(screen.getByText(/image/i)).toBeInTheDocument()
-      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/ok/i)).toBeInTheDocument()
+      expect(await screen.findByText(/emoji/i))!.toBeInTheDocument()
+      expect(screen.getByText(/image/i))!.toBeInTheDocument()
+      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/ok/i))!.toBeInTheDocument()
     })
 
     it('should hide the image tab when upload is disabled', () => {
@@ -167,7 +168,7 @@ describe('AppIconPicker', () => {
       renderPicker()
 
       expect(screen.queryByText(/image/i)).not.toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/search/i))!.toBeInTheDocument()
     })
   })
 
@@ -184,10 +185,10 @@ describe('AppIconPicker', () => {
       renderPicker()
 
       await userEvent.click(screen.getByText(/image/i))
-      expect(screen.getByText(/drop.*here/i)).toBeInTheDocument()
+      expect(screen.getByText(/drop.*here/i))!.toBeInTheDocument()
 
       await userEvent.click(screen.getByText(/emoji/i))
-      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/search/i))!.toBeInTheDocument()
     })
 
     it('should call onSelect with emoji data after emoji selection', async () => {
@@ -220,6 +221,20 @@ describe('AppIconPicker', () => {
 
       expect(onSelect).not.toHaveBeenCalled()
     })
+
+    it('should submit the initial emoji when provided', async () => {
+      const { onSelect } = renderPicker({ initialEmoji: { icon: 'rabbit', background: '#E4FBCC' } })
+
+      await userEvent.click(screen.getByText(/ok/i))
+
+      await waitFor(() => {
+        expect(onSelect).toHaveBeenCalledWith({
+          type: 'emoji',
+          icon: 'rabbit',
+          background: '#E4FBCC',
+        })
+      })
+    })
   })
 
   describe('Image Upload', () => {
@@ -251,7 +266,7 @@ describe('AppIconPicker', () => {
       fireEvent.change(input, { target: { files: [new File(['png'], 'avatar.png', { type: 'image/png' })] } })
 
       await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
+        expect(screen.getByTestId('mock-cropper'))!.toBeInTheDocument()
       })
 
       await userEvent.click(screen.getByTestId('trigger-crop'))
@@ -261,7 +276,7 @@ describe('AppIconPicker', () => {
         expect(mocks.handleLocalFileUpload).toHaveBeenCalledTimes(1)
       })
 
-      const uploadedFile = mocks.handleLocalFileUpload.mock.calls[0][0]
+      const uploadedFile = mocks.handleLocalFileUpload.mock.calls[0]![0]
       expect(uploadedFile).toBeInstanceOf(File)
       expect(uploadedFile.name).toBe('avatar.png')
       expect(uploadedFile.type).toBe('image/png')
@@ -291,7 +306,7 @@ describe('AppIconPicker', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('mock-cropper')).not.toBeInTheDocument()
         const preview = screen.queryByTestId('animated-image')
-        expect(preview).toBeInTheDocument()
+        expect(preview)!.toBeInTheDocument()
         expect(preview?.getAttribute('src')).toContain('blob:mock-url')
       })
 

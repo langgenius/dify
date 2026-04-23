@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "例如，承載者令牌123",
   "mcp.modal.headers": "標題",
   "mcp.modal.headersTip": "與 MCP 伺服器請求一同發送的附加 HTTP 標頭",
+  "mcp.modal.invalidServerIdentifier": "請輸入有效的伺服器識別碼",
+  "mcp.modal.invalidServerUrl": "請輸入有效的伺服器 URL",
   "mcp.modal.maskedHeadersTip": "標頭值已被遮罩以保障安全。更改將更新實際值。",
   "mcp.modal.name": "名稱與圖示",
   "mcp.modal.namePlaceholder": "為您的 MCP 伺服器命名",

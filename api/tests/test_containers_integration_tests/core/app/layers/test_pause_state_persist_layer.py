@@ -31,17 +31,15 @@ from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
 )
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.graph_engine.entities.commands import GraphEngineCommand
-from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from dify_graph.graph_events.graph import GraphRunPausedEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
-from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from dify_graph.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper
-from dify_graph.runtime.variable_pool import SystemVariable, VariablePool
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.entities.commands import GraphEngineCommand
+from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from graphon.graph_events import GraphRunPausedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel
@@ -90,11 +88,11 @@ class TestPauseStatePersistenceLayerTestContainers:
     def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
-        from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+        from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -103,7 +101,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -212,7 +210,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
 
         # Create variable pool
-        variable_pool = VariablePool(system_variables=SystemVariable(workflow_execution_id=execution_id))
+        variable_pool = VariablePool(system_variables=build_system_variables(workflow_execution_id=execution_id))
         if variables:
             for (node_id, var_key), value in variables.items():
                 variable_pool.add([node_id, var_key], value)
@@ -544,7 +542,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.initialize(graph_runtime_state, command_channel)
 
         # Import other event types
-        from dify_graph.graph_events.graph import (
+        from graphon.graph_events import (
             GraphRunFailedEvent,
             GraphRunStartedEvent,
             GraphRunSucceededEvent,
@@ -559,11 +557,9 @@ class TestPauseStatePersistenceLayerTestContainers:
         self.session.refresh(self.test_workflow_run)
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
-        pause_states = (
-            self.session.query(WorkflowPauseModel)
-            .filter(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
-            .all()
-        )
+        pause_states = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
+        ).all()
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers):

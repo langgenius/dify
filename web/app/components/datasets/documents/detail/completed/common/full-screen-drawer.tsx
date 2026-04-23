@@ -1,6 +1,6 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import Drawer from './drawer'
 
 type IFullScreenDrawerProps = {
@@ -28,7 +28,7 @@ const FullScreenDrawer = ({
       panelClassName={cn(
         fullScreen
           ? 'w-full'
-          : 'w-[568px] pb-2 pr-2 pt-16',
+          : 'w-[568px] pt-16 pr-2 pb-2',
       )}
       panelContentClassName={cn(
         'bg-components-panel-bg',

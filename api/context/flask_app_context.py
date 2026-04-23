@@ -10,11 +10,7 @@ from typing import Any, final
 
 from flask import Flask, current_app, g
 
-from dify_graph.context import register_context_capturer
-from dify_graph.context.execution_context import (
-    AppContext,
-    IExecutionContext,
-)
+from context.execution_context import AppContext, IExecutionContext, register_context_capturer
 
 
 @final

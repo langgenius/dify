@@ -15,7 +15,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -25,7 +25,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             api/**
@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -49,7 +49,7 @@ jobs:
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: make type-check
+        run: make type-check-core
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -57,7 +57,7 @@ jobs:
 
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
@@ -73,10 +73,18 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             web/**
+            e2e/**
+            sdks/nodejs-client/**
+            packages/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .npmrc
+            .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
 
@@ -84,29 +92,31 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
+      - name: Restore ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true'
+        id: eslint-cache-restore
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
+
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: |
-          vp run lint:ci
-        # pnpm run lint:report
-        # continue-on-error: true
-
-      # - name: Annotate Code
-      #   if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'pull_request'
-      #   uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
-      #   with:
-      #     eslint-report: web/eslint_report.json
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: .
+        run: vp run lint:ci
 
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: vp run lint:tss
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
+        working-directory: .
         run: vp run type-check
 
       - name: Web dead code check
@@ -114,9 +124,16 @@ jobs:
         working-directory: ./web
         run: vp run knip
 
+      - name: Save ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .eslintcache
+          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
+
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -127,7 +144,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             **.sh
@@ -138,7 +155,7 @@ jobs:
             .editorconfig
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@61abc07d755095a68f4987d1c2c3d1d64408f1f9 # v8.5.0
+        uses: super-linter/super-linter/slim@9e863354e3ff62e0727d37183162c4a88873df41 # v8.6.0
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning

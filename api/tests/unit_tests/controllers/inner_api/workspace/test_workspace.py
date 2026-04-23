@@ -20,6 +20,7 @@ from controllers.inner_api.workspace.workspace import (
     WorkspaceCreatePayload,
     WorkspaceOwnerlessPayload,
 )
+from models.account import TenantStatus
 
 
 class TestWorkspaceCreatePayload:
@@ -91,14 +92,14 @@ class TestEnterpriseWorkspace:
         # Arrange
         mock_account = MagicMock()
         mock_account.email = "owner@example.com"
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_account
+        mock_db.session.scalar.return_value = mock_account
 
         now = datetime(2025, 1, 1, 12, 0, 0)
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-id"
         mock_tenant.name = "My Workspace"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.created_at = now
         mock_tenant.updated_at = now
         mock_tenant_svc.create_tenant.return_value = mock_tenant
@@ -122,7 +123,7 @@ class TestEnterpriseWorkspace:
     def test_post_returns_404_when_owner_not_found(self, mock_db, api_instance, app: Flask):
         """Test that post() returns 404 when the owner account does not exist"""
         # Arrange
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act
         unwrapped_post = inspect.unwrap(api_instance.post)
@@ -162,7 +163,7 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         mock_tenant.name = "My Workspace"
         mock_tenant.encrypt_public_key = "pub-key"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.custom_config = None
         mock_tenant.created_at = now
         mock_tenant.updated_at = now

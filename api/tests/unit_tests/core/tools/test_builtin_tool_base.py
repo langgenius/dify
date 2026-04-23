@@ -12,7 +12,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
-from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 
 
 class _BuiltinDummyTool(BuiltinTool):
@@ -27,12 +27,12 @@ class _BuiltinDummyTool(BuiltinTool):
         yield self.create_text_message("ok")
 
 
-def _build_tool() -> _BuiltinDummyTool:
+def _build_tool(user_id: str | None = None) -> _BuiltinDummyTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="author", name="tool-a", label=I18nObject(en_US="tool-a"), provider="provider-a"),
         parameters=[],
     )
-    runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)
+    runtime = ToolRuntime(tenant_id="tenant-1", user_id=user_id, invoke_from=InvokeFrom.DEBUGGER)
     return _BuiltinDummyTool(provider="provider-a", entity=entity, runtime=runtime)
 
 
@@ -45,7 +45,7 @@ def test_builtin_tool_fork_and_provider_type():
 
 
 def test_invoke_model_calls_model_invocation_utils_invoke():
-    tool = _build_tool()
+    tool = _build_tool(user_id="runtime-user")
     with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.invoke", return_value="result") as mock_invoke:
         assert (
             tool.invoke_model(
@@ -55,19 +55,47 @@ def test_invoke_model_calls_model_invocation_utils_invoke():
             )
             == "result"
         )
-    mock_invoke.assert_called_once()
+    mock_invoke.assert_called_once_with(
+        user_id="u1",
+        tenant_id="tenant-1",
+        tool_type=ToolProviderType.BUILT_IN,
+        tool_name="tool-a",
+        prompt_messages=[UserPromptMessage(content="hello")],
+        caller_user_id="runtime-user",
+    )
 
 
 def test_get_max_tokens_returns_value():
-    tool = _build_tool()
-    with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.get_max_llm_context_tokens", return_value=4096):
+    tool = _build_tool(user_id="runtime-user")
+    with patch(
+        "core.tools.builtin_tool.tool.ModelInvocationUtils.get_max_llm_context_tokens", return_value=4096
+    ) as mock_get:
         assert tool.get_max_tokens() == 4096
+    mock_get.assert_called_once_with(tenant_id="tenant-1", user_id="runtime-user")
 
 
 def test_get_prompt_tokens_returns_value():
-    tool = _build_tool()
-    with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.calculate_tokens", return_value=7):
+    tool = _build_tool(user_id="runtime-user")
+    with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.calculate_tokens", return_value=7) as mock_calculate:
         assert tool.get_prompt_tokens([UserPromptMessage(content="hello")]) == 7
+    mock_calculate.assert_called_once_with(
+        tenant_id="tenant-1",
+        prompt_messages=[UserPromptMessage(content="hello")],
+        user_id="runtime-user",
+    )
+
+
+def test_get_prompt_tokens_falls_back_to_tenant_scope_when_runtime_user_id_missing():
+    tool = _build_tool()
+
+    with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.calculate_tokens", return_value=7) as mock_calculate:
+        assert tool.get_prompt_tokens([UserPromptMessage(content="hello")]) == 7
+
+    mock_calculate.assert_called_once_with(
+        tenant_id="tenant-1",
+        prompt_messages=[UserPromptMessage(content="hello")],
+        user_id=None,
+    )
 
 
 def test_runtime_none_raises():

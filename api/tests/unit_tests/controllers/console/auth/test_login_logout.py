@@ -14,24 +14,31 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_restx import Api
+from werkzeug.exceptions import Unauthorized
 
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
 )
-from controllers.console.auth.login import LoginApi, LogoutApi
+from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
     WorkspacesLimitExceeded,
 )
+from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import AccountLoginError, AccountPasswordError
 
 
 def encode_password(password: str) -> str:
     """Helper to encode password as Base64 for testing."""
     return base64.b64encode(password.encode("utf-8")).decode()
+
+
+def encode_code(code: str) -> str:
+    """Helper to encode verification code as Base64 for testing."""
+    return base64.b64encode(code.encode("utf-8")).decode()
 
 
 class TestLoginApi:
@@ -103,7 +110,6 @@ class TestLoginApi:
         - Rate limit is reset after successful login
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -155,7 +161,6 @@ class TestLoginApi:
         - Authentication proceeds with invitation token
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
         mock_authenticate.return_value = mock_account
@@ -192,17 +197,21 @@ class TestLoginApi:
         - EmailPasswordLoginLimitError is raised when limit exceeded
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = True
         mock_get_invitation.return_value = None
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(EmailPasswordLoginLimitError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
+            ):
+                login_api = LoginApi()
+                with pytest.raises(EmailPasswordLoginLimitError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "test@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
@@ -216,16 +225,20 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_frozen.return_value = True
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountInFreezeError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AccountInFreezeError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "frozen@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -251,20 +264,25 @@ class TestLoginApi:
         - Generic error message prevents user enumeration
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountPasswordError("Invalid password")
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("WrongPass123!")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AuthenticationFailedError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "test@example.com", "password": encode_password("WrongPass123!")},
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AuthenticationFailedError):
+                    login_api.post()
 
         mock_add_rate_limit.assert_called_once_with("test@example.com")
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "test@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -282,18 +300,24 @@ class TestLoginApi:
         - Login is prevented even with valid credentials
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountLoginError("Account is banned")
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "banned@example.com", "password": encode_password("ValidPass123!")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountBannedError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "banned@example.com", "password": encode_password("ValidPass123!")},
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AccountBannedError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "banned@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -321,7 +345,6 @@ class TestLoginApi:
         - User cannot login without an assigned workspace
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -353,7 +376,6 @@ class TestLoginApi:
         - Security check prevents invitation token abuse
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "invited@example.com"}}
 
@@ -395,7 +417,6 @@ class TestLoginApi:
         mock_token_pair,
     ):
         """Test that login retries with lowercase email when uppercase lookup fails."""
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
@@ -416,6 +437,35 @@ class TestLoginApi:
         ]
         mock_add_rate_limit.assert_not_called()
         mock_reset_rate_limit.assert_called_once_with("upper@example.com")
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_email_code_login_logs_banned_account(
+        self,
+        mock_get_account,
+        mock_revoke_token,
+        mock_get_token_data,
+        mock_db,
+        app,
+    ):
+        mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
+        mock_get_account.side_effect = Unauthorized("Account is banned.")
+
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+            ):
+                with pytest.raises(AccountBannedError):
+                    EmailCodeLoginApi().post()
+
+        mock_revoke_token.assert_called_once_with("token-123")
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "user@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
 
 
 class TestLogoutApi:
@@ -453,7 +503,6 @@ class TestLogoutApi:
         - Success response is returned
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_current_account.return_value = (mock_account, MagicMock())
 
         # Act
@@ -479,7 +528,6 @@ class TestLogoutApi:
         - Success response is returned
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         # Create a mock anonymous user that will pass isinstance check
         anonymous_user = MagicMock()
         mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})

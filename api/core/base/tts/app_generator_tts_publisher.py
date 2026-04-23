@@ -15,8 +15,8 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
-from dify_graph.model_runtime.entities.message_entities import TextPromptMessageContent
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:
@@ -25,12 +25,10 @@ class AudioTrunk:
         self.status = status
 
 
-def _invoice_tts(text_content: str, model_instance: ModelInstance, tenant_id: str, voice: str):
+def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
     if not text_content or text_content.isspace():
         return
-    return model_instance.invoke_tts(
-        content_text=text_content.strip(), user="responding_tts", tenant_id=tenant_id, voice=voice
-    )
+    return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
 
 
 def _process_future(
@@ -62,7 +60,7 @@ class AppGeneratorTTSPublisher:
         self._audio_queue: queue.Queue[AudioTrunk] = queue.Queue()
         self._msg_queue: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
         self.match = re.compile(r"[。.!?]")
-        self.model_manager = ModelManager()
+        self.model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id, user_id="responding_tts")
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
@@ -89,7 +87,7 @@ class AppGeneratorTTSPublisher:
                 if message is None:
                     if self.msg_text and len(self.msg_text.strip()) > 0:
                         futures_result = self.executor.submit(
-                            _invoice_tts, self.msg_text, self.model_instance, self.tenant_id, self.voice
+                            _invoice_tts, self.msg_text, self.model_instance, self.voice
                         )
                         future_queue.put(futures_result)
                     break
@@ -117,9 +115,7 @@ class AppGeneratorTTSPublisher:
                 if len(sentence_arr) >= min(self.max_sentence, 7):
                     self.max_sentence += 1
                     text_content = "".join(sentence_arr)
-                    futures_result = self.executor.submit(
-                        _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
-                    )
+                    futures_result = self.executor.submit(_invoice_tts, text_content, self.model_instance, self.voice)
                     future_queue.put(futures_result)
                     if isinstance(text_tmp, str):
                         self.msg_text = text_tmp

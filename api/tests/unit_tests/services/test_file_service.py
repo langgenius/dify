@@ -165,7 +165,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "test_key"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with patch("services.file_service.storage") as mock_storage:
             mock_storage.load_once.return_value = b"test content"
@@ -178,7 +178,7 @@ class TestFileService:
             mock_storage.load_once.assert_called_once_with("test_key")
 
     def test_get_file_base64_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
@@ -215,7 +215,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "pdf"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with patch("services.file_service.ExtractProcessor.load_from_upload_file") as mock_extract:
             mock_extract.return_value = "Extracted text content"
@@ -227,7 +227,7 @@ class TestFileService:
             assert result == "Extracted text content"
 
     def test_get_file_preview_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_preview("non_existent")
 
@@ -235,7 +235,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "exe"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
         with pytest.raises(UnsupportedFileTypeError):
             file_service.get_file_preview("file_id")
 
@@ -246,7 +246,7 @@ class TestFileService:
         upload_file.extension = "jpg"
         upload_file.mime_type = "image/jpeg"
         upload_file.key = "key"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with (
             patch("services.file_service.file_helpers.verify_image_signature") as mock_verify,
@@ -269,7 +269,7 @@ class TestFileService:
                 file_service.get_image_preview("file_id", "ts", "nonce", "sign")
 
     def test_get_image_preview_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
             mock_verify.return_value = True
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
@@ -279,7 +279,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "txt"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
         with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
             mock_verify.return_value = True
             with pytest.raises(UnsupportedFileTypeError):
@@ -289,7 +289,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "key"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with (
             patch("services.file_service.file_helpers.verify_file_signature") as mock_verify,
@@ -309,7 +309,7 @@ class TestFileService:
                 file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
 
     def test_get_file_generator_by_file_id_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with patch("services.file_service.file_helpers.verify_file_signature") as mock_verify:
             mock_verify.return_value = True
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
@@ -321,7 +321,7 @@ class TestFileService:
         upload_file.extension = "png"
         upload_file.mime_type = "image/png"
         upload_file.key = "key"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with patch("services.file_service.storage") as mock_storage:
             mock_storage.load.return_value = b"image content"
@@ -330,7 +330,7 @@ class TestFileService:
             assert mime == "image/png"
 
     def test_get_public_image_preview_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found or signature is invalid"):
             file_service.get_public_image_preview("file_id")
 
@@ -338,7 +338,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "txt"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
         with pytest.raises(UnsupportedFileTypeError):
             file_service.get_public_image_preview("file_id")
 
@@ -346,7 +346,7 @@ class TestFileService:
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "key"
-        mock_db_session.query().where().first.return_value = upload_file
+        mock_db_session.scalar.return_value = upload_file
 
         with patch("services.file_service.storage") as mock_storage:
             mock_storage.load.return_value = b"hello world"
@@ -354,7 +354,7 @@ class TestFileService:
             assert result == "hello world"
 
     def test_get_file_content_not_found(self, file_service, mock_db_session):
-        mock_db_session.query().where().first.return_value = None
+        mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_content("file_id")
 

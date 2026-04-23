@@ -24,8 +24,8 @@ from enums.cloud_plan import CloudPlan
 from models.account import TenantStatus
 from models.model import ApiToken
 from tests.unit_tests.conftest import (
-    setup_mock_dataset_tenant_query,
-    setup_mock_tenant_account_query,
+    setup_mock_dataset_owner_execute_result,
+    setup_mock_tenant_owner_execute_result,
 )
 
 
@@ -141,18 +141,11 @@ class TestValidateAppToken:
         mock_account = Mock()
         mock_account.id = str(uuid.uuid4())
 
-        mock_ta = Mock()
-        mock_ta.account_id = mock_account.id
+        # Use side_effect to return app first, then tenant via session.get()
+        mock_db.session.get.side_effect = [mock_app, mock_tenant]
 
-        # Use side_effect to return app first, then tenant
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
-            mock_app,
-            mock_tenant,
-            mock_account,
-        ]
-
-        # Mock the tenant owner query
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+        # Mock the tenant owner execute result (execute(select(...)).one_or_none())
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         @validate_app_token
         def protected_view(app_model):
@@ -175,7 +168,7 @@ class TestValidateAppToken:
         mock_api_token.app_id = str(uuid.uuid4())
         mock_validate_token.return_value = mock_api_token
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
 
         @validate_app_token
         def protected_view(**kwargs):
@@ -198,7 +191,7 @@ class TestValidateAppToken:
 
         mock_app = Mock()
         mock_app.status = "abnormal"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_app
+        mock_db.session.get.return_value = mock_app
 
         @validate_app_token
         def protected_view(**kwargs):
@@ -222,7 +215,7 @@ class TestValidateAppToken:
         mock_app = Mock()
         mock_app.status = "normal"
         mock_app.enable_api = False
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_app
+        mock_db.session.get.return_value = mock_app
 
         @validate_app_token
         def protected_view(**kwargs):
@@ -474,11 +467,11 @@ class TestValidateDatasetToken:
         mock_account.id = mock_ta.account_id
         mock_account.current_tenant = mock_tenant
 
-        # Mock the tenant account join query
-        setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta)
+        # Mock the tenant account join query (execute(select(...)).one_or_none())
+        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
 
-        # Mock the account query
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
+        # Mock the account lookup via session.get()
+        mock_db.session.get.return_value = mock_account
 
         @validate_dataset_token
         def protected_view(tenant_id):
@@ -501,7 +494,7 @@ class TestValidateDatasetToken:
         mock_api_token.tenant_id = str(uuid.uuid4())
         mock_validate_token.return_value = mock_api_token
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         @validate_dataset_token
         def protected_view(dataset_id=None, **kwargs):

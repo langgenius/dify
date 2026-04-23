@@ -171,7 +171,7 @@ class MemberCancelInviteApi(Resource):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        member = db.session.query(Account).where(Account.id == str(member_id)).first()
+        member = db.session.get(Account, str(member_id))
         if member is None:
             abort(404)
         else:

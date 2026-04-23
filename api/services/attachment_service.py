@@ -1,6 +1,6 @@
 import base64
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
@@ -22,8 +22,8 @@ class AttachmentService:
             raise AssertionError("must be a sessionmaker or an Engine.")
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = (
-            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file = self._session_maker(expire_on_commit=False).scalar(
+            select(UploadFile).where(UploadFile.id == file_id).limit(1)
         )
         if not upload_file:
             raise NotFound("File not found")

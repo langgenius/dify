@@ -12,7 +12,7 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 import psycopg2
 import pytest
@@ -32,6 +32,10 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
+
+DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
+SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
 
 
 class _CloserProtocol(Protocol):
@@ -44,11 +48,8 @@ class _CloserProtocol(Protocol):
         pass
 
 
-_Closer = TypeVar("_Closer", bound=_CloserProtocol)
-
-
 @contextmanager
-def _auto_close(closer: _Closer) -> Generator[_Closer, None, None]:
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
     yield closer
     closer.close()
 
@@ -163,10 +164,11 @@ class DifyTestContainers:
         wait_for_logs(self.redis, "Ready to accept connections", timeout=30)
         logger.info("Redis container is ready and accepting connections")
 
-        # Start Dify Sandbox container for code execution environment
-        # Dify Sandbox provides a secure environment for executing user code
+        # Start Dify Sandbox container for code execution environment.
+        # Default to the production-pinned image while allowing local overrides for debugging.
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
+        sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
+        self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
@@ -176,7 +178,12 @@ class DifyTestContainers:
         sandbox_port = self.dify_sandbox.get_exposed_port(8194)
         os.environ["CODE_EXECUTION_ENDPOINT"] = f"http://{sandbox_host}:{sandbox_port}"
         os.environ["CODE_EXECUTION_API_KEY"] = "test_api_key"
-        logger.info("Dify Sandbox container started successfully - Host: %s, Port: %s", sandbox_host, sandbox_port)
+        logger.info(
+            "Dify Sandbox container started successfully - Image: %s Host: %s, Port: %s",
+            sandbox_image,
+            sandbox_host,
+            sandbox_port,
+        )
 
         # Wait for Dify Sandbox to be ready
         logger.info("Waiting for Dify Sandbox to be ready to accept connections...")
@@ -186,7 +193,7 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.4-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
@@ -362,7 +369,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema

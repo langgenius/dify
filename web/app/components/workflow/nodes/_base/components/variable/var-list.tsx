@@ -1,19 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import type { ToastHandle } from '@/app/components/base/toast'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
@@ -42,7 +41,6 @@ const VarList: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
-  const [toastHandle, setToastHandle] = useState<ToastHandle>()
 
   const listWithIds = useMemo(() => list.map((item) => {
     const id = uuid4()
@@ -55,20 +53,11 @@ const VarList: FC<Props> = ({
   const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
     const result = checkKeys([newKey], true)
     if (!result.isValid) {
-      setToastHandle(Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
-      }))
+      toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      setToastHandle(Toast.notify({
-        type: 'error',
-        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
-      }))
-    }
-    else {
-      toastHandle?.clear?.()
+      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }))
     }
   }, { wait: 500 })
 
@@ -78,12 +67,11 @@ const VarList: FC<Props> = ({
 
       const newKey = e.target.value
 
-      toastHandle?.clear?.()
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
 
-      onVarNameChange?.(list[index].variable, newKey)
+      onVarNameChange?.(list[index]!.variable, newKey)
       const newList = produce(list, (draft) => {
-        draft[index].variable = newKey
+        draft[index]!.variable = newKey
       })
       onChange(newList)
     }
@@ -93,26 +81,26 @@ const VarList: FC<Props> = ({
     return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
       const newList = produce(list, (draft) => {
         if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-          draft[index].value_selector = value as ValueSelector
-          draft[index].value_type = varInfo?.type
+          draft[index]!.value_selector = value as ValueSelector
+          draft[index]!.value_type = varInfo?.type
           if (isSupportConstantValue)
-            draft[index].variable_type = VarKindType.variable
+            draft[index]!.variable_type = VarKindType.variable
 
-          if (!draft[index].variable) {
+          if (!draft[index]!.variable) {
             const variables = draft.map(v => v.variable)
-            let newVarName = value[value.length - 1]
+            let newVarName = value[value.length - 1]!
             let count = 1
-            while (variables.includes(newVarName)) {
+            while (variables.includes(newVarName!)) {
               newVarName = `${value[value.length - 1]}_${count}`
               count++
             }
-            draft[index].variable = newVarName
+            draft[index]!.variable = newVarName
           }
         }
         else {
-          draft[index].variable_type = VarKindType.constant
-          draft[index].value_selector = value as ValueSelector
-          draft[index].value = value as string
+          draft[index]!.variable_type = VarKindType.constant
+          draft[index]!.value_selector = value as ValueSelector
+          draft[index]!.value = value as string
         }
       })
       onChange(newList)
@@ -172,7 +160,7 @@ const VarList: FC<Props> = ({
             )}
             {canDrag && (
               <RiDraggable className={cn(
-                'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                'handle absolute top-2.5 -left-4 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                 'group-hover:block',
               )}
               />

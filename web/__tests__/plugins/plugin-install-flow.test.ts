@@ -5,15 +5,21 @@
  * upload handling, and task status polling. Verifies the complete plugin
  * installation pipeline from source discovery to completion.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/config', () => ({
-  GITHUB_ACCESS_TOKEN: '',
-}))
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { checkForUpdates, fetchReleases, handleUpload } from '@/app/components/plugins/install-plugin/hooks'
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockToastNotify(...args) },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockUploadGitHub = vi.fn()
@@ -21,37 +27,6 @@ vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
   checkTaskStatus: vi.fn(),
 }))
-
-vi.mock('@/utils/semver', () => ({
-  compareVersion: (a: string, b: string) => {
-    const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const [aMajor, aMinor = 0, aPatch = 0] = parse(a)
-    const [bMajor, bMinor = 0, bPatch = 0] = parse(b)
-    if (aMajor !== bMajor)
-      return aMajor > bMajor ? 1 : -1
-    if (aMinor !== bMinor)
-      return aMinor > bMinor ? 1 : -1
-    if (aPatch !== bPatch)
-      return aPatch > bPatch ? 1 : -1
-    return 0
-  },
-  getLatestVersion: (versions: string[]) => {
-    return versions.sort((a, b) => {
-      const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-      const [aMaj, aMin = 0, aPat = 0] = parse(a)
-      const [bMaj, bMin = 0, bPat = 0] = parse(b)
-      if (aMaj !== bMaj)
-        return bMaj - aMaj
-      if (aMin !== bMin)
-        return bMin - aMin
-      return bPat - aPat
-    })[0]
-  },
-}))
-
-const { useGitHubReleases, useGitHubUpload } = await import(
-  '@/app/components/plugins/install-plugin/hooks',
-)
 
 describe('Plugin Installation Flow Integration', () => {
   beforeEach(() => {
@@ -63,30 +38,28 @@ describe('Plugin Installation Flow Integration', () => {
     it('fetches releases, checks for updates, and uploads the new version', async () => {
       const mockReleases = [
         {
-          tag_name: 'v2.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v2.difypkg', name: 'plugin-v2.difypkg' }],
+          tag: 'v2.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v2.difypkg' }],
         },
         {
-          tag_name: 'v1.5.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.5.difypkg', name: 'plugin-v1.5.difypkg' }],
+          tag: 'v1.5.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.5.difypkg' }],
         },
         {
-          tag_name: 'v1.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.difypkg', name: 'plugin-v1.difypkg' }],
+          tag: 'v1.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.difypkg' }],
         },
       ]
 
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockReleases),
+        json: () => Promise.resolve({ releases: mockReleases }),
       })
 
       mockUploadGitHub.mockResolvedValue({
         manifest: { name: 'test-plugin', version: '2.0.0' },
         unique_identifier: 'test-plugin:2.0.0',
       })
-
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
 
       const releases = await fetchReleases('test-org', 'test-repo')
       expect(releases).toHaveLength(3)
@@ -96,7 +69,6 @@ describe('Plugin Installation Flow Integration', () => {
       expect(needUpdate).toBe(true)
       expect(toastProps.message).toContain('v2.0.0')
 
-      const { handleUpload } = useGitHubUpload()
       const onSuccess = vi.fn()
       const result = await handleUpload(
         'https://github.com/test-org/test-repo',
@@ -123,17 +95,15 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles no new version available', async () => {
       const mockReleases = [
         {
-          tag_name: 'v1.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.difypkg', name: 'plugin-v1.difypkg' }],
+          tag: 'v1.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.difypkg' }],
         },
       ]
 
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockReleases),
+        json: () => Promise.resolve({ releases: mockReleases }),
       })
-
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
 
       const releases = await fetchReleases('test-org', 'test-repo')
       const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
@@ -146,10 +116,8 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles empty releases', async () => {
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve([]),
+        json: () => Promise.resolve({ releases: [] }),
       })
-
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
 
       const releases = await fetchReleases('test-org', 'test-repo')
       expect(releases).toHaveLength(0)
@@ -166,7 +134,6 @@ describe('Plugin Installation Flow Integration', () => {
         status: 404,
       })
 
-      const { fetchReleases } = useGitHubReleases()
       const releases = await fetchReleases('nonexistent-org', 'nonexistent-repo')
 
       expect(releases).toEqual([])
@@ -178,7 +145,6 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles upload failure gracefully', async () => {
       mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
 
-      const { handleUpload } = useGitHubUpload()
       const onSuccess = vi.fn()
 
       await expect(

@@ -11,8 +11,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -151,7 +154,7 @@ class TestBatchCleanDocumentTask:
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         db_session_with_containers.add(document)
@@ -209,7 +212,7 @@ class TestBatchCleanDocumentTask:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -265,11 +268,13 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()  # Ensure all changes are committed
 
         # Check that segment is deleted
-        deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+        deleted_segment = db_session_with_containers.scalar(
+            select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+        )
         assert deleted_segment is None
 
         # Check that upload file is deleted
-        deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+        deleted_file = db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
         assert deleted_file is None
 
     def test_batch_clean_document_task_with_image_files(
@@ -317,7 +322,9 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Check that segment is deleted
-        deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+        deleted_segment = db_session_with_containers.scalar(
+            select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+        )
         assert deleted_segment is None
 
         # Verify that the task completed successfully by checking the log output
@@ -358,14 +365,14 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Check that upload file is deleted
-        deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+        deleted_file = db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
         assert deleted_file is None
 
         # Verify database cleanup
         db_session_with_containers.commit()
 
         # Check that upload file is deleted
-        deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+        deleted_file = db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
         assert deleted_file is None
 
     def test_batch_clean_document_task_dataset_not_found(
@@ -391,7 +398,12 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Execute the task with non-existent dataset
-        batch_clean_document_task(document_ids=[document_id], dataset_id=dataset_id, doc_form="text_model", file_ids=[])
+        batch_clean_document_task(
+            document_ids=[document_id],
+            dataset_id=dataset_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            file_ids=[],
+        )
 
         # Verify that no index processing occurred
         mock_external_service_dependencies["index_processor"].clean.assert_not_called()
@@ -403,7 +415,9 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Document should still exist since cleanup failed
-        existing_document = db_session_with_containers.query(Document).filter_by(id=document_id).first()
+        existing_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document_id).limit(1)
+        )
         assert existing_document is not None
 
     def test_batch_clean_document_task_storage_cleanup_failure(
@@ -446,11 +460,13 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Check that segment is deleted from database
-        deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+        deleted_segment = db_session_with_containers.scalar(
+            select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+        )
         assert deleted_segment is None
 
         # Check that upload file is deleted from database
-        deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+        deleted_file = db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
         assert deleted_file is None
 
     def test_batch_clean_document_task_multiple_documents(
@@ -503,12 +519,16 @@ class TestBatchCleanDocumentTask:
 
         # Check that all segments are deleted
         for segment_id in segment_ids:
-            deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+            deleted_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+            )
             assert deleted_segment is None
 
         # Check that all upload files are deleted
         for file_id in file_ids:
-            deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+            deleted_file = db_session_with_containers.scalar(
+                select(UploadFile).where(UploadFile.id == file_id).limit(1)
+            )
             assert deleted_file is None
 
     def test_batch_clean_document_task_different_doc_forms(
@@ -524,7 +544,11 @@ class TestBatchCleanDocumentTask:
         account = self._create_test_account(db_session_with_containers)
 
         # Test different doc_form types
-        doc_forms = ["text_model", "qa_model", "hierarchical_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             dataset = self._create_test_dataset(db_session_with_containers, account)
@@ -553,7 +577,9 @@ class TestBatchCleanDocumentTask:
                 db_session_with_containers.commit()
 
                 # Check that segment is deleted
-                deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+                deleted_segment = db_session_with_containers.scalar(
+                    select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+                )
                 assert deleted_segment is None
 
             except Exception as e:
@@ -563,7 +589,9 @@ class TestBatchCleanDocumentTask:
                 db_session_with_containers.commit()
 
                 # Check if the segment still exists (task may have failed before deletion)
-                existing_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+                existing_segment = db_session_with_containers.scalar(
+                    select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+                )
                 if existing_segment is not None:
                     # If segment still exists, the task failed before deletion
                     # This is acceptable in test environments with external service issues
@@ -634,12 +662,16 @@ class TestBatchCleanDocumentTask:
 
         # Check that all segments are deleted
         for segment_id in segment_ids:
-            deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+            deleted_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+            )
             assert deleted_segment is None
 
         # Check that all upload files are deleted
         for file_id in file_ids:
-            deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+            deleted_file = db_session_with_containers.scalar(
+                select(UploadFile).where(UploadFile.id == file_id).limit(1)
+            )
             assert deleted_file is None
 
     def test_batch_clean_document_task_integration_with_real_database(
@@ -688,8 +720,16 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Verify initial state
-        assert db_session_with_containers.query(DocumentSegment).filter_by(document_id=document.id).count() == 3
-        assert db_session_with_containers.query(UploadFile).filter_by(id=upload_file.id).first() is not None
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
+            == 3
+        )
+        assert (
+            db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == upload_file.id).limit(1))
+            is not None
+        )
 
         # Store original IDs for verification
         document_id = document.id
@@ -709,13 +749,20 @@ class TestBatchCleanDocumentTask:
 
         # Check that all segments are deleted
         for segment_id in segment_ids:
-            deleted_segment = db_session_with_containers.query(DocumentSegment).filter_by(id=segment_id).first()
+            deleted_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+            )
             assert deleted_segment is None
 
         # Check that upload file is deleted
-        deleted_file = db_session_with_containers.query(UploadFile).filter_by(id=file_id).first()
+        deleted_file = db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
         assert deleted_file is None
 
         # Verify final database state
-        assert db_session_with_containers.query(DocumentSegment).filter_by(document_id=document_id).count() == 0
-        assert db_session_with_containers.query(UploadFile).filter_by(id=file_id).first() is None
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            )
+            == 0
+        )
+        assert db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1)) is None

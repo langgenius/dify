@@ -186,7 +186,7 @@ describe('OpeningSettingModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should not call onCancel when close icon receives non-action key', async () => {
+  it('should call onCancel when Escape is pressed on the dialog close control', async () => {
     const onCancel = vi.fn()
     await render(
       <OpeningSettingModal
@@ -200,7 +200,7 @@ describe('OpeningSettingModal', () => {
     closeButton.focus()
     fireEvent.keyDown(closeButton, { key: 'Escape' })
 
-    expect(onCancel).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call onSave with updated data when save is clicked', async () => {
@@ -255,6 +255,26 @@ describe('OpeningSettingModal', () => {
     // The new empty question renders as an input with empty value
     const allInputs = screen.getAllByDisplayValue('')
     expect(allInputs.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should focus a new suggested question without destructive styling', async () => {
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByText(/variableConfig\.addOption/))
+
+    const newInput = screen.getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')
+      .find(input => (input as HTMLInputElement).value === '') as HTMLInputElement
+    const questionRow = newInput.parentElement
+
+    expect(newInput).toHaveFocus()
+    expect(questionRow).not.toHaveClass('border-components-input-border-destructive')
+    expect(questionRow).toHaveClass('border-components-input-border-active')
   })
 
   it('should delete a suggested question via save verification', async () => {
@@ -334,7 +354,39 @@ describe('OpeningSettingModal', () => {
     )
 
     // Count is displayed as "2/10" across child elements
-    expect(screen.getByText(/openingStatement\.openingQuestion/)).toBeInTheDocument()
+    expect(screen.getByText('appDebug.openingStatement.openingQuestion')).toBeInTheDocument()
+  })
+
+  it('should render separate opener and question sections', async () => {
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('opener-input-section')).toBeInTheDocument()
+    expect(screen.getByTestId('opener-questions-section')).toBeInTheDocument()
+    expect(screen.getByText(/openingStatement\.editorTitle/)).toBeInTheDocument()
+    expect(screen.getByTestId('opening-questions-tooltip')).toBeInTheDocument()
+    expect(screen.queryByText(/openingStatement\.openingQuestionDescription/)).not.toBeInTheDocument()
+  })
+
+  it('should show the opening questions description in a tooltip', async () => {
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    act(() => {
+      fireEvent.mouseEnter(screen.getByTestId('opening-questions-tooltip'))
+    })
+
+    expect(screen.getByText(/openingStatement\.openingQuestionDescription/)).toBeInTheDocument()
   })
 
   it('should call onAutoAddPromptVariable when confirm add is clicked', async () => {
@@ -540,7 +592,9 @@ describe('OpeningSettingModal', () => {
 
     const editor = getPromptEditor()
     expect(editor.textContent?.trim()).toBe('')
-    expect(screen.getByText('appDebug.openingStatement.placeholder')).toBeInTheDocument()
+    const openerSection = screen.getByTestId('opener-input-section')
+    expect(openerSection.textContent).toContain('appDebug.openingStatement.placeholderLine1')
+    expect(openerSection.textContent).toContain('appDebug.openingStatement.placeholderLine2')
   })
 
   it('should render with empty suggested questions when field is missing', async () => {

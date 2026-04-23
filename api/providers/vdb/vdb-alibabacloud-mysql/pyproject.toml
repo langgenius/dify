@@ -1,0 +1,13 @@
+[project]
+name = "dify-vdb-alibabacloud-mysql"
+version = "0.0.1"
+dependencies = [
+    "mysql-connector-python>=9.3.0",
+]
+description = "Dify vector store backend (dify-vdb-alibabacloud-mysql)."
+
+[project.entry-points."dify.vector_backends"]
+alibabacloud_mysql = "dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector:AlibabaCloudMySQLVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

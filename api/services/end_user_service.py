@@ -1,8 +1,8 @@
 import logging
 from collections.abc import Mapping
 
-from sqlalchemy import case
-from sqlalchemy.orm import Session
+from sqlalchemy import case, select
+from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -24,15 +24,15 @@ class EndUserService:
         when an end-user ID is known.
         """
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            return (
-                session.query(EndUser)
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            return session.scalar(
+                select(EndUser)
                 .where(
                     EndUser.id == end_user_id,
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                 )
-                .first()
+                .limit(1)
             )
 
     @classmethod
@@ -54,11 +54,11 @@ class EndUserService:
         if not user_id:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             # Query with ORDER BY to prioritize exact type matches while maintaining backward compatibility
             # This single query approach is more efficient than separate queries
-            end_user = (
-                session.query(EndUser)
+            end_user = session.scalar(
+                select(EndUser)
                 .where(
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
@@ -68,7 +68,7 @@ class EndUserService:
                     # Prioritize records with matching type (0 = match, 1 = no match)
                     case((EndUser.type == type, 0), else_=1)
                 )
-                .first()
+                .limit(1)
             )
 
             if end_user:
@@ -82,7 +82,6 @@ class EndUserService:
                         user_id,
                     )
                     end_user.type = type
-                    session.commit()
             else:
                 # Create new end user if none exists
                 end_user = EndUser(
@@ -94,7 +93,6 @@ class EndUserService:
                     external_user_id=user_id,
                 )
                 session.add(end_user)
-                session.commit()
 
         return end_user
 
@@ -135,17 +133,17 @@ class EndUserService:
         if not unique_app_ids:
             return result
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             # Fetch existing end users for all target apps in a single query
-            existing_end_users: list[EndUser] = (
-                session.query(EndUser)
-                .where(
-                    EndUser.tenant_id == tenant_id,
-                    EndUser.app_id.in_(unique_app_ids),
-                    EndUser.session_id == user_id,
-                    EndUser.type == type,
-                )
-                .all()
+            existing_end_users: list[EndUser] = list(
+                session.scalars(
+                    select(EndUser).where(
+                        EndUser.tenant_id == tenant_id,
+                        EndUser.app_id.in_(unique_app_ids),
+                        EndUser.session_id == user_id,
+                        EndUser.type == type,
+                    )
+                ).all()
             )
 
             found_app_ids: set[str] = set()
@@ -174,7 +172,6 @@ class EndUserService:
                     )
 
                 session.add_all(new_end_users)
-                session.commit()
 
                 for eu in new_end_users:
                     result[eu.app_id] = eu

@@ -1,19 +1,22 @@
 import logging
 
+from sqlalchemy import delete, select
+
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
+from models.enums import SegmentType
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +31,7 @@ class VectorService:
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
+                dataset_document = db.session.get(DatasetDocument, segment.document_id)
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
@@ -37,17 +40,13 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
-                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
-                )
+                processing_rule = db.session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance
-                if dataset.indexing_technique == "high_quality":
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     # check embedding model setting
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                     if dataset.embedding_model_provider:
                         embedding_model_instance = model_manager.get_model_instance(
@@ -112,7 +111,7 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
             },
         )
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
@@ -180,7 +179,7 @@ class VectorService:
                     index_node_hash=child_chunk.metadata["doc_hash"],
                     content=child_chunk.page_content,
                     word_count=len(child_chunk.page_content),
-                    type="automatic",
+                    type=SegmentType.AUTOMATIC,
                     created_by=dataset_document.created_by,
                 )
                 db.session.add(child_segment)
@@ -197,7 +196,7 @@ class VectorService:
                 "dataset_id": child_segment.dataset_id,
             },
         )
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # save vector index
             vector = Vector(dataset=dataset)
             vector.add_texts([child_document], duplicate_check=True)
@@ -224,6 +223,7 @@ class VectorService:
             )
             documents.append(new_child_document)
         for update_child_chunk in update_child_chunks:
+            assert update_child_chunk.index_node_id
             child_document = Document(
                 page_content=update_child_chunk.content,
                 metadata={
@@ -236,8 +236,9 @@ class VectorService:
             documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert delete_child_chunk.index_node_id
             delete_node_ids.append(delete_child_chunk.index_node_id)
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
             if delete_node_ids:
@@ -248,11 +249,12 @@ class VectorService:
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
+        assert child_chunk.index_node_id
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
     def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
         attachments = segment.attachments
@@ -270,8 +272,8 @@ class VectorService:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id).delete(
-                synchronize_session=False
+            db.session.execute(
+                delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id)
             )
 
             if not attachment_ids:
@@ -279,7 +281,7 @@ class VectorService:
                 return
 
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
+            upload_file_list = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
 
             if not upload_file_list:
                 db.session.commit()

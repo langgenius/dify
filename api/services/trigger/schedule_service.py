@@ -13,7 +13,7 @@ from core.workflow.nodes.trigger_schedule.entities import (
     VisualConfig,
 )
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
-from dify_graph.entities.graph_config import NodeConfigDict
+from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan

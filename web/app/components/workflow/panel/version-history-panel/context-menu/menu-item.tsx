@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import type { VersionHistoryContextMenuOptions } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type MenuItemProps = {
   item: {
@@ -18,23 +19,25 @@ const MenuItem: FC<MenuItemProps> = ({
   isDestructive = false,
 }) => {
   return (
-    <div
+    <DropdownMenuItem
+      variant={isDestructive ? 'destructive' : 'default'}
       className={cn(
-        'flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 ',
-        isDestructive ? 'hover:bg-state-destructive-hover' : 'hover:bg-state-base-hover',
+        'justify-between px-2 py-1.5',
+        isDestructive && 'data-highlighted:bg-state-destructive-hover',
       )}
-      onClick={() => {
+      onClick={(event) => {
+        event.stopPropagation()
         onClick(item.key)
       }}
     >
       <div className={cn(
-        'system-md-regular flex-1 text-text-primary',
-        isDestructive && 'hover:text-text-destructive',
+        'flex-1 system-md-regular text-text-primary',
+        isDestructive && 'text-inherit',
       )}
       >
         {item.name}
       </div>
-    </div>
+    </DropdownMenuItem>
   )
 }
 

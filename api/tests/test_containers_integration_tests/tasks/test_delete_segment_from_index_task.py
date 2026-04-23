@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -108,7 +108,7 @@ class TestDeleteSegmentFromIndexTask:
         dataset.provider = "vendor"
         dataset.permission = "only_me"
         dataset.data_source_type = DataSourceType.UPLOAD_FILE
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.index_struct = '{"type": "paragraph"}'
         dataset.created_by = account.id
         dataset.created_at = fake.date_time_this_year()

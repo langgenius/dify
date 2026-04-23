@@ -1,7 +1,7 @@
 import concurrent.futures
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session, load_only
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from core.rag.data_post_processor.data_post_processor import DataPostProcessor
+from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.embedding.retrieval import RetrievalChildChunk, RetrievalSegments
-from core.rag.entities.metadata_entities import MetadataCondition
+from core.rag.embedding.retrieval import AttachmentInfoDict, RetrievalChildChunk, RetrievalSegments
+from core.rag.entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -22,8 +22,8 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -35,7 +35,49 @@ from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.external_knowledge_service import ExternalDatasetService
 
-default_retrieval_model = {
+
+class SegmentAttachmentResult(TypedDict):
+    attachment_info: AttachmentInfoDict
+    segment_id: str
+
+
+class SegmentAttachmentInfoResult(TypedDict):
+    attachment_id: str
+    attachment_info: AttachmentInfoDict
+    segment_id: str
+
+
+class ChildChunkDetail(TypedDict):
+    id: str
+    content: str
+    position: int
+    score: float
+
+
+class SegmentChildMapDetail(TypedDict):
+    max_score: float
+    child_chunks: list[ChildChunkDetail]
+
+
+class SegmentRecord(TypedDict):
+    segment: DocumentSegment
+    score: NotRequired[float]
+    child_chunks: NotRequired[list[ChildChunkDetail]]
+    files: NotRequired[list[AttachmentInfoDict]]
+
+
+class DefaultRetrievalModelDict(TypedDict):
+    search_method: RetrievalMethod
+    reranking_enable: bool
+    reranking_model: RerankingModelDict
+    reranking_mode: NotRequired[str]
+    weights: NotRequired[WeightsDict | None]
+    score_threshold: NotRequired[float]
+    top_k: int
+    score_threshold_enabled: bool
+
+
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -56,11 +98,11 @@ class RetrievalService:
         query: str,
         top_k: int = 4,
         score_threshold: float | None = 0.0,
-        reranking_model: dict | None = None,
+        reranking_model: RerankingModelDict | None = None,
         reranking_mode: str = "reranking_model",
-        weights: dict | None = None,
+        weights: WeightsDict | None = None,
         document_ids_filter: list[str] | None = None,
-        attachment_ids: list | None = None,
+        attachment_ids: list[str] | None = None,
     ):
         if not query and not attachment_ids:
             return []
@@ -116,7 +158,7 @@ class RetrievalService:
                     )
 
             if futures:
-                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                for _ in concurrent.futures.as_completed(futures, timeout=3600):
                     if exceptions:
                         for f in futures:
                             f.cancel()
@@ -132,15 +174,17 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: dict | None = None,
-        metadata_filtering_conditions: dict | None = None,
+        external_retrieval_model: dict[str, Any] | None = None,
+        metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
-            MetadataCondition.model_validate(metadata_filtering_conditions) if metadata_filtering_conditions else None
+            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            if metadata_filtering_conditions
+            else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,
@@ -150,6 +194,23 @@ class RetrievalService:
             metadata_condition=metadata_condition,
         )
         return all_documents
+
+    @classmethod
+    def _filter_documents_by_vector_score_threshold(
+        cls, documents: list[Document], score_threshold: float | None
+    ) -> list[Document]:
+        """Keep documents whose stored retrieval score meets the threshold.
+
+        Used when hybrid search skips early vector thresholding but no rerank
+        runner applies a threshold afterward (same rule as ``calculate_vector_score``).
+        """
+        if score_threshold is None:
+            return documents
+        return [
+            document
+            for document in documents
+            if document.metadata and document.metadata.get("score", 0) >= score_threshold
+        ]
 
     @classmethod
     def _deduplicate_documents(cls, documents: list[Document]) -> list[Document]:
@@ -198,7 +259,7 @@ class RetrievalService:
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
-            return session.query(Dataset).where(Dataset.id == dataset_id).first()
+            return session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
     @classmethod
     def keyword_search(
@@ -207,8 +268,8 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        all_documents: list,
-        exceptions: list,
+        all_documents: list[Document],
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -235,10 +296,10 @@ class RetrievalService:
         query: str,
         top_k: int,
         score_threshold: float | None,
-        reranking_model: dict | None,
-        all_documents: list,
+        reranking_model: RerankingModelDict | None,
+        all_documents: list[Document],
         retrieval_method: RetrievalMethod,
-        exceptions: list,
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ):
@@ -250,13 +311,20 @@ class RetrievalService:
 
                 vector = Vector(dataset=dataset)
                 documents = []
+                # Hybrid search merges keyword / full-text / vector hits and then reranks
+                # (weighted fusion or reranking model). Applying the user score threshold at
+                # vector retrieval time uses embedding similarity, which is not comparable to
+                # reranked or fused scores and incorrectly drops high-quality chunks (#35233).
+                embedding_score_threshold = (
+                    0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
+                )
                 if query_type == QueryType.TEXT_QUERY:
                     documents.extend(
                         vector.search_by_vector(
                             query,
                             search_type="similarity_score_threshold",
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=embedding_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
@@ -268,7 +336,7 @@ class RetrievalService:
                         vector.search_by_file(
                             file_id=query,
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=embedding_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
@@ -277,19 +345,19 @@ class RetrievalService:
                 if documents:
                     if (
                         reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
+                        and reranking_model["reranking_model_name"]
+                        and reranking_model["reranking_provider_name"]
                         and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
                             str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         if dataset.is_multimodal:
-                            model_manager = ModelManager()
+                            model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
                             is_support_vision = model_manager.check_model_support_vision(
                                 tenant_id=dataset.tenant_id,
-                                provider=reranking_model.get("reranking_provider_name") or "",
-                                model=reranking_model.get("reranking_model_name") or "",
+                                provider=reranking_model["reranking_provider_name"],
+                                model=reranking_model["reranking_model_name"],
                                 model_type=ModelType.RERANK,
                             )
                             if is_support_vision:
@@ -329,10 +397,10 @@ class RetrievalService:
         query: str,
         top_k: int,
         score_threshold: float | None,
-        reranking_model: dict | None,
-        all_documents: list,
+        reranking_model: RerankingModelDict | None,
+        all_documents: list[Document],
         retrieval_method: str,
-        exceptions: list,
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -349,8 +417,8 @@ class RetrievalService:
                 if documents:
                     if (
                         reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
+                        and reranking_model["reranking_model_name"]
+                        and reranking_model["reranking_provider_name"]
                         and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
@@ -389,10 +457,11 @@ class RetrievalService:
             # Batch query dataset documents
             dataset_documents = {
                 doc.id: doc
-                for doc in db.session.query(DatasetDocument)
-                .where(DatasetDocument.id.in_(document_ids))
-                .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
-                .all()
+                for doc in db.session.scalars(
+                    select(DatasetDocument)
+                    .where(DatasetDocument.id.in_(document_ids))
+                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                ).all()
             }
 
             valid_dataset_documents = {}
@@ -459,7 +528,7 @@ class RetrievalService:
             segment_ids: list[str] = []
             index_node_segments: list[DocumentSegment] = []
             segments: list[DocumentSegment] = []
-            attachment_map: dict[str, list[dict[str, Any]]] = {}
+            attachment_map: dict[str, list[AttachmentInfoDict]] = {}
             child_chunk_map: dict[str, list[ChildChunk]] = {}
             doc_segment_map: dict[str, list[str]] = {}
             segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
@@ -482,6 +551,7 @@ class RetrievalService:
                 child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
                 for i in child_index_nodes:
+                    assert i.index_node_id
                     segment_ids.append(i.segment_id)
                     if i.segment_id in child_chunk_map:
                         child_chunk_map[i.segment_id].append(i)
@@ -530,26 +600,24 @@ class RetrievalService:
 
                 # Batch query summaries for segments retrieved via summary (only enabled summaries)
                 if summary_segment_ids:
-                    summaries = (
-                        session.query(DocumentSegmentSummary)
-                        .filter(
+                    summaries = session.scalars(
+                        select(DocumentSegmentSummary).where(
                             DocumentSegmentSummary.chunk_id.in_(list(summary_segment_ids)),
                             DocumentSegmentSummary.status == "completed",
-                            DocumentSegmentSummary.enabled == True,  # Only retrieve enabled summaries
+                            DocumentSegmentSummary.enabled.is_(True),  # Only retrieve enabled summaries
                         )
-                        .all()
-                    )
+                    ).all()
                     for summary in summaries:
                         if summary.summary_content:
                             segment_summary_map[summary.chunk_id] = summary.summary_content
 
             include_segment_ids = set()
-            segment_child_map: dict[str, dict[str, Any]] = {}
-            records: list[dict[str, Any]] = []
+            segment_child_map: dict[str, SegmentChildMapDetail] = {}
+            records: list[SegmentRecord] = []
 
             for segment in segments:
                 child_chunks: list[ChildChunk] = child_chunk_map.get(segment.id, [])
-                attachment_infos: list[dict[str, Any]] = attachment_map.get(segment.id, [])
+                attachment_infos: list[AttachmentInfoDict] = attachment_map.get(segment.id, [])
                 ds_dataset_document: DatasetDocument | None = valid_dataset_documents.get(segment.document_id)
 
                 if ds_dataset_document and ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -560,14 +628,14 @@ class RetrievalService:
                         max_score = summary_score_map.get(segment.id, 0.0)
 
                         if child_chunks or attachment_infos:
-                            child_chunk_details = []
+                            child_chunk_details: list[ChildChunkDetail] = []
                             for child_chunk in child_chunks:
                                 child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
                                 if child_document:
                                     child_score = child_document.metadata.get("score", 0.0)
                                 else:
                                     child_score = 0.0
-                                child_chunk_detail = {
+                                child_chunk_detail: ChildChunkDetail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
                                     "position": child_chunk.position,
@@ -580,7 +648,7 @@ class RetrievalService:
                                 if file_document:
                                     max_score = max(max_score, file_document.metadata.get("score", 0.0))
 
-                            map_detail = {
+                            map_detail: SegmentChildMapDetail = {
                                 "max_score": max_score,
                                 "child_chunks": child_chunk_details,
                             }
@@ -593,7 +661,7 @@ class RetrievalService:
                                     "max_score": summary_score,
                                     "child_chunks": [],
                                 }
-                        record: dict[str, Any] = {
+                        record: SegmentRecord = {
                             "segment": segment,
                         }
                         records.append(record)
@@ -617,19 +685,19 @@ class RetrievalService:
                             if file_doc:
                                 max_score = max(max_score, file_doc.metadata.get("score", 0.0))
 
-                        record = {
+                        another_record: SegmentRecord = {
                             "segment": segment,
                             "score": max_score,
                         }
-                        records.append(record)
+                        records.append(another_record)
 
             # Add child chunks information to records
             for record in records:
                 if record["segment"].id in segment_child_map:
-                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
-                    record["score"] = segment_child_map[record["segment"].id]["max_score"]  # type: ignore
+                    record["child_chunks"] = segment_child_map[record["segment"].id]["child_chunks"]
+                    record["score"] = segment_child_map[record["segment"].id]["max_score"]
                 if record["segment"].id in attachment_map:
-                    record["files"] = attachment_map[record["segment"].id]  # type: ignore[assignment]
+                    record["files"] = attachment_map[record["segment"].id]
 
             result: list[RetrievalSegments] = []
             for record in records:
@@ -693,9 +761,9 @@ class RetrievalService:
         query: str | None = None,
         top_k: int = 4,
         score_threshold: float | None = 0.0,
-        reranking_model: dict | None = None,
+        reranking_model: RerankingModelDict | None = None,
         reranking_mode: str = "reranking_model",
-        weights: dict | None = None,
+        weights: WeightsDict | None = None,
         document_ids_filter: list[str] | None = None,
         attachment_id: str | None = None,
     ):
@@ -801,22 +869,26 @@ class RetrievalService:
                     top_n=top_k,
                     query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
                 )
+                if not data_post_processor.rerank_runner and score_threshold:
+                    all_documents_item = self._filter_documents_by_vector_score_threshold(
+                        all_documents_item, score_threshold
+                    )
 
             all_documents.extend(all_documents_item)
 
     @classmethod
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
-    ) -> dict[str, Any] | None:
-        upload_file = session.query(UploadFile).where(UploadFile.id == attachment_id).first()
+    ) -> SegmentAttachmentResult | None:
+        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == attachment_id).limit(1))
         if upload_file:
-            attachment_binding = (
-                session.query(SegmentAttachmentBinding)
+            attachment_binding = session.scalar(
+                select(SegmentAttachmentBinding)
                 .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
-                .first()
+                .limit(1)
             )
             if attachment_binding:
-                attachment_info = {
+                attachment_info: AttachmentInfoDict = {
                     "id": upload_file.id,
                     "name": upload_file.name,
                     "extension": "." + upload_file.extension,
@@ -828,22 +900,22 @@ class RetrievalService:
         return None
 
     @classmethod
-    def get_segment_attachment_infos(cls, attachment_ids: list[str], session: Session) -> list[dict[str, Any]]:
-        attachment_infos = []
-        upload_files = session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
+    def get_segment_attachment_infos(
+        cls, attachment_ids: list[str], session: Session
+    ) -> list[SegmentAttachmentInfoResult]:
+        attachment_infos: list[SegmentAttachmentInfoResult] = []
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
-            attachment_bindings = (
-                session.query(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
-                .all()
-            )
+            attachment_bindings = session.scalars(
+                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
+            ).all()
             attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
 
             if attachment_bindings:
                 for upload_file in upload_files:
                     attachment_binding = attachment_binding_map.get(upload_file.id)
-                    attachment_info = {
+                    info: AttachmentInfoDict = {
                         "id": upload_file.id,
                         "name": upload_file.name,
                         "extension": "." + upload_file.extension,
@@ -855,7 +927,7 @@ class RetrievalService:
                         attachment_infos.append(
                             {
                                 "attachment_id": attachment_binding.attachment_id,
-                                "attachment_info": attachment_info,
+                                "attachment_info": info,
                                 "segment_id": attachment_binding.segment_id,
                             }
                         )

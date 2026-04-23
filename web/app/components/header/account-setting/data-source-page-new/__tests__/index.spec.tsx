@@ -1,12 +1,11 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { DataSourceAuth } from '../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useGetDataSourceListAuth, useGetDataSourceOAuthUrl } from '@/service/use-datasource'
-import { defaultSystemFeatures } from '@/types/feature'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
@@ -22,10 +21,6 @@ vi.mock('next-themes', () => ({
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: vi.fn(),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/service/use-datasource', () => ({
@@ -96,18 +91,14 @@ describe('DataSourcePage Component', () => {
   describe('Initial View Rendering', () => {
     it('should render an empty view when no data is available and marketplace is disabled', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: { ...defaultSystemFeatures, enable_marketplace: false },
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: undefined,
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
 
       // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
@@ -118,18 +109,14 @@ describe('DataSourcePage Component', () => {
   describe('Data Source List Rendering', () => {
     it('should render Card components for each data source returned from the API', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: { ...defaultSystemFeatures, enable_marketplace: false },
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: { result: mockProviders },
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
 
       // Assert
       expect(screen.getByText('Dify Source')).toBeInTheDocument()
@@ -140,18 +127,14 @@ describe('DataSourcePage Component', () => {
   describe('Marketplace Integration', () => {
     it('should render the InstallFromMarketplace component when enable_marketplace feature is enabled', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: { ...defaultSystemFeatures, enable_marketplace: true },
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: { result: mockProviders },
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: true },
+      })
 
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
@@ -160,18 +143,14 @@ describe('DataSourcePage Component', () => {
 
     it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: { ...defaultSystemFeatures, enable_marketplace: true },
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: undefined,
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: true },
+      })
 
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
@@ -179,38 +158,30 @@ describe('DataSourcePage Component', () => {
 
     it('should handle the case where data exists but result is an empty array', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: { ...defaultSystemFeatures, enable_marketplace: true },
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: { result: [] },
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: true },
+      })
 
       // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
     })
 
-    it('should handle the case where systemFeatures is missing (edge case for coverage)', () => {
+    it('should handle the case where enable_marketplace is false (edge case for coverage)', () => {
       // Arrange
-      /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: any) =>
-        selector({
-          systemFeatures: {},
-        }),
-      )
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
         data: { result: [] },
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      render(<DataSourcePage />)
+      renderWithSystemFeatures(<DataSourcePage />, {
+        systemFeatures: { enable_marketplace: false },
+      })
 
       // Assert
       expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()

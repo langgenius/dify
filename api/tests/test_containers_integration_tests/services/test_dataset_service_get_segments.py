@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -64,7 +65,7 @@ class SegmentServiceTestDataFactory:
             name=f"Test Dataset {uuid4()}",
             description="Test description",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=DatasetPermissionEnum.ONLY_ME,
             provider="vendor",

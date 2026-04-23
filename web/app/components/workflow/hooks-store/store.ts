@@ -22,14 +22,15 @@ export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
   nodesMap?: Record<BlockEnum, NodeDefault<any>>
 }
-export type CommonHooksFnMap = {
+export type SyncDraftCallback = {
+  onSuccess?: () => void
+  onError?: () => void
+  onSettled?: () => void
+}
+type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void
@@ -161,8 +162,4 @@ export function useHooksStore<T>(selector: (state: Shape) => T): T {
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 
   return useZustandStore(store, selector)
-}
-
-export const useHooksStoreApi = () => {
-  return useContext(HooksStoreContext)!
 }

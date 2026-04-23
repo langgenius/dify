@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
-from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
@@ -18,8 +18,12 @@ class TestModelProviderService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.model_provider_service.ProviderManager", autospec=True) as mock_provider_manager,
-            patch("services.model_provider_service.ModelProviderFactory", autospec=True) as mock_model_provider_factory,
+            patch(
+                "services.model_provider_service.create_plugin_provider_manager", autospec=True
+            ) as mock_provider_manager,
+            patch(
+                "services.model_provider_service.create_plugin_model_provider_factory", autospec=True
+            ) as mock_model_provider_factory,
         ):
             # Setup default mock returns
             mock_provider_manager.return_value.get_configurations.return_value = MagicMock()
@@ -402,8 +406,8 @@ class TestModelProviderService:
 
         # Create mock models
         from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
-        from dify_graph.model_runtime.entities.common_entities import I18nObject
-        from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
+        from graphon.model_runtime.entities.common_entities import I18nObject
+        from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
         # Create real model objects instead of mocks
         provider_entity_1 = SimpleModelProviderEntity(
@@ -640,7 +644,7 @@ class TestModelProviderService:
 
         # Create mock default model response
         from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
-        from dify_graph.model_runtime.entities.common_entities import I18nObject
+        from graphon.model_runtime.entities.common_entities import I18nObject
 
         mock_default_model = DefaultModelEntity(
             model="gpt-3.5-turbo",

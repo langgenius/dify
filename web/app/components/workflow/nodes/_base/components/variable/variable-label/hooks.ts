@@ -82,8 +82,8 @@ export const useVarBgColorInEditor = (variables: string[], hasError?: boolean) =
     return {
       hoverBorderColor: 'hover:border-state-destructive-active',
       hoverBgColor: 'hover:bg-state-destructive-hover',
-      selectedBorderColor: '!border-state-destructive-solid',
-      selectedBgColor: '!bg-state-destructive-hover',
+      selectedBorderColor: 'border-state-destructive-solid!',
+      selectedBgColor: 'bg-state-destructive-hover!',
     }
   }
 

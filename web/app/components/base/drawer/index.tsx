@@ -1,8 +1,8 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import Button from '../button'
 
 export type IDrawerProps = {
   title?: string
@@ -54,26 +54,26 @@ export default function Drawer({
         if (!clickOutsideNotOpen)
           onClose()
       }}
-      className={cn('fixed inset-0 z-[30] overflow-y-auto', dialogClassName)}
+      className={cn('fixed inset-0 z-30 overflow-y-auto', dialogClassName)}
     >
-      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center', containerClassName)}>
+      <div className={cn('flex h-screen w-screen justify-end', positionCenter && 'justify-center!', containerClassName)}>
         {/* mask */}
         {!noOverlay && (
           <DialogBackdrop
-            className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
+            className={cn('fixed inset-0 z-40', mask && 'bg-black/30', dialogBackdropClassName)}
             onClick={() => {
               if (!clickOutsideNotOpen)
                 onClose()
             }}
           />
         )}
-        <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
+        <div className={cn('relative z-50 flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
           <>
             <div className="flex justify-between">
               {title && (
                 <DialogTitle
                   as="h3"
-                  className="text-lg font-medium leading-6 text-text-primary"
+                  className="text-lg leading-6 font-medium text-text-primary"
                 >
                   {title}
                 </DialogTitle>

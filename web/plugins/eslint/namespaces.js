@@ -2,7 +2,7 @@
 // Keep in sync with the namespaces object
 
 // @keep-sorted
-export const NAMESPACES = [
+const NAMESPACES = [
   'app',
   'appAnnotation',
   'appApi',
@@ -37,7 +37,7 @@ export const NAMESPACES = [
 
 // Sort by length descending to match longer prefixes first
 // e.g., 'datasetDocuments' before 'dataset'
-export const NAMESPACES_BY_LENGTH = [...NAMESPACES].sort((a, b) => b.length - a.length)
+const NAMESPACES_BY_LENGTH = [...NAMESPACES].sort((a, b) => b.length - a.length)
 
 /**
  * Extract namespace from a translation key

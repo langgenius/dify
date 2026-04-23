@@ -8,8 +8,9 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 
 - **Framework**: Next.js 15 + React 19 + TypeScript
 - **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
-- **Test Environment**: jsdom
-- **File Naming**: `ComponentName.spec.tsx` (same directory as component)
+- **Test Environment**: happy-dom
+- **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
+- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 
 ## Running Tests
 
@@ -29,7 +30,7 @@ pnpm test path/to/file.spec.tsx
 
 ## Project Test Setup
 
-- **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **Configuration**: `vite.config.ts` sets the `happy-dom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
@@ -94,7 +95,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
 1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
-1. **DO NOT mock base components**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Button`, `Tooltip`, `Modal`). Base components will have their own dedicated tests. Use real components to test actual integration behavior.
+1. **DO NOT mock base components or dify-ui primitives**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Input`, `Badge`, `Tag`) or from `@langgenius/dify-ui/*` (e.g., `Button`, `Tooltip`, `Dialog`, `Select`, `Popover`). They have their own dedicated tests. Use real components to test actual integration behavior.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -118,13 +119,11 @@ When assigned to test a **directory/path** (not just a single file), follow thes
 Choose based on directory complexity:
 
 1. **Single spec file (Integration approach)** - Preferred for related components
-
    - Minimize mocking - use real project components
    - Test actual integration between components
    - Only mock: API calls, complex context providers, third-party libs
 
 1. **Multiple spec files (Unit approach)** - For complex directories
-
    - One spec file per component/hook/utility
    - More isolated testing
    - Useful when components are independent
@@ -135,10 +134,10 @@ When using a single spec file:
 
 - ✅ **Import real project components** directly (including base components and siblings)
 - ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
-- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`) or dify-ui primitives (`@langgenius/dify-ui/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
-> See [Example Structure](#example-structure) for correct import/mock patterns.
+> See [Example Structure] for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -184,8 +183,8 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
-- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
-- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
+- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders] section).
+- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in **mocks**/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
 - ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
 
 **Rules**:
@@ -284,16 +283,6 @@ Reserve snapshots for static, deterministic fragments (icons, badges, layout chr
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
 
-### 12. Mock API
-
-Use Nock to mock API calls. Example:
-
-```ts
-const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
-  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
-}
-```
-
 ## Code Style
 
 ### Example Structure
@@ -362,7 +351,6 @@ describe('ComponentName', () => {
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
    The global mock provides:
-
    - `useTranslation` - returns translation keys with namespace prefix
    - `Trans` component - renders i18nKey and components
    - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
@@ -532,16 +520,23 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
-- [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
+- [index.spec.tsx] - Component tests
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/guide/)
-- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro/)
-- [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-- [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
+- [Vitest Documentation]
+- [React Testing Library Documentation]
+- [Testing Library Best Practices]
+- [Vitest Mocking Guide]
 
-______________________________________________________________________
+---
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.
+
+[Example Structure]: #example-structure
+[React Testing Library Documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Test Data Builders]: #9-test-data-builders-anti-hardcoding
+[Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
+[Vitest Documentation]: https://vitest.dev/guide
+[Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
+[index.spec.tsx]: ../app/components/base/radio/__tests__/index.spec.tsx

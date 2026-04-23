@@ -79,21 +79,13 @@ vi.mock('@/app/components/base/drawer', () => ({
     isOpen ? <div data-testid="drawer">{children}</div> : null,
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: { isShow: boolean, onConfirm: () => void, onCancel: () => void, title: string }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-dialog">
-            <span>{title}</span>
-            <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-            <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
+const mockToastSuccess = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
+  },
 }))
 
 vi.mock('@/app/components/header/indicator', () => ({
@@ -165,6 +157,9 @@ const createMockCollection = (overrides?: Partial<Collection>): Collection => ({
   ...overrides,
 })
 
+const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+
 describe('ProviderDetail', () => {
   const mockOnHide = vi.fn()
   const mockOnRefreshData = vi.fn()
@@ -192,9 +187,9 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByTestId('title')).toHaveTextContent('Test Collection')
-      expect(screen.getByTestId('org-info')).toHaveTextContent('Test Author')
-      expect(screen.getByTestId('description')).toHaveTextContent('A test collection')
+      expect(screen.getByTestId('title'))!.toHaveTextContent('Test Collection')
+      expect(screen.getByTestId('org-info'))!.toHaveTextContent('Test Author')
+      expect(screen.getByTestId('description'))!.toHaveTextContent('A test collection')
     })
 
     it('shows loading state initially', () => {
@@ -205,7 +200,7 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
     })
 
     it('renders tool list after loading for builtIn type', async () => {
@@ -217,8 +212,8 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByTestId('tool-tool-1')).toBeInTheDocument()
-        expect(screen.getByTestId('tool-tool-2')).toBeInTheDocument()
+        expect(screen.getByTestId('tool-tool-1'))!.toBeInTheDocument()
+        expect(screen.getByTestId('tool-tool-2'))!.toBeInTheDocument()
       })
     })
 
@@ -244,7 +239,7 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
     })
 
@@ -257,7 +252,7 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.authorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
       })
     })
   })
@@ -278,7 +273,7 @@ describe('ProviderDetail', () => {
         expect(mockFetchCustomCollection).toHaveBeenCalledWith('test-collection')
       })
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
     })
   })
@@ -296,8 +291,8 @@ describe('ProviderDetail', () => {
         expect(mockFetchWorkflowToolDetail).toHaveBeenCalledWith('test-id')
       })
       await waitFor(() => {
-        expect(screen.getByText('tools.openInStudio')).toBeInTheDocument()
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.openInStudio'))!.toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
     })
   })
@@ -320,7 +315,7 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
       expect(mockSetShowModelModal).toHaveBeenCalled()
@@ -337,7 +332,7 @@ describe('ProviderDetail', () => {
         />,
       )
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
       expect(mockOnHide).toHaveBeenCalled()
     })
   })
@@ -393,10 +388,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(screen.getByTestId('config-credential')).toBeInTheDocument()
+      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
     })
 
     it('saves credentials and refreshes data', async () => {
@@ -408,7 +403,7 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
       await act(async () => {
@@ -429,7 +424,7 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
       await act(async () => {
@@ -450,10 +445,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.authorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.authorized'))
-      expect(screen.getByTestId('config-credential')).toBeInTheDocument()
+      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
     })
   })
 
@@ -472,10 +467,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      const call = mockSetShowModelModal.mock.calls[0][0]
+      const call = mockSetShowModelModal.mock.calls[0]![0]
       act(() => {
         call.onSaveCallback()
       })
@@ -502,7 +497,7 @@ describe('ProviderDetail', () => {
         expect(mockFetchCustomCollection).toHaveBeenCalled()
       })
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
     })
 
@@ -518,10 +513,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('edit-custom-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-custom-modal'))!.toBeInTheDocument()
       await act(async () => {
         fireEvent.click(screen.getByTestId('edit-save'))
       })
@@ -543,13 +538,13 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('edit-remove'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.deleteToolConfirmTitle'))!.toBeInTheDocument()
       await act(async () => {
-        fireEvent.click(screen.getByTestId('confirm-btn'))
+        fireEvent.click(getDeleteConfirmButton())
       })
       await waitFor(() => {
         expect(mockRemoveCustomCollection).toHaveBeenCalledWith('test-collection')
@@ -579,10 +574,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('query')).toBeInTheDocument()
-        expect(screen.getByText('string')).toBeInTheDocument()
-        expect(screen.getByText('Search query')).toBeInTheDocument()
-        expect(screen.getByText('limit')).toBeInTheDocument()
+        expect(screen.getByText('query'))!.toBeInTheDocument()
+        expect(screen.getByText('string'))!.toBeInTheDocument()
+        expect(screen.getByText('Search query'))!.toBeInTheDocument()
+        expect(screen.getByText('limit'))!.toBeInTheDocument()
       })
     })
 
@@ -595,10 +590,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('workflow-tool-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('workflow-tool-modal'))!.toBeInTheDocument()
       await act(async () => {
         fireEvent.click(screen.getByTestId('wf-save'))
       })
@@ -617,13 +612,13 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('wf-remove'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.deleteToolConfirmTitle'))!.toBeInTheDocument()
       await act(async () => {
-        fireEvent.click(screen.getByTestId('confirm-btn'))
+        fireEvent.click(getDeleteConfirmButton())
       })
       await waitFor(() => {
         expect(mockDeleteWorkflowTool).toHaveBeenCalledWith('test-id')
@@ -642,10 +637,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized')).toBeInTheDocument()
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(screen.getByTestId('config-credential')).toBeInTheDocument()
+      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('credential-cancel'))
       expect(screen.queryByTestId('config-credential')).not.toBeInTheDocument()
     })
@@ -662,10 +657,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('edit-custom-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-custom-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('edit-close'))
       expect(screen.queryByTestId('edit-custom-modal')).not.toBeInTheDocument()
     })
@@ -679,10 +674,10 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('workflow-tool-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('workflow-tool-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('wf-close'))
       expect(screen.queryByTestId('workflow-tool-modal')).not.toBeInTheDocument()
     })
@@ -701,13 +696,15 @@ describe('ProviderDetail', () => {
         />,
       )
       await waitFor(() => {
-        expect(screen.getByText('tools.createTool.editAction')).toBeInTheDocument()
+        expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('edit-remove'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('cancel-btn'))
-      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.deleteToolConfirmTitle'))!.toBeInTheDocument()
+      fireEvent.click(getDeleteCancelButton())
+      await waitFor(() => {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      })
     })
   })
 })

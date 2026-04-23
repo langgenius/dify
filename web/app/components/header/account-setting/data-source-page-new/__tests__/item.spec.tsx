@@ -1,5 +1,5 @@
 import type { DataSourceCredential } from '../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Item from '../item'
 
@@ -14,6 +14,9 @@ const triggerRename = async () => {
   fireEvent.click(dropdownTrigger)
   const renameOption = await screen.findByText('common.operation.rename')
   fireEvent.click(renameOption)
+  await waitFor(() => {
+    expect(screen.getByPlaceholderText('common.placeholder.input')).toBeInTheDocument()
+  })
 }
 
 describe('Item Component', () => {

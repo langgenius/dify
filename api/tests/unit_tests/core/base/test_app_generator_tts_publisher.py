@@ -28,10 +28,7 @@ def mock_model_instance(mocker):
 def mock_model_manager(mocker, mock_model_instance):
     manager = mocker.MagicMock()
     manager.get_default_model_instance.return_value = mock_model_instance
-    mocker.patch(
-        "core.base.tts.app_generator_tts_publisher.ModelManager",
-        return_value=manager,
-    )
+    mocker.patch("core.base.tts.app_generator_tts_publisher.ModelManager.for_tenant", return_value=manager)
     return manager
 
 
@@ -64,16 +61,14 @@ class TestInvoiceTTS:
         [None, "", "   "],
     )
     def test_invoice_tts_empty_or_none_returns_none(self, text, mock_model_instance):
-        result = _invoice_tts(text, mock_model_instance, "tenant", "voice1")
+        result = _invoice_tts(text, mock_model_instance, "voice1")
         assert result is None
         mock_model_instance.invoke_tts.assert_not_called()
 
     def test_invoice_tts_valid_text(self, mock_model_instance):
-        result = _invoice_tts(" hello ", mock_model_instance, "tenant", "voice1")
+        result = _invoice_tts(" hello ", mock_model_instance, "voice1")
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="hello",
-            user="responding_tts",
-            tenant_id="tenant",
             voice="voice1",
         )
         assert result == [b"audio1", b"audio2"]
@@ -307,8 +302,8 @@ class TestAppGeneratorTTSPublisher:
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from dify_graph.model_runtime.entities.message_entities import (
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from graphon.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ImagePromptMessageContent,
             TextPromptMessageContent,
@@ -342,8 +337,8 @@ class TestAppGeneratorTTSPublisher:
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         chunk = LLMResultChunk(
             model="model",

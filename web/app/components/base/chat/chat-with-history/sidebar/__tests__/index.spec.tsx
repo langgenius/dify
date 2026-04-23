@@ -1,23 +1,18 @@
+import type { ReactElement } from 'react'
 import type { ChatWithHistoryContextValue } from '../../context'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
 
-// Type for mocking the global public store selector
-type GlobalPublicStoreMock = {
-  systemFeatures: {
-    branding: {
-      enabled: boolean
-      workspace_logo: string | null
-    }
-  }
-  setSystemFeatures?: (features: unknown) => void
-}
+let mockBranding: { enabled: boolean, workspace_logo: string } = { enabled: false, workspace_logo: '' }
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { branding: { ...mockBranding } },
+})
 
 function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
   const originalUseTranslation = ReactI18next.useTranslation
@@ -36,19 +31,6 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
       }) as typeof translation.t,
     }
   })
-}
-
-// Helper to create properly-typed mock store state
-function createMockStoreState(overrides: Partial<GlobalPublicStoreMock>): GlobalPublicStoreMock {
-  return {
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-    ...overrides,
-  }
 }
 
 // Mock List to allow us to trigger operations
@@ -74,20 +56,8 @@ vi.mock('../../context', () => ({
   useChatWithHistoryContext: vi.fn(),
 }))
 
-// Mock global public store
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(selector => selector({
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-  })),
-}))
-
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
@@ -101,22 +71,6 @@ vi.mock('@/app/components/base/modal', () => ({
       <div data-testid="modal">
         {!!title && <div data-testid="modal-title">{title}</div>}
         {children}
-      </div>
-    )
-  },
-}))
-
-// Mock Confirm
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ onCancel, onConfirm, title, content, isShow }: { onCancel: () => void, onConfirm: () => void, title: string, content?: React.ReactNode, isShow: boolean }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <div data-testid="confirm-title">{title}</div>
-        <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-        <div data-testid="confirm-content">{content}</div>
-        <button data-testid="confirm-confirm" onClick={onConfirm}>Confirm</button>
       </div>
     )
   },
@@ -155,8 +109,8 @@ describe('Sidebar Index', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBranding = { enabled: false, workspace_logo: '' }
     vi.mocked(useChatWithHistoryContext).mockReturnValue(mockContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(createMockStoreState({}) as never))
   })
 
   describe('Basic Rendering', () => {
@@ -475,8 +429,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      expect(screen.getByTestId('confirm-title')).toBeInTheDocument()
+      expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
     })
 
     it('should call handleDeleteConversation when confirm is clicked', async () => {
@@ -490,7 +443,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.objectContaining({
         onSuccess: expect.any(Function),
@@ -502,11 +455,11 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
 
-      await user.click(screen.getByTestId('confirm-cancel'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
       })
     })
 
@@ -525,7 +478,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.any(Object))
     })
@@ -675,17 +628,7 @@ describe('Sidebar Index', () => {
     })
 
     it('should use system branding logo when enabled', () => {
-      const mockStoreState = createMockStoreState({
-        systemFeatures: {
-          branding: {
-            enabled: true,
-            workspace_logo: 'http://example.com/workspace-logo.png',
-          },
-        },
-      })
-
-      vi.mocked(useGlobalPublicStore).mockClear()
-      vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(mockStoreState as never))
+      mockBranding = { enabled: true, workspace_logo: 'http://example.com/workspace-logo.png' }
 
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
@@ -837,7 +780,7 @@ describe('Sidebar Index', () => {
 
       // Delete it
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
       expect(handleDeleteConversation).toHaveBeenCalled()
     })
 
@@ -901,8 +844,8 @@ describe('Sidebar Index', () => {
       try {
         render(<Sidebar />)
         await user.click(screen.getByTestId('delete-1'))
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-        expect(screen.getByTestId('confirm-content')).toBeEmptyDOMElement()
+        expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+        expect(screen.queryByText('share.chat.deleteConversation.content')).not.toBeInTheDocument()
       }
       finally {
         useTranslationSpy.mockRestore()

@@ -3,10 +3,6 @@ import {
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
-export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
-}
-
 const notTranslateKey = [
   ComparisonOperator.equal,
   ComparisonOperator.notEqual,
@@ -17,7 +13,7 @@ const notTranslateKey = [
 ] as const
 
 type NotTranslateOperator = typeof notTranslateKey[number]
-export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
 
 export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
 export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator

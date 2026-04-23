@@ -12,7 +12,7 @@
  * @param plaintext - The plain text to encode
  * @returns Base64 encoded text
  */
-export function encryptField(plaintext: string): string {
+function encryptField(plaintext: string): string {
   try {
     // Base64 encode the plaintext
     // btoa works with ASCII, so we need to handle UTF-8 properly

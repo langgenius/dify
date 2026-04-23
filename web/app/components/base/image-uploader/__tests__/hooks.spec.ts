@@ -5,11 +5,13 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles, useLocalFileUploader } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
@@ -62,7 +64,7 @@ describe('useImageFiles', () => {
     })
 
     expect(result.current.files).toHaveLength(1)
-    expect(result.current.files[0]._id).toBe('file-1')
+    expect(result.current.files[0]!._id).toBe('file-1')
   })
 
   it('should update an existing file via onUpload when _id matches', () => {
@@ -78,7 +80,7 @@ describe('useImageFiles', () => {
     })
 
     expect(result.current.files).toHaveLength(1)
-    expect(result.current.files[0].progress).toBe(50)
+    expect(result.current.files[0]!.progress).toBe(50)
   })
 
   it('should mark a file as deleted via onRemove', () => {
@@ -125,7 +127,7 @@ describe('useImageFiles', () => {
       result.current.onImageLinkLoadError('file-1')
     })
 
-    expect(result.current.files[0].progress).toBe(-1)
+    expect(result.current.files[0]!.progress).toBe(-1)
   })
 
   it('should not modify files when onImageLinkLoadError is called with non-existent id', () => {
@@ -140,7 +142,7 @@ describe('useImageFiles', () => {
       result.current.onImageLinkLoadError('non-existent')
     })
 
-    expect(result.current.files[0].progress).toBe(0)
+    expect(result.current.files[0]!.progress).toBe(0)
   })
 
   it('should set progress to 100 via onImageLinkLoadSuccess', () => {
@@ -155,7 +157,7 @@ describe('useImageFiles', () => {
       result.current.onImageLinkLoadSuccess('file-1')
     })
 
-    expect(result.current.files[0].progress).toBe(100)
+    expect(result.current.files[0]!.progress).toBe(100)
   })
 
   it('should not modify files when onImageLinkLoadSuccess is called with non-existent id', () => {
@@ -170,7 +172,7 @@ describe('useImageFiles', () => {
       result.current.onImageLinkLoadSuccess('non-existent')
     })
 
-    expect(result.current.files[0].progress).toBe(50)
+    expect(result.current.files[0]!.progress).toBe(50)
   })
 
   it('should clear all files via onClear', () => {
@@ -239,13 +241,13 @@ describe('useImageFiles', () => {
         result.current.onReUpload('file-1')
       })
 
-      const uploadCall = mockImageUpload.mock.calls[0][0]
+      const uploadCall = mockImageUpload.mock.calls[0]![0]
 
       act(() => {
         uploadCall.onProgressCallback(50)
       })
 
-      expect(result.current.files[0].progress).toBe(50)
+      expect(result.current.files[0]!.progress).toBe(50)
     })
 
     it('should update fileId and progress on success callback during re-upload', () => {
@@ -261,14 +263,14 @@ describe('useImageFiles', () => {
         result.current.onReUpload('file-1')
       })
 
-      const uploadCall = mockImageUpload.mock.calls[0][0]
+      const uploadCall = mockImageUpload.mock.calls[0]![0]
 
       act(() => {
         uploadCall.onSuccessCallback({ id: 'server-file-123' })
       })
 
-      expect(result.current.files[0].fileId).toBe('server-file-123')
-      expect(result.current.files[0].progress).toBe(100)
+      expect(result.current.files[0]!.fileId).toBe('server-file-123')
+      expect(result.current.files[0]!.progress).toBe(100)
     })
 
     it('should set progress to -1 and notify on error callback during re-upload', () => {
@@ -284,13 +286,13 @@ describe('useImageFiles', () => {
         result.current.onReUpload('file-1')
       })
 
-      const uploadCall = mockImageUpload.mock.calls[0][0]
+      const uploadCall = mockImageUpload.mock.calls[0]![0]
 
       act(() => {
         uploadCall.onErrorCallback(new Error('Network error'))
       })
 
-      expect(result.current.files[0].progress).toBe(-1)
+      expect(result.current.files[0]!.progress).toBe(-1)
       expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Upload error' })
     })
   })
@@ -423,7 +425,7 @@ describe('useLocalFileUploader', () => {
       expect(mockImageUpload).toHaveBeenCalled()
     })
 
-    const uploadCall = mockImageUpload.mock.calls[0][0]
+    const uploadCall = mockImageUpload.mock.calls[0]![0]
 
     act(() => {
       uploadCall.onProgressCallback(75)
@@ -450,7 +452,7 @@ describe('useLocalFileUploader', () => {
       expect(mockImageUpload).toHaveBeenCalled()
     })
 
-    const uploadCall = mockImageUpload.mock.calls[0][0]
+    const uploadCall = mockImageUpload.mock.calls[0]![0]
 
     act(() => {
       uploadCall.onSuccessCallback({ id: 'uploaded-id' })
@@ -477,7 +479,7 @@ describe('useLocalFileUploader', () => {
       expect(mockImageUpload).toHaveBeenCalled()
     })
 
-    const uploadCall = mockImageUpload.mock.calls[0][0]
+    const uploadCall = mockImageUpload.mock.calls[0]![0]
 
     act(() => {
       uploadCall.onErrorCallback(new Error('fail'))

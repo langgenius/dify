@@ -102,7 +102,9 @@ class TriggerSubscription(TypeBase):
     credentials: Mapped[TriggerCredentials] = mapped_column(
         sa.JSON, nullable=False, comment="Subscription credentials JSON"
     )
-    credential_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="oauth or api_key")
+    credential_type: Mapped[CredentialType] = mapped_column(
+        EnumText(CredentialType, length=50), nullable=False, comment="oauth or api_key"
+    )
     credential_expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="OAuth token expiration timestamp, -1 for never"
     )
@@ -144,7 +146,7 @@ class TriggerSubscription(TypeBase):
             endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
             parameters=self.parameters,
             properties=self.properties,
-            credential_type=CredentialType(self.credential_type),
+            credential_type=self.credential_type,
             credentials=self.credentials,
             workflows_in_use=-1,
         )

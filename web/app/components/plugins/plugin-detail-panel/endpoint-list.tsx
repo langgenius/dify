@@ -1,4 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
   RiApps2AddLine,
@@ -9,7 +11,6 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useDocLink } from '@/context/i18n'
@@ -18,7 +19,6 @@ import {
   useEndpointList,
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
-import { cn } from '@/utils/classnames'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
@@ -50,7 +50,7 @@ const EndpointList = ({ detail }: Props) => {
       hideEndpointModal()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     },
   })
 
@@ -64,7 +64,7 @@ const EndpointList = ({ detail }: Props) => {
 
   return (
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
-      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+      <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
         <div className="flex items-center gap-0.5">
           {t('detailPanel.endpoints', { ns: 'plugin' })}
           <Tooltip
@@ -81,7 +81,7 @@ const EndpointList = ({ detail }: Props) => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="system-xs-regular inline-flex cursor-pointer items-center gap-1 text-text-accent">
+                  <div className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent">
                     <RiBookOpenLine className="h-3 w-3" />
                     {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                   </div>
@@ -95,7 +95,7 @@ const EndpointList = ({ detail }: Props) => {
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (
-        <div className="system-xs-regular mb-1 flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
+        <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
       )}
       <div className="flex flex-col gap-2">
         {data.endpoints.map((item, index) => (

@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .docSearchWrapper {
   @apply sticky w-full -top-3 flex items-center mb-3 justify-between z-[11] flex-wrap gap-y-1 pr-3;
 }
@@ -9,7 +11,7 @@
   @apply grid gap-4 grid-cols-3 min-w-[902px] last:mb-[30px];
 }
 .segWrapper {
-  @apply box-border h-[180px] w-full xl:min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col text-opacity-50 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;
+  @apply box-border h-[180px] w-full xl:min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;
 }
 .segTitleWrapper {
   @apply flex items-center justify-between;
@@ -19,7 +21,7 @@
 }
 .segContent {
   white-space: wrap;
-  @apply flex-1 h-0 min-h-0 mt-2 text-sm text-gray-800 overflow-ellipsis overflow-hidden from-gray-800 to-white;
+  @apply flex-1 h-0 min-h-0 mt-2 overflow-hidden text-ellipsis text-sm text-gray-800 from-gray-800 to-white;
 }
 .segData {
   @apply hidden text-gray-500 text-xs pt-2;
@@ -32,7 +34,7 @@
   @apply text-primary-600 font-semibold text-xs absolute right-0 hidden h-12 pl-12 items-center;
 }
 .select {
-  @apply h-8 py-0 pr-5 w-[100px] shadow-none !important;
+  @apply !h-8 !w-[100px] !py-0 !pr-5 !shadow-none;
 }
 .segModalContent {
   @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;

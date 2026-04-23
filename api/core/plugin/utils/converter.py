@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.tools.entities.tool_entities import ToolSelector
-from dify_graph.file.models import File
+from graphon.file import File
 
 
 def convert_parameters_to_plugin_format(parameters: dict[str, Any]) -> dict[str, Any]:

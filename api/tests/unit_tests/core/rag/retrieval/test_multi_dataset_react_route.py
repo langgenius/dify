@@ -3,8 +3,9 @@ from unittest.mock import Mock, patch
 
 from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class TestReactMultiDatasetRouter:
@@ -87,6 +88,7 @@ class TestReactMultiDatasetRouter:
         model_config = Mock()
         model_config.mode = "chat"
         model_config.parameters = {"temperature": 0.1}
+        model_instance = Mock()
         usage = LLMUsage.empty_usage()
         tools = [Mock(name="dataset-1"), Mock(name="dataset-2")]
         tools[0].name = "dataset-1"
@@ -108,13 +110,14 @@ class TestReactMultiDatasetRouter:
             dataset_id, returned_usage = router._react_invoke(
                 query="python",
                 model_config=model_config,
-                model_instance=Mock(),
+                model_instance=model_instance,
                 tools=tools,
                 user_id="u1",
                 tenant_id="t1",
             )
 
         mock_chat_prompt.assert_called_once()
+        assert mock_prompt_transform.return_value.get_prompt.call_args.kwargs["model_instance"] is model_instance
         assert dataset_id == "dataset-2"
         assert returned_usage == usage
 
@@ -162,7 +165,11 @@ class TestReactMultiDatasetRouter:
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([chunk])
 
-        with patch("core.rag.retrieval.router.multi_dataset_react_route.deduct_llm_quota") as mock_deduct:
+        with (
+            patch("core.rag.retrieval.router.multi_dataset_react_route.ModelManager.for_tenant") as mock_manager,
+            patch("core.rag.retrieval.router.multi_dataset_react_route.deduct_llm_quota") as mock_deduct,
+        ):
+            mock_manager.return_value.get_model_instance.return_value = model_instance
             text, returned_usage = router._invoke_llm(
                 completion_param={"temperature": 0.1},
                 model_instance=model_instance,
@@ -174,6 +181,13 @@ class TestReactMultiDatasetRouter:
 
         assert text == "part"
         assert returned_usage == usage
+        mock_manager.assert_called_once_with(tenant_id="t1", user_id="u1")
+        mock_manager.return_value.get_model_instance.assert_called_once_with(
+            tenant_id="t1",
+            provider=model_instance.provider,
+            model_type=ModelType.LLM,
+            model=model_instance.model_name,
+        )
         mock_deduct.assert_called_once()
 
     def test_handle_invoke_result_with_empty_usage(self) -> None:

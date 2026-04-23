@@ -3,17 +3,19 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 import click
 import pandas as pd
 from celery import shared_task
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
@@ -50,8 +52,8 @@ def batch_create_segment_to_index_task(
 
     # Initialize variables with default values
     upload_file_key: str | None = None
-    dataset_config: dict | None = None
-    document_config: dict | None = None
+    dataset_config: dict[str, Any] | None = None
+    document_config: dict[str, Any] | None = None
 
     with session_factory.create_session() as session:
         try:
@@ -109,7 +111,7 @@ def batch_create_segment_to_index_task(
         df = pd.read_csv(file_path)
         content = []
         for _, row in df.iterrows():
-            if document_config["doc_form"] == "qa_model":
+            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
                 data = {"content": row.iloc[0], "answer": row.iloc[1]}
             else:
                 data = {"content": row.iloc[0]}
@@ -119,8 +121,8 @@ def batch_create_segment_to_index_task(
 
     document_segments = []
     embedding_model = None
-    if dataset_config["indexing_technique"] == "high_quality":
-        model_manager = ModelManager()
+    if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
+        model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
         embedding_model = model_manager.get_model_instance(
             tenant_id=dataset_config["tenant_id"],
             provider=dataset_config["embedding_model_provider"],
@@ -139,10 +141,8 @@ def batch_create_segment_to_index_task(
             content = segment["content"]
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
-            max_position = (
-                session.query(func.max(DocumentSegment.position))
-                .where(DocumentSegment.document_id == document_config["id"])
-                .scalar()
+            max_position = session.scalar(
+                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
             )
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,
@@ -159,7 +159,7 @@ def batch_create_segment_to_index_task(
                 status="completed",
                 completed_at=naive_utc_now(),
             )
-            if document_config["doc_form"] == "qa_model":
+            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
                 segment_document.answer = segment["answer"]
                 segment_document.word_count += len(segment["answer"])
             word_count_change += segment_document.word_count

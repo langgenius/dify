@@ -11,7 +11,9 @@ from unittest.mock import ANY, Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
@@ -107,7 +109,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -167,7 +169,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -187,7 +189,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -220,7 +222,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load method was called
@@ -268,7 +272,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="parent_child_index",
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -288,7 +292,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="parent_child_index",
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -321,7 +325,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "update")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor clean and load methods were called
@@ -416,7 +422,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -430,7 +436,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify that no index processor load was called since no segments exist
@@ -505,7 +513,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -525,7 +533,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -563,7 +571,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to error
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Test exception during indexing" in updated_document.error
 
@@ -601,7 +611,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="qa_index",
+            doc_form=IndexStructureType.QA_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -634,11 +644,13 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
-        mock_index_processor_factory.assert_called_once_with("qa_index")
+        mock_index_processor_factory.assert_called_once_with(IndexStructureType.QA_INDEX)
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.assert_called_once()
@@ -677,7 +689,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -710,11 +722,13 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
-        mock_index_processor_factory.assert_called_once_with("text_model")
+        mock_index_processor_factory.assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.assert_called_once()
@@ -753,7 +767,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -775,7 +789,7 @@ class TestDealDatasetVectorIndexTask:
                 name=f"Test Document {i}",
                 created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
@@ -814,7 +828,9 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify all documents were processed
         for document in documents:
-            updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+            updated_document = db_session_with_containers.scalar(
+                select(Document).where(Document.id == document.id).limit(1)
+            )
             assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times
@@ -856,7 +872,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -876,7 +892,7 @@ class TestDealDatasetVectorIndexTask:
             name="Test Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -916,7 +932,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify final document status
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
     def test_deal_dataset_vector_index_task_with_disabled_documents(
@@ -953,7 +971,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -973,7 +991,7 @@ class TestDealDatasetVectorIndexTask:
             name="Enabled Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -992,7 +1010,7 @@ class TestDealDatasetVectorIndexTask:
             name="Disabled Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=False,  # This document should be skipped
@@ -1026,12 +1044,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only enabled document was processed
-        updated_enabled_document = db_session_with_containers.query(Document).filter_by(id=enabled_document.id).first()
+        updated_enabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == enabled_document.id).limit(1)
+        )
         assert updated_enabled_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify disabled document status remains unchanged
-        updated_disabled_document = (
-            db_session_with_containers.query(Document).filter_by(id=disabled_document.id).first()
+        updated_disabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == disabled_document.id).limit(1)
         )
         assert updated_disabled_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1074,7 +1094,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -1094,7 +1114,7 @@ class TestDealDatasetVectorIndexTask:
             name="Active Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -1113,7 +1133,7 @@ class TestDealDatasetVectorIndexTask:
             name="Archived Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -1147,12 +1167,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only active document was processed
-        updated_active_document = db_session_with_containers.query(Document).filter_by(id=active_document.id).first()
+        updated_active_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == active_document.id).limit(1)
+        )
         assert updated_active_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify archived document status remains unchanged
-        updated_archived_document = (
-            db_session_with_containers.query(Document).filter_by(id=archived_document.id).first()
+        updated_archived_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == archived_document.id).limit(1)
         )
         assert updated_archived_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1195,7 +1217,7 @@ class TestDealDatasetVectorIndexTask:
             name="Document for doc_form",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -1215,7 +1237,7 @@ class TestDealDatasetVectorIndexTask:
             name="Completed Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -1234,7 +1256,7 @@ class TestDealDatasetVectorIndexTask:
             name="Incomplete Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
             indexing_status=IndexingStatus.INDEXING,  # This document should be skipped
             enabled=True,
@@ -1268,14 +1290,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only completed document was processed
-        updated_completed_document = (
-            db_session_with_containers.query(Document).filter_by(id=completed_document.id).first()
+        updated_completed_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == completed_document.id).limit(1)
         )
         assert updated_completed_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify incomplete document status remains unchanged
-        updated_incomplete_document = (
-            db_session_with_containers.query(Document).filter_by(id=incomplete_document.id).first()
+        updated_incomplete_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == incomplete_document.id).limit(1)
         )
         assert updated_incomplete_document.indexing_status == IndexingStatus.INDEXING  # Should not change
 

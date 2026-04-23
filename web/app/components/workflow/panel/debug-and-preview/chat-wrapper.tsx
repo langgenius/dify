@@ -201,7 +201,7 @@ const ChatWrapper = (
         noSpacing
         suggestedQuestions={suggestedQuestions}
         showPromptLog
-        chatAnswerContainerInner="!pr-2"
+        chatAnswerContainerInner="pr-2!"
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         hideAvatar

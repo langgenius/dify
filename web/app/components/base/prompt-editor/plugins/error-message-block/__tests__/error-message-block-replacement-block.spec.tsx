@@ -75,7 +75,7 @@ describe('ErrorMessageBlockReplacementBlock', () => {
   it('should pass matcher and creator to decoratorTransform and match placeholder text', () => {
     renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     const textNode = { id: 't-1' } as unknown as LexicalNode
     transformCallback(textNode)
 
@@ -85,7 +85,7 @@ describe('ErrorMessageBlockReplacementBlock', () => {
       expect.any(Function),
     )
 
-    const getMatch = vi.mocked(decoratorTransform).mock.calls[0][1] as (text: string) => EntityMatch | null
+    const getMatch = vi.mocked(decoratorTransform).mock.calls[0]![1] as (text: string) => EntityMatch | null
     const match = getMatch(`hello ${ERROR_MESSAGE_PLACEHOLDER_TEXT} world`)
 
     expect(match).toEqual({
@@ -99,10 +99,10 @@ describe('ErrorMessageBlockReplacementBlock', () => {
     const onInsert = vi.fn()
     renderWithLexicalContext(<ErrorMessageBlockReplacementBlock onInsert={onInsert} />)
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     transformCallback({ id: 't-1' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as () => ErrorMessageBlockNode
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as () => ErrorMessageBlockNode
     const created = createNode()
 
     expect(onInsert).toHaveBeenCalledTimes(1)
@@ -114,10 +114,10 @@ describe('ErrorMessageBlockReplacementBlock', () => {
   it('should create replacement node without onInsert callback', () => {
     renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (node: LexicalNode) => void
     transformCallback({ id: 't-1' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as () => ErrorMessageBlockNode
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as () => ErrorMessageBlockNode
 
     expect(() => createNode()).not.toThrow()
     expect($createErrorMessageBlockNode).toHaveBeenCalled()

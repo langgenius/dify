@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from '@/next'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
@@ -33,9 +33,6 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
-  },
-  experimental: {
-    turbopackFileSystemCacheForDev: false,
   },
 }
 

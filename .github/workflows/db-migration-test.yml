@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   db-migration-test-postgres:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -19,7 +19,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -40,7 +40,7 @@ jobs:
           cp middleware.env.example middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
+        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -59,7 +59,7 @@ jobs:
         run: uv run --directory api flask upgrade-db
 
   db-migration-test-mysql:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -69,7 +69,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -94,7 +94,7 @@ jobs:
           sed -i 's/DB_USERNAME=postgres/DB_USERNAME=mysql/' middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
+        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml

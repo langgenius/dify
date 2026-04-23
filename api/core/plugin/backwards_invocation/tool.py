@@ -31,7 +31,13 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_tool_runtime_from_plugin(
-                tool_type, tenant_id, provider, tool_name, tool_parameters, credential_id
+                tool_type,
+                tenant_id,
+                provider,
+                tool_name,
+                tool_parameters,
+                user_id=user_id,
+                credential_id=credential_id,
             )
             response = ToolEngine.generic_invoke(
                 tool_runtime, tool_parameters, user_id, DifyWorkflowCallbackHandler(), workflow_call_depth=1

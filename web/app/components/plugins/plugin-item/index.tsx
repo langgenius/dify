@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDetail } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -8,18 +9,18 @@ import {
   RiHardDrive3Line,
   RiLoginCircleLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { gte } from 'semver'
 import Tooltip from '@/app/components/base/tooltip'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
 import { Github } from '../../base/icons/src/public/common'
@@ -71,7 +72,7 @@ const PluginItem: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
       return true
-    return gte(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
   }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
 
   const isDeprecated = useMemo(() => {
@@ -85,7 +86,10 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
@@ -105,10 +109,10 @@ const PluginItem: FC<Props> = ({
       }}
     >
       <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
-        <CornerMark text={categoriesMap[category].label} />
+        <CornerMark text={categoriesMap[category]!.label} />
         {/* Header */}
         <div className="flex">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border-[1px] border-components-panel-border-subtle">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
               className="h-full w-full"
               src={iconSrc}
@@ -154,7 +158,7 @@ const PluginItem: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className="mb-1 mt-1.5 flex h-4 items-center gap-x-2 px-4">
+      <div className="mt-1.5 mb-1 flex h-4 items-center gap-x-2 px-4">
         {/* Organization & Name */}
         <div className="flex grow items-center overflow-hidden">
           <OrgInfo
@@ -164,8 +168,8 @@ const PluginItem: FC<Props> = ({
           />
           {category === PluginCategoryEnum.extension && (
             <>
-              <div className="system-xs-regular mx-2 text-text-quaternary">·</div>
-              <div className="system-xs-regular flex items-center gap-x-1 overflow-hidden text-text-tertiary">
+              <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
+              <div className="flex items-center gap-x-1 overflow-hidden system-xs-regular text-text-tertiary">
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
@@ -226,7 +230,7 @@ const PluginItem: FC<Props> = ({
         </div>
         {/* Deprecated */}
         {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-          <div className="system-2xs-medium-uppercase flex shrink-0 items-center gap-x-2">
+          <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">
               {t('deprecated', { ns: 'plugin' })}
@@ -236,7 +240,7 @@ const PluginItem: FC<Props> = ({
       </div>
       {/* BG Effect for Deprecated Plugin */}
       {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-        <div className="absolute bottom-[-71px] right-[-45px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
+        <div className="absolute right-[-45px] bottom-[-71px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
   )

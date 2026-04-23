@@ -6,8 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
@@ -141,7 +143,7 @@ class TestDatasetIndexingTaskIntegration:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -174,7 +176,7 @@ class TestDatasetIndexingTaskIntegration:
 
     def _query_document(self, db_session_with_containers, document_id: str) -> Document | None:
         """Return the latest persisted document state."""
-        return db_session_with_containers.query(Document).where(Document.id == document_id).first()
+        return db_session_with_containers.scalar(select(Document).where(Document.id == document_id).limit(1))
 
     def _assert_documents_parsing(self, db_session_with_containers, document_ids: Sequence[str]) -> None:
         """Assert all target documents are persisted in parsing status."""

@@ -15,6 +15,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
 )
@@ -219,9 +220,7 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks():
     with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
         with patch("core.helper.credential_utils.check_credential_policy_compliance"):
             with patch("core.tools.tool_manager.db") as mock_db:
-                mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = (
-                    builtin_provider
-                )
+                mock_db.session.scalar.return_value = builtin_provider
                 encrypter = Mock()
                 encrypter.decrypt.return_value = {"api_key": "secret"}
                 cache = Mock()
@@ -273,7 +272,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     )
     refreshed = SimpleNamespace(credentials={"token": "new"}, expires_at=123456)
 
-    mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = builtin_provider
+    mock_db.session.scalar.return_value = builtin_provider
     encrypter = Mock()
     encrypter.decrypt.return_value = {"token": "old"}
     encrypter.encrypt.return_value = {"token": "encrypted"}
@@ -421,7 +420,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
     tool_runtime = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime.get_merged_runtime_parameters = Mock(return_value=[parameter])
 
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime) as mock_get_tool_runtime:
         with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "hello"}):
             manager = Mock()
             manager.decrypt_tool_parameters.return_value = {"query": "decrypted"}
@@ -437,12 +436,23 @@ def test_get_agent_runtime_apply_runtime_parameters():
                     tenant_id="tenant-1",
                     app_id="app-1",
                     agent_tool=agent_tool,
+                    user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
                     variable_pool=None,
                 )
 
     assert result is tool_runtime
     assert tool_runtime.runtime.runtime_parameters["query"] == "decrypted"
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.AGENT,
+        credential_id=None,
+    )
 
 
 def test_get_workflow_runtime_apply_runtime_parameters():
@@ -463,7 +473,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
     )
     tool_runtime2 = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime2.get_merged_runtime_parameters = Mock(return_value=[parameter])
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2) as mock_get_tool_runtime:
         with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "workflow"}):
             manager = Mock()
             manager.decrypt_tool_parameters.return_value = {"query": "workflow-dec"}
@@ -473,12 +483,23 @@ def test_get_workflow_runtime_apply_runtime_parameters():
                     app_id="app-1",
                     node_id="node-1",
                     workflow_tool=workflow_tool,
+                    user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
                     variable_pool=None,
                 )
 
     assert workflow_result is tool_runtime2
     assert tool_runtime2.runtime.runtime_parameters["query"] == "workflow-dec"
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+        credential_id=None,
+    )
 
 
 def test_get_agent_runtime_raises_when_runtime_missing():
@@ -520,17 +541,28 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
     tool_entity = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_entity.get_merged_runtime_parameters = Mock(return_value=[form_param, llm_param])
 
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_entity):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_entity) as mock_get_tool_runtime:
         result = ToolManager.get_tool_runtime_from_plugin(
             tool_type=ToolProviderType.API,
             tenant_id="tenant-1",
             provider="api-1",
             tool_name="search",
             tool_parameters={"q": "hello", "llm": "ignore"},
+            user_id="user-1",
         )
 
     assert result is tool_entity
     assert tool_entity.runtime.runtime_parameters == {"q": "hello"}
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.SERVICE_API,
+        tool_invoke_from=ToolInvokeFrom.PLUGIN,
+        credential_id=None,
+    )
 
 
 def test_hardcoded_provider_icon_success():
@@ -605,7 +637,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
     for scheme in ("postgresql", "mysql"):
         session = Mock()
         session.execute.return_value.all.return_value = [SimpleNamespace(id="id-1"), SimpleNamespace(id="id-2")]
-        session.query.return_value.where.return_value.all.return_value = provider_records
+        session.scalars.return_value = iter(provider_records)
 
         with patch("core.tools.tool_manager.dify_config", SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME=scheme)):
             with patch("core.tools.tool_manager.db") as mock_db:
@@ -664,12 +696,10 @@ def test_get_api_provider_controller_returns_controller_and_credentials():
         privacy_policy="privacy",
         custom_disclaimer="disclaimer",
     )
-    db_query = Mock()
-    db_query.where.return_value.first.return_value = provider
     controller = Mock()
 
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.query.return_value = db_query
+        mock_db.session.scalar.return_value = provider
         with patch(
             "core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller
         ) as mock_from_db:
@@ -696,12 +726,10 @@ def test_user_get_api_provider_masks_credentials_and_adds_labels():
         privacy_policy="privacy",
         custom_disclaimer="disclaimer",
     )
-    db_query = Mock()
-    db_query.where.return_value.first.return_value = provider
     controller = Mock()
 
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.query.return_value = db_query
+        mock_db.session.scalar.return_value = provider
         with patch("core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller):
             encrypter = Mock()
             encrypter.decrypt.return_value = {"api_key_value": "secret"}
@@ -716,7 +744,7 @@ def test_user_get_api_provider_masks_credentials_and_adds_labels():
 
 def test_get_api_provider_controller_not_found_raises():
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
         with pytest.raises(ToolProviderNotFoundError, match="api provider missing not found"):
             ToolManager.get_api_provider_controller("tenant-1", "missing")
 
@@ -775,14 +803,14 @@ def test_generate_tool_icon_urls_for_workflow_and_api():
     workflow_provider = SimpleNamespace(icon='{"background": "#222", "content": "W"}')
     api_provider = SimpleNamespace(icon='{"background": "#333", "content": "A"}')
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [workflow_provider, api_provider]
+        mock_db.session.scalar.side_effect = [workflow_provider, api_provider]
         assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {"background": "#222", "content": "W"}
         assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
 
 
 def test_generate_tool_icon_urls_missing_workflow_and_api_use_default():
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
         assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
         assert ToolManager.generate_api_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
 

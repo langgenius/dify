@@ -1,5 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { appDeleteContract } from './console/apps'
+import { accountAvatarContract } from './console/account'
+import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -12,7 +13,9 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
+import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -32,20 +35,32 @@ import {
   triggerSubscriptionVerifyContract,
 } from './console/trigger'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
-import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
+import {
+  workflowDraftEnvironmentVariablesContract,
+  workflowDraftUpdateConversationVariablesContract,
+  workflowDraftUpdateEnvironmentVariablesContract,
+  workflowDraftUpdateFeaturesContract,
+} from './console/workflow'
+import { workflowCommentContracts } from './console/workflow-comment'
+import { collectionPluginsContract, collectionsContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
+  templateDetail: templateDetailContract,
 }
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  account: {
+    avatar: accountAvatarContract,
+  },
   systemFeatures: systemFeaturesContract,
   apps: {
     deleteApp: appDeleteContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
     apps: exploreAppsContract,
@@ -64,10 +79,25 @@ export const consoleRouterContract = {
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
   },
+  modelProviders: {
+    models: modelProvidersModelsContract,
+    changePreferredProviderType: changePreferredProviderTypeContract,
+  },
+  plugins: {
+    checkInstalled: pluginCheckInstalledContract,
+    latestVersions: pluginLatestVersionsContract,
+  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  workflowDraft: {
+    environmentVariables: workflowDraftEnvironmentVariablesContract,
+    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+    updateFeatures: workflowDraftUpdateFeaturesContract,
+  },
+  workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
   triggers: {
@@ -88,5 +118,3 @@ export const consoleRouterContract = {
     oauthInitiate: triggerOAuthInitiateContract,
   },
 }
-
-export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>

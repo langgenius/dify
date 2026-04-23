@@ -1,13 +1,13 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiHammerFill,
   RiHammerLine,
 } from '@remixicon/react'
-import Link from 'next/link'
-import { useSelectedLayoutSegment } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import Link from '@/next/link'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 
 type ToolsNavProps = {
   className?: string

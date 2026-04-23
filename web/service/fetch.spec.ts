@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { base } from './fetch'
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    add: vi.fn(),
   },
 }))
 
