@@ -31,6 +31,8 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_database import db
+from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
+from fields.workflow_run_fields import workflow_run_node_execution_list_fields
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
@@ -46,6 +48,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_run_service import WorkflowRunService
 
 logger = logging.getLogger(__name__)
 
