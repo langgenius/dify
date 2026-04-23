@@ -93,6 +93,16 @@ const ConfigCredential: FC<Props> = ({
                     api_key_value: tempCredential.api_key_value || '',
                   })}
                 />
+                <SelectItem
+                  text={t('createTool.authMethod.types.basic_auth', { ns: 'tools' })}
+                  value={AuthType.basicAuth}
+                  isChecked={tempCredential.auth_type === AuthType.basicAuth}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                    basic_username: tempCredential.basic_username || '',
+                    basic_password: tempCredential.basic_password || '',
+                  })}
+                />
               </div>
             </div>
             {tempCredential.auth_type === AuthType.apiKeyHeader && (
@@ -174,6 +184,27 @@ const ConfigCredential: FC<Props> = ({
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
                     placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                  />
+                </div>
+              </>
+            )}
+            {tempCredential.auth_type === AuthType.basicAuth && (
+              <>
+                <div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.basic.username', { ns: 'tools' })}</div>
+                  <Input
+                    value={tempCredential.basic_username ?? ''}
+                    onChange={e => setTempCredential({ ...tempCredential, basic_username: e.target.value })}
+                    placeholder={t('createTool.authMethod.basic.usernamePlaceholder', { ns: 'tools' })!}
+                  />
+                </div>
+                <div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.basic.password', { ns: 'tools' })}</div>
+                  <Input
+                    value={tempCredential.basic_password ?? ''}
+                    onChange={e => setTempCredential({ ...tempCredential, basic_password: e.target.value })}
+                    placeholder={t('createTool.authMethod.basic.passwordPlaceholder', { ns: 'tools' })!}
+                    type="password"
                   />
                 </div>
               </>

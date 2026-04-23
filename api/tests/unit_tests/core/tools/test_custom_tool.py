@@ -90,6 +90,10 @@ def test_assembling_request_auth_header_assembly():
     tool.runtime.credentials = {"auth_type": "api_key_query", "api_key_value": "abc"}
     assert tool.assembling_request(parameters={}) == {}
 
+    tool.runtime.credentials = {"auth_type": "basic_auth", "basic_username": "u", "basic_password": "p"}
+    headers = tool.assembling_request(parameters={})
+    assert headers["Authorization"] == "Basic dTpw"
+
 
 def test_assembling_request_runtime_auth_errors():
     tool = _build_tool()
@@ -108,6 +112,14 @@ def test_assembling_request_runtime_auth_errors():
 
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": 123}
     with pytest.raises(ToolProviderCredentialValidationError, match="must be a string"):
+        tool.assembling_request(parameters={})
+
+    tool.runtime.credentials = {"auth_type": "basic_auth", "basic_password": "p"}
+    with pytest.raises(ToolProviderCredentialValidationError, match="Missing basic_username"):
+        tool.assembling_request(parameters={})
+
+    tool.runtime.credentials = {"auth_type": "basic_auth", "basic_username": "u"}
+    with pytest.raises(ToolProviderCredentialValidationError, match="Missing basic_password"):
         tool.assembling_request(parameters={})
 
 

@@ -46,6 +46,30 @@ const TestApi: FC<Props> = ({
       delete credentials.api_key_header_prefix
       delete credentials.api_key_header
       delete credentials.api_key_value
+      delete credentials.api_key_query_param
+      delete credentials.basic_username
+      delete credentials.basic_password
+    }
+    if (
+      credentials.auth_type !== AuthType.apiKeyHeader
+      && credentials.auth_type !== AuthType.apiKey
+    ) {
+      delete credentials.api_key_header_prefix
+      delete credentials.api_key_header
+    }
+    if (credentials.auth_type !== AuthType.apiKeyQuery) {
+      delete credentials.api_key_query_param
+    }
+    if (credentials.auth_type !== AuthType.basicAuth) {
+      delete credentials.basic_username
+      delete credentials.basic_password
+    }
+    if (
+      credentials.auth_type !== AuthType.apiKeyHeader
+      && credentials.auth_type !== AuthType.apiKeyQuery
+      && credentials.auth_type !== AuthType.apiKey
+    ) {
+      delete credentials.api_key_value
     }
     const data = {
       provider_name: customCollection.provider,
@@ -55,8 +79,8 @@ const TestApi: FC<Props> = ({
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = await testAPIAvailable(data) as any
-    setResult(res.error || res.result)
+    const res = await testAPIAvailable(data)
+    setResult(res.error ?? res.result ?? '')
     setTesting(false)
   }
 

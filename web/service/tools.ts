@@ -11,6 +11,15 @@ import type {
 import { buildProviderQuery } from './_tools_util'
 import { get, post } from './base'
 
+type ImportSchemaFromURLResponse = {
+  schema: string
+}
+
+type TestAPIAvailableResponse = {
+  result?: string
+  error?: string
+}
+
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
 }
@@ -92,7 +101,7 @@ export const removeCustomCollection = (collectionName: string) => {
 }
 
 export const importSchemaFromURL = (url: string) => {
-  return get('/workspaces/current/tool-provider/api/remote', {
+  return get<ImportSchemaFromURLResponse>('/workspaces/current/tool-provider/api/remote', {
     params: {
       url,
     },
@@ -107,7 +116,7 @@ export const testAPIAvailable = (payload: {
   schema: string
   parameters: Record<string, string>
 }) => {
-  return post('/workspaces/current/tool-provider/api/test/pre', {
+  return post<TestAPIAvailableResponse>('/workspaces/current/tool-provider/api/test/pre', {
     body: {
       ...payload,
     },

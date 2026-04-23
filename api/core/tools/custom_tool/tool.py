@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -110,6 +111,17 @@ class ApiTool(Tool):
                     pass
 
             headers[api_key_header] = credentials["api_key_value"]
+
+        elif credentials["auth_type"] == "basic_auth":
+            username = credentials.get("basic_username")
+            password = credentials.get("basic_password")
+            if not isinstance(username, str) or not username:
+                raise ToolProviderCredentialValidationError("Missing basic_username")
+            if not isinstance(password, str) or not password:
+                raise ToolProviderCredentialValidationError("Missing basic_password")
+
+            token = base64.b64encode(f"{username}:{password}".encode()).decode("utf-8")
+            headers["Authorization"] = f"Basic {token}"
 
         elif credentials["auth_type"] == "api_key_query":
             # For query parameter authentication, we don't add anything to headers

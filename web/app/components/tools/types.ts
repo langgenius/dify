@@ -6,18 +6,36 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum AuthType {
-  none = 'none',
-  apiKey = 'api_key', // backward compatibility
-  apiKeyHeader = 'api_key_header',
-  apiKeyQuery = 'api_key_query',
+type OutputSchemaProperty = {
+  type?: string
+  description?: string
+  items?: {
+    type?: string
+    properties?: Record<string, OutputSchemaProperty>
+  }
+  properties?: Record<string, OutputSchemaProperty>
 }
 
-export enum AuthHeaderPrefix {
-  basic = 'basic',
-  bearer = 'bearer',
-  custom = 'custom',
+type OutputSchema = {
+  properties?: Record<string, OutputSchemaProperty>
+  [key: string]: unknown
 }
+
+export const AuthType = {
+  none: 'none',
+  apiKey: 'api_key', // backward compatibility
+  apiKeyHeader: 'api_key_header',
+  apiKeyQuery: 'api_key_query',
+  basicAuth: 'basic_auth',
+} as const
+export type AuthType = (typeof AuthType)[keyof typeof AuthType]
+
+export const AuthHeaderPrefix = {
+  basic: 'basic',
+  bearer: 'bearer',
+  custom: 'custom',
+} as const
+export type AuthHeaderPrefix = (typeof AuthHeaderPrefix)[keyof typeof AuthHeaderPrefix]
 
 export type Credential = {
   auth_type: AuthType
@@ -25,18 +43,21 @@ export type Credential = {
   api_key_value?: string
   api_key_header_prefix?: AuthHeaderPrefix
   api_key_query_param?: string
+  basic_username?: string
+  basic_password?: string
 }
 
-export enum CollectionType {
-  all = 'all',
-  builtIn = 'builtin',
-  custom = 'api',
-  model = 'model',
-  workflow = 'workflow',
-  mcp = 'mcp',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const CollectionType = {
+  all: 'all',
+  builtIn: 'builtin',
+  custom: 'api',
+  model: 'model',
+  workflow: 'workflow',
+  mcp: 'mcp',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
+export type CollectionType = (typeof CollectionType)[keyof typeof CollectionType]
 
 export type Emoji = {
   background: string
@@ -52,7 +73,7 @@ export type Collection = {
   icon_dark?: string | Emoji
   label: LocalizedText
   type: CollectionType | string
-  team_credentials: Record<string, any>
+  team_credentials: Record<string, unknown>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
@@ -124,17 +145,17 @@ export type Event = {
   description: LocalizedText
   parameters: TriggerParameter[]
   labels: string[]
-  output_schema: Record<string, any>
+  output_schema: OutputSchema
 }
 
 export type Tool = {
   name: string
   author: string
   label: LocalizedText
-  description: any
+  description: LocalizedText
   parameters: ToolParameter[]
   labels: string[]
-  output_schema: Record<string, any>
+  output_schema: OutputSchema
 }
 
 export type ToolCredential = {
@@ -158,22 +179,22 @@ export type CustomCollectionBackend = {
   icon: Emoji
   schema_type: string
   schema: string
-  privacy_policy: string
-  custom_disclaimer: string
-  tools?: ParamItem[]
-  id: string
-  labels: string[]
+  privacy_policy?: string
+  custom_disclaimer?: string
+  tools?: CustomParamSchema[]
+  id?: string
+  labels?: string[]
 }
 
 export type ParamItem = {
   name: string
   label: LocalizedText
-  human_description: LocalizedText
-  llm_description: string
-  type: string
-  form: string
-  required: boolean
-  default: string
+  human_description?: LocalizedText
+  llm_description?: string
+  type?: string
+  form?: string
+  required?: boolean
+  default?: string
   min?: number
   max?: number
   options?: {
@@ -251,8 +272,9 @@ export type MCPServerDetail = {
   headers?: Record<string, string>
 }
 
-export enum MCPAuthMethod {
-  authentication = 'authentication',
-  headers = 'headers',
-  configurations = 'configurations',
-}
+export const MCPAuthMethod = {
+  authentication: 'authentication',
+  headers: 'headers',
+  configurations: 'configurations',
+} as const
+export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]

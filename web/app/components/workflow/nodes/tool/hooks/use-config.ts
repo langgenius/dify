@@ -225,8 +225,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     if (!output_schema || !output_schema.properties)
       return res
 
-    Object.keys(output_schema.properties).forEach((outputKey) => {
-      const output = output_schema.properties[outputKey]
+    const properties = output_schema.properties
+    Object.keys(properties).forEach((outputKey) => {
+      const output = properties[outputKey]
+      if (!output)
+        return
       const type = output.type
       if (type === 'object') {
         res.push({
@@ -240,8 +243,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
           name: outputKey,
           type:
             normalizedType === 'array'
-              ? `Array[${output.items ? formatDisplayType(output.items) : 'Unknown'}]`
-              : formatDisplayType(output),
+              ? `Array[${output.items ? formatDisplayType(output.items as Record<string, unknown>) : 'Unknown'}]`
+              : formatDisplayType(output as Record<string, unknown>),
           description: output.description,
         })
       }
@@ -255,7 +258,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return false
     const properties = output_schema.properties
     return Object.keys(properties).some(
-      key => properties[key].type === 'object',
+      key => properties[key]?.type === 'object',
     )
   }, [currTool])
 

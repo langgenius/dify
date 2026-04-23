@@ -70,11 +70,15 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     const dynamicOutputSchema: any[] = []
 
     if (output_schema?.properties) {
-      Object.keys(output_schema.properties).forEach((outputKey) => {
-        const output = output_schema.properties[outputKey]
-        const dataType = output.type
+      const properties = output_schema.properties
+      Object.keys(properties).forEach((outputKey) => {
+        const output = properties[outputKey]
+        if (!output)
+          return
+        const dataType = output.type || 'string'
+        const itemType = output.items?.type || 'string'
         let type = dataType === 'array'
-          ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+          ? `array[${itemType.slice(0, 1).toLocaleLowerCase()}${itemType.slice(1)}]`
           : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`
         const schemaType = getMatchedSchemaType?.(output, schemaTypeDefinitions)
 

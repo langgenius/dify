@@ -832,6 +832,8 @@ class ToolManager:
             auth_type = ApiProviderAuthType.API_KEY_HEADER
         elif provider_auth_type == "api_key_query":
             auth_type = ApiProviderAuthType.API_KEY_QUERY
+        elif provider_auth_type == "basic_auth":
+            auth_type = ApiProviderAuthType.BASIC_AUTH
 
         controller = ApiToolProviderController.from_db(
             provider,
@@ -892,6 +894,8 @@ class ToolManager:
             auth_type = ApiProviderAuthType.API_KEY_HEADER
         elif credentials_auth_type == "api_key_query":
             auth_type = ApiProviderAuthType.API_KEY_QUERY
+        elif credentials_auth_type == "basic_auth":
+            auth_type = ApiProviderAuthType.BASIC_AUTH
 
         controller = ApiToolProviderController.from_db(
             provider_obj,

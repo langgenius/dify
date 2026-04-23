@@ -395,7 +395,7 @@ const ProviderDetail = ({
         )}
         {isShowEditCollectionToolModal && (
           <EditCustomToolModal
-            payload={customCollection}
+            payload={customCollection as CustomCollectionBackend | null}
             onHide={() => setIsShowEditCustomCollectionModal(false)}
             onEdit={doUpdateCustomToolCollection}
             onRemove={onClickCustomToolDelete}

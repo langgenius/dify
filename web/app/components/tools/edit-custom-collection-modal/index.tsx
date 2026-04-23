@@ -26,7 +26,7 @@ import TestApi from './test-api'
 type Props = {
   positionLeft?: boolean
   dialogClassName?: string
-  payload: any
+  payload?: CustomCollectionBackend | null
   onHide: () => void
   onAdd?: (payload: CustomCollectionBackend) => void
   onRemove?: () => void
@@ -46,36 +46,42 @@ const EditCustomCollectionModal: FC<Props> = ({
   const isAdd = !payload
   const isEdit = !!payload
 
+  const defaultCustomCollection: CustomCollectionBackend = {
+    provider: '',
+    credentials: {
+      auth_type: AuthType.none,
+      api_key_header: 'Authorization',
+      api_key_header_prefix: AuthHeaderPrefix.basic,
+    },
+    icon: {
+      content: '🕵️',
+      background: '#FEF7C3',
+    },
+    schema_type: '',
+    schema: '',
+    privacy_policy: '',
+    custom_disclaimer: '',
+    id: '',
+    labels: [],
+  }
+
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
-    ? {
-        provider: '',
-        credentials: {
-          auth_type: AuthType.none,
-          api_key_header: 'Authorization',
-          api_key_header_prefix: AuthHeaderPrefix.basic,
-        },
-        icon: {
-          content: '🕵️',
-          background: '#FEF7C3',
-        },
-        schema_type: '',
-        schema: '',
-      }
+    ? defaultCustomCollection
     : payload)
 
-  const originalProvider = isEdit ? payload.provider : ''
+  const originalProvider = payload?.provider ?? ''
 
   // Sync customCollection state when payload changes
   useEffect(() => {
-    if (isEdit) {
+    if (payload) {
       setCustomCollection(payload)
       setParamsSchemas(payload.tools || [])
       setLabels(payload.labels || [])
     }
-  }, [isEdit, payload])
+  }, [payload])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
@@ -87,7 +93,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   }
   const schema = customCollection.schema
   const debouncedSchema = useDebounce(schema, { wait: 500 })
-  const setSchema = (schema: any) => {
+  const setSchema = (schema: string) => {
     const newCollection = produce(customCollection, (draft) => {
       draft.schema = schema
     })
@@ -146,6 +152,30 @@ const EditCustomCollectionModal: FC<Props> = ({
       if (draft.credentials.auth_type === AuthType.none) {
         delete draft.credentials.api_key_header
         delete draft.credentials.api_key_header_prefix
+        delete draft.credentials.api_key_value
+        delete draft.credentials.api_key_query_param
+        delete draft.credentials.basic_username
+        delete draft.credentials.basic_password
+      }
+      if (
+        draft.credentials.auth_type !== AuthType.apiKeyHeader
+        && draft.credentials.auth_type !== AuthType.apiKey
+      ) {
+        delete draft.credentials.api_key_header
+        delete draft.credentials.api_key_header_prefix
+      }
+      if (draft.credentials.auth_type !== AuthType.apiKeyQuery) {
+        delete draft.credentials.api_key_query_param
+      }
+      if (draft.credentials.auth_type !== AuthType.basicAuth) {
+        delete draft.credentials.basic_username
+        delete draft.credentials.basic_password
+      }
+      if (
+        draft.credentials.auth_type !== AuthType.apiKeyHeader
+        && draft.credentials.auth_type !== AuthType.apiKeyQuery
+        && draft.credentials.auth_type !== AuthType.apiKey
+      ) {
         delete draft.credentials.api_key_value
       }
 

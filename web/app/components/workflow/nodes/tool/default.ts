@@ -1,4 +1,5 @@
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
+import type { Field } from '../llm/types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -95,8 +96,11 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     }
     else {
       const outputSchema: Var[] = []
-      Object.keys(output_schema.properties).forEach((outputKey) => {
-        const output = output_schema.properties[outputKey]
+      const properties = output_schema.properties
+      Object.keys(properties).forEach((outputKey) => {
+        const output = properties[outputKey]
+        if (!output)
+          return
         const { type, schemaType } = resolveVarType(output, schemaTypeDefinitions)
 
         outputSchema.push({
@@ -108,7 +112,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
             ? {
                 schema: {
                   type: Type.object,
-                  properties: output.properties,
+                  properties: (output.properties ?? {}) as Record<string, Field>,
                   additionalProperties: false,
                 },
               }

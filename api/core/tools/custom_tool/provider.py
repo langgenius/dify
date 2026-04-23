@@ -46,6 +46,9 @@ class ApiToolProviderController(ToolProviderController):
                     ProviderConfig.Option(
                         value="api_key_query", label=I18nObject(en_US="Query Param", zh_Hans="查询参数")
                     ),
+                    ProviderConfig.Option(
+                        value="basic_auth", label=I18nObject(en_US="Basic Auth", zh_Hans="Basic Auth")
+                    ),
                 ],
                 default="none",
                 help=I18nObject(en_US="The auth type of the api provider", zh_Hans="api provider 的认证类型"),
@@ -97,6 +100,22 @@ class ApiToolProviderController(ToolProviderController):
                     required=True,
                     type=ProviderConfig.Type.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
+                ),
+            ]
+        elif auth_type == ApiProviderAuthType.BASIC_AUTH:
+            credentials_schema = [
+                *credentials_schema,
+                ProviderConfig(
+                    name="basic_username",
+                    required=True,
+                    type=ProviderConfig.Type.TEXT_INPUT,
+                    help=I18nObject(en_US="Basic auth username", zh_Hans="Basic Auth 用户名"),
+                ),
+                ProviderConfig(
+                    name="basic_password",
+                    required=True,
+                    type=ProviderConfig.Type.SECRET_INPUT,
+                    help=I18nObject(en_US="Basic auth password", zh_Hans="Basic Auth 密码"),
                 ),
             ]
         elif auth_type == ApiProviderAuthType.NONE:
