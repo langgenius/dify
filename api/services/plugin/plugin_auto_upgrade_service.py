@@ -23,7 +23,7 @@ class PluginAutoUpgradeService:
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> bool:
-        with session_factory.create_session() as session:
+        with session_factory.create_session() as session, session.begin():
             exist_strategy = session.scalar(
                 select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -50,7 +50,7 @@ class PluginAutoUpgradeService:
 
     @staticmethod
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
-        with session_factory.create_session() as session:
+        with session_factory.create_session() as session, session.begin():
             exist_strategy = session.scalar(
                 select(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)

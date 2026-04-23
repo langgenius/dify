@@ -126,36 +126,77 @@ vi.mock('../oauth-client', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/select/custom', () => ({
-  default: ({ options, value, onChange, CustomTrigger, CustomOption, containerProps }: {
-    options: Array<{ value: string, label: string, show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
-    value: string
-    onChange: (value: string) => void
-    CustomTrigger: () => React.ReactNode
-    CustomOption: (option: { label: string, tag?: React.ReactNode, extra?: React.ReactNode }) => React.ReactNode
-    containerProps?: { open?: boolean }
-  }) => (
-    <div
-      data-testid="custom-select"
-      data-value={value}
-      data-options-count={options?.length || 0}
-      data-container-open={containerProps?.open}
-    >
-      <div data-testid="custom-trigger">{CustomTrigger()}</div>
-      <div data-testid="options-container">
-        {options?.map(option => (
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void
+  }>({})
+
+  const countOptions = (children: React.ReactNode): number => {
+    return React.Children.toArray(children).reduce<number>((count, child) => {
+      if (!React.isValidElement<{ children?: React.ReactNode }>(child))
+        return count
+
+      return count + React.Children.toArray(child.props.children).filter((nestedChild) => {
+        return React.isValidElement<{ value?: string }>(nestedChild) && 'value' in nestedChild.props
+      }).length
+    }, 0)
+  }
+
+  return {
+    Select: ({
+      children,
+      value,
+      open,
+      onValueChange,
+    }: {
+      children: React.ReactNode
+      value: string | null
+      open?: boolean
+      onValueChange?: (value: string) => void
+    }) => {
+      const currentValue = value ?? DEFAULT_METHOD
+      const optionsCount = countOptions(children)
+      const containerOpen
+        = currentValue === DEFAULT_METHOD || (currentValue === SupportedCreationMethods.OAUTH && optionsCount === 1)
+          ? undefined
+          : String(open ?? false)
+
+      return (
+        <SelectContext.Provider value={{ onValueChange }}>
           <div
-            key={option.value}
-            data-testid={`option-${option.value}`}
-            onClick={() => onChange(option.value)}
+            data-testid="custom-select"
+            data-value={currentValue}
+            data-options-count={optionsCount}
+            data-container-open={containerOpen}
           >
-            {CustomOption(option)}
+            {children}
           </div>
-        ))}
-      </div>
-    </div>
-  ),
-}))
+        </SelectContext.Provider>
+      )
+    },
+    SelectTrigger: ({ children, className }: { children: React.ReactNode, render?: React.ReactNode, className?: string }) => {
+      return <div data-testid="custom-trigger" className={className}>{children}</div>
+    },
+    SelectContent: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="options-container">{children}</div>
+    ),
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <div
+          data-testid={`option-${value}`}
+          onClick={() => context.onValueChange?.(value)}
+        >
+          {children}
+        </div>
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
+  }
+})
 
 const createProviderInfo = (overrides: Partial<TriggerProviderApiEntity> = {}): TriggerProviderApiEntity => ({
   author: 'test-author',

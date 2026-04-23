@@ -40,28 +40,49 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/select', () => ({
-  default: ({ defaultValue, onSelect, items, disabled, className }: {
-    defaultValue: string
-    onSelect: (item: { value: string }) => void
-    items: { name: string, value: string }[]
-    allowSearch?: boolean
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectContext = React.createContext<{
     disabled?: boolean
-    className?: string
-  }) => (
-    <select
-      data-testid="select-input"
-      value={defaultValue}
-      onChange={e => onSelect({ value: e.target.value })}
-      disabled={disabled}
-      className={className}
-    >
-      {items.map(item => (
-        <option key={item.value} value={item.value}>{item.name}</option>
-      ))}
-    </select>
-  ),
-}))
+    onValueChange?: (value: string) => void
+  }>({})
+
+  return {
+    Select: ({ children, disabled, onValueChange }: {
+      children: React.ReactNode
+      disabled?: boolean
+      onValueChange?: (value: string) => void
+    }) => (
+      <SelectContext.Provider value={{ disabled, onValueChange }}>
+        <div>{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <div>
+          <button data-testid="select-input" type="button" disabled={context.disabled} className={className}>
+            {children}
+          </button>
+          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+            empty select value
+          </button>
+        </div>
+      )
+    },
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <button data-testid={`select-${value}`} type="button" role="option" onClick={() => context.onValueChange?.(value)}>
+          {children}
+        </button>
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
+  }
+})
 
 vi.mock('@/app/components/base/textarea', () => ({
   default: ({ value, onChange, placeholder, readOnly, className }: {
@@ -410,9 +431,22 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{ choice: 'A' }} />)
-      fireEvent.change(screen.getByTestId('select-input'), { target: { value: 'B' } })
+      fireEvent.click(screen.getByTestId('select-B'))
 
       expect(mockSetInputs).toHaveBeenCalledWith({ choice: 'B' })
+    })
+
+    it('should ignore empty select updates', () => {
+      mockUseContext.mockReturnValue(createContextValue({
+        modelConfig: createModelConfig([
+          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B', 'C'] }),
+        ]),
+      }))
+
+      render(<ChatUserInput inputs={{}} />)
+      fireEvent.click(screen.getByTestId('select-empty'))
+
+      expect(mockSetInputs).not.toHaveBeenCalled()
     })
 
     it('should call setInputs when number input changes', () => {
@@ -443,20 +477,30 @@ describe('ChatUserInput', () => {
     })
 
     it('should not call setInputs for unknown keys', () => {
+      const filteredPromptVariables = {
+        length: 1,
+        forEach: vi.fn(),
+        map: (callback: (value: ExtendedPromptVariable, index: number) => unknown) => [
+          callback(createPromptVariable({ key: 'name', name: 'Name', type: 'string' }), 0),
+        ],
+      }
       mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
+        modelConfig: {
+          ...createModelConfig(),
+          configs: {
+            prompt_template: '',
+            prompt_variables: {
+              filter: () => filteredPromptVariables,
+            } as unknown as PromptVariable[],
+          },
+        },
       }))
 
       render(<ChatUserInput inputs={{}} />)
 
-      // The component filters by promptVariableObj, so unknown keys won't trigger updates
-      // This is tested indirectly - only valid keys should trigger setInputs
       fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'Valid' } })
 
-      expect(mockSetInputs).toHaveBeenCalledTimes(1)
-      expect(mockSetInputs).toHaveBeenCalledWith({ name: 'Valid' })
+      expect(mockSetInputs).not.toHaveBeenCalled()
     })
   })
 
@@ -652,7 +696,7 @@ describe('ChatUserInput', () => {
       render(<ChatUserInput inputs={{}} />)
       const select = screen.getByTestId('select-input')
       expect(select).toBeInTheDocument()
-      expect(select.children).toHaveLength(0)
+      expect(screen.queryAllByRole('option')).toHaveLength(0)
     })
 
     it('should handle select with undefined options', () => {
