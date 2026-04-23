@@ -211,11 +211,7 @@ class RedisConnectionSpec:
             case "sentinel":
                 preview = ",".join(f"{host}:{port}" for host, port in self.sentinel_nodes[:3])
                 suffix = "..." if len(self.sentinel_nodes) > 3 else ""
-                return (
-                    f"Redis(sentinel, "
-                    f"service={self.sentinel_service_name}, "
-                    f"nodes=[{preview}{suffix}])"
-                )
+                return f"Redis(sentinel, service={self.sentinel_service_name}, nodes=[{preview}{suffix}])"
             case "cluster":
                 preview = ",".join(f"{host}:{port}" for host, port in self.cluster_nodes[:3])
                 suffix = "..." if len(self.cluster_nodes) > 3 else ""
@@ -246,9 +242,7 @@ def _parse_host_port_list(raw: str | None, env_name: str) -> tuple[HostPort, ...
             continue
         host, sep, port_str = entry.rpartition(":")
         if not sep or not host or not port_str.isdigit():
-            raise ValueError(
-                f"{env_name} entry at position {index} is malformed; expected 'host:port' format"
-            )
+            raise ValueError(f"{env_name} entry at position {index} is malformed; expected 'host:port' format")
         result.append((host, int(port_str)))
     return tuple(result)
 
@@ -267,8 +261,7 @@ def build_main_redis_spec(config: MainRedisConfigProtocol) -> RedisConnectionSpe
 
     if use_sentinel and use_cluster:
         raise ValueError(
-            "REDIS_USE_SENTINEL and REDIS_USE_CLUSTERS are both enabled; "
-            "only one topology mode can be active at a time"
+            "REDIS_USE_SENTINEL and REDIS_USE_CLUSTERS are both enabled; only one topology mode can be active at a time"
         )
 
     ssl_kwargs: dict[str, object] = {
@@ -341,9 +334,7 @@ def _parse_legacy_pubsub_url(url: str, use_clusters: bool) -> RedisConnectionSpe
         use_ssl = False
         rest = url[len("redis://") :]
     else:
-        raise ValueError(
-            f"PUBSUB_REDIS_URL must start with redis:// or rediss:// (got: {url[:16]!r}...)"
-        )
+        raise ValueError(f"PUBSUB_REDIS_URL must start with redis:// or rediss:// (got: {url[:16]!r}...)")
 
     # Split off the path component (``/db``) from the netloc.
     netloc, _, path_raw = rest.partition("/")
@@ -375,9 +366,7 @@ def _parse_legacy_pubsub_url(url: str, use_clusters: bool) -> RedisConnectionSpe
 
     host, sep, port_str = hostports.rpartition(":")
     if not sep or not host or not port_str.isdigit():
-        raise ValueError(
-            f"PUBSUB_REDIS_URL netloc is malformed; expected 'host:port' (got: {hostports!r})"
-        )
+        raise ValueError(f"PUBSUB_REDIS_URL netloc is malformed; expected 'host:port' (got: {hostports!r})")
     return RedisConnectionSpec(
         mode="standalone",
         host=host,
@@ -415,15 +404,11 @@ def _spec_from_pubsub_fields(cfg: PubSubConfigProtocol) -> RedisConnectionSpec:
                 use_ssl=use_ssl,
             )
         case "sentinel":
-            nodes = _parse_host_port_list(
-                cfg.PUBSUB_REDIS_SENTINELS, env_name="PUBSUB_REDIS_SENTINELS"
-            )
+            nodes = _parse_host_port_list(cfg.PUBSUB_REDIS_SENTINELS, env_name="PUBSUB_REDIS_SENTINELS")
             if not nodes:
                 raise ValueError("PUBSUB_REDIS_MODE=sentinel requires non-empty PUBSUB_REDIS_SENTINELS")
             if not cfg.PUBSUB_REDIS_SENTINEL_SERVICE_NAME:
-                raise ValueError(
-                    "PUBSUB_REDIS_MODE=sentinel requires PUBSUB_REDIS_SENTINEL_SERVICE_NAME"
-                )
+                raise ValueError("PUBSUB_REDIS_MODE=sentinel requires PUBSUB_REDIS_SENTINEL_SERVICE_NAME")
             return RedisConnectionSpec(
                 mode="sentinel",
                 sentinel_nodes=nodes,
@@ -437,9 +422,7 @@ def _spec_from_pubsub_fields(cfg: PubSubConfigProtocol) -> RedisConnectionSpec:
                 use_ssl=use_ssl,
             )
         case "cluster":
-            nodes = _parse_host_port_list(
-                cfg.PUBSUB_REDIS_CLUSTERS, env_name="PUBSUB_REDIS_CLUSTERS"
-            )
+            nodes = _parse_host_port_list(cfg.PUBSUB_REDIS_CLUSTERS, env_name="PUBSUB_REDIS_CLUSTERS")
             if not nodes:
                 raise ValueError("PUBSUB_REDIS_MODE=cluster requires non-empty PUBSUB_REDIS_CLUSTERS")
             return RedisConnectionSpec(
