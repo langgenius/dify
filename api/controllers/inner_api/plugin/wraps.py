@@ -20,10 +20,13 @@ class TenantUserPayload(BaseModel):
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     """
-    Get current user
+    Get current user.
 
     NOTE: user_id is not trusted, it could be maliciously set to any value.
-    As a result, it could only be considered as an end user id.
+    As a result, it could only be considered as an end user id. Even when a
+    concrete end-user ID is supplied, lookups must stay tenant-scoped so one
+    tenant cannot bind another tenant's user record into the plugin request
+    context.
     """
     if not user_id:
         user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
@@ -42,7 +45,14 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     .limit(1)
                 )
             else:
-                user_model = session.get(EndUser, user_id)
+                user_model = session.scalar(
+                    select(EndUser)
+                    .where(
+                        EndUser.id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .limit(1)
+                )
 
             if not user_model:
                 user_model = EndUser(

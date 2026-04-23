@@ -10,8 +10,9 @@
  *   - Access mode icons
  */
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import AppCard from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
@@ -31,7 +32,7 @@ const toastMocks = vi.hoisted(() => ({
 }))
 const mockRouterPush = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'success', message, ...options }),
     error: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'error', message, ...options }),
@@ -51,6 +52,16 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
   }),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: () => ({
+      data: [],
+    }),
+  }
+})
 
 // Mock headless UI Popover so it renders content without transition
 vi.mock('@headlessui/react', async () => {
@@ -94,15 +105,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    if (typeof selector === 'function')
-      return selector(state)
-    return mockSystemFeatures
-  },
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -207,20 +209,6 @@ vi.mock('@/app/components/app/switch-app-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: Record<string, unknown>) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-delete-modal">
-        <span>{title as string}</span>
-        <button data-testid="confirm-delete" onClick={onConfirm as () => void}>Delete</button>
-        <button data-testid="cancel-delete" onClick={onCancel as () => void}>Cancel</button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="dsl-export-confirm-modal">
@@ -269,7 +257,14 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 const mockOnRefresh = vi.fn()
 
 const renderAppCard = (app?: Partial<App>) => {
-  return render(<AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />)
+  return renderWithSystemFeatures(
+    <AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />,
+    { systemFeatures: mockSystemFeatures },
+  )
+}
+
+const openOperationsMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 }
 
 describe('App Card Operations Flow', () => {
@@ -327,30 +322,19 @@ describe('App Card Operations Flow', () => {
     it('should show delete confirmation and call API on confirm', async () => {
       renderAppCard({ id: 'app-to-delete', name: 'Deletable App' })
 
-      // Find and click the more button (popover trigger)
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('common.operation.delete'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
+      await waitFor(() => {
+        expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          const deleteBtn = screen.queryByText('common.operation.delete')
-          if (deleteBtn)
-            fireEvent.click(deleteBtn)
-        })
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Deletable App' } })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-        const confirmBtn = screen.queryByTestId('confirm-delete')
-        if (confirmBtn) {
-          fireEvent.click(confirmBtn)
-
-          await waitFor(() => {
-            expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
-          })
-        }
-      }
+      await waitFor(() => {
+        expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
+      })
     })
   })
 
@@ -359,34 +343,18 @@ describe('App Card Operations Flow', () => {
     it('should open edit modal and call updateAppInfo on confirm', async () => {
       renderAppCard({ id: 'app-edit', name: 'Editable App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('app.editApp'))
+      fireEvent.click(await screen.findByTestId('confirm-edit'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          const editBtn = screen.queryByText('app.editApp')
-          if (editBtn)
-            fireEvent.click(editBtn)
-        })
-
-        const confirmEdit = screen.queryByTestId('confirm-edit')
-        if (confirmEdit) {
-          fireEvent.click(confirmEdit)
-
-          await waitFor(() => {
-            expect(updateAppInfo).toHaveBeenCalledWith(
-              expect.objectContaining({
-                appID: 'app-edit',
-                name: 'Updated App Name',
-              }),
-            )
-          })
-        }
-      }
+      await waitFor(() => {
+        expect(updateAppInfo).toHaveBeenCalledWith(
+          expect.objectContaining({
+            appID: 'app-edit',
+            name: 'Updated App Name',
+          }),
+        )
+      })
     })
   })
 
@@ -395,26 +363,14 @@ describe('App Card Operations Flow', () => {
     it('should call exportAppConfig for completion apps', async () => {
       renderAppCard({ id: 'app-export', mode: AppModeEnum.COMPLETION, name: 'Export App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('app.export'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          const exportBtn = screen.queryByText('app.export')
-          if (exportBtn)
-            fireEvent.click(exportBtn)
-        })
-
-        await waitFor(() => {
-          expect(exportAppConfig).toHaveBeenCalledWith(
-            expect.objectContaining({ appID: 'app-export' }),
-          )
-        })
-      }
+      await waitFor(() => {
+        expect(exportAppConfig).toHaveBeenCalledWith(
+          expect.objectContaining({ appID: 'app-export' }),
+        )
+      })
     })
   })
 
@@ -434,35 +390,21 @@ describe('App Card Operations Flow', () => {
     it('should show switch option for chat mode apps', async () => {
       renderAppCard({ id: 'app-switch', mode: AppModeEnum.CHAT })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          expect(screen.queryByText('app.switch')).toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByText('app.switch')).toBeInTheDocument()
+      })
     })
 
     it('should not show switch option for workflow apps', async () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
+      })
     })
   })
 })

@@ -1,26 +1,25 @@
 'use client'
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
 import type { SiteInfo } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
-import { cn } from '@/utils/classnames'
-import Divider from '../../base/divider'
 import InfoModal from './info-modal'
 
 type Props = {
@@ -40,24 +39,22 @@ const MenuDropdown: FC<Props> = ({
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
-  const [open, doSetOpen] = useState(false)
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
-    openRef.current = v
-  }, [doSetOpen])
-
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
+  const [open, setOpen] = useState(false)
 
   const shareCode = useWebAppStore(s => s.shareCode)
   const handleLogout = useCallback(async () => {
+    setOpen(false)
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [router, pathname, webAppLogout, shareCode])
+  }, [pathname, router, setOpen, shareCode])
 
   const [show, setShow] = useState(false)
+  const handleOpenInfoModal = useCallback(() => {
+    setOpen(false)
+    queueMicrotask(() => {
+      setShow(true)
+    })
+  }, [])
 
   useEffect(() => {
     if (forceClose)
@@ -66,60 +63,56 @@ const MenuDropdown: FC<Props> = ({
 
   return (
     <>
-      <PortalToFollowElem
+      <DropdownMenu
         open={open}
         onOpenChange={setOpen}
-        placement={placement || 'bottom-end'}
-        offset={{
-          mainAxis: 4,
-          crossAxis: -4,
-        }}
       >
-        <PortalToFollowElemTrigger onClick={handleTrigger}>
-          <div>
-            <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
-              <RiEqualizer2Line className="h-[18px] w-[18px]" />
-            </ActionButton>
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-50">
-          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-            <div className="p-1">
-              <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
-                <div className="grow">{t('theme.theme', { ns: 'common' })}</div>
-                <ThemeSwitcher />
-              </div>
+        <DropdownMenuTrigger
+          render={<div />}
+          aria-label={t('operation.more', { ns: 'common' })}
+        >
+          <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
+            <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
+          </ActionButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement={placement || 'bottom-end'}
+          sideOffset={4}
+          popupClassName="w-[224px]"
+        >
+          <div className="px-3 py-1.5 system-md-regular text-text-secondary">
+            <div className="flex items-center gap-2">
+              <div className="grow">{t('theme.theme', { ns: 'common' })}</div>
+              <ThemeSwitcher />
             </div>
-            <Divider type="horizontal" className="my-0" />
-            <div className="p-1">
-              {data?.privacy_policy && (
-                <a href={data.privacy_policy} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
-                  <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
-                </a>
-              )}
-              <div
-                onClick={() => {
-                  handleTrigger()
-                  setShow(true)
-                }}
-                className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
-              >
-                {t('userProfile.about', { ns: 'common' })}
-              </div>
-            </div>
-            {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
-              <div className="p-1">
-                <div
-                  onClick={handleLogout}
-                  className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
-                >
-                  {t('userProfile.logout', { ns: 'common' })}
-                </div>
-              </div>
-            )}
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+          <DropdownMenuSeparator className="my-0" />
+          {data?.privacy_policy && (
+            <DropdownMenuLinkItem
+              className="px-3 system-md-regular"
+              href={data.privacy_policy}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
+            </DropdownMenuLinkItem>
+          )}
+          <DropdownMenuItem
+            className="px-3 system-md-regular"
+            onClick={handleOpenInfoModal}
+          >
+            {t('userProfile.about', { ns: 'common' })}
+          </DropdownMenuItem>
+          {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
+            <DropdownMenuItem
+              className="px-3 system-md-regular"
+              onClick={handleLogout}
+            >
+              {t('userProfile.logout', { ns: 'common' })}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {show && (
         <InfoModal
           isShow={show}

@@ -3,18 +3,20 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/base/ui/select'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -138,8 +140,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
             </SelectTrigger>
             <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItem>
-              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItem>
+              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
+                <SelectItemText>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
+                <SelectItemText>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
             </SelectContent>
           </Select>
         </Field>
@@ -161,9 +169,15 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
                 </SelectTrigger>
                 <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-                  <SelectItem value={EMPTY_SELECT_VALUE}>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItem>
+                  <SelectItem value={EMPTY_SELECT_VALUE}>
+                    <SelectItemText>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
                   {options.filter(option => option.trim() !== '').map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -206,7 +220,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             value={jsonSchemaStr}
             onChange={onJSONSchemaChange}
             noWrapper
-            className="h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+            className="h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
           />
         </Field>

@@ -8,10 +8,6 @@ vi.mock('@/app/components/base/checkbox', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: string }) => <div data-testid="tooltip">{popupContent}</div>,
-}))
-
 describe('CheckboxWithLabel', () => {
   const defaultProps = {
     isChecked: false,
@@ -35,12 +31,12 @@ describe('CheckboxWithLabel', () => {
 
   it('should render tooltip when provided', () => {
     render(<CheckboxWithLabel {...defaultProps} tooltip="Help text" />)
-    expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+    expect(screen.getByLabelText('Help text')).toBeInTheDocument()
   })
 
   it('should not render tooltip when not provided', () => {
     render(<CheckboxWithLabel {...defaultProps} />)
-    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Help text')).not.toBeInTheDocument()
   })
 
   it('should apply custom className', () => {

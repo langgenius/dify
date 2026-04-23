@@ -1,9 +1,9 @@
 import type { MockedFunction, MockInstance } from 'vitest'
 import type { DatasetConfigs } from '@/models/debug'
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -164,7 +164,8 @@ describe('dataset-config/params-config', () => {
       renderParamsConfig({ disabled: true })
 
       // Assert
-      expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' })).toBeDisabled()
+      // Assert
+      expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeDisabled()
     })
   })
 
@@ -181,11 +182,11 @@ describe('dataset-config/params-config', () => {
       const dialogScope = within(dialog)
 
       const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
-      await user.click(incrementButtons[0])
+      await user.click(incrementButtons[0]!)
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('textbox')
-        expect(topKInput).toHaveValue('5')
+        expect(topKInput)!.toHaveValue('5')
       })
 
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
@@ -200,7 +201,8 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue('5')
+      // Assert
+      expect(reopenedTopKInput)!.toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -214,11 +216,11 @@ describe('dataset-config/params-config', () => {
       const dialogScope = within(dialog)
 
       const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
-      await user.click(incrementButtons[0])
+      await user.click(incrementButtons[0]!)
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('textbox')
-        expect(topKInput).toHaveValue('5')
+        expect(topKInput)!.toHaveValue('5')
       })
 
       const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
@@ -234,7 +236,8 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue('4')
+      // Assert
+      expect(reopenedTopKInput)!.toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {
@@ -255,7 +258,7 @@ describe('dataset-config/params-config', () => {
 
       // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     })
   })
 })

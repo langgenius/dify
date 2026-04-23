@@ -1,8 +1,8 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import s from './WxyyTextCn.module.css'
 
 const Icon = (

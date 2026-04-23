@@ -65,4 +65,20 @@ describe('assigner use-config helpers', () => {
     expect(updateOperationItems(legacyInputs, nextItems).items).toEqual(nextItems)
     expect(legacyInputs.items).toHaveLength(1)
   })
+
+  it('sanitizes variable-selector items restored from collaboration payloads', () => {
+    const dirtyItems = [{
+      variable_selector: null as unknown as AssignerNodeType['items'][number]['variable_selector'],
+      input_type: AssignerNodeInputType.variable,
+      operation: WriteMode.overwrite,
+      value: null,
+    }]
+
+    expect(updateOperationItems(createInputs('2'), dirtyItems).items).toEqual([{
+      variable_selector: [],
+      input_type: AssignerNodeInputType.variable,
+      operation: WriteMode.overwrite,
+      value: [],
+    }])
+  })
 })

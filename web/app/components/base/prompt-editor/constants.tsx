@@ -52,7 +52,7 @@ export const getInputVars = (text: string): ValueSelector[] => {
       .filter(item => item.includes('.'))
       .map((item) => {
         const valueSelector = item.replace('{{#', '').replace('#}}', '').split('.')
-        if (valueSelector[1] === 'sys' && /^\d+$/.test(valueSelector[0]))
+        if (valueSelector[1] === 'sys' && /^\d+$/.test(valueSelector[0]!))
           return valueSelector.slice(1)
 
         return valueSelector

@@ -13,7 +13,7 @@ permissions:
 jobs:
   autofix:
     if: github.repository == 'langgenius/dify'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Complete merge group check
         if: github.event_name == 'merge_group'
@@ -25,7 +25,7 @@ jobs:
       - name: Check Docker Compose inputs
         if: github.event_name != 'merge_group'
         id: docker-compose-changes
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             docker/generate_docker_compose
@@ -35,7 +35,7 @@ jobs:
       - name: Check web inputs
         if: github.event_name != 'merge_group'
         id: web-changes
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             web/**
@@ -43,12 +43,11 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             api/**
@@ -58,7 +57,7 @@ jobs:
           python-version: "3.11"
 
       - if: github.event_name != 'merge_group'
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Generate Docker Compose
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -114,14 +113,13 @@ jobs:
           find . -name "*.py.bak" -type f -delete
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group'
         uses: ./.github/actions/setup-web
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          cd web
           vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
       - if: github.event_name != 'merge_group'
-        uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3
+        uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

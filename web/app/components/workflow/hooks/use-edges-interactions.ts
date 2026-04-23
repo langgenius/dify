@@ -4,10 +4,9 @@ import type {
 } from 'reactflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import {
-  useStoreApi,
-} from 'reactflow'
+import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import {
   applyConnectedHandleNodeData,
   buildContextMenuEdges,
@@ -22,74 +21,67 @@ import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()
-  const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
+  const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const deleteEdgeById = useCallback((edgeId: string) => {
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
-    } = store.getState()
+    } = collaborativeWorkflow.getState()
     const currentEdgeIndex = edges.findIndex(edge => edge.id === edgeId)
 
     if (currentEdgeIndex < 0)
       return
-    const currentEdge = edges[currentEdgeIndex]
-    const nodes = getNodes()
+    const currentEdge = edges[currentEdgeIndex]!
     const newNodes = applyConnectedHandleNodeData(nodes, [{ type: 'remove', edge: currentEdge }])
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.splice(currentEdgeIndex, 1)
     })
     setEdges(newEdges)
-    if (clearEdgeMenuIfNeeded({ edgeMenu: workflowStore.getState().edgeMenu, edgeIds: [currentEdge.id] }))
+    if (clearEdgeMenuIfNeeded({ edgeMenu: workflowStore.getState().edgeMenu, edgeIds: [currentEdge!.id] }))
       workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
-  }, [store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
     if (getNodesReadOnly())
       return
 
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
+    const { edges, setEdges } = store.getState()
     setEdges(updateEdgeHoverState(edges, edge.id, true))
-  }, [store, getNodesReadOnly])
+  }, [getNodesReadOnly, store])
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
     if (getNodesReadOnly())
       return
 
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
+    const { edges, setEdges } = store.getState()
     setEdges(updateEdgeHoverState(edges, edge.id, false))
-  }, [store, getNodesReadOnly])
+  }, [getNodesReadOnly, store])
 
   const handleEdgeDeleteByDeleteBranch = useCallback((nodeId: string, branchId: string) => {
     if (getNodesReadOnly())
       return
 
     const {
-      getNodes,
+      nodes,
       setNodes,
       edges,
       setEdges,
-    } = store.getState()
+    } = collaborativeWorkflow.getState()
     const edgeWillBeDeleted = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === branchId)
 
     if (!edgeWillBeDeleted.length)
       return
 
-    const nodes = getNodes()
     const newNodes = applyConnectedHandleNodeData(
       nodes,
       edgeWillBeDeleted.map(edge => ({ type: 'remove' as const, edge })),
@@ -107,19 +99,19 @@ export const useEdgesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDeleteByDeleteBranch)
-  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeDelete = useCallback(() => {
     if (getNodesReadOnly())
       return
-    const { edges } = store.getState()
+    const { edges } = collaborativeWorkflow.getState()
     const currentEdge = edges.find(edge => edge.selected)
 
     if (!currentEdge)
       return
 
     deleteEdgeById(currentEdge.id)
-  }, [deleteEdgeById, getNodesReadOnly, store])
+  }, [deleteEdgeById, getNodesReadOnly, collaborativeWorkflow])
 
   const handleEdgeDeleteById = useCallback((edgeId: string) => {
     if (getNodesReadOnly())
@@ -135,16 +127,15 @@ export const useEdgesInteractions = () => {
     const {
       edges,
       setEdges,
-    } = store.getState()
+    } = collaborativeWorkflow.getState()
     setEdges(updateEdgeSelectionState(edges, changes))
-  }, [store, getNodesReadOnly])
+  }, [collaborativeWorkflow, getNodesReadOnly])
 
   const handleEdgeSourceHandleChange = useCallback((nodeId: string, oldHandleId: string, newHandleId: string) => {
     if (getNodesReadOnly())
       return
 
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
-    const nodes = getNodes()
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
 
     // Find edges connected to the old handle
     const affectedEdges = edges.filter(
@@ -182,7 +173,7 @@ export const useEdgesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
-  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeContextMenu = useCallback<EdgeMouseHandler>((e, edge) => {
     if (getNodesReadOnly())
@@ -190,9 +181,8 @@ export const useEdgesInteractions = () => {
 
     e.preventDefault()
 
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
     setEdges(buildContextMenuEdges(edges, edge.id))
-    const nodes = getNodes()
     if (nodes.some(node => node.data.selected || node.selected || node.data._isBundled)) {
       setNodes(clearNodeSelectionState(nodes))
     }
@@ -207,7 +197,7 @@ export const useEdgesInteractions = () => {
         edgeId: edge.id,
       },
     })
-  }, [store, workflowStore, getNodesReadOnly])
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   return {
     handleEdgeEnter,

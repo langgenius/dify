@@ -1,8 +1,8 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import {
   memo,
 } from 'react'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   type?: 'info'
@@ -37,7 +37,7 @@ const Alert: React.FC<Props> = ({
           <span className="i-ri-information-2-fill text-text-accent" data-testid="info-icon" />
         </div>
         <div className="p-1">
-          <div className="text-text-secondary system-xs-regular" data-testid="msg-container">
+          <div className="system-xs-regular text-text-secondary" data-testid="msg-container">
             {message}
           </div>
         </div>

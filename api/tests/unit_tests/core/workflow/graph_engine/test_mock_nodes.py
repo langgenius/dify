@@ -10,6 +10,10 @@ from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
+from core.model_manager import ModelInstance
+from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.workflow.nodes.agent import AgentNode
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -26,11 +30,6 @@ from graphon.nodes.question_classifier import QuestionClassifierNode
 from graphon.nodes.template_transform import TemplateTransformNode
 from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
-
-from core.model_manager import ModelInstance
-from core.workflow.node_runtime import DifyToolNodeRuntime
-from core.workflow.nodes.agent import AgentNode
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -56,13 +55,14 @@ class MockNodeMixin:
 
     def __init__(
         self,
-        id: str,
-        config: Mapping[str, Any],
+        node_id: str,
+        config: Any,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
@@ -97,7 +97,7 @@ class MockNodeMixin:
             kwargs.setdefault("message_transformer", MagicMock())
 
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

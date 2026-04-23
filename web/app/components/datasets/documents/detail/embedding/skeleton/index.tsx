@@ -48,7 +48,7 @@ CardSkelton.displayName = 'CardSkelton'
 const EmbeddingSkeleton = () => {
   return (
     <div className="relative z-10 flex grow flex-col overflow-y-hidden">
-      <div className="absolute left-0 top-0 z-20 h-full w-full bg-dataset-chunk-list-mask-bg" />
+      <div className="absolute top-0 left-0 z-20 h-full w-full bg-dataset-chunk-list-mask-bg" />
       {Array.from({ length: 5 }).map((_, index) => {
         return (
           <div key={index} className="w-full px-11">

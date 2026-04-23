@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus
+from models.account import Account, AccountStatus, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -14,7 +14,6 @@ from services.errors.account import (
     AccountRegisterError,
     CurrentPasswordIncorrectError,
 )
-from tests.unit_tests.services.services_test_help import ServiceDbTestHelper
 
 
 class TestAccountAssociatedDataFactory:
@@ -149,7 +148,6 @@ class TestAccountService:
             # Setup basic session methods
             mock_session.add = MagicMock()
             mock_session.commit = MagicMock()
-            mock_session.query = MagicMock()
 
             yield mock_db
 
@@ -1572,15 +1570,9 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
 
-        # Mock database queries
-        query_results = {
-            (
-                "TenantAccountJoin",
-                "tenant_id",
-                "tenant-456",
-            ): TestAccountAssociatedDataFactory.create_tenant_join_mock(),
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies[
+            "db"
+        ].session.scalar.return_value = TestAccountAssociatedDataFactory.create_tenant_join_mock()
 
         # Mock TenantService methods
         with (
@@ -1697,7 +1689,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="user-123", email="test@example.com"
         )
@@ -1759,7 +1751,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock Redis data
         invitation_data = {
@@ -1784,7 +1776,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="different-user-456", email="test@example.com"
         )

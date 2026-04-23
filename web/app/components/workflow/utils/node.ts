@@ -109,7 +109,7 @@ export const genNewNodeTitleFromOld = (oldTitle: string) => {
 
   if (match) {
     const title = match[1]
-    const num = Number.parseInt(match[2], 10)
+    const num = Number.parseInt(match[2]!, 10)
     return `${title} (${num + 1})`
   }
   else {

@@ -1,9 +1,9 @@
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import { PortalSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -48,9 +48,9 @@ const InputsFormContent = ({ showTip }: Props) => {
         <div key={form.variable} className="space-y-1" data-testid={`inputs-form-item-${form.variable}`}>
           {form.type !== InputVarType.checkbox && (
             <div className="flex h-6 items-center gap-1">
-              <div className="text-text-secondary system-md-semibold">{form.label}</div>
+              <div className="system-md-semibold text-text-secondary">{form.label}</div>
               {!form.required && (
-                <div className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</div>
+                <div className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</div>
               )}
             </div>
           )}
@@ -85,13 +85,22 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <PortalSelect
-              popupClassName="w-[200px]"
-              value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
-              items={form.options.map((option: string) => ({ value: option, name: option }))}
-              onSelect={item => handleFormChange(form.variable, item.value as string)}
-              placeholder={form.label}
-            />
+            <Select
+              value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
+              onValueChange={value => value && handleFormChange(form.variable, value)}
+            >
+              <SelectTrigger className="w-full">
+                {String(inputsFormValue?.[form.variable] ?? form.default ?? form.label)}
+              </SelectTrigger>
+              <SelectContent>
+                {form.options.map((option: string) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
@@ -125,7 +134,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={v => handleFormChange(form.variable, v)}
               noWrapper
-              className="h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+              className="h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
               placeholder={
                 <div className="whitespace-pre">{form.json_schema}</div>
               }
@@ -134,7 +143,7 @@ const InputsFormContent = ({ showTip }: Props) => {
         </div>
       ))}
       {showTip && (
-        <div className="text-text-tertiary system-xs-regular">{t('chat.chatFormTip', { ns: 'share' })}</div>
+        <div className="system-xs-regular text-text-tertiary">{t('chat.chatFormTip', { ns: 'share' })}</div>
       )}
     </div>
   )

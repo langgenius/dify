@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { cn } from '@/utils/classnames'
 import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 
@@ -20,7 +20,7 @@ const Placeholder = ({
     <div className={wrapClassName}>
       <SkeletonRow>
         <div
-          className="flex h-10 w-10 items-center justify-center gap-2 radius-lg border-[0.5px]
+          className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
               border-components-panel-border bg-background-default p-1 backdrop-blur-xs"
         >
           <div className="flex h-5 w-5 items-center justify-center">

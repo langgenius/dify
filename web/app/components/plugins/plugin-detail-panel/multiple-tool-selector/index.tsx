@@ -1,6 +1,8 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAddLine,
   RiQuestionLine,
@@ -10,11 +12,9 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import Tooltip from '@/app/components/base/tooltip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   disabled?: boolean
@@ -109,13 +109,18 @@ const MultipleToolSelector = ({
           className={cn('relative flex grow items-center gap-0.5', supportCollapse && 'cursor-pointer')}
           onClick={handleCollapse}
         >
-          <div className="system-sm-semibold-uppercase flex h-6 items-center text-text-secondary">{label}</div>
+          <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">{label}</div>
           {required && <div className="text-red-500">*</div>}
           {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-            >
-              <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
+                )}
+              />
+              <TooltipContent>
+                {tooltip}
+              </TooltipContent>
             </Tooltip>
           )}
           {supportCollapse && (
@@ -129,11 +134,11 @@ const MultipleToolSelector = ({
         </div>
         {value.length > 0 && (
           <>
-            <div className="system-xs-medium flex items-center gap-1 text-text-tertiary">
+            <div className="flex items-center gap-1 system-xs-medium text-text-tertiary">
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t('agent.tools.enabled', { ns: 'appDebug' })}</span>
             </div>
-            <Divider type="vertical" className="ml-3 mr-1 h-3" />
+            <Divider type="vertical" className="mr-1 ml-3 h-3" />
           </>
         )}
         {!disabled && (
@@ -152,7 +157,7 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           {value.length === 0 && (
-            <div className="system-xs-regular flex justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
+            <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
           )}
           {value.length > 0 && value.map((item, index) => (
             <div className="mb-1" key={index}>

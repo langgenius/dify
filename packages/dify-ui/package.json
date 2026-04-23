@@ -1,0 +1,131 @@
+{
+  "name": "@langgenius/dify-ui",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./styles.css": "./src/styles/styles.css",
+    "./cn": {
+      "types": "./src/cn.ts",
+      "import": "./src/cn.ts"
+    },
+    "./alert-dialog": {
+      "types": "./src/alert-dialog/index.tsx",
+      "import": "./src/alert-dialog/index.tsx"
+    },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
+    },
+    "./avatar": {
+      "types": "./src/avatar/index.tsx",
+      "import": "./src/avatar/index.tsx"
+    },
+    "./button": {
+      "types": "./src/button/index.tsx",
+      "import": "./src/button/index.tsx"
+    },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
+    },
+    "./context-menu": {
+      "types": "./src/context-menu/index.tsx",
+      "import": "./src/context-menu/index.tsx"
+    },
+    "./dialog": {
+      "types": "./src/dialog/index.tsx",
+      "import": "./src/dialog/index.tsx"
+    },
+    "./dropdown-menu": {
+      "types": "./src/dropdown-menu/index.tsx",
+      "import": "./src/dropdown-menu/index.tsx"
+    },
+    "./meter": {
+      "types": "./src/meter/index.tsx",
+      "import": "./src/meter/index.tsx"
+    },
+    "./number-field": {
+      "types": "./src/number-field/index.tsx",
+      "import": "./src/number-field/index.tsx"
+    },
+    "./popover": {
+      "types": "./src/popover/index.tsx",
+      "import": "./src/popover/index.tsx"
+    },
+    "./preview-card": {
+      "types": "./src/preview-card/index.tsx",
+      "import": "./src/preview-card/index.tsx"
+    },
+    "./scroll-area": {
+      "types": "./src/scroll-area/index.tsx",
+      "import": "./src/scroll-area/index.tsx"
+    },
+    "./select": {
+      "types": "./src/select/index.tsx",
+      "import": "./src/select/index.tsx"
+    },
+    "./slider": {
+      "types": "./src/slider/index.tsx",
+      "import": "./src/slider/index.tsx"
+    },
+    "./switch": {
+      "types": "./src/switch/index.tsx",
+      "import": "./src/switch/index.tsx"
+    },
+    "./toast": {
+      "types": "./src/toast/index.tsx",
+      "import": "./src/toast/index.tsx"
+    },
+    "./tooltip": {
+      "types": "./src/tooltip/index.tsx",
+      "import": "./src/tooltip/index.tsx"
+    }
+  },
+  "scripts": {
+    "storybook": "storybook dev",
+    "storybook:build": "storybook build",
+    "test": "vp test",
+    "test:watch": "vp test --watch",
+    "type-check": "tsgo"
+  },
+  "peerDependencies": {
+    "@base-ui/react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "dependencies": {
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "devDependencies": {
+    "@base-ui/react": "catalog:",
+    "@chromatic-com/storybook": "catalog:",
+    "@dify/tsconfig": "workspace:*",
+    "@egoist/tailwindcss-icons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/addon-links": "catalog:",
+    "@storybook/addon-themes": "catalog:",
+    "@storybook/react-vite": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "class-variance-authority": "catalog:",
+    "playwright": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "storybook": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest-browser-react": "catalog:"
+  }
+}

@@ -2,16 +2,16 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 from core.prompt.prompt_transform import PromptTransform
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 # from core.app.app_config.entities import ModelConfigEntity
 # from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 # from graphon.model_runtime.entities.message_entities import UserPromptMessage
 # from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
 # from graphon.model_runtime.entities.provider_entities import ProviderEntity
-# from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+# from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 # from core.prompt.prompt_transform import PromptTransform
 
 

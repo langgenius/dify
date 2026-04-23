@@ -1,7 +1,7 @@
 import type { FC, RefObject } from 'react'
 import type { ToolWithProvider } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { pinyin } from 'pinyin-pro'
-import { cn } from '@/utils/classnames'
 import { CollectionType } from '../../tools/types'
 
 export const CUSTOM_GROUP_NAME = '@@@custom@@@'
@@ -33,7 +33,7 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
 
     // transform Chinese to pinyin
     if (/[\u4E00-\u9FA5]/.test(firstChar))
-      letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0].toUpperCase()
+      letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0]!.toUpperCase()
     else
       letter = firstChar.toUpperCase()
 
@@ -55,10 +55,10 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
     else
       groupName = AGENT_GROUP_NAME
 
-    if (!acc[letter][groupName])
-      acc[letter][groupName] = []
+    if (!acc[letter]![groupName])
+      acc[letter]![groupName] = []
 
-    acc[letter][groupName].push(item)
+    acc[letter]![groupName]!.push(item)
 
     return acc
   }, {})
@@ -87,7 +87,7 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
   }
   return (
     <div className={cn('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
-      <div className={cn('absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
+      <div className={cn('absolute top-0 left-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
       {letters.map(letter => (
         <div className="cursor-pointer hover:text-text-secondary" key={letter} onClick={() => handleIndexClick(letter)}>
           {letter}

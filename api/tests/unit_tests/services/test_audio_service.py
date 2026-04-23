@@ -53,6 +53,7 @@ Tests available voice retrieval:
 - text_to_speech: Enables TTS functionality
 """
 
+from typing import Any
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -109,7 +110,7 @@ class AudioServiceTestDataFactory:
         return app
 
     @staticmethod
-    def create_workflow_mock(features_dict: dict | None = None, **kwargs) -> Mock:
+    def create_workflow_mock(features_dict: dict[str, Any] | None = None, **kwargs) -> Mock:
         """
         Create a mock Workflow object.
 
@@ -128,8 +129,8 @@ class AudioServiceTestDataFactory:
 
     @staticmethod
     def create_app_model_config_mock(
-        speech_to_text_dict: dict | None = None,
-        text_to_speech_dict: dict | None = None,
+        speech_to_text_dict: dict[str, Any] | None = None,
+        text_to_speech_dict: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         """

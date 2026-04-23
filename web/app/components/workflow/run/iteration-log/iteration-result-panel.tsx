@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiArrowRightSLine,
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'singleRun'
 
@@ -92,7 +92,7 @@ const IterationResultPanel: FC<Props> = ({
             <div
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
-                expandedIterations[index] ? 'pb-2 pt-3' : 'py-3',
+                expandedIterations[index] ? 'pt-3 pb-2' : 'py-3',
                 'rounded-xl text-left',
               )}
               onClick={() => toggleIteration(index)}
@@ -101,7 +101,7 @@ const IterationResultPanel: FC<Props> = ({
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
                   <Iteration className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(`${i18nPrefix}.iteration`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}

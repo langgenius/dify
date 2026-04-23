@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
@@ -89,8 +89,8 @@ const BatchModal: FC<IBatchModalProps> = ({
 
   return (
     <Modal isShow={isShow} onClose={noop} className="max-w-[520px]! rounded-xl! px-8 py-6">
-      <div className="system-xl-medium relative pb-1 text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
-      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
+      <div className="relative pb-1 system-xl-medium text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
+      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <CSVUploader
@@ -106,7 +106,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       )}
 
       <div className="mt-[28px] flex justify-end pt-6">
-        <Button className="system-sm-medium mr-2 text-text-tertiary" onClick={onCancel}>
+        <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
           {t('batchModal.cancel', { ns: 'appAnnotation' })}
         </Button>
         <Button

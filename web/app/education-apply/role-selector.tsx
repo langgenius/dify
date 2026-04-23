@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type RoleSelectorProps = {
   onChange: (value: string) => void
@@ -32,13 +32,13 @@ const RoleSelector = ({
         options.map(option => (
           <div
             key={option.key}
-            className="system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary"
+            className="mr-6 flex h-5 cursor-pointer items-center system-md-regular text-text-primary"
             onClick={() => onChange(option.key)}
           >
             <div
               className={cn(
                 'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                option.key === value && 'border-[5px] border-components-radio-border-checked ',
+                option.key === value && 'border-[5px] border-components-radio-border-checked',
               )}
             >
             </div>

@@ -60,7 +60,8 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       // Assert - search input should be visible
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      // Assert - search input should be visible
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render with correct container styles', () => {
@@ -70,12 +71,12 @@ describe('Header', () => {
 
       // Assert - container should have correct class names
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex')
-      expect(wrapper).toHaveClass('items-center')
-      expect(wrapper).toHaveClass('gap-x-2')
-      expect(wrapper).toHaveClass('bg-components-panel-bg')
-      expect(wrapper).toHaveClass('p-1')
-      expect(wrapper).toHaveClass('pl-3')
+      expect(wrapper)!.toHaveClass('flex')
+      expect(wrapper)!.toHaveClass('items-center')
+      expect(wrapper)!.toHaveClass('gap-x-2')
+      expect(wrapper)!.toHaveClass('bg-components-panel-bg')
+      expect(wrapper)!.toHaveClass('p-1')
+      expect(wrapper)!.toHaveClass('pl-3')
     })
 
     it('should render Input component with correct props', () => {
@@ -84,8 +85,8 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveValue('test-value')
+      expect(input)!.toBeInTheDocument()
+      expect(input)!.toHaveValue('test-value')
     })
 
     it('should render Input with search icon', () => {
@@ -95,7 +96,7 @@ describe('Header', () => {
 
       // Assert - Input should have search icon class
       const searchIcon = container.querySelector('.i-ri-search-line.h-4.w-4')
-      expect(searchIcon).toBeInTheDocument()
+      expect(searchIcon)!.toBeInTheDocument()
     })
 
     it('should render Input with correct wrapper width', () => {
@@ -105,7 +106,7 @@ describe('Header', () => {
 
       // Assert - Input wrapper should have w-[200px] class
       const inputWrapper = container.querySelector('.w-\\[200px\\]')
-      expect(inputWrapper).toBeInTheDocument()
+      expect(inputWrapper)!.toBeInTheDocument()
     })
   })
 
@@ -117,7 +118,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-        expect(input).toHaveValue('')
+        expect(input)!.toHaveValue('')
       })
 
       it('should display input value correctly', () => {
@@ -126,7 +127,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-        expect(input).toHaveValue('search-query')
+        expect(input)!.toHaveValue('search-query')
       })
 
       it('should handle special characters in inputValue', () => {
@@ -136,7 +137,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-        expect(input).toHaveValue(specialChars)
+        expect(input)!.toHaveValue(specialChars)
       })
 
       it('should handle unicode characters in inputValue', () => {
@@ -146,7 +147,7 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-        expect(input).toHaveValue(unicodeValue)
+        expect(input)!.toHaveValue(unicodeValue)
       })
     })
 
@@ -157,7 +158,8 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Assert - Component should render without errors
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        // Assert - Component should render without errors
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should render with single breadcrumb', () => {
@@ -165,7 +167,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should render with multiple breadcrumbs', () => {
@@ -173,7 +175,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
 
@@ -184,7 +186,8 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Assert - keywords are passed through, component renders
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        // Assert - keywords are passed through, component renders
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
 
@@ -194,7 +197,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should render with bucket value', () => {
@@ -202,7 +205,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
 
@@ -212,7 +215,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should handle positive search results', () => {
@@ -221,7 +224,8 @@ describe('Header', () => {
         render(<Header {...props} />)
 
         // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should handle large search results count', () => {
@@ -229,7 +233,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
 
@@ -239,7 +243,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
 
       it('should render correctly when isInPipeline is true', () => {
@@ -247,7 +251,7 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
       })
     })
   })
@@ -265,7 +269,7 @@ describe('Header', () => {
 
         expect(mockHandleInputChange).toHaveBeenCalledTimes(1)
         // Verify that onChange event was triggered (React's synthetic event structure)
-        expect(mockHandleInputChange.mock.calls[0][0]).toHaveProperty('type', 'change')
+        expect(mockHandleInputChange.mock.calls[0]![0]).toHaveProperty('type', 'change')
       })
 
       it('should call handleInputChange on each keystroke', () => {
@@ -290,7 +294,7 @@ describe('Header', () => {
         fireEvent.change(input, { target: { value: '' } })
 
         expect(mockHandleInputChange).toHaveBeenCalledTimes(1)
-        expect(mockHandleInputChange.mock.calls[0][0]).toHaveProperty('type', 'change')
+        expect(mockHandleInputChange.mock.calls[0]![0]).toHaveProperty('type', 'change')
       })
 
       it('should handle whitespace-only input', () => {
@@ -302,7 +306,7 @@ describe('Header', () => {
         fireEvent.change(input, { target: { value: '   ' } })
 
         expect(mockHandleInputChange).toHaveBeenCalledTimes(1)
-        expect(mockHandleInputChange.mock.calls[0][0]).toHaveProperty('type', 'change')
+        expect(mockHandleInputChange.mock.calls[0]![0]).toHaveProperty('type', 'change')
       })
     })
 
@@ -317,7 +321,7 @@ describe('Header', () => {
 
         // Act - Find and click the clear icon container
         const clearButton = screen.getByTestId('input-clear')
-        expect(clearButton).toBeInTheDocument()
+        expect(clearButton)!.toBeInTheDocument()
         fireEvent.click(clearButton!)
 
         expect(mockHandleResetKeywords).toHaveBeenCalledTimes(1)
@@ -338,7 +342,7 @@ describe('Header', () => {
 
         // Act & Assert - Clear icon should be visible
         const clearIcon = screen.getByTestId('input-clear')
-        expect(clearIcon).toBeInTheDocument()
+        expect(clearIcon)!.toBeInTheDocument()
       })
     })
   })
@@ -365,21 +369,23 @@ describe('Header', () => {
       rerender(<Header {...props} />)
 
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      // Assert - Component renders without errors
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should re-render when inputValue changes', () => {
       const props = createDefaultProps({ inputValue: 'initial' })
       const { rerender } = render(<Header {...props} />)
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-      expect(input).toHaveValue('initial')
+      expect(input)!.toHaveValue('initial')
 
       // Act - Rerender with different inputValue
       const newProps = createDefaultProps({ inputValue: 'changed' })
       rerender(<Header {...newProps} />)
 
       // Assert - Input value should be updated
-      expect(input).toHaveValue('changed')
+      // Assert - Input value should be updated
+      expect(input)!.toHaveValue('changed')
     })
 
     it('should re-render when breadcrumbs change', () => {
@@ -391,7 +397,8 @@ describe('Header', () => {
       rerender(<Header {...newProps} />)
 
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      // Assert - Component renders without errors
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should re-render when keywords change', () => {
@@ -403,7 +410,8 @@ describe('Header', () => {
       rerender(<Header {...newProps} />)
 
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      // Assert - Component renders without errors
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
   })
 
@@ -415,7 +423,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-      expect(input).toHaveValue(longValue)
+      expect(input)!.toHaveValue(longValue)
     })
 
     it('should handle very long breadcrumb paths', () => {
@@ -424,7 +432,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle breadcrumbs with special characters', () => {
@@ -433,7 +441,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle breadcrumbs with unicode names', () => {
@@ -442,7 +450,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle bucket with special characters', () => {
@@ -450,7 +458,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should pass the event object to handleInputChange callback', () => {
@@ -463,7 +471,7 @@ describe('Header', () => {
 
       // Assert - Verify the event object is passed correctly
       expect(mockHandleInputChange).toHaveBeenCalledTimes(1)
-      const eventArg = mockHandleInputChange.mock.calls[0][0]
+      const eventArg = mockHandleInputChange.mock.calls[0]![0]
       expect(eventArg).toHaveProperty('type', 'change')
       expect(eventArg).toHaveProperty('target')
     })
@@ -480,7 +488,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it.each([
@@ -493,7 +501,7 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it.each([
@@ -507,7 +515,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-      expect(input).toHaveValue(inputValue)
+      expect(input)!.toHaveValue(inputValue)
     })
   })
 
@@ -525,7 +533,8 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       // Assert - Component should render successfully, meaning props are passed correctly
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')).toBeInTheDocument()
+      // Assert - Component should render successfully, meaning props are passed correctly
+      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should pass correct props to Input component', () => {
@@ -540,7 +549,7 @@ describe('Header', () => {
       render(<Header {...props} />)
 
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
-      expect(input).toHaveValue('test-input')
+      expect(input)!.toHaveValue('test-input')
 
       // Test onChange handler
       fireEvent.change(input, { target: { value: 'new-value' } })

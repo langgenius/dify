@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiPlanetFill,
   RiPlanetLine,
@@ -7,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 type ExploreNavProps = {
   className?: string

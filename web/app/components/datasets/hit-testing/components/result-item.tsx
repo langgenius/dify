@@ -1,6 +1,7 @@
 'use client'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -10,7 +11,6 @@ import { Markdown } from '@/app/components/base/markdown'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
-import { cn } from '@/utils/classnames'
 import ImageList from '../../common/image-list'
 import ChildChunkItem from './child-chunks-item'
 import ChunkDetailModal from './chunk-detail-modal'
@@ -72,7 +72,7 @@ const ResultItem = ({
         {isParentChildRetrieval && (
           <div className="mt-1">
             <div
-              className={cn('inline-flex h-6 cursor-pointer select-none items-center space-x-0.5 rounded-lg text-text-secondary', isFold && 'bg-workflow-process-bg pl-1')}
+              className={cn('inline-flex h-6 cursor-pointer items-center space-x-0.5 rounded-lg text-text-secondary select-none', isFold && 'bg-workflow-process-bg pl-1')}
               onClick={(e) => {
                 e.stopPropagation()
                 toggleFold()

@@ -6,8 +6,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,6 +16,8 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
@@ -349,7 +349,6 @@ class SummaryIndexService:
                                     summary_record_id,
                                 )
                                 summary_record_in_session = DocumentSegmentSummary(
-                                    id=summary_record_id,  # Use the same ID if available
                                     dataset_id=dataset.id,
                                     document_id=segment.document_id,
                                     chunk_id=segment.id,
@@ -360,6 +359,9 @@ class SummaryIndexService:
                                     status=SummaryStatus.COMPLETED,
                                     enabled=True,
                                 )
+                                if summary_record_in_session is None:
+                                    raise RuntimeError("summary_record_in_session should not be None at this point")
+                                summary_record_in_session.id = summary_record_id
                                 session.add(summary_record_in_session)
                                 logger.info(
                                     "Created new summary record (id=%s) for segment %s after vectorization",

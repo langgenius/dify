@@ -133,7 +133,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
     error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
@@ -335,6 +335,7 @@ describe('SwitchAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
     it('should toggle remove-original from the checkbox control itself', async () => {

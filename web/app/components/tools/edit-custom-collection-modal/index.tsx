@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
@@ -8,15 +11,12 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
@@ -204,7 +204,7 @@ const EditCustomCollectionModal: FC<Props> = ({
           <div className="flex h-full flex-col">
             <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">
+                <div className="py-2 system-sm-medium text-text-primary">
                   {t('createTool.name', { ns: 'tools' })}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
@@ -229,7 +229,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div className="select-none">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="system-sm-medium py-2 text-text-primary">
+                    <div className="py-2 system-sm-medium text-text-primary">
                       {t('createTool.schema', { ns: 'tools' })}
                       <span className="ml-1 text-red-500">*</span>
                     </div>
@@ -238,7 +238,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                       href="https://swagger.io/specification/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex h-[18px] items-center space-x-1  text-text-accent"
+                      className="flex h-[18px] items-center space-x-1 text-text-accent"
                     >
                       <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
                       <LinkExternal02 className="h-3 w-3" />
@@ -257,10 +257,10 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Available Tools  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.availableTools.title', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.availableTools.title', { ns: 'tools' })}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                  <table className="system-xs-regular w-full text-text-secondary">
-                    <thead className="uppercase text-text-tertiary">
+                  <table className="w-full system-xs-regular text-text-secondary">
+                    <thead className="text-text-tertiary uppercase">
                       <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-divider-regular')}>
                         <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.name', { ns: 'tools' })}</th>
                         <th className="w-[236px] p-2 pl-3 font-medium">{t('createTool.availableTools.description', { ns: 'tools' })}</th>
@@ -296,7 +296,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Authorization method */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
                   <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
                   <RiSettings2Line className="h-4 w-4 text-text-secondary" />
@@ -305,13 +305,13 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Labels */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
 
               {/* Privacy Policy */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
                 <Input
                   value={customCollection.privacy_policy}
                   onChange={(e) => {
@@ -326,7 +326,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.customDisclaimer', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.customDisclaimer', { ns: 'tools' })}</div>
                 <Input
                   value={customCollection.custom_disclaimer}
                   onChange={(e) => {
@@ -344,10 +344,10 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {
                 isEdit && (
-                  <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                  <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
                 )
               }
-              <div className="flex space-x-2 ">
+              <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
               </div>

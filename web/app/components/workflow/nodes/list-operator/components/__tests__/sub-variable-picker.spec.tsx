@@ -20,7 +20,7 @@ describe('list-operator/sub-variable-picker', () => {
 
     expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByRole('option', { name: 'name' }))
 
     expect(handleChange).toHaveBeenCalledWith('name')
@@ -41,7 +41,7 @@ describe('list-operator/sub-variable-picker', () => {
     expect(container.firstChild).toHaveClass('custom-sub-variable')
     expect(screen.getByText('size')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByRole('option', { name: 'type' }))
 
     expect(handleChange).toHaveBeenCalledWith('type')

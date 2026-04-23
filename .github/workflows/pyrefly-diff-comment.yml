@@ -12,7 +12,7 @@ permissions: {}
 jobs:
   comment:
     name: Comment PR with pyrefly diff
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -76,13 +76,11 @@ jobs:
               diff += '\\n\\n... (truncated) ...';
             }
 
-            const body = diff.trim()
-              ? '### Pyrefly Diff\n<details>\n<summary>base → PR</summary>\n\n```diff\n' + diff + '\n```\n</details>'
-              : '### Pyrefly Diff\nNo changes detected.';
-
-            await github.rest.issues.createComment({
-              issue_number: prNumber,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            });
+            if (diff.trim()) {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '### Pyrefly Diff\n<details>\n<summary>base → PR</summary>\n\n```diff\n' + diff + '\n```\n</details>',
+              });
+            }

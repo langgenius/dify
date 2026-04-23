@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 type IndicatorButtonProps = {
   index: number
@@ -77,7 +77,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
     <button
       onClick={handleClick}
       className={cn(
-        'system-2xs-semibold-uppercase relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center transition-colors',
+        'relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center system-2xs-semibold-uppercase transition-colors',
         isActive
           ? 'bg-text-primary text-components-panel-on-panel-item-bg'
           : 'bg-components-panel-on-panel-item-bg text-text-tertiary hover:text-text-secondary',

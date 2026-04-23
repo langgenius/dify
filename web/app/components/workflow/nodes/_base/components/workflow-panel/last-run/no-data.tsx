@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 
 type Props = {
@@ -19,7 +19,7 @@ const NoData: FC<Props> = ({
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <ClockPlay className="h-8 w-8 text-text-quaternary" />
-      <div className="system-xs-regular my-2 text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
+      <div className="my-2 system-xs-regular text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
       {canSingleRun && (
         <Button
           className="flex"

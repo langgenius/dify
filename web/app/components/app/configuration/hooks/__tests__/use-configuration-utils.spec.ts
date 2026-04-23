@@ -52,7 +52,7 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () =>
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),
@@ -345,7 +345,7 @@ describe('useConfiguration utils', () => {
       },
       url: '/datasets',
     })
-    expect(state.collectionList[0].icon).toBe('/console/tool.svg')
+    expect(state.collectionList[0]!.icon).toBe('/console/tool.svg')
     expect(state.promptMode).toBe('advanced')
     expect(state.nextDataSets).toEqual([{ id: 'dataset-1', name: 'Dataset One' }])
     expect(state.annotationConfig).toEqual(expect.objectContaining({

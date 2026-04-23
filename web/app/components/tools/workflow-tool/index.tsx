@@ -1,23 +1,23 @@
 'use client'
 import type { FC } from 'react'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
-import { RiErrorWarningLine } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
-import Drawer from '@/app/components/base/drawer-plus'
-import EmojiPicker from '@/app/components/base/emoji-picker'
+import Divider from '@/app/components/base/divider'
+import EmojiPickerInner from '@/app/components/base/emoji-picker/Inner'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
-import { cn } from '@/utils/classnames'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -53,6 +53,111 @@ type Props = {
     workflow_tool_id: string
   }>) => void
 }
+
+type WorkflowToolDrawerProps = {
+  title: string
+  onHide: () => void
+  children: React.ReactNode
+}
+
+const InfoTooltip = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="i-ri-question-line h-3.5 w-3.5 shrink-0 cursor-help text-text-quaternary hover:text-text-tertiary" />
+        )}
+      />
+      <TooltipContent>
+        <div className="w-[180px]">
+          {children}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+const WorkflowToolDrawer = ({ title, onHide, children }: WorkflowToolDrawerProps) => {
+  return (
+    <Dialog open disablePointerDismissal>
+      <DialogContent
+        className={cn(
+          'top-2 right-2 bottom-2 left-auto h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-[640px]! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! overflow-hidden rounded-xl border-none bg-transparent p-0 shadow-none',
+          'data-ending-style:translate-x-4 data-ending-style:scale-100 data-starting-style:translate-x-4 data-starting-style:scale-100',
+        )}
+        backdropClassName="bg-background-overlay"
+      >
+        <div data-testid="drawer" className="flex h-full w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl">
+          <div className="shrink-0 border-b border-divider-subtle py-4">
+            <div className="flex h-6 items-center justify-between pr-5 pl-6">
+              <DialogTitle data-testid="drawer-title" className="system-xl-semibold text-text-primary">
+                {title}
+              </DialogTitle>
+              <button
+                type="button"
+                data-testid="drawer-close"
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
+                aria-label="Close"
+                onClick={onHide}
+              >
+                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              </button>
+            </div>
+          </div>
+          <div className="grow overflow-hidden">
+            {children}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type WorkflowToolEmojiPickerProps = {
+  onSelect: (icon: string, background: string) => void
+  onClose: () => void
+}
+
+const WorkflowToolEmojiPicker = ({ onSelect, onClose }: WorkflowToolEmojiPickerProps) => {
+  const { t } = useTranslation()
+  const [selectedEmoji, setSelectedEmoji] = useState('')
+  const [selectedBackground, setSelectedBackground] = useState<string>()
+
+  return (
+    <Dialog open disablePointerDismissal>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="flex max-h-[552px] w-[480px]! flex-col overflow-hidden rounded-xl border-[0.5px] border-divider-subtle p-0! shadow-xl"
+      >
+        <DialogTitle className="sr-only">
+          {t('iconPicker.emoji', { ns: 'app' })}
+        </DialogTitle>
+        <EmojiPickerInner
+          className="pt-3"
+          onSelect={(emoji, background) => {
+            setSelectedEmoji(emoji)
+            setSelectedBackground(background)
+          }}
+        />
+        <Divider className="mt-3 mb-0" />
+        <div className="flex w-full items-center justify-center gap-2 p-3">
+          <Button className="w-full" onClick={onClose}>
+            {t('iconPicker.cancel', { ns: 'app' })}
+          </Button>
+          <Button
+            disabled={selectedEmoji === '' || !selectedBackground}
+            variant="primary"
+            className="w-full"
+            onClick={() => onSelect(selectedEmoji, selectedBackground!)}
+          >
+            {t('iconPicker.ok', { ns: 'app' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // Add and Edit
 const WorkflowToolAsModal: FC<Props> = ({
   isAdd,
@@ -84,9 +189,9 @@ const WorkflowToolAsModal: FC<Props> = ({
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
-        draft[index].description = value
+        draft[index]!.description = value
       else
-        draft[index].form = value
+        draft[index]!.form = value
     })
     setParameters(newData)
   }
@@ -138,210 +243,201 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   return (
     <>
-      <Drawer
-        isShow
+      <WorkflowToolDrawer
         onHide={onHide}
         title={t('common.workflowAsTool', { ns: 'workflow' })!}
-        panelClassName="mt-2 w-[640px]!"
-        maxWidthClassName="max-w-[640px]!"
-        height="calc(100vh - 16px)"
-        headerClassName="!border-b-divider"
-        body={(
-          <div className="flex h-full flex-col">
-            <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
-              {/* name & icon */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">
-                  {t('createTool.name', { ns: 'tools' })}
-                  {' '}
-                  <span className="ml-1 text-red-500">*</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" iconType="emoji" icon={emoji.content} background={emoji.background} />
-                  <Input
-                    className="h-10 grow"
-                    placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
-                    value={label}
-                    onChange={e => setLabel(e.target.value)}
-                  />
-                </div>
+      >
+        <div className="flex h-full flex-col">
+          <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
+            {/* name & icon */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">
+                {t('createTool.name', { ns: 'tools' })}
+                {' '}
+                <span className="ml-1 text-red-500">*</span>
               </div>
-              {/* name for tool call */}
-              <div>
-                <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                  {t('createTool.nameForToolCall', { ns: 'tools' })}
-                  {' '}
-                  <span className="ml-1 text-red-500">*</span>
-                  <Tooltip
-                    popupContent={(
-                      <div className="w-[180px]">
-                        {t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })}
-                      </div>
-                    )}
-                  />
-                </div>
+              <div className="flex items-center justify-between gap-3">
+                <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" iconType="emoji" icon={emoji.content} background={emoji.background} />
                 <Input
-                  className="h-10"
-                  placeholder={t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })!}
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                />
-                {!isWorkflowToolNameValid(name) && (
-                  <div className="text-xs leading-[18px] text-red-500">{t('createTool.nameForToolCallTip', { ns: 'tools' })}</div>
-                )}
-              </div>
-              {/* description */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
-                <Textarea
-                  placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                />
-              </div>
-              {/* Tool Input  */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
-                <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                  <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
-                    <thead className="text-text-tertiary uppercase">
-                      <tr className="border-b border-divider-regular">
-                        <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.toolInput.name', { ns: 'tools' })}</th>
-                        <th className="w-[102px] p-2 pl-3 font-medium">{t('createTool.toolInput.method', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.toolInput.description', { ns: 'tools' })}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parameters.map((item, index) => (
-                        <tr key={index} className="border-b border-divider-regular last:border-0">
-                          <td className="max-w-[156px] p-2 pl-3">
-                            <div className="text-[13px] leading-[18px]">
-                              <div title={item.name} className="flex">
-                                <span className="truncate font-medium text-text-primary">{item.name}</span>
-                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
-                              </div>
-                              <div className="text-text-tertiary">{item.type}</div>
-                            </div>
-                          </td>
-                          <td>
-                            {item.name === '__image' && (
-                              <div className={cn(
-                                'flex h-9 min-h-[56px] cursor-default items-center gap-1 bg-transparent px-3 py-2',
-                              )}
-                              >
-                                <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
-                                  {t('createTool.toolInput.methodParameter', { ns: 'tools' })}
-                                </div>
-                              </div>
-                            )}
-                            {item.name !== '__image' && (
-                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)} />
-                            )}
-                          </td>
-                          <td className="w-[236px] p-2 pl-3 text-text-tertiary">
-                            <input
-                              type="text"
-                              className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
-                              placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
-                              value={item.description}
-                              onChange={e => handleParameterChange('description', e.target.value, index)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {/* Tool Output  */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
-                <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                  <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
-                    <thead className="text-text-tertiary uppercase">
-                      <tr className="border-b border-divider-regular">
-                        <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.name', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.toolOutput.description', { ns: 'tools' })}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
-                        <tr key={index} className="border-b border-divider-regular last:border-0">
-                          <td className="max-w-[156px] p-2 pl-3">
-                            <div className="text-[13px] leading-[18px]">
-                              <div title={item.name} className="flex items-center">
-                                <span className="truncate font-medium text-text-primary">{item.name}</span>
-                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
-                                {
-                                  !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
-                                    ? (
-                                        <Tooltip
-                                          popupContent={(
-                                            <div className="w-[180px]">
-                                              {t('createTool.toolOutput.reservedParameterDuplicateTip', { ns: 'tools' })}
-                                            </div>
-                                          )}
-                                        >
-                                          <RiErrorWarningLine className="h-3 w-3 text-text-warning-secondary" />
-                                        </Tooltip>
-                                      )
-                                    : null
-                                }
-                              </div>
-                              <div className="text-text-tertiary">{item.type}</div>
-                            </div>
-                          </td>
-                          <td className="w-[236px] p-2 pl-3 text-text-tertiary">
-                            <span className="text-[13px] leading-[18px] font-normal text-text-secondary">{item.description}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {/* Tags */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
-                <LabelSelector value={labels} onChange={handleLabelSelect} />
-              </div>
-              {/* Privacy Policy */}
-              <div>
-                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
-                <Input
-                  className="h-10"
-                  value={privacyPolicy}
-                  onChange={e => setPrivacyPolicy(e.target.value)}
-                  placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                  className="h-10 grow"
+                  placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
+                  value={label}
+                  onChange={e => setLabel(e.target.value)}
                 />
               </div>
             </div>
-            <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
-              {!isAdd && onRemove && (
-                <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
-              )}
-              <div className="flex space-x-2">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    if (isAdd)
-                      onConfirm()
-                    else
-                      setShowModal(true)
-                  }}
-                >
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
+            {/* name for tool call */}
+            <div>
+              <div className="flex items-center py-2 system-sm-medium text-text-primary">
+                {t('createTool.nameForToolCall', { ns: 'tools' })}
+                {' '}
+                <span className="ml-1 text-red-500">*</span>
+                <InfoTooltip>
+                  {t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })}
+                </InfoTooltip>
               </div>
+              <Input
+                className="h-10"
+                placeholder={t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })!}
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+              {!isWorkflowToolNameValid(name) && (
+                <div className="text-xs leading-[18px] text-red-500">{t('createTool.nameForToolCallTip', { ns: 'tools' })}</div>
+              )}
+            </div>
+            {/* description */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
+              <Textarea
+                placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
+            </div>
+            {/* Tool Input  */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
+              <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
+                <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                  <thead className="text-text-tertiary uppercase">
+                    <tr className="border-b border-divider-regular">
+                      <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.toolInput.name', { ns: 'tools' })}</th>
+                      <th className="w-[102px] p-2 pl-3 font-medium">{t('createTool.toolInput.method', { ns: 'tools' })}</th>
+                      <th className="p-2 pl-3 font-medium">{t('createTool.toolInput.description', { ns: 'tools' })}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parameters.map((item, index) => (
+                      <tr key={index} className="border-b border-divider-regular last:border-0">
+                        <td className="max-w-[156px] p-2 pl-3">
+                          <div className="text-[13px] leading-[18px]">
+                            <div title={item.name} className="flex">
+                              <span className="truncate font-medium text-text-primary">{item.name}</span>
+                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
+                            </div>
+                            <div className="text-text-tertiary">{item.type}</div>
+                          </div>
+                        </td>
+                        <td>
+                          {item.name === '__image' && (
+                            <div className={cn(
+                              'flex h-9 min-h-[56px] cursor-default items-center gap-1 bg-transparent px-3 py-2',
+                            )}
+                            >
+                              <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
+                                {t('createTool.toolInput.methodParameter', { ns: 'tools' })}
+                              </div>
+                            </div>
+                          )}
+                          {item.name !== '__image' && (
+                            <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)} />
+                          )}
+                        </td>
+                        <td className="w-[236px] p-2 pl-3 text-text-tertiary">
+                          <input
+                            type="text"
+                            className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
+                            placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
+                            value={item.description}
+                            onChange={e => handleParameterChange('description', e.target.value, index)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {/* Tool Output  */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
+              <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
+                <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                  <thead className="text-text-tertiary uppercase">
+                    <tr className="border-b border-divider-regular">
+                      <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.name', { ns: 'tools' })}</th>
+                      <th className="p-2 pl-3 font-medium">{t('createTool.toolOutput.description', { ns: 'tools' })}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
+                      <tr key={index} className="border-b border-divider-regular last:border-0">
+                        <td className="max-w-[156px] p-2 pl-3">
+                          <div className="text-[13px] leading-[18px]">
+                            <div title={item.name} className="flex items-center">
+                              <span className="truncate font-medium text-text-primary">{item.name}</span>
+                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
+                              {
+                                !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
+                                  ? (
+                                      <Tooltip>
+                                        <TooltipTrigger
+                                          render={(
+                                            <span data-testid="reserved-output-warning" className="i-ri-error-warning-line h-3 w-3 text-text-warning-secondary" />
+                                          )}
+                                        />
+                                        <TooltipContent>
+                                          <div className="w-[180px]">
+                                            {t('createTool.toolOutput.reservedParameterDuplicateTip', { ns: 'tools' })}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )
+                                  : null
+                              }
+                            </div>
+                            <div className="text-text-tertiary">{item.type}</div>
+                          </div>
+                        </td>
+                        <td className="w-[236px] p-2 pl-3 text-text-tertiary">
+                          <span className="text-[13px] leading-[18px] font-normal text-text-secondary">{item.description}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {/* Tags */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+              <LabelSelector value={labels} onChange={handleLabelSelect} />
+            </div>
+            {/* Privacy Policy */}
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+              <Input
+                className="h-10"
+                value={privacyPolicy}
+                onChange={e => setPrivacyPolicy(e.target.value)}
+                placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+              />
             </div>
           </div>
-        )}
-        isShowMask={true}
-        clickOutsideNotOpen={true}
-      />
+          <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
+            {!isAdd && onRemove && (
+              <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+            )}
+            <div className="flex space-x-2">
+              <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (isAdd)
+                    onConfirm()
+                  else
+                    setShowModal(true)
+                }}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </WorkflowToolDrawer>
       {showEmojiPicker && (
-        <EmojiPicker
+        <WorkflowToolEmojiPicker
           onSelect={(icon, icon_background) => {
             setEmoji({ content: icon, background: icon_background })
             setShowEmojiPicker(false)

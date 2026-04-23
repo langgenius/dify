@@ -83,12 +83,18 @@ describe('RenameModal', () => {
 
   it('shows loading state when saveLoading is true', () => {
     render(<RenameModal {...defaultProps} saveLoading />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('aria-busy', 'true')
+    expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 
   it('hides loading state when saveLoading is false', () => {
     render(<RenameModal {...defaultProps} saveLoading={false} />)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).not.toBeDisabled()
+    expect(saveButton).not.toHaveAttribute('aria-busy')
+    expect(saveButton.querySelector('.animate-spin')).not.toBeInTheDocument()
   })
 
   it('keeps edited name when parent rerenders with different name prop', async () => {

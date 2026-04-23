@@ -6,15 +6,15 @@ from types import SimpleNamespace
 from unittest.mock import Mock, sentinel
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 
 def _build_model_schema() -> AIModelEntity:
@@ -56,7 +56,7 @@ class TestPluginModelRuntime:
         assert len(providers) == 1
         assert providers[0].provider == "langgenius/openai/openai"
         assert providers[0].provider_name == "openai"
-        assert providers[0].label.en_US == "OpenAI"
+        assert providers[0].label.en_us == "OpenAI"
         client.fetch_model_providers.assert_called_once_with("tenant")
 
     def test_fetch_model_providers_only_exposes_short_name_for_canonical_provider(self) -> None:

@@ -23,7 +23,7 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
 
   return (
     <div className="relative mb-1 px-3 py-1">
-      <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
+      <div className="pointer-events-auto absolute top-[-32px] right-3 z-40">
         <InstallPluginButton
           size="small"
           extraIdentifiers={[

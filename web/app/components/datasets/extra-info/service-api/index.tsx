@@ -1,9 +1,10 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -15,46 +16,57 @@ const ServiceApi = ({
 }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
-  const handleToggle = () => {
-    setOpen(!open)
-  }
+  const handleOpenSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(true)
+  }, [])
+
+  const handleCloseSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(false)
+  }, [])
 
   return (
     <div>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement="top-start"
-        offset={{
-          mainAxis: 4,
-          crossAxis: -4,
-        }}
       >
-        <PortalToFollowElemTrigger
-          className="w-full"
-          onClick={handleToggle}
-        >
-          <div className={cn(
-            'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg px-3',
-            open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
+        <PopoverTrigger
+          render={(
+            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
+              <div className={cn(
+                'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg px-3',
+                open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
+              )}
+              >
+                <Indicator
+                  className={cn('shrink-0')}
+                  color={
+                    apiBaseUrl ? 'green' : 'yellow'
+                  }
+                />
+                <div className="grow system-sm-medium text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+              </div>
+            </button>
           )}
-          >
-            <Indicator
-              className={cn('shrink-0')}
-              color={
-                apiBaseUrl ? 'green' : 'yellow'
-              }
-            />
-            <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-10">
+        />
+        <PopoverContent
+          placement="top-start"
+          sideOffset={4}
+          alignOffset={-4}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <Card
             apiBaseUrl={apiBaseUrl}
+            onOpenSecretKeyModal={handleOpenSecretKeyModal}
           />
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
+      <SecretKeyModal
+        isShow={isSecretKeyModalVisible}
+        onClose={handleCloseSecretKeyModal}
+      />
     </div>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC, KeyboardEvent } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Command } from 'cmdk'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import { SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
@@ -22,7 +22,7 @@ type Props = {
   onHide?: () => void
 }
 
-const GotoAnything: FC<Props> = ({
+const GotoAnythingDialog: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
@@ -111,7 +111,7 @@ const GotoAnything: FC<Props> = ({
       // Check if it's a complete slash command
       if (query.startsWith('/')) {
         const commandName = query.substring(1).split(' ')[0]
-        const handler = slashCommandRegistry.findCommand(commandName)
+        const handler = slashCommandRegistry.findCommand(commandName!)
 
         // If it's a direct mode command, execute immediately
         const isAvailable = handler?.isAvailable?.() ?? true
@@ -234,15 +234,10 @@ const GotoAnything: FC<Props> = ({
   )
 }
 
-/**
- * GotoAnything component with context provider
- */
-const GotoAnythingWithContext: FC<Props> = (props) => {
+export const GotoAnything: FC<Props> = (props) => {
   return (
     <GotoAnythingProvider>
-      <GotoAnything {...props} />
+      <GotoAnythingDialog {...props} />
     </GotoAnythingProvider>
   )
 }
-
-export default GotoAnythingWithContext

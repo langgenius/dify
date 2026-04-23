@@ -1,14 +1,16 @@
 'use client'
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   title: string
@@ -33,42 +35,51 @@ const Operation: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const handleDeferredAction = useCallback((action: () => void) => {
+    setOpen(false)
+    queueMicrotask(action)
+  }, [])
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement={placement}
-      offset={4}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => setOpen(v => !v)}
+      <DropdownMenuTrigger
+        render={<div />}
       >
         <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           <div className="system-md-semibold">{title}</div>
-          <RiArrowDownSLine className="h-4 w-4 " />
+          <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4" />
         </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
-        <div
-          className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
-        >
-          <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
-            <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
-          </div>
-          {isShowRenameConversation && (
-            <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
-            </div>
-          )}
-          {isShowDelete && (
-            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
-              <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
-            </div>
-          )}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement={placement}
+        sideOffset={4}
+        popupClassName="min-w-[120px]"
+      >
+        <DropdownMenuItem className="system-md-regular" onClick={togglePin}>
+          <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
+        </DropdownMenuItem>
+        {isShowRenameConversation && (
+          <DropdownMenuItem
+            className="system-md-regular"
+            onClick={() => onRenameConversation && handleDeferredAction(onRenameConversation)}
+          >
+            <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
+          </DropdownMenuItem>
+        )}
+        {isShowDelete && (
+          <DropdownMenuItem
+            variant="destructive"
+            className="system-md-regular"
+            onClick={() => handleDeferredAction(onDelete)}
+          >
+            <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 export default React.memo(Operation)

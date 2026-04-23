@@ -1,12 +1,12 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Line,
   RiScales3Line,
 } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 
 type ConfigModelProps = {
   onClick?: () => void
@@ -25,12 +25,12 @@ const ConfigModel = ({
   if (loadBalancingInvalid) {
     return (
       <div
-        className="system-2xs-medium-uppercase relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 text-text-warning"
+        className="relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning"
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 h-3 w-3" />
         {t('modelProvider.auth.authorizationError', { ns: 'common' })}
-        <Indicator color="orange" className="absolute -right-px -top-px h-1.5 w-1.5" />
+        <Indicator color="orange" className="absolute -top-px -right-px h-1.5 w-1.5" />
       </div>
     )
   }

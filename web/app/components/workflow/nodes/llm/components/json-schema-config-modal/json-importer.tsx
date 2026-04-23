@@ -1,12 +1,12 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { cn } from '@/utils/classnames'
 import { checkJsonDepth } from '../../utils'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
@@ -26,7 +26,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
-  const importBtnRef = useRef<HTMLElement>(null)
+  const importBtnRef = useRef<HTMLButtonElement>(null)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const { emit } = useMittContext()
@@ -36,14 +36,13 @@ const JsonImporter: FC<JsonImporterProps> = ({
       const rect = importBtnRef.current.getBoundingClientRect()
       updateBtnWidth(rect.width)
     }
-  }, [])
+  }, [updateBtnWidth])
 
-  const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    e.stopPropagation()
-    if (advancedEditing || isAddingNewField)
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen && (advancedEditing || isAddingNewField))
       emit('quitEditing', {})
-    setOpen(!open)
-  }, [open, advancedEditing, isAddingNewField, emit])
+    setOpen(nextOpen)
+  }, [advancedEditing, emit, isAddingNewField])
 
   const onClose = useCallback(() => {
     setOpen(false)
@@ -77,34 +76,33 @@ const JsonImporter: FC<JsonImporterProps> = ({
   }, [onSubmit, json])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 16,
-      }}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger ref={importBtnRef} onClick={handleTrigger}>
-        <button
-          type="button"
-          className={cn(
-            'system-xs-medium flex shrink-0 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-components-button-ghost-bg-hover',
-            open && 'bg-components-button-ghost-bg-hover',
-          )}
-        >
-          <span className="px-0.5">{t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}</span>
-        </button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-100">
+      <PopoverTrigger
+        ref={importBtnRef}
+        onClick={e => e.stopPropagation()}
+        className={cn(
+          'flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover',
+          open && 'bg-components-button-ghost-bg-hover',
+        )}
+      >
+        <span className="px-0.5">{t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}</span>
+      </PopoverTrigger>
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={16}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="flex w-[400px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
           {/* Title */}
-          <div className="relative px-3 pb-1 pt-3.5">
-            <div className="absolute bottom-0 right-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
+          <div className="relative px-3 pt-3.5 pb-1">
+            <div className="absolute right-2.5 bottom-0 flex h-8 w-8 items-center justify-center" onClick={onClose}>
               <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
-            <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
+            <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
               {t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}
             </div>
           </div>
@@ -129,8 +127,8 @@ const JsonImporter: FC<JsonImporterProps> = ({
             </Button>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

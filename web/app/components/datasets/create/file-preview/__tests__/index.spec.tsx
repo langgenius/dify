@@ -62,23 +62,23 @@ describe('FilePreview', () => {
       renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
     })
 
     it('should render file preview header', async () => {
       renderFilePreview()
 
-      expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
     })
 
     it('should render close button with XMarkIcon', async () => {
       const { container } = renderFilePreview()
 
       const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
+      expect(closeButton)!.toBeInTheDocument()
       const xMarkIcon = closeButton?.querySelector('svg')
-      expect(xMarkIcon).toBeInTheDocument()
+      expect(xMarkIcon)!.toBeInTheDocument()
     })
 
     it('should render file name without extension', async () => {
@@ -87,7 +87,7 @@ describe('FilePreview', () => {
       renderFilePreview({ file })
 
       await waitFor(() => {
-        expect(screen.getByText('document')).toBeInTheDocument()
+        expect(screen.getByText('document'))!.toBeInTheDocument()
       })
     })
 
@@ -96,14 +96,14 @@ describe('FilePreview', () => {
 
       renderFilePreview({ file })
 
-      expect(screen.getByText('.pdf')).toBeInTheDocument()
+      expect(screen.getByText('.pdf'))!.toBeInTheDocument()
     })
 
     it('should apply correct CSS classes to container', async () => {
       const { container } = renderFilePreview()
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('h-full')
+      expect(wrapper)!.toHaveClass('h-full')
     })
   })
 
@@ -119,7 +119,7 @@ describe('FilePreview', () => {
 
       // Assert - Loading should be visible initially (using spin-animation class)
       const loadingElement = findLoadingSpinner(container)
-      expect(loadingElement).toBeInTheDocument()
+      expect(loadingElement)!.toBeInTheDocument()
     })
 
     it('should hide loading indicator after content loads', async () => {
@@ -128,7 +128,7 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText('Loaded content')).toBeInTheDocument()
+        expect(screen.getByText('Loaded content'))!.toBeInTheDocument()
       })
       // Loading should be gone
       const loadingElement = findLoadingSpinner(container)
@@ -152,7 +152,8 @@ describe('FilePreview', () => {
       )
 
       // First file loading - spinner should be visible
-      expect(findLoadingSpinner(container)).toBeInTheDocument()
+      // First file loading - spinner should be visible
+      expect(findLoadingSpinner(container))!.toBeInTheDocument()
 
       // Resolve first file
       await act(async () => {
@@ -160,7 +161,7 @@ describe('FilePreview', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Content 1')).toBeInTheDocument()
+        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
       })
 
       // Rerender with new file
@@ -168,7 +169,7 @@ describe('FilePreview', () => {
 
       // Should show loading again
       await waitFor(() => {
-        expect(findLoadingSpinner(container)).toBeInTheDocument()
+        expect(findLoadingSpinner(container))!.toBeInTheDocument()
       })
 
       // Resolve second file
@@ -177,7 +178,7 @@ describe('FilePreview', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Content 2')).toBeInTheDocument()
+        expect(screen.getByText('Content 2'))!.toBeInTheDocument()
       })
     })
   })
@@ -234,7 +235,7 @@ describe('FilePreview', () => {
       renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText('File preview content from API')).toBeInTheDocument()
+        expect(screen.getByText('File preview content from API'))!.toBeInTheDocument()
       })
     })
 
@@ -245,10 +246,11 @@ describe('FilePreview', () => {
 
       // Assert - Component should not crash, loading may persist
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
       // No error thrown, component still rendered
-      expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+      // No error thrown, component still rendered
+      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
     })
 
     it('should handle empty content response', async () => {
@@ -284,7 +286,7 @@ describe('FilePreview', () => {
 
       // Assert - onClick receives the event object
       expect(hidePreview).toHaveBeenCalled()
-      expect(hidePreview.mock.calls[0][0]).toBeDefined()
+      expect(hidePreview.mock.calls[0]![0]).toBeDefined()
     })
 
     it('should handle multiple clicks on close button', async () => {
@@ -308,7 +310,7 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview()
 
       const loadingElement = findLoadingSpinner(container)
-      expect(loadingElement).toBeInTheDocument()
+      expect(loadingElement)!.toBeInTheDocument()
     })
 
     it('should update previewContent state after successful fetch', async () => {
@@ -317,7 +319,7 @@ describe('FilePreview', () => {
       renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText('New preview content')).toBeInTheDocument()
+        expect(screen.getByText('New preview content'))!.toBeInTheDocument()
       })
     })
 
@@ -334,7 +336,7 @@ describe('FilePreview', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Content 1')).toBeInTheDocument()
+        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
       })
 
       // Change file
@@ -343,7 +345,7 @@ describe('FilePreview', () => {
       // Assert - Loading should be shown again
       await waitFor(() => {
         const loadingElement = findLoadingSpinner(container)
-        expect(loadingElement).toBeInTheDocument()
+        expect(loadingElement)!.toBeInTheDocument()
       })
     })
 
@@ -362,7 +364,7 @@ describe('FilePreview', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Content 1')).toBeInTheDocument()
+        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
       })
 
       // Change file - loading should replace content
@@ -374,7 +376,7 @@ describe('FilePreview', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Content 2')).toBeInTheDocument()
+        expect(screen.getByText('Content 2'))!.toBeInTheDocument()
         expect(screen.queryByText('Content 1')).not.toBeInTheDocument()
       })
     })
@@ -387,15 +389,16 @@ describe('FilePreview', () => {
 
         renderFilePreview({ file })
 
-        expect(screen.getByText('my-document')).toBeInTheDocument()
-        expect(screen.getByText('.pdf')).toBeInTheDocument()
+        expect(screen.getByText('my-document'))!.toBeInTheDocument()
+        expect(screen.getByText('.pdf'))!.toBeInTheDocument()
       })
 
       it('should render correctly without file prop', async () => {
         renderFilePreview({ file: undefined })
 
         // Assert - Header should still render
-        expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+        // Assert - Header should still render
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
 
       it('should handle file with multiple dots in name', async () => {
@@ -404,7 +407,8 @@ describe('FilePreview', () => {
         renderFilePreview({ file })
 
         // Assert - Should join all parts except last with comma
-        expect(screen.getByText('my,document,v2')).toBeInTheDocument()
+        // Assert - Should join all parts except last with comma
+        expect(screen.getByText('my,document,v2'))!.toBeInTheDocument()
       })
 
       it('should handle file with no extension in name', async () => {
@@ -414,7 +418,7 @@ describe('FilePreview', () => {
 
         // Assert - getFileName returns empty for single segment, but component still renders
         const fileNameElement = container.querySelector('[class*="fileName"]')
-        expect(fileNameElement).toBeInTheDocument()
+        expect(fileNameElement)!.toBeInTheDocument()
         // The first span (file name) should be empty
         const fileNameSpan = fileNameElement?.querySelector('span:first-child')
         expect(fileNameSpan?.textContent).toBe('')
@@ -426,7 +430,8 @@ describe('FilePreview', () => {
         const { container } = renderFilePreview({ file })
 
         // Assert - Should not crash
-        expect(container.firstChild).toBeInTheDocument()
+        // Assert - Should not crash
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
 
@@ -437,7 +442,8 @@ describe('FilePreview', () => {
         renderFilePreview({ hidePreview })
 
         // Assert - No errors thrown
-        expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+        // Assert - No errors thrown
+        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
       })
     })
   })
@@ -450,7 +456,7 @@ describe('FilePreview', () => {
 
       // Assert - Should not call API, remain in loading state
       expect(mockFetchFilePreview).not.toHaveBeenCalled()
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle file with empty string id', async () => {
@@ -468,7 +474,7 @@ describe('FilePreview', () => {
 
       renderFilePreview({ file })
 
-      expect(screen.getByText('a'.repeat(200))).toBeInTheDocument()
+      expect(screen.getByText('a'.repeat(200)))!.toBeInTheDocument()
     })
 
     it('should handle file with special characters in name', async () => {
@@ -476,7 +482,7 @@ describe('FilePreview', () => {
 
       renderFilePreview({ file })
 
-      expect(screen.getByText('file-with_special@#$%')).toBeInTheDocument()
+      expect(screen.getByText('file-with_special@#$%'))!.toBeInTheDocument()
     })
 
     it('should handle very long preview content', async () => {
@@ -486,7 +492,7 @@ describe('FilePreview', () => {
       renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText(longContent)).toBeInTheDocument()
+        expect(screen.getByText(longContent))!.toBeInTheDocument()
       })
     })
 
@@ -499,7 +505,7 @@ describe('FilePreview', () => {
       // Assert - Should render as text, not execute scripts
       await waitFor(() => {
         const contentDiv = container.querySelector('[class*="fileContent"]')
-        expect(contentDiv).toBeInTheDocument()
+        expect(contentDiv)!.toBeInTheDocument()
         // Content is escaped by React, so HTML entities are displayed
         expect(contentDiv?.textContent).toContain('alert')
       })
@@ -512,7 +518,7 @@ describe('FilePreview', () => {
       renderFilePreview()
 
       await waitFor(() => {
-        expect(screen.getByText(unicodeContent)).toBeInTheDocument()
+        expect(screen.getByText(unicodeContent))!.toBeInTheDocument()
       })
     })
 
@@ -525,7 +531,7 @@ describe('FilePreview', () => {
       // Assert - Content should be in the DOM
       await waitFor(() => {
         const contentDiv = container.querySelector('[class*="fileContent"]')
-        expect(contentDiv).toBeInTheDocument()
+        expect(contentDiv)!.toBeInTheDocument()
         expect(contentDiv?.textContent).toContain('Line 1')
         expect(contentDiv?.textContent).toContain('Line 2')
         expect(contentDiv?.textContent).toContain('Line 3')
@@ -539,7 +545,7 @@ describe('FilePreview', () => {
 
       // Assert - Should not crash
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
   })
@@ -633,7 +639,8 @@ describe('FilePreview', () => {
       rerender(<FilePreview file={undefined} hidePreview={vi.fn()} />)
 
       // Assert - Should not crash, API should not be called again
-      expect(container.firstChild).toBeInTheDocument()
+      // Assert - Should not crash, API should not be called again
+      expect(container.firstChild)!.toBeInTheDocument()
       expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
     })
   })
@@ -645,7 +652,7 @@ describe('FilePreview', () => {
 
       renderFilePreview({ file })
 
-      expect(screen.getByText('document')).toBeInTheDocument()
+      expect(screen.getByText('document'))!.toBeInTheDocument()
     })
 
     it('should handle filename with multiple dots', async () => {
@@ -654,7 +661,8 @@ describe('FilePreview', () => {
       renderFilePreview({ file })
 
       // Assert - Should join all parts except last with comma
-      expect(screen.getByText('file,name,with,dots')).toBeInTheDocument()
+      // Assert - Should join all parts except last with comma
+      expect(screen.getByText('file,name,with,dots'))!.toBeInTheDocument()
     })
 
     it('should return empty for filename without dot', async () => {
@@ -673,7 +681,7 @@ describe('FilePreview', () => {
 
       // Assert - File name area should have empty first span
       const fileNameElement = container.querySelector('.system-xs-medium')
-      expect(fileNameElement).toBeInTheDocument()
+      expect(fileNameElement)!.toBeInTheDocument()
     })
   })
 
@@ -682,14 +690,14 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview()
 
       const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
-      expect(closeButton).toHaveClass('cursor-pointer')
+      expect(closeButton)!.toBeInTheDocument()
+      expect(closeButton)!.toHaveClass('cursor-pointer')
     })
 
     it('should have proper heading structure', async () => {
       renderFilePreview()
 
-      expect(screen.getByText('datasetCreation.stepOne.filePreview')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
     })
   })
 
@@ -702,7 +710,7 @@ describe('FilePreview', () => {
 
       // Assert - Component should still render
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
 
@@ -712,7 +720,7 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview()
 
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
 
@@ -722,7 +730,7 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview()
 
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     })
   })

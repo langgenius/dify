@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { DocumentItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 import FileIcon from '../document-file-icon'
 
 type Props = {

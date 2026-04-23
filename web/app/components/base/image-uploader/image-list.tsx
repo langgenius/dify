@@ -1,13 +1,12 @@
-/* eslint-disable next/no-img-element */
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import Tooltip from '@/app/components/base/tooltip'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type ImageListProps = {
   list: ImageFile[]
@@ -61,7 +60,7 @@ const ImageList: FC<ImageListProps> = ({
                 )}
               </div>
               {item.progress > -1 && (
-                <span className="absolute left-[50%] top-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
+                <span className="absolute top-[50%] left-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
                   {item.progress}
                   %
                 </span>
@@ -83,10 +82,15 @@ const ImageList: FC<ImageListProps> = ({
                 <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" data-testid="image-loader" />
               )}
               {item.progress === -1 && (
-                <Tooltip
-                  popupContent={t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
-                >
-                  <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </div>
@@ -113,7 +117,7 @@ const ImageList: FC<ImageListProps> = ({
             <button
               type="button"
               className={cn(
-                'absolute -right-[9px] -top-[9px] z-10 h-[18px] w-[18px] items-center justify-center',
+                'absolute -top-[9px] -right-[9px] z-10 h-[18px] w-[18px] items-center justify-center',
                 'rounded-2xl shadow-lg hover:bg-state-base-hover',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}

@@ -4,15 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    ImagePromptMessageContent,
-    PromptMessageRole,
-    TextPromptMessageContent,
-)
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
@@ -23,6 +14,15 @@ from core.app.app_config.entities import (
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.model import AppMode
 
 

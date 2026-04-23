@@ -7,6 +7,8 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAlertFill,
   RiArrowRightSLine,
@@ -15,16 +17,14 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
@@ -68,6 +68,16 @@ const NodePanel: FC<Props> = ({
       return
     doSetCollapseState(state)
   }, [hideProcessDetail])
+  const titleRef = useRef<HTMLDivElement>(null)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
+  const handleTooltipOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      const el = titleRef.current
+      if (!el || el.scrollWidth <= el.clientWidth)
+        return
+    }
+    setIsTooltipOpen(open)
+  }, [])
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -114,10 +124,10 @@ const NodePanel: FC<Props> = ({
 
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className="group radius-lg border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
+      <div className="group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
         <div
           className={cn(
-            'flex cursor-pointer items-center pl-1 pr-3',
+            'flex cursor-pointer items-center pr-3 pl-1',
             hideInfo ? 'py-2 pl-2' : 'py-1.5',
             !collapseState && (hideInfo ? 'pb-1!' : 'pb-1.5!'),
           )}
@@ -132,21 +142,26 @@ const NodePanel: FC<Props> = ({
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <Tooltip
-            popupContent={
+          <Tooltip open={isTooltipOpen} onOpenChange={handleTooltipOpenChange}>
+            <TooltipTrigger
+              render={(
+                <div
+                  ref={titleRef}
+                  className={cn(
+                    'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
+                    hideInfo && 'text-xs!',
+                  )}
+                >
+                  {nodeInfo.title}
+                </div>
+              )}
+            />
+            <TooltipContent>
               <div className="max-w-xs">{nodeInfo.title}</div>
-            }
-          >
-            <div className={cn(
-              'system-xs-semibold-uppercase grow truncate text-text-secondary',
-              hideInfo && 'text-xs!',
-            )}
-            >
-              {nodeInfo.title}
-            </div>
+            </TooltipContent>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
-            <div className="system-xs-regular shrink-0 text-text-tertiary">
+            <div className="shrink-0 system-xs-regular text-text-tertiary">
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
             </div>
@@ -167,7 +182,7 @@ const NodePanel: FC<Props> = ({
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className="flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent">
+            <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
               <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
             </div>
@@ -217,6 +232,7 @@ const NodePanel: FC<Props> = ({
                   <a
                     href={docLink('/use-dify/debug/error-type')}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-accent"
                   >
                     {t('common.learnMore', { ns: 'workflow' })}
@@ -247,7 +263,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.inputs}
                   isJSONStringifyBeauty
-                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
+                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
                 />
               </div>
             )}
@@ -271,7 +287,7 @@ const NodePanel: FC<Props> = ({
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
-                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
+                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mt-2 mb-1 h-7" />}
                 />
               </div>
             )}

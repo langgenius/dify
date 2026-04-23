@@ -1,8 +1,8 @@
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { VariantProps } from 'class-variance-authority'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import Divider from '../divider'
 
 type SegmentedControlOption<T> = {
@@ -32,8 +32,8 @@ const SegmentedControlVariants = cva(
         large: 'segmented-control-large',
       },
       padding: {
-        none: 'no-padding',
-        with: 'padding',
+        none: 'sc-no-padding',
+        with: 'sc-padding',
       },
     },
     defaultVariants: {
@@ -54,8 +54,8 @@ const SegmentedControlItemVariants = cva(
       },
       activeState: {
         default: '',
-        accent: 'accent',
-        accentLight: 'accent-light',
+        accent: 'sc-accent',
+        accentLight: 'sc-accent-light',
       },
     },
     defaultVariants: {
@@ -66,13 +66,13 @@ const SegmentedControlItemVariants = cva(
 )
 
 const ItemTextWrapperVariants = cva(
-  'item-text',
+  '',
   {
     variants: {
       size: {
-        regular: 'item-text-regular',
-        small: 'item-text-small',
-        large: 'item-text-large',
+        regular: 'sc-item-text-regular',
+        small: 'sc-item-text-small',
+        large: 'sc-item-text-large',
       },
     },
     defaultVariants: {
@@ -113,10 +113,10 @@ export const SegmentedControl = <T extends string | number | symbol>({
             type="button"
             key={String(option.value)}
             className={cn(
-              isSelected ? 'active' : 'default',
+              isSelected ? 'sc-active' : 'sc-default',
               SegmentedControlItemVariants({ size, activeState: isSelected ? activeState : 'default' }),
               isSelected && activeClassName,
-              disabled && 'disabled',
+              disabled && 'sc-disabled',
               btnClassName,
             )}
             onClick={() => {
@@ -130,14 +130,14 @@ export const SegmentedControl = <T extends string | number | symbol>({
               <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
                 <span>{text}</span>
                 {!!(count && size === 'large') && (
-                  <div className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary system-2xs-medium-uppercase">
+                  <div className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] system-2xs-medium-uppercase text-text-tertiary">
                     {count}
                   </div>
                 )}
               </div>
             )}
             {!isLast && !isSelected && !isNextSelected && (
-              <div data-testid={`segmented-control-divider-${index}`} className="absolute -right-px top-0 flex h-full items-center">
+              <div data-testid={`segmented-control-divider-${index}`} className="absolute top-0 -right-px flex h-full items-center">
                 <Divider type="vertical" className="mx-0 h-3.5" />
               </div>
             )}

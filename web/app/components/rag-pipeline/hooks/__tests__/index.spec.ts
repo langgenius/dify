@@ -33,7 +33,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: toastMocks.error,
   },
@@ -388,12 +388,12 @@ describe('useConfigurations', () => {
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current.length).toBe(1)
-    expect(result.current[0].variable).toBe('textVar')
-    expect(result.current[0].label).toBe('Text Label')
-    expect(result.current[0].required).toBe(true)
-    expect(result.current[0].maxLength).toBe(100)
-    expect(result.current[0].placeholder).toBe('Enter text')
-    expect(result.current[0].tooltip).toBe('Help text')
+    expect(result.current[0]!.variable).toBe('textVar')
+    expect(result.current[0]!.label).toBe('Text Label')
+    expect(result.current[0]!.required).toBe(true)
+    expect(result.current[0]!.maxLength).toBe(100)
+    expect(result.current[0]!.placeholder).toBe('Enter text')
+    expect(result.current[0]!.tooltip).toBe('Help text')
   })
 
   it('should transform options correctly', () => {
@@ -410,7 +410,7 @@ describe('useConfigurations', () => {
 
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].options).toEqual([
+    expect(result.current[0]!.options).toEqual([
       { label: 'option1', value: 'option1' },
       { label: 'option2', value: 'option2' },
       { label: 'option3', value: 'option3' },

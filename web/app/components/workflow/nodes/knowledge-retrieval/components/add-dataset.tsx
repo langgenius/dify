@@ -5,7 +5,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
-import AddButton from '@/app/components/base/button/add-button'
 
 type Props = {
   selectedIds: string[]
@@ -27,15 +26,20 @@ const AddDataset: FC<Props> = ({
   }, [onChange, hideModal])
   return (
     <div>
-      <AddButton onClick={showModal} />
-      {isShowModal && (
-        <SelectDataset
-          isShow={isShowModal}
-          onClose={hideModal}
-          selectedIds={selectedIds}
-          onSelect={handleSelect}
-        />
-      )}
+      <button
+        type="button"
+        className="cursor-pointer rounded-md p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        onClick={showModal}
+        data-testid="add-button"
+      >
+        <span aria-hidden="true" className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+      </button>
+      <SelectDataset
+        isShow={isShowModal}
+        onClose={hideModal}
+        selectedIds={selectedIds}
+        onSelect={handleSelect}
+      />
     </div>
   )
 }

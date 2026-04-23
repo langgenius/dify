@@ -39,7 +39,7 @@ const List = ({
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
         const { setNextPageParameters, currentNextPageParametersRef, isTruncated } = dataSourceStore.getState()
-        if (entries[0].isIntersecting && isTruncated.current && !isLoading)
+        if (entries[0]!.isIntersecting && isTruncated.current && !isLoading)
           setNextPageParameters(currentNextPageParametersRef.current)
       }, {
         rootMargin: '100px',
@@ -72,7 +72,7 @@ const List = ({
         )
       }
       {fileList.length > 0 && (
-        <div className="flex h-full flex-col gap-y-px overflow-y-auto radius-lg bg-background-section px-1 py-1.5">
+        <div className="flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5">
           {
             fileList.map((file) => {
               const isSelected = selectedFileIds.includes(file.id)

@@ -5,6 +5,7 @@ import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } f
 import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
+import { ControlMode } from '../types'
 import { renderWorkflowComponent } from './workflow-test-env'
 
 type WorkflowUpdateEvent = {
@@ -21,6 +22,38 @@ const eventEmitterState = vi.hoisted(() => ({
 
 const reactFlowBridge = vi.hoisted(() => ({
   store: null as null | ReturnType<typeof useStoreApi>,
+}))
+
+const collaborationBridge = vi.hoisted(() => ({
+  graphImportHandler: null as null | ((payload: { nodes: Node[], edges: Edge[] }) => void),
+  historyActionHandler: null as null | ((payload: unknown) => void),
+  restoreIntentHandler: null as null | ((payload: {
+    versionId: string
+    versionName?: string
+    initiatorUserId: string
+    initiatorName: string
+  }) => void),
+}))
+
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+const workflowCommentState = vi.hoisted(() => ({
+  comments: [] as Array<Record<string, unknown>>,
+  pendingComment: null as null | { elementX: number, elementY: number },
+  activeComment: null as null | Record<string, unknown>,
+  activeCommentLoading: false,
+  replySubmitting: false,
+  replyUpdating: false,
+  handleCommentSubmit: vi.fn(),
+  handleCommentCancel: vi.fn(),
+  handleCommentIconClick: vi.fn(),
+  handleActiveCommentClose: vi.fn(),
+  handleCommentResolve: vi.fn(),
+  handleCommentDelete: vi.fn(async () => {}),
+  handleCommentReply: vi.fn(),
+  handleCommentReplyUpdate: vi.fn(),
+  handleCommentReplyDelete: vi.fn(async () => {}),
+  handleCommentPositionUpdate: vi.fn(),
 }))
 
 const workflowHookMocks = vi.hoisted(() => ({
@@ -110,6 +143,12 @@ vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({
+    appId: 'app-1',
+  }),
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -129,6 +168,119 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    info: toastInfoMock,
+  },
+}))
+
+vi.mock('../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onGraphImport: (handler: (payload: { nodes: Node[], edges: Edge[] }) => void) => {
+      collaborationBridge.graphImportHandler = handler
+      return vi.fn()
+    },
+    onHistoryAction: (handler: (payload: unknown) => void) => {
+      collaborationBridge.historyActionHandler = handler
+      return vi.fn()
+    },
+    onRestoreIntent: (handler: typeof collaborationBridge.restoreIntentHandler) => {
+      collaborationBridge.restoreIntentHandler = handler
+      return vi.fn()
+    },
+  },
+}))
+
+vi.mock('../comment-manager', () => ({
+  default: () => <div data-testid="comment-manager" />,
+}))
+
+vi.mock('../comment/cursor', () => ({
+  CommentCursor: () => <div data-testid="comment-cursor" />,
+}))
+
+vi.mock('../comment/comment-input', () => ({
+  CommentInput: ({ disabled, onCancel }: { disabled?: boolean, onCancel?: () => void }) => (
+    <button
+      type="button"
+      data-testid={disabled ? 'comment-input-preview' : 'comment-input-active'}
+      onClick={onCancel}
+    >
+      comment-input
+    </button>
+  ),
+}))
+
+vi.mock('../comment/comment-icon', () => ({
+  CommentIcon: ({
+    comment,
+    onClick,
+    onPositionUpdate,
+  }: {
+    comment: { id: string }
+    onClick?: () => void
+    onPositionUpdate?: (position: { elementX: number, elementY: number }) => void
+  }) => (
+    <button
+      type="button"
+      data-testid={`comment-icon-${comment.id}`}
+      onClick={() => {
+        onClick?.()
+        onPositionUpdate?.({ elementX: 1, elementY: 2 })
+      }}
+    >
+      icon
+    </button>
+  ),
+}))
+
+vi.mock('../comment/thread', () => ({
+  CommentThread: ({
+    onDelete,
+    onReplyDelete,
+    onNext,
+  }: {
+    onDelete?: () => void
+    onReplyDelete?: (replyId: string) => void
+    onNext?: () => void
+  }) => (
+    <div data-testid="comment-thread">
+      <button type="button" onClick={onDelete}>delete-thread</button>
+      <button type="button" onClick={() => onReplyDelete?.('reply-1')}>delete-reply</button>
+      <button type="button" onClick={onNext}>next-comment</button>
+    </div>
+  ),
+}))
+
+vi.mock('../hooks/use-workflow-comment', () => ({
+  useWorkflowComment: () => workflowCommentState,
+}))
+
+vi.mock('../base/confirm', () => ({
+  default: ({
+    isShow,
+    title,
+    desc,
+    onConfirm,
+    onCancel,
+  }: {
+    isShow: boolean
+    title?: string
+    desc?: string
+    onConfirm: () => void
+    onCancel: () => void
+  }) => isShow
+    ? (
+        <div role="alertdialog" data-testid="confirm-dialog">
+          {title && <div>{title}</div>}
+          {desc && <div>{desc}</div>}
+          <button type="button" onClick={onConfirm}>common.operation.confirm</button>
+          <button type="button" onClick={onCancel}>common.operation.cancel</button>
+        </div>
+      )
+    : null,
 }))
 
 vi.mock('../candidate-node', () => ({
@@ -155,7 +307,7 @@ vi.mock('../edge-contextmenu', () => ({
 }))
 
 vi.mock('../node-contextmenu', () => ({
-  default: () => null,
+  NodeContextmenu: () => null,
 }))
 
 vi.mock('../nodes', () => ({
@@ -200,6 +352,11 @@ vi.mock('../simple-node', () => ({
 
 vi.mock('../syncing-data-modal', () => ({
   default: () => null,
+}))
+
+vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
+  useWorkflowHotkeys: workflowHookMocks.useShortcuts,
+  useWorkflowShortcut: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({
@@ -329,6 +486,15 @@ describe('Workflow edge event wiring', () => {
     vi.clearAllMocks()
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
+    collaborationBridge.graphImportHandler = null
+    collaborationBridge.historyActionHandler = null
+    collaborationBridge.restoreIntentHandler = null
+    workflowCommentState.comments = []
+    workflowCommentState.pendingComment = null
+    workflowCommentState.activeComment = null
+    workflowCommentState.activeCommentLoading = false
+    workflowCommentState.replySubmitting = false
+    workflowCommentState.replyUpdating = false
   })
 
   it('should forward pane, node and edge-change events to workflow handlers when emitted by the canvas', async () => {
@@ -407,5 +573,160 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().edgeMenu).toBeUndefined()
+  })
+
+  it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const onConfirm = vi.fn()
+    const { store } = renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          desc: 'Confirm description',
+          onConfirm,
+        },
+      },
+    })
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Confirm title')).toBeInTheDocument()
+    expect(screen.getByText('Confirm description')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(store.getState().showConfirm).toBeUndefined()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('should call showConfirm.onConfirm when confirm is clicked', () => {
+    const onConfirm = vi.fn()
+
+    renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          onConfirm,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('should sync graph import events and show history action toast', async () => {
+    renderSubject()
+
+    const importedNodes = [createInitializedNode('node-3', 480, 'Workflow node node-3')] as unknown as Node[]
+
+    act(() => {
+      collaborationBridge.graphImportHandler?.({
+        nodes: importedNodes,
+        edges: [],
+      })
+      collaborationBridge.historyActionHandler?.({ action: 'undo' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Workflow node node-3')).toBeInTheDocument()
+      expect(toastInfoMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('should show restore intent toast when another collaborator restores a workflow version', async () => {
+    renderSubject()
+
+    act(() => {
+      collaborationBridge.restoreIntentHandler?.({
+        versionId: 'version-1',
+        versionName: 'Version One',
+        initiatorUserId: 'user-1',
+        initiatorName: 'Alice',
+      })
+    })
+
+    await waitFor(() => {
+      expect(toastInfoMock).toHaveBeenCalledWith(
+        'workflow.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
+      )
+    })
+  })
+
+  it('should render comment overlays and execute comment actions in comment mode', async () => {
+    workflowCommentState.comments = [
+      { id: 'comment-1', resolved: false },
+      { id: 'comment-2', resolved: false },
+    ]
+    workflowCommentState.activeComment = { id: 'comment-1', resolved: false }
+    workflowCommentState.pendingComment = { elementX: 20, elementY: 30 }
+
+    const { container, store } = renderSubject({
+      initialStoreState: {
+        controlMode: ControlMode.Comment,
+        showUserComments: true,
+        showResolvedComments: false,
+        isCommentPlacing: true,
+        pendingComment: null,
+        isCommentPreviewHovering: true,
+        mousePosition: {
+          pageX: 100,
+          pageY: 120,
+          elementX: 40,
+          elementY: 60,
+        },
+      },
+    })
+
+    const pane = getPane(container)
+    act(() => {
+      fireEvent.mouseMove(pane, { clientX: 150, clientY: 180 })
+    })
+
+    expect(screen.getByTestId('comment-cursor')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-input-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-input-active')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-icon-comment-1')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-icon-comment-2')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-thread')).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'next-comment' }))
+    })
+    expect(workflowCommentState.handleCommentIconClick).toHaveBeenCalledWith({ id: 'comment-2', resolved: false })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'delete-thread' }))
+    })
+    expect(store.getState().showConfirm).toBeDefined()
+
+    await act(async () => {
+      await store.getState().showConfirm?.onConfirm()
+    })
+    expect(workflowCommentState.handleCommentDelete).toHaveBeenCalledWith('comment-1')
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'delete-reply' }))
+    })
+    expect(store.getState().showConfirm).toBeDefined()
+    await act(async () => {
+      await store.getState().showConfirm?.onConfirm()
+    })
+    expect(workflowCommentState.handleCommentReplyDelete).toHaveBeenCalledWith('comment-1', 'reply-1')
+
+    const wheelEvent = new WheelEvent('wheel', {
+      cancelable: true,
+      ctrlKey: true,
+    })
+    act(() => {
+      window.dispatchEvent(wheelEvent)
+    })
+
+    const gestureEvent = new Event('gesturestart', { cancelable: true })
+    act(() => {
+      window.dispatchEvent(gestureEvent)
+    })
   })
 })

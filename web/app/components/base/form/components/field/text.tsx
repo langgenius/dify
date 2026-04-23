@@ -1,7 +1,7 @@
 import type { InputProps } from '../../../input'
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Input from '../../../input'
 import Label from '../label'

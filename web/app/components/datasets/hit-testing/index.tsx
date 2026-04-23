@@ -9,6 +9,7 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -26,7 +27,6 @@ import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
-import { cn } from '@/utils/classnames'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
 import QueryInput from './components/query-input'
@@ -74,7 +74,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className="mb-2 shrink-0 pl-2 font-semibold leading-6 text-text-primary">
+      <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t('hit.title', { ns: 'datasetHitTesting', num: results.length })}
       </div>
       <div className="grow space-y-2 overflow-y-auto">
@@ -118,7 +118,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>
-          <p className="mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary">{t('desc', { ns: 'datasetHitTesting' })}</p>
+          <p className="mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary">{t('desc', { ns: 'datasetHitTesting' })}</p>
         </div>
         <QueryInput
           key={queryInputKey}
@@ -136,7 +136,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           hitTestingMutation={hitTestingMutation}
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />
-        <div className="mb-3 mt-6 text-base font-semibold text-text-primary">{t('records', { ns: 'datasetHitTesting' })}</div>
+        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">{t('records', { ns: 'datasetHitTesting' })}</div>
         {isRecordsLoading && (
           <div className="flex-1"><Loading type="app" /></div>
         )}

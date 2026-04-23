@@ -64,17 +64,17 @@ export const useSetWorkflowVarsWithValue = ({
     inspectVars.forEach((varItem) => {
       const nodeId = varItem.selector[0]
 
-      const node = nodesKeyValue[nodeId]
+      const node = nodesKeyValue[nodeId!]
       if (!node)
         return
-      withValueNodeIds[nodeId] = true
+      withValueNodeIds[nodeId!] = true
     })
     const withValueNodes = Object.keys(withValueNodeIds).map((nodeId) => {
       return nodesKeyValue[nodeId]
     })
 
     const res: NodeWithVar[] = withValueNodes.map((node) => {
-      const nodeId = node.id
+      const nodeId = node!.id
       const varsUnderTheNode = inspectVars.filter((varItem) => {
         return varItem.selector[0] === nodeId
       })
@@ -82,9 +82,9 @@ export const useSetWorkflowVarsWithValue = ({
 
       const nodeWithVar = {
         nodeId,
-        nodePayload: node.data,
-        nodeType: node.data.type,
-        title: node.data.title,
+        nodePayload: node!.data,
+        nodeType: node!.data.type,
+        title: node!.data.title,
         vars: varsUnderTheNode.map((item) => {
           const schemaType = nodeVar ? nodeVar.vars.find(v => v.variable === item.name)?.schemaType : ''
           return {

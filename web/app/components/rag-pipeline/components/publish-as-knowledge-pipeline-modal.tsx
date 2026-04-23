@@ -1,13 +1,13 @@
 'use client'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
@@ -82,11 +82,11 @@ const PublishAsKnowledgePipelineModal = ({
         onClose={noop}
         className="relative w-[520px]! p-0!"
       >
-        <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
+        <div className="relative flex items-center p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
           {t('common.publishAs', { ns: 'pipeline' })}
           <div
             data-testid="publish-modal-close-btn"
-            className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
+            className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center"
             onClick={onCancel}
           >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
@@ -95,7 +95,7 @@ const PublishAsKnowledgePipelineModal = ({
         <div className="px-6 py-3">
           <div className="mb-5 flex">
             <div className="mr-3 grow">
-              <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
                 {t('common.publishAsPipeline.name', { ns: 'pipeline' })}
               </div>
               <Input
@@ -115,7 +115,7 @@ const PublishAsKnowledgePipelineModal = ({
             />
           </div>
           <div>
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary ">
+            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
               {t('common.publishAsPipeline.description', { ns: 'pipeline' })}
             </div>
             <Textarea

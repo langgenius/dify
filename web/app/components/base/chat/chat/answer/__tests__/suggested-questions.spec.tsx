@@ -35,8 +35,8 @@ describe('SuggestedQuestions', () => {
 
     const questions = screen.getAllByTestId('suggested-question')
     expect(questions).toHaveLength(2)
-    expect(questions[0]).toHaveTextContent('What is Dify?')
-    expect(questions[1]).toHaveTextContent('How to use it?')
+    expect(questions[0])!.toHaveTextContent('What is Dify?')
+    expect(questions[1])!.toHaveTextContent('How to use it?')
   })
 
   it('should call onSend when a question is clicked', async () => {
@@ -44,7 +44,7 @@ describe('SuggestedQuestions', () => {
     render(<SuggestedQuestions item={mockItem} />)
 
     const questions = screen.getAllByTestId('suggested-question')
-    await user.click(questions[0])
+    await user.click(questions[0]!)
 
     expect(mockOnSend).toHaveBeenCalledWith('What is Dify?')
   })
@@ -74,10 +74,10 @@ describe('SuggestedQuestions', () => {
     render(<SuggestedQuestions item={mockItem} />)
 
     const questions = screen.getAllByTestId('suggested-question')
-    expect(questions[0]).toHaveClass('pointer-events-none')
-    expect(questions[0]).toHaveClass('opacity-50')
+    expect(questions[0])!.toHaveClass('pointer-events-none')
+    expect(questions[0])!.toHaveClass('opacity-50')
 
-    await user.click(questions[0])
+    await user.click(questions[0]!)
     expect(mockOnSend).not.toHaveBeenCalled()
   })
 })

@@ -93,13 +93,12 @@ describe('ConfirmModal', () => {
       // Arrange & Act
       renderComponent()
 
-      // Assert - Check for the dialog panel with modal content
-      // The real modal structure has nested divs, we need to find the one with our classes
-      const dialogContent = document.querySelector('.relative.rounded-2xl')
+      // Assert
+      const dialogContent = screen.getByRole('dialog')
       expect(dialogContent).toBeInTheDocument()
-      expect(dialogContent).toHaveClass('w-[600px]')
-      expect(dialogContent).toHaveClass('max-w-[600px]')
-      expect(dialogContent).toHaveClass('p-8')
+      expect(dialogContent).toHaveClass('w-[600px]!')
+      expect(dialogContent).toHaveClass('max-w-[600px]!')
+      expect(dialogContent).toHaveClass('p-8!')
     })
   })
 
@@ -156,15 +155,6 @@ describe('ConfirmModal', () => {
 
       // Act & Assert - This will fail the test if user.click throws an unhandled error
       await user.click(confirmButton)
-    })
-
-    it('should have correct button variants', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const confirmButton = screen.getByText('common.operation.confirm')
-      expect(confirmButton).toHaveClass('btn-warning')
     })
   })
 

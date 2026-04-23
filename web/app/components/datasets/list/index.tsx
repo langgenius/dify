@@ -1,23 +1,21 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
+
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Button from '@/app/components/base/button'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import Input from '@/app/components/base/input'
-import TagManagementModal from '@/app/components/base/tag-management'
-import TagFilter from '@/app/components/base/tag-management/filter'
-// Hooks
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import ServiceApi from '../extra-info/service-api'
@@ -26,11 +24,12 @@ import Datasets from './datasets'
 
 const List = () => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceOwner } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
+  const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t('knowledge', { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
@@ -56,8 +55,8 @@ const List = () => {
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
-    <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
+    <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
+      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
             <CheckboxWithLabel
@@ -69,7 +68,7 @@ const List = () => {
               tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
             />
           )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} />
+          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
           <Input
             showLeftIcon
             showClearIcon
@@ -85,19 +84,22 @@ const List = () => {
           }
           <div className="h-4 w-px bg-divider-regular" />
           <Button
-            className="shadows-shadow-xs gap-0.5"
+            className="gap-0.5 shadow-xs"
             onClick={() => setShowExternalApiPanel(true)}
           >
-            <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text system-sm-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <span className="i-custom-vender-solid-development-api-connection-mod h-4 w-4 text-components-button-secondary-text" />
+            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
           </Button>
         </div>
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
-      {showTagManagementModal && (
-        <TagManagementModal type="knowledge" show={showTagManagementModal} />
-      )}
+      <TagManagementModal
+        type="knowledge"
+        show={showTagManagementModal}
+        onClose={() => setShowTagManagementModal(false)}
+        onTagsChange={invalidDatasetList}
+      />
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )

@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import { useTranslation } from '#i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertFill } from '@remixicon/react'
 import { camelCase } from 'es-toolkit/string'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Trans } from 'react-i18next'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
@@ -62,11 +62,11 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
         innerWrapperClassName,
       )}
       >
-        <div className="absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40" />
+        <div className="absolute top-0 left-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40" />
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
           <RiAlertFill className="size-4 text-text-warning-secondary" />
         </div>
-        <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
+        <div className={cn('grow py-1 system-xs-regular text-text-primary', textClassName)}>
           {
             hasValidDeprecatedReason && alternativePluginId && (
               <Trans

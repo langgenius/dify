@@ -88,14 +88,14 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 **Rules**:
 
 1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
-1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
+1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (for example, a parent overlay mock with a separate content component), use module-level variables to track state and reset them in `beforeEach`.
 1. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
 1. **Use fake timers only when needed**: Only use `vi.useFakeTimers()` if:
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
 1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
-1. **DO NOT mock base components**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Button`, `Tooltip`, `Modal`). Base components will have their own dedicated tests. Use real components to test actual integration behavior.
+1. **DO NOT mock base components or dify-ui primitives**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Input`, `Badge`, `Tag`) or from `@langgenius/dify-ui/*` (e.g., `Button`, `Tooltip`, `Dialog`, `Select`, `Popover`). They have their own dedicated tests. Use real components to test actual integration behavior.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -134,7 +134,7 @@ When using a single spec file:
 
 - ✅ **Import real project components** directly (including base components and siblings)
 - ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
-- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`) or dify-ui primitives (`@langgenius/dify-ui/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
 > See [Example Structure] for correct import/mock patterns.
@@ -377,16 +377,16 @@ describe('ComponentName', () => {
 
 ```tsx
 // ✅ CORRECT: Matches actual component behavior
-let mockPortalOpenState = false
+let mockOverlayOpenState = false
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, ...props }) => {
-    mockPortalOpenState = open || false // Update shared state
+vi.mock('external-overlay-library', () => ({
+  OverlayRoot: ({ children, open, ...props }) => {
+    mockOverlayOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
-  PortalToFollowElemContent: ({ children }) => {
+  OverlayContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState)
+    if (!mockOverlayOpenState)
       return null
     return <div>{children}</div>
   },
@@ -395,7 +395,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 describe('Component', () => {
   beforeEach(() => {
     vi.clearAllMocks() // ✅ Reset mock call history
-    mockPortalOpenState = false // ✅ Reset shared state
+    mockOverlayOpenState = false // ✅ Reset shared state
   })
 })
 ```
@@ -520,7 +520,6 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts] - Utility function tests
 - [index.spec.tsx] - Component tests
 
 ## Resources
@@ -540,5 +539,4 @@ Test examples in the project:
 [Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
 [Vitest Documentation]: https://vitest.dev/guide
 [Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
-[classnames.spec.ts]: ../utils/classnames.spec.ts
-[index.spec.tsx]: ../app/components/base/button/index.spec.tsx
+[index.spec.tsx]: ../app/components/base/radio/__tests__/index.spec.tsx

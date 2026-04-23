@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
   RiCollapseDiagonalLine,
@@ -16,7 +17,6 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../context'
 import ActionButtons from './common/action-buttons'
@@ -137,7 +137,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     <div className="flex h-full flex-col">
       <div className={cn(
         'flex shrink-0 items-center justify-between',
-        fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
+        fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
       )}
       >
         <div className="flex flex-col">
@@ -158,7 +158,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
                 loading={loading}
                 showRegenerationButton={runtimeMode === 'general'}
               />
-              <Divider type="vertical" className="ml-4 mr-2 h-3.5 bg-divider-regular" />
+              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
             </>
           )}
           <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
@@ -180,7 +180,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       )}
       >
         <div className={cn(
-          isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto',
+          isEditMode ? 'overflow-hidden break-all whitespace-pre-line' : 'overflow-y-auto',
           fullScreen ? 'w-1/2' : 'h-0 grow',
         )}
         >

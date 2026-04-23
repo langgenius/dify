@@ -218,14 +218,13 @@ describe('EdgeContextmenu', () => {
     })
 
     const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
-    expect(screen.getByText(/^del$/i)).toBeInTheDocument()
 
     await user.click(deleteAction)
 
     await waitFor(() => {
       expect(latestEdges).toHaveLength(1)
-      expect(latestEdges[0].id).toBe('e1')
-      expect(latestEdges[0].selected).toBe(true)
+      expect(latestEdges[0]!.id).toBe('e1')
+      expect(latestEdges[0]!.selected).toBe(true)
       expect(store.getState().edgeMenu).toBeUndefined()
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
@@ -260,8 +259,8 @@ describe('EdgeContextmenu', () => {
       clientY: 180,
     })
 
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i })).toBeInTheDocument()
+    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i }))!.toBeInTheDocument()
     expect(fromRectSpy).toHaveBeenLastCalledWith(expect.objectContaining({
       x: 320,
       y: 180,
@@ -312,7 +311,7 @@ describe('EdgeContextmenu', () => {
       clientY: 120,
     })
 
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
     fireEvent.keyDown(document.body, { key })
 
@@ -346,7 +345,7 @@ describe('EdgeContextmenu', () => {
       clientY: 100,
     })
 
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
     fireEvent.keyDown(document.body, { key: 'Delete' })
 
@@ -373,7 +372,7 @@ describe('EdgeContextmenu', () => {
       clientX: 80,
       clientY: 60,
     })
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
     fireEvent.contextMenu(edgeTwoButton, {
       clientX: 360,
@@ -399,7 +398,7 @@ describe('EdgeContextmenu', () => {
       clientX: 160,
       clientY: 100,
     })
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
     fireEvent.click(container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement)
 

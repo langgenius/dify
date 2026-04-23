@@ -2,20 +2,6 @@
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from './hooks/use-configuration'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
-import Config from '@/app/components/app/configuration/config'
-import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
-import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
-import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
-import Debug from '@/app/components/app/configuration/debug'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
-import Drawer from '@/app/components/base/drawer'
-import { FeaturesProvider } from '@/app/components/base/features'
-import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import Loading from '@/app/components/base/loading'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -24,7 +10,21 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
+import Config from '@/app/components/app/configuration/config'
+import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
+import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
+import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
+import Debug from '@/app/components/app/configuration/debug'
+import Divider from '@/app/components/base/divider'
+import Drawer from '@/app/components/base/drawer'
+import { FeaturesProvider } from '@/app/components/base/features'
+import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import Loading from '@/app/components/base/loading'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
@@ -153,37 +153,33 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </div>
           </div>
 
-          {showUseGPT4Confirm && (
-            <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
-              <AlertDialogContent>
-                <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-                    {t('trailUseGPT4Info.title', { ns: 'appDebug' })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                    {t('trailUseGPT4Info.description', { ns: 'appDebug' })}
-                  </AlertDialogDescription>
-                </div>
-                <AlertDialogActions>
-                  <AlertDialogCancelButton destructive={false}>
-                    {t('operation.cancel', { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton variant="primary" destructive={false} onClick={onConfirmUseGPT4}>
-                    {t('operation.confirm', { ns: 'common' })}
-                  </AlertDialogConfirmButton>
-                </AlertDialogActions>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
+            <AlertDialogContent>
+              <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+                  {t('trailUseGPT4Info.title', { ns: 'appDebug' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t('trailUseGPT4Info.description', { ns: 'appDebug' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton tone="default">
+                  {t('operation.cancel', { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
 
-          {isShowSelectDataSet && (
-            <SelectDataSet
-              isShow={isShowSelectDataSet}
-              onClose={onCloseSelectDataSet}
-              selectedIds={selectedIds}
-              onSelect={onSelectDataSets}
-            />
-          )}
+          <SelectDataSet
+            isShow={isShowSelectDataSet}
+            onClose={onCloseSelectDataSet}
+            selectedIds={selectedIds}
+            onSelect={onSelectDataSets}
+          />
 
           {isShowHistoryModal && (
             <EditHistoryModal

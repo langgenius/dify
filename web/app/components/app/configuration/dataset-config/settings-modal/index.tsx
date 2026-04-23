@@ -2,14 +2,15 @@ import type { FC } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { toast } from '@/app/components/base/ui/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -25,7 +26,6 @@ import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
@@ -192,7 +192,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="flex flex-col text-base font-semibold text-text-primary">
           <div className="leading-6">{t('title', { ns: 'datasetSettings' })}</div>
         </div>
@@ -206,10 +206,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
       </div>
       {/* Body */}
-      <div className="overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5">
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.name', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.name', { ns: 'datasetSettings' })}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
@@ -220,7 +220,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.desc', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <Textarea
@@ -233,7 +233,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <PermissionSelector
@@ -249,7 +249,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="text-text-secondary system-sm-semibold">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
             </div>
             <div className="grow">
               <IndexMethod
@@ -266,7 +266,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="text-text-secondary system-sm-semibold">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
             </div>
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">

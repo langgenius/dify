@@ -69,7 +69,7 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
 
 const getLatestFileConfig = () => {
   expect(setFeaturesMock).toHaveBeenCalled()
-  const latestFeatures = setFeaturesMock.mock.calls[setFeaturesMock.mock.calls.length - 1][0] as { file: FileUpload }
+  const latestFeatures = setFeaturesMock.mock.calls[setFeaturesMock.mock.calls.length - 1]![0] as { file: FileUpload }
   return latestFeatures.file
 }
 
@@ -98,8 +98,8 @@ describe('ConfigVision', () => {
   it('should show the toggle and parameter controls when visible', () => {
     render(<ConfigVision />)
 
-    expect(screen.getByText('appDebug.vision.name')).toBeInTheDocument()
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('appDebug.vision.name'))!.toBeInTheDocument()
+    expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'false')
   })
 
   it('should enable both image and video uploads when toggled on with video support', async () => {
@@ -178,7 +178,7 @@ describe('ParamConfig', () => {
 
     await user.click(screen.getByRole('button', { name: 'appDebug.voice.settings' }))
 
-    expect(await screen.findByText('appDebug.vision.visionSettings.title')).toBeInTheDocument()
+    expect(await screen.findByText('appDebug.vision.visionSettings.title'))!.toBeInTheDocument()
   })
 })
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,9 +29,9 @@ def _mock_get_trigger_provider(mocker: MockerFixture, provider: object | None) -
 
 def _encrypter_mock(
     *,
-    decrypted: dict | None = None,
-    encrypted: dict | None = None,
-    masked: dict | None = None,
+    decrypted: dict[str, Any] | None = None,
+    encrypted: dict[str, Any] | None = None,
+    masked: dict[str, Any] | None = None,
 ) -> MagicMock:
     enc = MagicMock()
     enc.decrypt.return_value = decrypted or {}
@@ -693,7 +694,7 @@ def test_get_oauth_client_should_return_decrypted_system_client_when_verified(
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
     mocker.patch(
-        "services.trigger.trigger_provider_service.decrypt_system_oauth_params",
+        "services.trigger.trigger_provider_service.decrypt_system_params",
         return_value={"client_id": "system"},
     )
 
@@ -715,7 +716,7 @@ def test_get_oauth_client_should_raise_error_when_system_decryption_fails(
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
     mocker.patch(
-        "services.trigger.trigger_provider_service.decrypt_system_oauth_params",
+        "services.trigger.trigger_provider_service.decrypt_system_params",
         side_effect=RuntimeError("bad data"),
     )
 

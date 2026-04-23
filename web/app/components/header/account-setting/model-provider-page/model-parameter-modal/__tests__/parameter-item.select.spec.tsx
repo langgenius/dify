@@ -6,19 +6,26 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/base/ui/select', () => ({
-  Select: ({ children, onValueChange }: { children: ReactNode, onValueChange: (value: string | undefined) => void }) => (
-    <div>
-      <button type="button" onClick={() => onValueChange('updated')}>select-updated</button>
-      <button type="button" onClick={() => onValueChange(undefined)}>select-empty</button>
-      {children}
-    </div>
-  ),
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectValue: () => <div>SelectValue</div>,
-}))
+vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
+
+  return {
+    ...actual,
+    Select: ({ children, onValueChange }: { children: ReactNode, onValueChange: (value: string | undefined) => void }) => (
+      <div>
+        <button type="button" onClick={() => onValueChange('updated')}>select-updated</button>
+        <button type="button" onClick={() => onValueChange(undefined)}>select-empty</button>
+        {children}
+      </div>
+    ),
+    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectValue: () => <div>SelectValue</div>,
+    SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+    SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
+  }
+})
 
 describe('ParameterItem select mode', () => {
   it('should propagate both explicit and empty select values', () => {
