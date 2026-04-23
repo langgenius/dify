@@ -48,6 +48,8 @@ class RagPipelineTransformService:
         doc_form = dataset.doc_form
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset)
+        if datasource_type is None:
+            return self._transform_to_empty_pipeline(dataset)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
