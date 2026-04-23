@@ -88,7 +88,7 @@ See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for t
 
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
-- `pnpm -C packages/dify-ui type-check` — `tsc --noEmit` for this package only.
+- `pnpm -C packages/dify-ui type-check` — `tsgo --noEmit` for this package only.
 
 See `[AGENTS.md](./AGENTS.md)` for:
 

@@ -1,4 +1,4 @@
-@apps @authenticated
+@apps @authenticated @core
 Feature: Create app
   Scenario: Create a new blank app and redirect to the editor
     Given I am signed in as the default E2E admin

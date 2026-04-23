@@ -8,17 +8,18 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line no-restricted-imports -- legacy overlay migration is handled separately from this change
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
@@ -43,7 +44,7 @@ type Props = {
   disabled: boolean
   trigger: React.ReactNode
   placement?: Placement
-  offset?: OffsetOptions | number
+  offset?: OffsetOptions
   isShow: boolean
   onShowChange: (isShow: boolean) => void
   onSelect: (tool: ToolDefaultValue) => void
@@ -120,6 +121,12 @@ const ToolPicker: FC<Props> = ({
 
   const handleAddedCustomTool = invalidateCustomTools
 
+  const handleTriggerClick = () => {
+    if (disabled)
+      return
+    onShowChange(true)
+  }
+
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
   }
@@ -132,11 +139,6 @@ const ToolPicker: FC<Props> = ({
     setFalse: hideEditCustomCollectionModal,
     setTrue: showEditCustomCollectionModal,
   }] = useBoolean(false)
-
-  const handleShowAddCustomCollectionModal = useCallback(() => {
-    onShowChange(false)
-    showEditCustomCollectionModal()
-  }, [onShowChange, showEditCustomCollectionModal])
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
@@ -156,35 +158,20 @@ const ToolPicker: FC<Props> = ({
     )
   }
 
-  const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
-  const resolvedOffset = typeof offset === 'object' && offset !== null
-    ? offset as { mainAxis?: number, crossAxis?: number, alignmentAxis?: number | null }
-    : undefined
-  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
-  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
-
   return (
-    <Popover
+    <PortalToFollowElem
+      placement={placement}
+      offset={offset}
       open={isShow}
-      onOpenChange={(nextOpen) => {
-        if (disabled && nextOpen)
-          return
-        onShowChange(nextOpen)
-      }}
+      onOpenChange={onShowChange}
     >
-      <PopoverTrigger
-        render={resolvedTrigger}
-        onClick={(e) => {
-          if (disabled)
-            e.preventDefault()
-        }}
-      />
-      <PopoverContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      <PortalToFollowElemTrigger
+        onClick={handleTriggerClick}
       >
+        {trigger}
+      </PortalToFollowElemTrigger>
+
+      <PortalToFollowElemContent className="z-1002">
         <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
             <SearchBox
@@ -195,7 +182,7 @@ const ToolPicker: FC<Props> = ({
               placeholder={t('searchTools', { ns: 'plugin' })!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
-              onShowAddCustomCollectionModal={handleShowAddCustomCollectionModal}
+              onShowAddCustomCollectionModal={showEditCustomCollectionModal}
               inputClassName="grow"
             />
           </div>
@@ -223,8 +210,8 @@ const ToolPicker: FC<Props> = ({
             }}
           />
         </div>
-      </PopoverContent>
-    </Popover>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

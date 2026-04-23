@@ -4,6 +4,7 @@ import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -17,7 +18,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
@@ -156,14 +156,26 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[key] as string}
-                        onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                        items={(options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                        bgClassName="bg-gray-50"
+                        value={inputs[key] ? String(inputs[key]) : null}
                         disabled={readonly}
-                      />
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputValueChange(key, nextValue)
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-gray-50">
+                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent popupClassName="w-(--anchor-width)">
+                          {(options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {type === 'number' && (
                       <Input
