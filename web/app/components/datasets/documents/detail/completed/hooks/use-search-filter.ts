@@ -1,16 +1,20 @@
-import type { Item } from '@/app/components/base/select'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 type UseSearchFilterReturn = {
   inputValue: string
   searchValue: string
   selectedStatus: boolean | 'all'
-  statusList: Item[]
+  statusList: SelectOption[]
   selectDefaultValue: 'all' | 0 | 1
   handleInputChange: (value: string) => void
-  onChangeStatus: (item: Item) => void
+  onChangeStatus: (item: SelectOption) => void
   onClearFilter: () => void
   resetPage: () => void
 }
@@ -27,7 +31,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   const [searchValue, setSearchValue] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all')
 
-  const statusList = useRef<Item[]>([
+  const statusList = useRef<SelectOption[]>([
     { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
     { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
     { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
@@ -43,7 +47,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
     handleSearch()
   }, [handleSearch])
 
-  const onChangeStatus = useCallback(({ value }: Item) => {
+  const onChangeStatus = useCallback(({ value }: SelectOption) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
     onPageChange(1)
   }, [onPageChange])

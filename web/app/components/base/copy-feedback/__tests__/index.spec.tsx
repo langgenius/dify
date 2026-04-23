@@ -40,11 +40,11 @@ describe('CopyFeedback', () => {
       expect(mockCopy).toHaveBeenCalledWith('test content')
     })
 
-    it('calls reset on mouse leave', () => {
+    it('does not reset on mouse leave (relies on hook timeout)', () => {
       render(<CopyFeedback content="test content" />)
       const button = screen.getByRole('button')
       fireEvent.mouseLeave(button.firstChild as Element)
-      expect(mockReset).toHaveBeenCalledTimes(1)
+      expect(mockReset).not.toHaveBeenCalled()
     })
   })
 })
@@ -88,11 +88,11 @@ describe('CopyFeedbackNew', () => {
       expect(mockCopy).toHaveBeenCalledWith('test content')
     })
 
-    it('calls reset on mouse leave', () => {
+    it('does not reset on mouse leave (relies on hook timeout)', () => {
       const { container } = render(<CopyFeedbackNew content="test content" />)
       const clickableArea = container.querySelector('.cursor-pointer')!.firstChild as HTMLElement
       fireEvent.mouseLeave(clickableArea)
-      expect(mockReset).toHaveBeenCalledTimes(1)
+      expect(mockReset).not.toHaveBeenCalled()
     })
   })
 })

@@ -44,8 +44,7 @@
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "test:watch": "vp test --watch",
-    "type-check": "tsc",
-    "type-check:tsgo": "tsgo",
+    "type-check": "tsgo",
     "uglify-embed": "node ./bin/uglify-embed"
   },
   "dependencies": {

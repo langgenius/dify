@@ -13,10 +13,10 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -253,6 +253,17 @@ function Form<
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
+      const filteredOptions = options.filter((option) => {
+        if (option.show_on.length)
+          return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+
+        return true
+      }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))
+      const currentValue = (isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null))
+        ? formSchema.default
+        : value[variable]
+      const selectedOption = filteredOptions.find(option => option.value === currentValue)
+
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
@@ -263,20 +274,27 @@ function Form<
             )}
             {tooltipContent}
           </div>
-          <SimpleSelect
-            wrapperClassName="h-8"
-            className={cn(inputClassName)}
+          <Select
             disabled={readonly}
-            defaultValue={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
-            items={options.filter((option) => {
-              if (option.show_on.length)
-                return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
-
-              return true
-            }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-            onSelect={item => handleFormChange(variable, item.value as string)}
-            placeholder={placeholder?.[language] || placeholder?.en_US}
-          />
+            value={selectedOption?.value ?? null}
+            onValueChange={(nextValue) => {
+              if (!nextValue)
+                return
+              handleFormChange(variable, nextValue)
+            }}
+          >
+            <SelectTrigger size="medium" className={cn(inputClassName)}>
+              {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+            </SelectTrigger>
+            <SelectContent popupClassName="w-(--anchor-width)">
+              {filteredOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>

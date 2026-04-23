@@ -9,14 +9,13 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithCopy from '@/app/components/base/input-with-copy'
-import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -76,6 +75,9 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     }
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
+  const selectedMethod = HTTP_METHODS.find(item => item.value === inputs.method) ?? null
+  const selectedContentType = CONTENT_TYPES.find(item => item.value === inputs.content_type) ?? null
+
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pt-2 pb-3">
@@ -84,18 +86,24 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
-                <SimpleSelect
+                <Select
                   key={`${id}-method-${inputs.method}`}
-                  items={HTTP_METHODS}
-                  defaultValue={inputs.method}
-                  onSelect={item => handleMethodChange(item.value as HttpMethod)}
+                  value={selectedMethod?.value ?? null}
                   disabled={readOnly}
-                  className="h-8 pr-8 text-sm"
-                  wrapperClassName="h-8"
-                  optionWrapClassName="w-26 min-w-26 z-5"
-                  allowSearch={false}
-                  notClearable={true}
-                />
+                  onValueChange={value => value && handleMethodChange(value as HttpMethod)}
+                >
+                  <SelectTrigger className="h-8 pr-8 text-sm">
+                    {selectedMethod?.name}
+                  </SelectTrigger>
+                  <SelectContent popupClassName="z-5 w-26 min-w-26">
+                    {HTTP_METHODS.map(item => (
+                      <SelectItem key={item.value} value={item.value}>
+                        <SelectItemText>{item.name}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy
@@ -149,19 +157,25 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
         {/* Content Type */}
         <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
-          <div className="w-full">
-            <SimpleSelect
+          <div className="w-full max-w-[392px]">
+            <Select
               key={`${id}-content-type-${inputs.content_type}`}
-              items={CONTENT_TYPES}
-              defaultValue={inputs.content_type}
-              onSelect={item => handleContentTypeChange(item.value as string)}
+              value={selectedContentType?.value ?? null}
               disabled={readOnly}
-              className="h-8 text-sm"
-              wrapperClassName="h-8"
-              optionWrapClassName="min-w-48 z-5"
-              allowSearch={false}
-              notClearable={true}
-            />
+              onValueChange={value => value && handleContentTypeChange(value)}
+            >
+              <SelectTrigger className="h-8 w-full text-sm">
+                {selectedContentType?.name}
+              </SelectTrigger>
+              <SelectContent popupClassName="z-5">
+                {CONTENT_TYPES.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </Field>
 

@@ -49,12 +49,20 @@ const InstallPluginDropdown = ({
   })
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ''
     if (file) {
       setSelectedFile(file)
       setSelectedAction('local')
       setIsMenuOpen(false)
     }
+  }
+
+  const handleCloseLocalInstaller = () => {
+    setSelectedAction(null)
+    setSelectedFile(null)
+    if (fileInputRef.current)
+      fileInputRef.current.value = ''
   }
 
   // TODO TEST INSTALL : uninstall
@@ -105,6 +113,13 @@ const InstallPluginDropdown = ({
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <div className="relative">
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+          accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+        />
         <DropdownMenuTrigger
           render={(
             <Button
@@ -126,13 +141,6 @@ const InstallPluginDropdown = ({
           <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-3 system-xs-medium-uppercase text-text-tertiary">
             {t('installFrom', { ns: 'plugin' })}
           </span>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-            accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-          />
           {installMethods.map(({ icon: Icon, text, action }) => (
             <DropdownMenuItem
               key={action}
@@ -157,7 +165,7 @@ const InstallPluginDropdown = ({
         && (
           <InstallFromLocalPackage
             file={selectedFile}
-            onClose={() => setSelectedAction(null)}
+            onClose={handleCloseLocalInstaller}
             onSuccess={noop}
           />
         )}

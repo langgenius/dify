@@ -4,6 +4,7 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
@@ -311,6 +312,41 @@ describe('useNodesInteractions', () => {
 
     act(() => {
       result.current.handleNodeClick({} as never, currentNodes[0] as Node)
+    })
+
+    expect(rfState.setNodes).not.toHaveBeenCalled()
+    expect(rfState.setEdges).not.toHaveBeenCalled()
+  })
+
+  it('ignores note node selection when clicking a linked text target', () => {
+    currentNodes = [
+      createNode({
+        id: 'note-1',
+        type: CUSTOM_NOTE_NODE,
+        data: {
+          type: '' as unknown as BlockEnum,
+          title: 'Note',
+          desc: '',
+          selected: false,
+        },
+      }),
+    ]
+    currentEdges = []
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    const link = document.createElement('a')
+    link.className = 'note-editor-theme_link'
+
+    act(() => {
+      result.current.handleNodeClick({ target: link } as never, currentNodes[0] as Node)
     })
 
     expect(rfState.setNodes).not.toHaveBeenCalled()

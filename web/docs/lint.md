@@ -71,15 +71,15 @@ You should be able to see suggestions from TypeScript in your editor for all ope
 However, it can be useful to run the TypeScript 7 command-line (tsgo) to type check all files:
 
 ```sh
-pnpm type-check:tsgo
+pnpm type-check
 ```
 
-Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler.
-Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
+Type checking is powered by [`tsgo`] (the native TypeScript 7 compiler), which is significantly faster than `tsc`.
 
 [ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
 [ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
 [Overlay Migration Guide]: ./overlay-migration.md
 [TSSLint]: https://github.com/johnsoncodehk/tsslint
+[`tsgo`]: https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-beta
 [no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
 [typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
