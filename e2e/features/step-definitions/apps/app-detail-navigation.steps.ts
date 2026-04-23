@@ -6,11 +6,14 @@ import { createTestApp } from '../../../support/api'
 Given('a {string} app has been created via API', async function (this: DifyWorld, mode: string) {
   const app = await createTestApp(`E2E Nav ${Date.now()}`, mode)
   this.createdAppIds.push(app.id)
+  this.lastCreatedAppName = app.name
 })
 
-When('I navigate to the app detail page', async function (this: DifyWorld) {
-  const appId = this.createdAppIds.at(-1)
-  await this.getPage().goto(`/app/${appId}`)
+When('I open the app from the app list', async function (this: DifyWorld) {
+  const page = this.getPage()
+  await page.goto('/apps')
+  await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible()
+  await page.getByText(this.lastCreatedAppName!).click()
 })
 
 When('I navigate to the app develop page', async function (this: DifyWorld) {
