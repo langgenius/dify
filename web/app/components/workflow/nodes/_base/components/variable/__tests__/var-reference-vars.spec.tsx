@@ -52,6 +52,42 @@ describe('VarReferenceVars', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('should select the first visible variable by default and support arrow navigation in slash mode', () => {
+    const onChange = vi.fn()
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        vars={createVars([{
+          title: 'Node A',
+          nodeId: 'node-a',
+          vars: [
+            { variable: 'first_value', type: VarType.string },
+            { variable: 'second_value', type: VarType.string },
+          ],
+        }])}
+        onChange={onChange}
+      />,
+    )
+
+    const firstItem = screen.getByText('first_value').closest('[data-selected]')
+    const secondItem = screen.getByText('second_value').closest('[data-selected]')
+
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    expect(secondItem).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+
+    expect(firstItem).toHaveAttribute('data-selected', 'false')
+    expect(secondItem).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(onChange).toHaveBeenCalledWith(['node-a', 'second_value'], expect.objectContaining({
+      variable: 'second_value',
+    }))
+  })
+
   it('should call onChange when a variable item is chosen', () => {
     const onChange = vi.fn()
 

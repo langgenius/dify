@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
@@ -47,6 +47,8 @@ type ItemProps = {
   zIndex?: number
   className?: string
   preferSchemaType?: boolean
+  isSelected?: boolean
+  onActivate?: () => void
 }
 
 const Item: FC<ItemProps> = ({
@@ -64,6 +66,8 @@ const Item: FC<ItemProps> = ({
   zIndex,
   className,
   preferSchemaType,
+  isSelected,
+  onActivate,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -178,11 +182,13 @@ const Item: FC<ItemProps> = ({
           ref={itemRef}
           className={cn(
             (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
-            isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
+            (isHovering || isSelected) && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
             className,
           )}
+          data-selected={isSelected ? 'true' : 'false'}
           onClick={handleChosen}
+          onMouseEnter={onActivate}
           onMouseDown={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -277,16 +283,124 @@ const VarReferenceVars: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [internalSearchValue, setInternalSearchValue] = useState('')
+  const listRef = useRef<HTMLDivElement>(null)
   const searchValue = searchText ?? internalSearchValue
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose?.()
-    }
-  }
-
   const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
+  const selectableItems = useMemo(() => {
+    return filteredVars.flatMap(node => node.vars.map(item => ({
+      nodeId: node.nodeId,
+      isFlat: node.isFlat,
+      itemData: item,
+    })))
+  }, [filteredVars])
+  const indexedFilteredVars = useMemo(() => {
+    let optionIndex = 0
+
+    return filteredVars.map(node => ({
+      ...node,
+      vars: node.vars.map(variable => ({
+        variable,
+        optionIndex: optionIndex++,
+      })),
+    }))
+  }, [filteredVars])
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const effectiveSelectedIndex = selectableItems.length ? Math.min(Math.max(selectedIndex, 0), selectableItems.length - 1) : -1
+
+  useEffect(() => {
+    const listElement = listRef.current
+    const selectedElement = listElement?.querySelector('[data-selected="true"]') as HTMLElement | null
+    if (!listElement || !selectedElement)
+      return
+
+    const selectedTop = selectedElement.offsetTop
+    const selectedBottom = selectedTop + selectedElement.offsetHeight
+    const visibleTop = listElement.scrollTop
+    const visibleBottom = visibleTop + listElement.clientHeight
+
+    if (selectedTop < visibleTop)
+      listElement.scrollTop = selectedTop
+    else if (selectedBottom > visibleBottom)
+      listElement.scrollTop = selectedBottom - listElement.clientHeight
+  }, [effectiveSelectedIndex])
+
+  const selectItem = useCallback((index: number) => {
+    const selectedItem = selectableItems[index]
+    if (!selectedItem)
+      return
+
+    const { itemData, nodeId, isFlat } = selectedItem
+    const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
+    const isFile = itemData.type === VarType.file && !isStructureOutput
+    const isSys = itemData.variable.startsWith('sys.')
+    const isEnv = itemData.variable.startsWith('env.')
+    const isChatVar = itemData.variable.startsWith('conversation.')
+    const isRagVariable = itemData.isRagVariable
+    const valueSelector = getValueSelector({
+      itemData,
+      isFlat,
+      isSupportFileVar,
+      isFile,
+      isSys,
+      isEnv,
+      isChatVar,
+      isRagVariable,
+      nodeId,
+      objPath: [],
+    })
+
+    if (valueSelector)
+      onChange(valueSelector, itemData)
+  }, [isSupportFileVar, onChange, selectableItems])
+
+  const handleKeyboardEvent = useCallback((event: Pick<KeyboardEvent, 'key' | 'preventDefault' | 'stopPropagation'>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onClose?.()
+      return
+    }
+
+    if (!selectableItems.length)
+      return
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      event.stopPropagation()
+      setSelectedIndex(
+        event.key === 'ArrowDown'
+          ? Math.min(effectiveSelectedIndex + 1, selectableItems.length - 1)
+          : Math.max(effectiveSelectedIndex - 1, 0),
+      )
+      return
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      event.stopPropagation()
+      selectItem(effectiveSelectedIndex)
+    }
+  }, [effectiveSelectedIndex, onClose, selectableItems.length, selectItem])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    handleKeyboardEvent(e)
+  }, [handleKeyboardEvent])
+
+  useEffect(() => {
+    if (!hideSearch)
+      return
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey)
+        return
+      if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key))
+        return
+
+      handleKeyboardEvent(event)
+    }
+
+    document.addEventListener('keydown', handleDocumentKeyDown, true)
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
+  }, [handleKeyboardEvent, hideSearch])
 
   return (
     <>
@@ -320,10 +434,9 @@ const VarReferenceVars: FC<Props> = ({
 
       {filteredVars.length > 0
         ? (
-            <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
-
+            <div ref={listRef} className={cn('max-h-[85vh] overflow-x-hidden overflow-y-auto', maxHeightClass)}>
               {
-                filteredVars.map((item, i) => (
+                indexedFilteredVars.map((item, i) => (
                   <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
                     {!item.isFlat && (
                       <div
@@ -333,25 +446,27 @@ const VarReferenceVars: FC<Props> = ({
                         {item.title}
                       </div>
                     )}
-                    {item.vars.map((v, j) => (
+                    {item.vars.map(({ variable, optionIndex }) => (
                       <Item
-                        key={j}
+                        key={optionIndex}
                         title={item.title}
                         nodeId={item.nodeId}
                         objPath={[]}
-                        itemData={v}
+                        itemData={variable}
                         onChange={onChange}
                         itemWidth={itemWidth}
                         isSupportFileVar={isSupportFileVar}
-                        isException={v.isException}
+                        isException={variable.isException}
                         isLoopVar={item.isLoop}
                         isFlat={item.isFlat}
                         isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                         zIndex={zIndex}
                         preferSchemaType={preferSchemaType}
+                        isSelected={effectiveSelectedIndex === optionIndex}
+                        onActivate={() => setSelectedIndex(optionIndex)}
                       />
                     ))}
-                    {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
+                    {item.isFlat && !indexedFilteredVars[i + 1]?.isFlat && !!indexedFilteredVars.find(item => !item.isFlat) && (
                       <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                         <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
