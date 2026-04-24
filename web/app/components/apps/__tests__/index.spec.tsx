@@ -7,6 +7,7 @@ import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
+import Apps from '../index'
 
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
@@ -20,8 +21,6 @@ vi.mock('@/next/dynamic', () => ({
     }
   },
 }))
-
-import Apps from '../index'
 
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
