@@ -3,7 +3,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -123,6 +123,18 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     progress: 100,
     transferMethod: TransferMethod.local_file,
     supportFileType: 'document',
+    uploadedId: 'upload-file-1',
+  }
+
+  const remoteFile: FileEntity = {
+    id: 'file-2',
+    name: 'reference.pdf',
+    size: 256,
+    type: 'application/pdf',
+    progress: 100,
+    transferMethod: TransferMethod.remote_url,
+    supportFileType: 'document',
+    url: 'https://example.com/reference.pdf',
   }
 
   it('should build a single before-run form, filter output vars, and expose dependent vars', () => {
@@ -159,6 +171,37 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   })
 
   it('should fetch and submit generated forms in workflow mode while keeping required inputs', async () => {
+    const formDataWithFiles = {
+      ...mockFormData,
+      inputs: [
+        {
+          type: InputVarType.paragraph,
+          output_variable_name: 'answer',
+          default: {
+            type: 'constant',
+            selector: [],
+            value: '',
+          },
+        },
+        {
+          type: InputVarType.singleFile,
+          output_variable_name: 'attachment',
+          allowed_file_extensions: ['.pdf'],
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+        },
+        {
+          type: InputVarType.multiFiles,
+          output_variable_name: 'references',
+          allowed_file_extensions: ['.pdf'],
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+          max_upload_count: 3,
+        },
+      ],
+    } satisfies HumanInputFormData
+    mockFetchHumanInputNodeStepRunForm.mockResolvedValue(formDataWithFiles)
+
     const { result } = renderHook(() => useSingleRunFormParams({
       id: 'node-1',
       payload: currentInputs,
@@ -181,11 +224,11 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         inputs: { topic: 'AI' },
       },
     )
-    expect(result.current.formData).toEqual(mockFormData)
+    expect(result.current.formData).toEqual(formDataWithFiles)
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm({
-        inputs: { answer: 'approved', attachment: [uploadedFile] },
+        inputs: { answer: 'approved', attachment: uploadedFile, references: [uploadedFile, remoteFile] },
         form_inputs: { ignored: 'value' },
         action: 'approve',
       })
@@ -195,7 +238,29 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       '/apps/app-1/workflows/draft/human-input/nodes/node-1/form',
       {
         inputs: { topic: 'AI' },
-        form_inputs: { answer: 'approved', attachment: [uploadedFile] },
+        form_inputs: {
+          answer: 'approved',
+          attachment: {
+            type: 'document',
+            transfer_method: TransferMethod.local_file,
+            url: '',
+            upload_file_id: 'upload-file-1',
+          },
+          references: [
+            {
+              type: 'document',
+              transfer_method: TransferMethod.local_file,
+              url: '',
+              upload_file_id: 'upload-file-1',
+            },
+            {
+              type: 'document',
+              transfer_method: TransferMethod.remote_url,
+              url: 'https://example.com/reference.pdf',
+              upload_file_id: '',
+            },
+          ],
+        },
         action: 'approve',
       },
     )
