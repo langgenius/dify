@@ -276,7 +276,7 @@ class TestHitlServiceApi:
         msg_generator.retrieve_events.assert_called_once_with(
             AppMode.WORKFLOW,
             "run-1",
-            terminal_events=["workflow_finished"],
+            terminal_events=[],
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
@@ -616,7 +616,7 @@ class TestHitlServiceApi:
         assert pause_resp.workflow_run_id == "run-id"
         assert pause_resp.data.paused_nodes == ["node-id"]
         assert pause_resp.data.outputs == {}
-        assert pause_resp.data.reasons[0]["type"] == "human_input_required"
+        assert pause_resp.data.reasons[0]["TYPE"] == "human_input_required"
         assert pause_resp.data.reasons[0]["form_id"] == "form-1"
         assert pause_resp.data.reasons[0]["form_token"] == "token"
         assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())

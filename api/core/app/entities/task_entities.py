@@ -1,12 +1,13 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
 from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.nodes.human_input.entities import FormInput, UserAction
@@ -293,6 +294,40 @@ class HumanInputRequiredResponse(StreamResponse):
     event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
     workflow_run_id: str
     data: Data
+
+
+class HumanInputRequiredPauseReasonPayload(BaseModel):
+    """
+    Public pause-reason payload used by blocking responses when only
+    ``human_input_required`` events are available.
+    """
+
+    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    form_id: str
+    node_id: str
+    node_title: str
+    form_content: str
+    inputs: Sequence[FormInput] = Field(default_factory=list)
+    actions: Sequence[UserAction] = Field(default_factory=list)
+    display_in_ui: bool = False
+    form_token: str | None = None
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+    expiration_time: int
+
+    @classmethod
+    def from_response_data(cls, data: HumanInputRequiredResponse.Data) -> "HumanInputRequiredPauseReasonPayload":
+        return cls(
+            form_id=data.form_id,
+            node_id=data.node_id,
+            node_title=data.node_title,
+            form_content=data.form_content,
+            inputs=data.inputs,
+            actions=data.actions,
+            display_in_ui=data.display_in_ui,
+            form_token=data.form_token,
+            resolved_default_values=data.resolved_default_values,
+            expiration_time=data.expiration_time,
+        )
 
 
 class HumanInputFormFilledResponse(StreamResponse):

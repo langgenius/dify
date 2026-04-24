@@ -345,11 +345,11 @@ def _build_human_input_required_events(
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None,
 ) -> list[dict[str, Any]]:
-    reasons = [reason.model_dump() for reason in pause_entity.get_pause_reasons()]
+    reasons = [reason.model_dump(mode='json') for reason in pause_entity.get_pause_reasons()]
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("TYPE") == PauseReasonType
+        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]
@@ -480,7 +480,7 @@ def _build_pause_event(
         paused_nodes = state.get_paused_nodes()
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
 
-    reasons = [reason.model_dump() for reason in pause_entity.get_pause_reasons()]
+    reasons = [reason.model_dump(mode='json') for reason in pause_entity.get_pause_reasons()]
     human_input_form_ids = [
         form_id
         for reason in reasons
