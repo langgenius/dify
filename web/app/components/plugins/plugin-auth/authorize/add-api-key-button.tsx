@@ -25,20 +25,26 @@ const AddApiKeyButton = ({
   formSchemas = [],
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
+  const [isApiKeyModalMounted, setIsApiKeyModalMounted] = useState(false)
 
   return (
     <>
       <Button
         className="w-full"
         variant={buttonVariant}
-        onClick={() => setIsApiKeyModalOpen(true)}
+        onClick={() => {
+          setIsApiKeyModalMounted(true)
+          setIsApiKeyModalOpen(true)
+        }}
         disabled={disabled}
       >
         {buttonText}
       </Button>
       {
-        isApiKeyModalOpen && (
+        isApiKeyModalMounted && (
           <ApiKeyModal
+            open={isApiKeyModalOpen}
+            onOpenChange={setIsApiKeyModalOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
             onUpdate={onUpdate}

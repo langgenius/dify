@@ -29,15 +29,6 @@ class _Field:
         return ("in", self._name, tuple(values))
 
 
-class _FakeQuery:
-    def __init__(self):
-        self.where_calls: list[tuple] = []
-
-    def where(self, *conditions):
-        self.where_calls.append(conditions)
-        return self
-
-
 class _FakeExecuteResult:
     def __init__(self, segments: list[SimpleNamespace]):
         self._segments = segments

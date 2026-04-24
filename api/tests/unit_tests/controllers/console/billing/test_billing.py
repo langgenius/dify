@@ -46,7 +46,6 @@ class TestPartnerTenants:
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
             patch("libs.login.check_csrf_token") as mock_csrf,
         ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
             mock_csrf.return_value = None
             yield {"db": mock_db, "csrf": mock_csrf}
 

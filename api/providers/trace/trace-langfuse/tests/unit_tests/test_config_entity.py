@@ -28,13 +28,13 @@ class TestLangfuseConfig:
     def test_missing_required_fields(self):
         """Test that required fields are enforced"""
         with pytest.raises(ValidationError):
-            LangfuseConfig()
+            LangfuseConfig.model_validate({})
 
         with pytest.raises(ValidationError):
-            LangfuseConfig(public_key="public")
+            LangfuseConfig.model_validate({"public_key": "public"})
 
         with pytest.raises(ValidationError):
-            LangfuseConfig(secret_key="secret")
+            LangfuseConfig.model_validate({"secret_key": "secret"})
 
     def test_host_validation_empty(self):
         """Test host validation with empty value"""

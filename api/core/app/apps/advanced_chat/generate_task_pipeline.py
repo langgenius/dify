@@ -53,14 +53,18 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
+    HumanInputRequiredPauseReasonPayload,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
     StreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -210,7 +214,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if message.status == MessageStatus.PAUSED and message.answer:
             self._task_state.answer = message.answer
 
-    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def process(
+        self,
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        AdvancedChatPausedBlockingResponse,
+        Generator[ChatbotAppStreamResponse, None, None],
+    ]:
         """
         Process generate task pipeline.
         :return:
@@ -226,14 +236,39 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> ChatbotAppBlockingResponse:
+    def _to_blocking_response(
+        self, generator: Generator[StreamResponse, None, None]
+    ) -> Union[ChatbotAppBlockingResponse, AdvancedChatPausedBlockingResponse]:
         """
         Process blocking response.
         :return:
         """
+        human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
+            elif isinstance(stream_response, HumanInputRequiredResponse):
+                human_input_responses.append(stream_response)
+            elif isinstance(stream_response, WorkflowPauseStreamResponse):
+                return AdvancedChatPausedBlockingResponse(
+                    task_id=stream_response.task_id,
+                    data=AdvancedChatPausedBlockingResponse.Data(
+                        id=self._message_id,
+                        mode=self._conversation_mode,
+                        conversation_id=self._conversation_id,
+                        message_id=self._message_id,
+                        workflow_run_id=stream_response.data.workflow_run_id,
+                        answer=self._task_state.answer,
+                        metadata=self._message_end_to_stream_response().metadata,
+                        created_at=self._message_created_at,
+                        paused_nodes=stream_response.data.paused_nodes,
+                        reasons=stream_response.data.reasons,
+                        status=stream_response.data.status,
+                        elapsed_time=stream_response.data.elapsed_time,
+                        total_tokens=stream_response.data.total_tokens,
+                        total_steps=stream_response.data.total_steps,
+                    ),
+                )
             elif isinstance(stream_response, MessageEndStreamResponse):
                 extras = {}
                 if stream_response.metadata:
@@ -254,7 +289,40 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             else:
                 continue
 
+        if human_input_responses:
+            return self._build_paused_blocking_response_from_human_input(human_input_responses)
+
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _build_paused_blocking_response_from_human_input(
+        self, human_input_responses: list[HumanInputRequiredResponse]
+    ) -> AdvancedChatPausedBlockingResponse:
+        runtime_state = self._resolve_graph_runtime_state()
+        paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
+        reasons = [
+            HumanInputRequiredPauseReasonPayload.from_response_data(response.data).model_dump(mode="json")
+            for response in human_input_responses
+        ]
+
+        return AdvancedChatPausedBlockingResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=AdvancedChatPausedBlockingResponse.Data(
+                id=self._message_id,
+                mode=self._conversation_mode,
+                conversation_id=self._conversation_id,
+                message_id=self._message_id,
+                workflow_run_id=human_input_responses[-1].workflow_run_id,
+                answer=self._task_state.answer,
+                metadata=self._message_end_to_stream_response().metadata,
+                created_at=self._message_created_at,
+                paused_nodes=paused_nodes,
+                reasons=reasons,
+                status=WorkflowExecutionStatus.PAUSED,
+                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
+            ),
+        )
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]

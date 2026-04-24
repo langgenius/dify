@@ -1,7 +1,10 @@
 from collections.abc import Generator
 
+import pytest
+
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
@@ -10,7 +13,8 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
 )
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestAdvancedChatGenerateResponseConverter:
@@ -27,6 +31,37 @@ class TestAdvancedChatGenerateResponseConverter:
         blocking = ChatbotAppBlockingResponse(task_id="t1", data=data)
         response = AdvancedChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
         assert "usage" not in response["metadata"]
+
+    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch):
+        data = AdvancedChatPausedBlockingResponse.Data(
+            id="msg-1",
+            mode="chat",
+            conversation_id="c1",
+            message_id="m1",
+            workflow_run_id="run-1",
+            answer="partial",
+            metadata={"usage": {"total_tokens": 1}},
+            created_at=1,
+            paused_nodes=["node-1"],
+            reasons=[{"type": PauseReasonType.HUMAN_INPUT_REQUIRED, "form_id": "form-1"}],
+            status=WorkflowExecutionStatus.PAUSED,
+            elapsed_time=0.1,
+            total_tokens=0,
+            total_steps=0,
+        )
+        original_model_dump = type(data).model_dump
+
+        def _model_dump_with_future_field(self, *args, **kwargs):
+            payload = original_model_dump(self, *args, **kwargs)
+            payload["future_field"] = "future-value"
+            return payload
+
+        monkeypatch.setattr(type(data), "model_dump", _model_dump_with_future_field)
+        blocking = AdvancedChatPausedBlockingResponse(task_id="t1", data=data)
+
+        response = AdvancedChatAppGenerateResponseConverter.convert_blocking_full_response(blocking)
+
+        assert response["data"]["future_field"] == "future-value"
 
     def test_stream_simple_response_includes_node_events(self):
         node_start = NodeStartStreamResponse(

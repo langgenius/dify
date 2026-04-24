@@ -7,6 +7,7 @@ import type {
   ExternalToolBlockType,
   HistoryBlockType,
   LastRunBlockType,
+  MenuTextMatch,
   QueryBlockType,
   RequestURLBlockType,
   VariableBlockType,
@@ -89,14 +90,14 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
-  const triggerMatchRef = useRef<string | null>(null)
+  const triggerMatchRef = useRef<MenuTextMatch | null>(null)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
   })
   const checkForTriggerMatch = useCallback((text: string, editor: LexicalEditor) => {
     const match = baseCheckForTriggerMatch(text, editor)
-    triggerMatchRef.current = match?.matchingString ?? null
+    triggerMatchRef.current = match
     return match
   }, [baseCheckForTriggerMatch])
 
@@ -183,7 +184,8 @@ const ComponentPicker = ({
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
     editor.update(() => {
-      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      const currentTriggerMatch = triggerMatchRef.current ?? checkForTriggerMatch(triggerString, editor)
+      const needRemove = currentTriggerMatch ? $splitNodeContainingQuery(currentTriggerMatch) : null
       if (needRemove)
         needRemove.remove()
     })
@@ -214,7 +216,7 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    const effectiveQueryString = triggerMatchRef.current ?? queryString
+    const effectiveQueryString = triggerMatchRef.current?.matchingString ?? queryString
 
     if (blurHidden)
       return null
