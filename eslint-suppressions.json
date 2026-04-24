@@ -1,4 +1,9 @@
 {
+  "e2e/cucumber.config.ts": {
+    "node/prefer-global/process": {
+      "count": 1
+    }
+  },
   "e2e/features/support/hooks.ts": {
     "no-console": {
       "count": 3
@@ -7,14 +12,45 @@
       "count": 1
     }
   },
+  "e2e/fixtures/auth.ts": {
+    "node/prefer-global/process": {
+      "count": 5
+    }
+  },
   "e2e/scripts/common.ts": {
     "node/prefer-global/buffer": {
       "count": 2
+    },
+    "node/prefer-global/process": {
+      "count": 8
+    }
+  },
+  "e2e/scripts/run-cucumber.ts": {
+    "node/prefer-global/process": {
+      "count": 9
+    }
+  },
+  "e2e/scripts/setup.ts": {
+    "node/prefer-global/process": {
+      "count": 4
     }
   },
   "e2e/support/process.ts": {
+    "node/prefer-global/process": {
+      "count": 4
+    },
     "ts/no-use-before-define": {
       "count": 2
+    }
+  },
+  "e2e/test-env.ts": {
+    "node/prefer-global/process": {
+      "count": 7
+    }
+  },
+  "packages/dify-ui/vite.config.ts": {
+    "node/prefer-global/process": {
+      "count": 1
     }
   },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {

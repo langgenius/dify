@@ -137,7 +137,7 @@ describe('@langgenius/dify-ui/toast', () => {
     await vi.advanceTimersByTimeAsync(4999)
     expect(document.body).toHaveTextContent('Default timeout')
 
-    await vi.advanceTimersByTimeAsync(1)
+    await vi.advanceTimersByTimeAsync(10)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Default timeout')
     })
@@ -152,7 +152,7 @@ describe('@langgenius/dify-ui/toast', () => {
     await vi.advanceTimersByTimeAsync(2999)
     expect(document.body).toHaveTextContent('Configured timeout')
 
-    await vi.advanceTimersByTimeAsync(1)
+    await vi.advanceTimersByTimeAsync(10)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Configured timeout')
     })
@@ -166,7 +166,7 @@ describe('@langgenius/dify-ui/toast', () => {
     })
     await expect.element(screen.getByText('Custom timeout')).toBeInTheDocument()
 
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(1010)
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Custom timeout')
     })

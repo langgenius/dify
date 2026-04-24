@@ -136,7 +136,7 @@ const StackExamples = () => {
 const PromiseExamples = () => {
   const createPromiseToast = () => {
     const request = new Promise<string>((resolve) => {
-      window.setTimeout(() => resolve('The deployment is now available in production.'), 1400)
+      window.setTimeout(resolve, 1400, 'The deployment is now available in production.')
     })
 
     void toast.promise(request, {
