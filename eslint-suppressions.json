@@ -1080,11 +1080,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/emoji-picker/Inner.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/base/emoji-picker/index.tsx": {
     "no-restricted-imports": {
       "count": 1
