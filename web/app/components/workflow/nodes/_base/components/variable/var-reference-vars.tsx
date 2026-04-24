@@ -30,6 +30,40 @@ import {
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 
+const resolveValueSelector = ({
+  itemData,
+  isFlat,
+  isSupportFileVar,
+  nodeId,
+  objPath,
+}: {
+  itemData: Var
+  isFlat?: boolean
+  isSupportFileVar?: boolean
+  nodeId: string
+  objPath: string[]
+}) => {
+  const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
+  const isFile = itemData.type === VarType.file && !isStructureOutput
+  const isSys = itemData.variable.startsWith('sys.')
+  const isEnv = itemData.variable.startsWith('env.')
+  const isChatVar = itemData.variable.startsWith('conversation.')
+  const isRagVariable = itemData.isRagVariable
+
+  return getValueSelector({
+    itemData,
+    isFlat,
+    isSupportFileVar,
+    isFile,
+    isSys,
+    isEnv,
+    isChatVar,
+    isRagVariable,
+    nodeId,
+    objPath,
+  })
+}
+
 type ItemProps = {
   nodeId: string
   title: string
@@ -69,9 +103,7 @@ const Item: FC<ItemProps> = ({
   onActivate,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
-  const isFile = itemData.type === VarType.file && !isStructureOutput
   const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && (itemData.children as Var[]).length > 0)
-  const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
   const isRagVariable = itemData.isRagVariable
@@ -156,15 +188,10 @@ const Item: FC<ItemProps> = ({
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    const valueSelector = getValueSelector({
+    const valueSelector = resolveValueSelector({
       itemData,
       isFlat,
       isSupportFileVar,
-      isFile,
-      isSys,
-      isEnv,
-      isChatVar,
-      isRagVariable,
       nodeId,
       objPath,
     })
@@ -343,21 +370,10 @@ const VarReferenceVars: FC<Props> = ({
       return
 
     const { itemData, nodeId, isFlat } = selectedItem
-    const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
-    const isFile = itemData.type === VarType.file && !isStructureOutput
-    const isSys = itemData.variable.startsWith('sys.')
-    const isEnv = itemData.variable.startsWith('env.')
-    const isChatVar = itemData.variable.startsWith('conversation.')
-    const isRagVariable = itemData.isRagVariable
-    const valueSelector = getValueSelector({
+    const valueSelector = resolveValueSelector({
       itemData,
       isFlat,
       isSupportFileVar,
-      isFile,
-      isSys,
-      isEnv,
-      isChatVar,
-      isRagVariable,
       nodeId,
       objPath: [],
     })
