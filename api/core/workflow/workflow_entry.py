@@ -8,6 +8,7 @@ from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
+from core.app.workflow.layers.iteration_variable_sync import IterationVariableSyncLayer
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import (
@@ -76,8 +77,9 @@ class _WorkflowChildEngineBuilder:
         variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
         """Build a child engine with a fresh runtime state and only child-safe layers."""
+        uses_isolated_pool = variable_pool is not None
         child_graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
+            variable_pool=variable_pool if uses_isolated_pool else parent_graph_runtime_state.variable_pool,
             start_at=time.perf_counter(),
             execution_context=parent_graph_runtime_state.execution_context,
         )
@@ -108,6 +110,8 @@ class _WorkflowChildEngineBuilder:
             child_engine_builder=self,
         )
         child_engine.layer(LLMQuotaLayer())
+        if uses_isolated_pool:
+            child_engine.layer(IterationVariableSyncLayer(parent_graph_runtime_state.variable_pool))
         return child_engine
 
 

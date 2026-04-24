@@ -115,6 +115,9 @@ class TestWorkflowChildEngineBuilder:
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(workflow_entry, "LLMQuotaLayer", return_value=sentinel.llm_quota_layer),
+            patch.object(
+                workflow_entry, "IterationVariableSyncLayer", return_value=sentinel.iter_sync_layer
+            ),
         ):
             result = builder.build_child_engine(
                 workflow_id="workflow-id",
@@ -147,7 +150,10 @@ class TestWorkflowChildEngineBuilder:
             config=sentinel.graph_engine_config,
             child_engine_builder=builder,
         )
-        assert child_engine.layer.call_args_list == [((sentinel.llm_quota_layer,), {})]
+        assert child_engine.layer.call_args_list == [
+            ((sentinel.llm_quota_layer,), {}),
+            ((sentinel.iter_sync_layer,), {}),
+        ]
 
     @pytest.mark.parametrize("node_cls", [_FakeLLMNode, _FakeQuestionClassifierNode])
     def test_build_child_engine_runs_llm_quota_layer_for_child_model_nodes(self, node_cls):
