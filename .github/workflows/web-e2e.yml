@@ -37,6 +37,12 @@ jobs:
       - name: Install API dependencies
         run: uv sync --project api --dev
 
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+          python3 .github/scripts/prepare_docker_ci_env.py
+
       - name: Install Playwright browser
         working-directory: ./e2e
         run: vp run e2e:install

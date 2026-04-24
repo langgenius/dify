@@ -9,3 +9,10 @@ runs:
         node-version-file: .nvmrc
         cache: true
         run-install: true
+    - name: Ensure web CLAUDE.md exists
+      shell: bash
+      working-directory: ./web
+      run: |
+        if [[ ! -f CLAUDE.md ]]; then
+          git show HEAD:web/CLAUDE.md > CLAUDE.md
+        fi

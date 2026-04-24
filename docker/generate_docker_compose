@@ -3,6 +3,18 @@ import os
 import re
 import sys
 
+# Security-critical vars that must be provided explicitly in deployment .env
+# (do not silently fall back to weak defaults via compose interpolation).
+REQUIRED_SECRET_VARS = frozenset(
+    {
+        "SECRET_KEY",
+        "DB_PASSWORD",
+        "REDIS_PASSWORD",
+        "PLUGIN_DIFY_INNER_API_KEY",
+        "MINIO_SECRET_KEY",
+    }
+)
+
 # Variables that exist only for Docker Compose orchestration and must NOT be
 # injected into containers as environment variables.
 SHARED_ENV_EXCLUDE = frozenset(
@@ -52,6 +64,9 @@ def generate_shared_env_block(env_vars, anchor_name="shared-api-worker-env"):
     lines = [f"x-shared-env: &{anchor_name}"]
     for key, default in env_vars.items():
         if key in SHARED_ENV_EXCLUDE:
+            continue
+        if key in REQUIRED_SECRET_VARS:
+            lines.append(f"  {key}: ${{{key}:?{key} must be set}}")
             continue
         # If default value is empty, use ${KEY:-}
         if default == "":
@@ -115,6 +130,12 @@ def main():
 
     if not env_vars:
         print("Warning: No environment variables found in .env.example.")
+
+    missing_required_secret_vars = REQUIRED_SECRET_VARS - env_vars.keys()
+    if missing_required_secret_vars:
+        missing_sorted = ", ".join(sorted(missing_required_secret_vars))
+        print(f"Error: Missing required secret vars in .env.example: {missing_sorted}")
+        sys.exit(1)
 
     # Generate shared environment variables block
     shared_env_block = generate_shared_env_block(env_vars, anchor_name)

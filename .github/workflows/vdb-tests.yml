@@ -49,6 +49,7 @@ jobs:
         run: |
           cp docker/.env.example docker/.env
           cp docker/middleware.env.example docker/middleware.env
+          python3 .github/scripts/prepare_docker_ci_env.py
 
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
