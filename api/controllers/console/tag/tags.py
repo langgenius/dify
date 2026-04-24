@@ -202,6 +202,7 @@ def _remove_tag_binding() -> tuple[dict[str, str], int]:
 class TagBindingCollectionApi(Resource):
     """Canonical collection resource for tag binding creation."""
 
+    @console_ns.doc("create_tag_binding")
     @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
     @setup_required
     @login_required
@@ -237,6 +238,7 @@ class TagBindingItemApi(Resource):
 class DeprecatedTagBindingCreateApi(Resource):
     """Deprecated verb-based alias for tag binding creation."""
 
+    @console_ns.doc("create_tag_binding_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated legacy alias. Use POST /tag-bindings instead.")
     @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
@@ -251,6 +253,7 @@ class DeprecatedTagBindingCreateApi(Resource):
 class DeprecatedTagBindingRemoveApi(Resource):
     """Deprecated verb-based alias for tag binding deletion."""
 
+    @console_ns.doc("delete_tag_binding_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated legacy alias. Use DELETE /tag-bindings/{id} instead.")
     @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])

@@ -377,6 +377,12 @@ class TestTagBindingRouteMetadata:
         assert TagBindingCollectionApi.post.__apidoc__.get("deprecated") is not True
         assert TagBindingItemApi.delete.__apidoc__.get("deprecated") is not True
 
+    def test_write_routes_have_stable_operation_ids(self):
+        assert TagBindingCollectionApi.post.__apidoc__["id"] == "create_tag_binding"
+        assert TagBindingItemApi.delete.__apidoc__["id"] == "delete_tag_binding"
+        assert DeprecatedTagBindingCreateApi.post.__apidoc__["id"] == "create_tag_binding_deprecated"
+        assert DeprecatedTagBindingRemoveApi.post.__apidoc__["id"] == "delete_tag_binding_deprecated"
+
     def test_canonical_and_legacy_write_routes_are_registered(self):
         route_map = {
             resource.__name__: urls
