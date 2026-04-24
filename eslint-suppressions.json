@@ -4270,11 +4270,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4289,16 +4284,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/help-link.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4499,22 +4484,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/agent/components/model-bar.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/agent/components/tool-icon.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -4859,11 +4828,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -4966,14 +4930,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5007,11 +4963,6 @@
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/actions.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
@@ -5235,11 +5186,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/tool/components/copy-id.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/tool/components/input-var-list.tsx": {
     "ts/no-explicit-any": {
       "count": 7
@@ -5402,11 +5348,6 @@
   },
   "web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/note-node/note-editor/toolbar/command.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
