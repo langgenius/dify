@@ -142,7 +142,7 @@ function jumpTo(url: string) {
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
 
-const buildSigninUrlWithRedirect = (): string => {
+export const buildSigninUrlWithRedirect = (): string => {
   const loginUrl = `${globalThis.location.origin}${basePath}/signin`
 
   // Only preserve redirect URL for OAuth authorize pages
