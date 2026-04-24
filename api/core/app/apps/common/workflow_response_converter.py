@@ -9,7 +9,6 @@ from typing import Any, NewType, TypedDict, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.apps.common.pause_reason_serializer import pause_reason_to_public_dict
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
