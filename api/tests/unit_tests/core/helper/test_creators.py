@@ -50,7 +50,9 @@ class TestUploadDSL:
     def test_raises_on_http_error(self, mock_post):
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Server Error", request=MagicMock(), response=MagicMock(),
+            "Server Error",
+            request=MagicMock(),
+            response=MagicMock(),
         )
         mock_post.return_value = mock_response
 
