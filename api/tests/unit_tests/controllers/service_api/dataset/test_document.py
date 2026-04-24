@@ -701,8 +701,8 @@ class TestDocumentApiDelete:
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check`` which
     internally calls ``validate_and_get_api_token``.  To bypass the decorator
     we call the original function via ``__wrapped__`` (preserved by
-    ``functools.wraps``).  ``delete`` queries the dataset via
-    ``db.session.query(Dataset)`` directly, so we patch ``db`` at the
+    ``functools.wraps``).  ``delete`` loads the dataset via
+    ``db.session.scalar(select(Dataset)...)``, so we patch ``db`` at the
     controller module.
     """
 

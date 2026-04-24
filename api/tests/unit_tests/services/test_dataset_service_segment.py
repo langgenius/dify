@@ -714,7 +714,6 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
         ):
-            segments_query = MagicMock()
             # execute().all() for segments_info (multi-column)
             execute_result = MagicMock()
             execute_result.all.return_value = [

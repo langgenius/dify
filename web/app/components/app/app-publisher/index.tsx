@@ -29,7 +29,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
@@ -46,6 +46,7 @@ import {
   PublisherActionsSection,
   PublisherSummarySection,
 } from './sections'
+import SuggestedAction from './suggested-action'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
@@ -134,6 +135,7 @@ const AppPublisher = ({
   const [evaluationWorkflowSwitchTargets, setEvaluationWorkflowSwitchTargets] = useState<EvaluationWorkflowAssociatedTarget[]>([])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
+  const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
 
   const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
@@ -385,6 +387,22 @@ const AppPublisher = ({
     if (!nextOpen)
       setEvaluationWorkflowSwitchTargets([])
   }, [])
+  const handlePublishToMarketplace = useCallback(async () => {
+    if (!appDetail?.id || publishingToMarketplace)
+      return
+    setPublishingToMarketplace(true)
+    try {
+      const res = await publishToCreatorsPlatform({ appID: appDetail.id })
+      if (res.redirect_url)
+        window.open(res.redirect_url, '_blank')
+    }
+    catch {
+      toast.error(t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
+    }
+    finally {
+      setPublishingToMarketplace(false)
+    }
+  }, [appDetail?.id, publishingToMarketplace, t])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -509,6 +527,19 @@ const AppPublisher = ({
                   workflowToolAvailable={workflowToolAvailable}
                   workflowToolMessage={workflowToolMessage}
                 />
+                {systemFeatures.enable_creators_platform && (
+                  <div className="border-t border-divider-subtle p-4">
+                    <SuggestedAction
+                      icon={<span className="i-ri-store-line h-4 w-4" />}
+                      disabled={!publishedAt || publishingToMarketplace}
+                      onClick={handlePublishToMarketplace}
+                    >
+                      {publishingToMarketplace
+                        ? t('common.publishingToMarketplace', { ns: 'workflow' })
+                        : t('common.publishToMarketplace', { ns: 'workflow' })}
+                    </SuggestedAction>
+                  </div>
+                )}
               </>
             )}
           </div>

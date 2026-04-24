@@ -90,6 +90,22 @@ See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for t
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui type-check` — `tsgo --noEmit` for this package only.
 
+### Disabling Animations In Tests
+
+Base UI can wait for `element.getAnimations()` to finish before it unmounts overlays, panels, and transition-driven components. Browser-based test runners can make that timing unstable, especially when tests assert final DOM state rather than animation behavior.
+
+Set the Base UI test flag in a Vitest setup file to skip those waits:
+
+```ts
+(
+  globalThis as typeof globalThis & {
+    BASE_UI_ANIMATIONS_DISABLED: boolean
+  }
+).BASE_UI_ANIMATIONS_DISABLED = true
+```
+
+`packages/dify-ui/vitest.setup.ts` already applies this for primitive tests.
+
 See `[AGENTS.md](./AGENTS.md)` for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).

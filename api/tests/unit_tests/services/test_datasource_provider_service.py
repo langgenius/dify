@@ -36,29 +36,13 @@ class TestDatasourceProviderService:
     @pytest.fixture
     def mock_db_session(self):
         """
-        Robust, chainable query mock.
-        q returns itself for .filter_by(), .order_by(), .where() so any
-        SQLAlchemy chaining pattern works without multiple brittle sub-mocks.
+        Mock session with scalar/scalars defaults for current SQLAlchemy access paths.
         """
         with (
             patch("services.datasource_provider_service.Session") as mock_cls,
             patch("services.datasource_provider_service.sessionmaker") as mock_sm,
         ):
             sess = MagicMock(spec=Session)
-
-            q = MagicMock()
-            sess.query.return_value = q
-
-            # Self-returning chain — any method called on q returns q
-            q.filter_by.return_value = q
-            q.order_by.return_value = q
-            q.where.return_value = q
-
-            # Default terminal values (tests override per-case)
-            q.first.return_value = None
-            q.all.return_value = []
-            q.count.return_value = 0
-            q.delete.return_value = 1
 
             # Default values for select()-style calls (tests override per-case)
             sess.scalar.return_value = None

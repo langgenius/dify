@@ -206,14 +206,14 @@ const CreateAppModal = ({
       </Modal>
       {showAppIconPicker && (
         <AppIconPicker
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
           onSelect={(payload) => {
             setAppIcon(payload)
             setShowAppIconPicker(false)
           }}
           onClose={() => {
-            setAppIcon(appIconType === 'image'
-              ? { type: 'image' as const, url: appIconUrl, fileId: _appIcon }
-              : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground })
             setShowAppIconPicker(false)
           }}
         />

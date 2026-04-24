@@ -140,6 +140,20 @@ function jumpTo(url: string) {
   globalThis.location.href = url
 }
 
+const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+
+export const buildSigninUrlWithRedirect = (): string => {
+  const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+
+  // Only preserve redirect URL for OAuth authorize pages
+  if (globalThis.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+    const currentUrl = globalThis.location.href
+    return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
+  }
+
+  return loginUrl
+}
+
 function unicodeToChar(text: string) {
   if (!text)
     return ''
@@ -795,14 +809,14 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        jumpTo(loginUrl)
+        jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
       if (!silent) {
         toast.error(message)
         return Promise.reject(err)
       }
-      jumpTo(loginUrl)
+      jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
     }
     else {
