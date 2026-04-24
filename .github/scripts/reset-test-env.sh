@@ -350,7 +350,7 @@ volume_exists() {
 append_unique_volume() {
   local candidate="$1"
   local existing
-  [ -n "$candidate" ] || return
+  [ -n "$candidate" ] || return 0
 
   for existing in "${RESOLVED_VOLUME_NAMES[@]}"; do
     if [ "$existing" = "$candidate" ]; then
