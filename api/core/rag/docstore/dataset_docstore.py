@@ -13,6 +13,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import SegmentType
 
+
 class DatasetDocumentStore:
     def __init__(
         self,
@@ -138,7 +139,7 @@ class DatasetDocumentStore:
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
                                 word_count=len(child.page_content),
-                                type= SegmentType.AUTOMATIC,
+                                type=SegmentType.AUTOMATIC,
                                 created_by=self._user_id,
                             )
                             db.session.add(child_segment)

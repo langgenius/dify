@@ -1,4 +1,3 @@
-from models.enums import SegmentType
 import logging
 
 from sqlalchemy import delete, select
@@ -17,6 +16,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentType
 
 logger = logging.getLogger(__name__)
 
