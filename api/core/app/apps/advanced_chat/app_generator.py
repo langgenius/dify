@@ -35,8 +35,8 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import (
-    ChatbotAppBlockingResponse,
     AdvancedChatPausedBlockingResponse,
+    ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer

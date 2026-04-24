@@ -4,8 +4,8 @@ import pytest
 
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
-    ChatbotAppBlockingResponse,
     AdvancedChatPausedBlockingResponse,
+    ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
     MessageEndStreamResponse,

@@ -318,7 +318,7 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        pause_reasons = [reason.model_dump(mode='json') for reason in event.reasons]
+        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}

@@ -39,9 +39,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
     AnnotationReply,
     AnnotationReplyAccount,
-    AdvancedChatPausedBlockingResponse,
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
