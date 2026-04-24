@@ -175,6 +175,12 @@ docker compose up -d
 
 انشر Dify على AKS بنقرة واحدة باستخدام [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### النشر على Render
+
+انشر Dify على [Render](https://render.com) باستخدام Blueprint [render.yaml](../../render.yaml). انقر على الزر أدناه للنشر:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## المساهمة
 
 لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا.

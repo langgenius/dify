@@ -179,6 +179,12 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) kullanarak Dify'ı tek tıkla AKS'ye dağıtın
 
+#### Render'a Dağıtım
+
+[render.yaml](../../render.yaml) Blueprint kullanarak Dify'ı [Render](https://render.com)'a dağıtın. Dağıtmak için aşağıdaki düğmeye tıklayın:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## Katkıda Bulunma
 
 Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakabilirsiniz.

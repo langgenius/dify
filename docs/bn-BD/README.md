@@ -192,6 +192,12 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) ব্যবহার করে Dify কে AKS-এ এক ক্লিকে ডিপ্লয় করুন
 
+#### Render-এ ডিপ্লয় করুন
+
+[render.yaml](../../render.yaml) Blueprint ব্যবহার করে Dify কে [Render](https://render.com)-এ ডিপ্লয় করুন। ডিপ্লয় করতে নিচের বাটনে ক্লিক করুন:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## Contributing
 
 যারা কোড অবদান রাখতে চান, তাদের জন্য আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।

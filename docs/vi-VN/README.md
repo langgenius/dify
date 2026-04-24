@@ -180,6 +180,12 @@ Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng
 
 Triển khai Dify lên AKS chỉ với một cú nhấp chuột bằng [Azure Devops Pipeline Helm Chart bởi @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Triển khai lên Render
+
+Triển khai Dify lên [Render](https://render.com) bằng Blueprint [render.yaml](../../render.yaml). Nhấp vào nút bên dưới để triển khai:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## Đóng góp
 
 Đối với những người muốn đóng góp mã, xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.
