@@ -38,7 +38,7 @@ class PluginModelAssembly:
     @property
     def model_provider_factory(self) -> ModelProviderFactory:
         if self._model_provider_factory is None:
-            self._model_provider_factory = ModelProviderFactory(model_runtime=self.model_runtime)
+            self._model_provider_factory = ModelProviderFactory(runtime=self.model_runtime)
         return self._model_provider_factory
 
     @property

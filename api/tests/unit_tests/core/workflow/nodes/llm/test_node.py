@@ -187,7 +187,7 @@ def graph_init_params() -> GraphInitParams:
 
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
         user_inputs={},
     )
@@ -208,7 +208,7 @@ def llm_node(
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
-        config=llm_node_data,
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -241,9 +241,14 @@ def model_config(monkeypatch):
     )
 
     # Create actual provider and model type instances
-    model_provider_factory = ModelProviderFactory(model_runtime=create_plugin_model_runtime(tenant_id="test"))
+    model_provider_factory = ModelProviderFactory(runtime=create_plugin_model_runtime(tenant_id="test"))
     provider_instance = model_provider_factory.get_model_provider("openai")
-    model_type_instance = model_provider_factory.get_model_type_instance("openai", ModelType.LLM)
+    from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+
+    model_type_instance = LargeLanguageModel(
+        provider_schema=provider_instance,
+        model_runtime=model_provider_factory.runtime,
+    )
 
     # Create a ProviderModelBundle
     provider_model_bundle = ProviderModelBundle(
@@ -1173,7 +1178,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
-        config=llm_node_data,
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,

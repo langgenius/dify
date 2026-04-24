@@ -427,22 +427,29 @@ def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     configuration = _build_provider_configuration()
     mock_factory = Mock()
-    mock_model_type_instance = Mock()
+    mock_factory.runtime = Mock()
+    mock_provider_schema = Mock()
     mock_schema = _build_ai_model("gpt-4o")
-    mock_factory.get_model_type_instance.return_value = mock_model_type_instance
+    mock_factory.get_model_provider.return_value = mock_provider_schema
     mock_factory.get_model_schema.return_value = mock_schema
 
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_provider_factory",
-        return_value=mock_factory,
-    ) as mock_factory_builder:
+    with (
+        patch(
+            "core.entities.provider_configuration.create_plugin_model_provider_factory",
+            return_value=mock_factory,
+        ) as mock_factory_builder,
+        patch(
+            "graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel"
+        ) as mock_model_cls,
+    ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
-    assert model_type_instance is mock_model_type_instance
+    assert model_type_instance is mock_model_cls.return_value
     assert model_schema is mock_schema
     assert mock_factory_builder.call_count == 2
-    mock_factory.get_model_type_instance.assert_called_once_with(provider="openai", model_type=ModelType.LLM)
+    mock_factory.get_model_provider.assert_called_once_with("openai")
+    mock_model_cls.assert_called_once_with(provider_schema=mock_provider_schema, model_runtime=mock_factory.runtime)
     mock_factory.get_model_schema.assert_called_once_with(
         provider="openai",
         model_type=ModelType.LLM,
@@ -457,9 +464,10 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
     configuration.bind_model_runtime(bound_runtime)
 
     mock_factory = Mock()
-    mock_model_type_instance = Mock()
+    mock_factory.runtime = bound_runtime
+    mock_provider_schema = Mock()
     mock_schema = _build_ai_model("gpt-4o")
-    mock_factory.get_model_type_instance.return_value = mock_model_type_instance
+    mock_factory.get_model_provider.return_value = mock_provider_schema
     mock_factory.get_model_schema.return_value = mock_schema
 
     with (
@@ -467,14 +475,19 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
             "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
         ) as mock_factory_cls,
         patch("core.entities.provider_configuration.create_plugin_model_provider_factory") as mock_factory_builder,
+        patch(
+            "graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel"
+        ) as mock_model_cls,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
-    assert model_type_instance is mock_model_type_instance
+    assert model_type_instance is mock_model_cls.return_value
     assert model_schema is mock_schema
     assert mock_factory_cls.call_count == 2
-    mock_factory_cls.assert_called_with(model_runtime=bound_runtime)
+    mock_factory_cls.assert_called_with(runtime=bound_runtime)
+    mock_factory.get_model_provider.assert_called_once_with("openai")
+    mock_model_cls.assert_called_once_with(provider_schema=mock_provider_schema, model_runtime=bound_runtime)
     mock_factory_builder.assert_not_called()
 
 

@@ -111,7 +111,7 @@ class StaticRepo(HumanInputFormRepository):
 
 
 def _build_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="user",
             app_id="app",
@@ -140,7 +140,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
         node_id=start_config["id"],
-        config=StartNodeData(title="Start", variables=[]),
+        data=StartNodeData(title="Start", variables=[]),
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -155,7 +155,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
-        config=human_data,
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
@@ -165,7 +165,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
-        config=human_data,
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
@@ -183,7 +183,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     end_config = {"id": "end", "data": end_data.model_dump()}
     end_node = EndNode(
         node_id=end_config["id"],
-        config=end_data,
+        data=end_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

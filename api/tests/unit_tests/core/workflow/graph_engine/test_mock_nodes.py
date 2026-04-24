@@ -98,7 +98,7 @@ class MockNodeMixin:
 
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             **kwargs,

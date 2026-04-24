@@ -24,6 +24,7 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
+from graphon.model_runtime import ModelRuntime
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -33,7 +34,7 @@ from graphon.model_runtime.entities.provider_entities import (
 )
 from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.model_runtime.runtime import ModelRuntime
+
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.enums import CredentialSourceType
@@ -109,7 +110,7 @@ class ProviderConfiguration(BaseModel):
     def get_model_provider_factory(self) -> ModelProviderFactory:
         """Return a provider factory that preserves any request-bound runtime."""
         if self._bound_model_runtime is not None:
-            return ModelProviderFactory(model_runtime=self._bound_model_runtime)
+            return ModelProviderFactory(runtime=self._bound_model_runtime)
         return create_plugin_model_provider_factory(tenant_id=self.tenant_id)
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> dict[str, Any] | None:
@@ -1392,10 +1393,32 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
+        from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+        from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
+        from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
+        from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
+        from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
+        from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 
-        # Get model instance of LLM
-        return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
+        model_class_by_type: dict[ModelType, type[AIModel]] = {
+            ModelType.LLM: LargeLanguageModel,
+            ModelType.TEXT_EMBEDDING: TextEmbeddingModel,
+            ModelType.RERANK: RerankModel,
+            ModelType.SPEECH2TEXT: Speech2TextModel,
+            ModelType.MODERATION: ModerationModel,
+            ModelType.TTS: TTSModel,
+        }
+
+        model_class = model_class_by_type.get(model_type)
+        if model_class is None:
+            raise ValueError(f"Unsupported model type: {model_type}")
+
+        model_provider_factory = self.get_model_provider_factory()
+        provider_schema = model_provider_factory.get_model_provider(self.provider.provider)
+        return model_class(
+            provider_schema=provider_schema,
+            model_runtime=model_provider_factory.runtime,
+        )
 
     def get_model_schema(
         self, model_type: ModelType, model: str, credentials: dict[str, Any] | None

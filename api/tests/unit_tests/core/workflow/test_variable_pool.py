@@ -110,7 +110,7 @@ class TestVariablePool:
         assert pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"]) is not None
 
     def test_constructor_loads_legacy_bootstrap_kwargs(self):
-        pool = VariablePool(
+        pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="test_user_id"),
             environment_variables=[StringVariable(name="env_var", value="env-value")],
             conversation_variables=[StringVariable(name="conv_var", value="conv-value")],

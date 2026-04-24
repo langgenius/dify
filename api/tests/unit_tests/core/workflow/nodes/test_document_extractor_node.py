@@ -49,7 +49,7 @@ def document_extractor_node(graph_init_params):
     http_client = Mock()
     node = DocumentExtractorNode(
         node_id="test_node_id",
-        config=node_data,
+        data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
         http_client=http_client,
@@ -187,11 +187,17 @@ def test_run_extract_text(
     monkeypatch.setattr("graphon.file.file_manager.download", mock_download)
 
     if mime_type == "application/pdf":
-        mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        mock_extract_by_extension = Mock(return_value=expected_text[0])
+        monkeypatch.setattr(
+            "graphon.nodes.document_extractor.node._extract_text_by_file_extension",
+            mock_extract_by_extension,
+        )
     elif mime_type.startswith("application/vnd.openxmlformats"):
-        mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        mock_extract_by_mime = Mock(return_value=expected_text[0])
+        monkeypatch.setattr(
+            "graphon.nodes.document_extractor.node._extract_text_by_mime_type",
+            mock_extract_by_mime,
+        )
 
     result = document_extractor_node._run()
 
@@ -428,13 +434,13 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
 
 
 @pytest.mark.parametrize(
-    ("extension", "mime_type"),
+    ("extension", "mime_type", "route"),
     [
-        (".xlsx", "text/plain"),
-        (None, "application/vnd.ms-excel"),
+        (".xlsx", "text/plain", "extension"),
+        (None, "application/vnd.ms-excel", "mime"),
     ],
 )
-def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, extension, mime_type):
+def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, extension, mime_type, route):
     file = Mock(spec=File)
     file.extension = extension
     file.mime_type = mime_type
@@ -445,9 +451,13 @@ def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, ext
             return_value=b"excel",
         ),
         patch(
-            "graphon.nodes.document_extractor.node._extract_text_from_excel",
+            "graphon.nodes.document_extractor.node._extract_text_by_file_extension",
             return_value="excel text",
-        ) as mock_extract,
+        ) as mock_extract_by_extension,
+        patch(
+            "graphon.nodes.document_extractor.node._extract_text_by_mime_type",
+            return_value="excel text",
+        ) as mock_extract_by_mime,
     ):
         result = _extract_text_from_file(
             document_extractor_node.http_client,
@@ -456,7 +466,20 @@ def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, ext
         )
 
     assert result == "excel text"
-    mock_extract.assert_called_once_with(b"excel")
+    if route == "extension":
+        mock_extract_by_extension.assert_called_once_with(
+            file_content=b"excel",
+            file_extension=".xlsx",
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+        mock_extract_by_mime.assert_not_called()
+    else:
+        mock_extract_by_mime.assert_called_once_with(
+            file_content=b"excel",
+            mime_type="application/vnd.ms-excel",
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+        mock_extract_by_extension.assert_not_called()
 
 
 def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):

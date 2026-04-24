@@ -44,7 +44,7 @@ def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
     init_params, runtime_state = _build_context(graph_config={})
     node = TriggerEventNode(
         node_id="node-1",
-        config=_build_node_data(),
+        data=_build_node_data(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )
