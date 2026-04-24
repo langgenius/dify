@@ -54,7 +54,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
-    ChatbotAppPausedBlockingResponse,
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
     HumanInputRequiredResponse,
@@ -217,7 +217,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
     ) -> Union[
         ChatbotAppBlockingResponse,
-        ChatbotAppPausedBlockingResponse,
+        AdvancedChatPausedBlockingResponse,
         Generator[ChatbotAppStreamResponse, None, None],
     ]:
         """
@@ -237,7 +237,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Union[ChatbotAppBlockingResponse, ChatbotAppPausedBlockingResponse]:
+    ) -> Union[ChatbotAppBlockingResponse, AdvancedChatPausedBlockingResponse]:
         """
         Process blocking response.
         :return:
@@ -249,9 +249,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             elif isinstance(stream_response, HumanInputRequiredResponse):
                 human_input_responses.append(stream_response)
             elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                return ChatbotAppPausedBlockingResponse(
+                return AdvancedChatPausedBlockingResponse(
                     task_id=stream_response.task_id,
-                    data=ChatbotAppPausedBlockingResponse.Data(
+                    data=AdvancedChatPausedBlockingResponse.Data(
                         id=self._message_id,
                         mode=self._conversation_mode,
                         conversation_id=self._conversation_id,
@@ -295,7 +295,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _build_paused_blocking_response_from_human_input(
         self, human_input_responses: list[HumanInputRequiredResponse]
-    ) -> ChatbotAppPausedBlockingResponse:
+    ) -> AdvancedChatPausedBlockingResponse:
         runtime_state = self._resolve_graph_runtime_state()
         paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
         reasons = []
@@ -304,9 +304,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             reason["type"] = PauseReasonType.HUMAN_INPUT_REQUIRED
             reasons.append(reason)
 
-        return ChatbotAppPausedBlockingResponse(
+        return AdvancedChatPausedBlockingResponse(
             task_id=self._application_generate_entity.task_id,
-            data=ChatbotAppPausedBlockingResponse.Data(
+            data=AdvancedChatPausedBlockingResponse.Data(
                 id=self._message_id,
                 mode=self._conversation_mode,
                 conversation_id=self._conversation_id,

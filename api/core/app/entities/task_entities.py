@@ -774,7 +774,7 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
     data: Data
 
 
-class ChatbotAppPausedBlockingResponse(AppBlockingResponse):
+class AdvancedChatPausedBlockingResponse(AppBlockingResponse):
     """
     ChatbotAppPausedBlockingResponse entity
     """

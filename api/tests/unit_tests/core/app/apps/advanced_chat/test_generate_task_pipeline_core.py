@@ -41,7 +41,7 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import (
     AnnotationReply,
     AnnotationReplyAccount,
-    ChatbotAppPausedBlockingResponse,
+    AdvancedChatPausedBlockingResponse,
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
@@ -158,7 +158,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         response = pipeline._to_blocking_response(_gen())
 
-        assert isinstance(response, ChatbotAppPausedBlockingResponse)
+        assert isinstance(response, AdvancedChatPausedBlockingResponse)
         assert response.data.workflow_run_id == "run-id"
         assert response.data.status == "paused"
         assert response.data.paused_nodes == ["node-1"]

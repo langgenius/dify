@@ -5,7 +5,7 @@ from core.app.apps.base_app_generate_response_converter import AppGenerateRespon
 from core.app.entities.task_entities import (
     AppStreamResponse,
     ChatbotAppBlockingResponse,
-    ChatbotAppPausedBlockingResponse,
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
     MessageEndStreamResponse,
@@ -17,18 +17,18 @@ from core.app.entities.task_entities import (
 
 
 class AdvancedChatAppGenerateResponseConverter(
-    AppGenerateResponseConverter[ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse]
+    AppGenerateResponseConverter[ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse]
 ):
     @classmethod
     def convert_blocking_full_response(
-        cls, blocking_response: ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse
+        cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
     ) -> dict[str, Any]:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        if isinstance(blocking_response, ChatbotAppPausedBlockingResponse):
+        if isinstance(blocking_response, AdvancedChatPausedBlockingResponse):
             paused_data = blocking_response.data.model_dump(mode="json")
             return {
                 "event": StreamEvent.WORKFLOW_PAUSED.value,
@@ -60,7 +60,7 @@ class AdvancedChatAppGenerateResponseConverter(
 
     @classmethod
     def convert_blocking_simple_response(
-        cls, blocking_response: ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse
+        cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
     ) -> dict[str, Any]:
         """
         Convert blocking simple response.

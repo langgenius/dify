@@ -36,7 +36,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
-    ChatbotAppPausedBlockingResponse,
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
@@ -660,7 +660,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> (
-        ChatbotAppBlockingResponse | ChatbotAppPausedBlockingResponse | Generator[ChatbotAppStreamResponse, None, None]
+        ChatbotAppBlockingResponse
+        | AdvancedChatPausedBlockingResponse
+        | Generator[ChatbotAppStreamResponse, None, None]
     ):
         """
         Handle response.

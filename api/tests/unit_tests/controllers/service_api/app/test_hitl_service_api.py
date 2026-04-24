@@ -20,7 +20,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import (
-    ChatbotAppPausedBlockingResponse,
+    AdvancedChatPausedBlockingResponse,
     HumanInputRequiredResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowPauseStreamResponse,
@@ -100,8 +100,8 @@ def _build_service_api_pause_converter() -> WorkflowResponseConverter:
     )
 
 
-def _build_advanced_chat_paused_blocking_response() -> ChatbotAppPausedBlockingResponse:
-    data = ChatbotAppPausedBlockingResponse.Data(
+def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockingResponse:
+    data = AdvancedChatPausedBlockingResponse.Data(
         id="msg-1",
         mode="chat",
         conversation_id="c1",
@@ -123,7 +123,7 @@ def _build_advanced_chat_paused_blocking_response() -> ChatbotAppPausedBlockingR
         total_tokens=0,
         total_steps=0,
     )
-    return ChatbotAppPausedBlockingResponse(task_id="t1", data=data)
+    return AdvancedChatPausedBlockingResponse(task_id="t1", data=data)
 
 
 def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingResponse:
@@ -481,7 +481,7 @@ class TestHitlServiceApi:
 
         response = pipeline._to_blocking_response(_gen())
 
-        assert isinstance(response, ChatbotAppPausedBlockingResponse)
+        assert isinstance(response, AdvancedChatPausedBlockingResponse)
         assert response.data.answer == "partial answer"
         assert response.data.workflow_run_id == "run-id"
         assert response.data.reasons[0]["form_id"] == "form-1"
