@@ -310,7 +310,6 @@ class TestSystemSetup:
     def test_should_allow_when_setup_complete(self, mock_db):
         """Test that requests are allowed when setup is complete"""
         # Arrange
-        ...
 
         @setup_required
         def admin_view():

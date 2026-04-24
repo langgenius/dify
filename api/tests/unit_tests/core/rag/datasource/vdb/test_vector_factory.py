@@ -372,19 +372,11 @@ def test_vector_delegation_methods(vector_factory_module):
 
 
 def test_search_by_file_handles_missing_and_existing_upload(vector_factory_module, monkeypatch):
-    class _Field:
-        def __eq__(self, value):
-            return value
-
-    upload_query = MagicMock()
-    upload_query.where.return_value = upload_query
-
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
 
     mock_session = SimpleNamespace(get=lambda _model, _id: None)
-    monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
     monkeypatch.setattr(vector_factory_module, "db", SimpleNamespace(session=mock_session))
 
     assert vector.search_by_file("file-1") == []

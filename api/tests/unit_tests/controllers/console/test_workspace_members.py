@@ -16,9 +16,6 @@ def app():
     return flask_app
 
 
-def _mock_wraps_db(mock_db): ...
-
-
 def _build_feature_flags():
     placeholder_quota = SimpleNamespace(limit=0, size=0)
     workspace_members = SimpleNamespace(is_available=lambda count: True)
@@ -48,7 +45,6 @@ class TestMemberInviteEmailApi:
         mock_get_features,
         app,
     ):
-        _mock_wraps_db(mock_db)
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 

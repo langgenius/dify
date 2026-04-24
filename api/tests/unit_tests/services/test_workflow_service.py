@@ -1649,8 +1649,6 @@ class TestWorkflowServiceCredentialValidation:
         """Missing BuiltinToolProvider → plugin requires no credentials → no error."""
         # Arrange
         with patch("services.workflow_service.db") as mock_db:
-            ...
-
             # Act + Assert (should NOT raise)
             service._check_default_tool_credential("tenant-1", "some-provider")
 

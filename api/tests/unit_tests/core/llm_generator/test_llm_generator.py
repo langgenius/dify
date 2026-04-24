@@ -491,7 +491,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_no_last_run_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "code"}}]}}
 
@@ -517,7 +517,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_node_type_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             # Cause exception in node_type logic
             workflow.graph_dict = {"graph": {"nodes": []}}
@@ -544,7 +544,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_empty_agent_log(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
 
@@ -632,7 +632,7 @@ class TestLLMGenerator:
             instance.invoke_llm.return_value = mock_response
 
             with patch("extensions.ext_database.db.session") as mock_session:
-                mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+                mock_session.return_value.scalar.return_value = MagicMock()
                 workflow = MagicMock()
                 workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "other"}}]}}
 
