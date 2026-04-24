@@ -45,7 +45,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
       <Tooltip>
         <TooltipTrigger
           render={(
-            <div className="relative">
+            <div className="relative" aria-label={tooltip}>
               <ModelSelector
                 modelList={[]}
                 triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
@@ -69,8 +69,9 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   if (!modelList)
     return null
 
+  const modelNotInstalledTooltip = t('nodes.agent.modelNotInstallTooltip', { ns: 'workflow' })
   const modelSelector = (
-    <div className="relative">
+    <div className="relative" aria-label={showWarn ? modelNotInstalledTooltip : undefined}>
       <ModelSelector
         modelList={modelList}
         triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
@@ -92,7 +93,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   return (
     <Tooltip>
       <TooltipTrigger render={modelSelector} />
-      <TooltipContent>{t('nodes.agent.modelNotInstallTooltip', { ns: 'workflow' })}</TooltipContent>
+      <TooltipContent>{modelNotInstalledTooltip}</TooltipContent>
     </Tooltip>
   )
 }

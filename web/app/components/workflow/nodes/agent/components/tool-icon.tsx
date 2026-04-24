@@ -89,6 +89,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
 
   const iconNode = (
     <div
+      aria-label={tooltip}
       className={cn('relative')}
       ref={containerRef}
     >
