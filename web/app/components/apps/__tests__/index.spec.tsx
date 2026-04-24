@@ -65,6 +65,13 @@ vi.mock('@/hooks/use-import-dsl', () => ({
   }),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 vi.mock('../list', () => {
   const MockList = () => {
     const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
