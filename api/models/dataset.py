@@ -1046,7 +1046,7 @@ class ChildChunk(TypeBase):
     )
 
     # initial fields
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

@@ -1,3 +1,4 @@
+from models.enums import SegmentType
 import logging
 
 from sqlalchemy import delete, select
@@ -178,7 +179,7 @@ class VectorService:
                     index_node_hash=child_chunk.metadata["doc_hash"],
                     content=child_chunk.page_content,
                     word_count=len(child_chunk.page_content),
-                    type="automatic",
+                    type=SegmentType.AUTOMATIC,
                     created_by=dataset_document.created_by,
                 )
                 db.session.add(child_segment)
