@@ -102,7 +102,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         self._assert_upload_file_access(upload_file_id=upload_file_id)
         base_url = self._base_url(for_external=for_external)
         url = f"{base_url}/files/{upload_file_id}/file-preview"
-        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        query: dict[str, str] = dict(self._sign_query(payload=f"file-preview|{upload_file_id}"))
         if as_attachment:
             query["as_attachment"] = "true"
         return f"{url}?{urllib.parse.urlencode(query)}"
