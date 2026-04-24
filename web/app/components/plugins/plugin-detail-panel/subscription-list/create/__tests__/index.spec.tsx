@@ -1437,7 +1437,7 @@ describe('CreateSubscriptionButton', () => {
 
   // ==================== Export Verification ====================
   describe('Export Verification', () => {
-    it('should export CreateButtonType enum', () => {
+    it('should export CreateButtonType constant', () => {
       // Assert
       expect(CreateButtonType.FULL_BUTTON).toBe('full-button')
       expect(CreateButtonType.ICON_BUTTON).toBe('icon-button')

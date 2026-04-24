@@ -714,7 +714,7 @@ describe('useOAuthClientState', () => {
   })
 })
 
-describe('Enum Exports', () => {
+describe('Constant Exports', () => {
   it('should export AuthorizationStatusEnum', () => {
     expect(AuthorizationStatusEnum.Pending).toBe('pending')
     expect(AuthorizationStatusEnum.Success).toBe('success')

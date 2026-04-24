@@ -13,16 +13,18 @@ import {
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 
-export enum AuthorizationStatusEnum {
-  Pending = 'pending',
-  Success = 'success',
-  Failed = 'failed',
-}
+export const AuthorizationStatusEnum = {
+  Pending: 'pending',
+  Success: 'success',
+  Failed: 'failed',
+} as const
+export type AuthorizationStatusEnum = typeof AuthorizationStatusEnum[keyof typeof AuthorizationStatusEnum]
 
-export enum ClientTypeEnum {
-  Default = 'default',
-  Custom = 'custom',
-}
+export const ClientTypeEnum = {
+  Default: 'default',
+  Custom: 'custom',
+} as const
+export type ClientTypeEnum = typeof ClientTypeEnum[keyof typeof ClientTypeEnum]
 
 const POLL_INTERVAL_MS = 3000
 
