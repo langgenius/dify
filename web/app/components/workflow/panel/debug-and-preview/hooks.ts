@@ -19,6 +19,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {
   getProcessedInputs,
   processOpeningStatement,
@@ -619,15 +620,20 @@ export const useChat = (
           }
         },
         onHumanInputFormFilled: ({ data }) => {
+          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-            responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            if (currentFormIndex > -1) {
+              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
+              responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
           }
+          const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
           if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [data]
+            responseItem.humanInputFilledFormDataList = [enrichedData]
           }
           else {
-            responseItem.humanInputFilledFormDataList.push(data)
+            responseItem.humanInputFilledFormDataList.push(enrichedData)
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -886,16 +892,20 @@ export const useChat = (
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-            if (currentFormIndex > -1)
+            if (currentFormIndex > -1) {
+              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
               responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
           }
+          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
           if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
           }
           else {
-            responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
           }
         })
       },

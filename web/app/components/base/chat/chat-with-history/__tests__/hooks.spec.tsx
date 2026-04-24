@@ -1143,7 +1143,7 @@ describe('useChatWithHistory', () => {
             extra_contents: [
               {
                 type: 'human_input',
-                submitted: false,
+                submitted: true,
                 form_definition: {
                   form_id: 'form-1',
                   node_id: 'node-1',
@@ -1157,10 +1157,6 @@ describe('useChatWithHistory', () => {
                   expiration_time: 0,
                 },
                 workflow_run_id: 'wf-run-status-agnostic',
-              },
-              {
-                type: 'human_input',
-                submitted: true,
                 form_submission_data: {
                   node_id: 'node-1',
                   node_title: 'Human Input',
@@ -1186,8 +1182,10 @@ describe('useChatWithHistory', () => {
       })
 
       const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
-      expect(answerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(answerNode?.humanInputFormDataList).toHaveLength(0)
       expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.form_content).toBe('{{#$output.summary#}}')
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.inputs).toEqual([])
       expect(answerNode?.workflow_run_id).toBe('wf-run-status-agnostic')
     })
 

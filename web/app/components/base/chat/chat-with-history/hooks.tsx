@@ -18,6 +18,7 @@ import { AppSourceType, delConversation, pinConversation, renameConversation, un
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
+import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
@@ -40,17 +41,25 @@ function getFormattedChatList(messages: any[]) {
       if (content.type !== 'human_input')
         return
 
+      const formDefinition = 'form_definition' in content ? content.form_definition : undefined
       if (!content.submitted) {
-        if (!('form_definition' in content) || !content.form_definition)
+        if (!formDefinition)
           return
-        humanInputFormDataList.push(content.form_definition)
+        humanInputFormDataList.push(formDefinition)
         workflowRunId = content.workflow_run_id || workflowRunId
         return
       }
 
       if (!('form_submission_data' in content) || !content.form_submission_data)
         return
-      humanInputFilledFormDataList.push(content.form_submission_data)
+      const currentFormIndex = humanInputFormDataList.findIndex(item => item.node_id === content.form_submission_data.node_id)
+      const requiredFormData = formDefinition || (currentFormIndex > -1
+        ? humanInputFormDataList[currentFormIndex]
+        : undefined)
+      if (currentFormIndex > -1)
+        humanInputFormDataList.splice(currentFormIndex, 1)
+      workflowRunId = content.workflow_run_id || workflowRunId
+      humanInputFilledFormDataList.push(enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData))
     })
     newChatList.push({
       id: item.id,

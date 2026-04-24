@@ -76,7 +76,9 @@ export type PendingHumanInputExtraContent = {
 export type SubmittedHumanInputExtraContent = {
   type: 'human_input'
   submitted: true
+  form_definition?: HumanInputFormData
   form_submission_data: HumanInputFilledFormData
+  workflow_run_id?: string
 }
 
 export type ExtraContent = PendingHumanInputExtraContent | SubmittedHumanInputExtraContent
