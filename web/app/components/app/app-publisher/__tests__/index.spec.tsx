@@ -80,8 +80,11 @@ vi.mock('@/service/explore', () => ({
   fetchInstalledAppList: (...args: unknown[]) => mockFetchInstalledAppList(...args),
 }))
 
+const mockPublishToCreatorsPlatform = vi.fn()
+
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -432,6 +435,76 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('App not found')
     })
+  })
+
+  it('should show marketplace button and open redirect URL on success', async () => {
+    mockPublishToCreatorsPlatform.mockResolvedValue({ redirect_url: 'https://marketplace.example.com/publish?code=abc' })
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    renderWithSystemFeatures(
+      <AppPublisher
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+      />,
+      { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+
+    await waitFor(() => {
+      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith({ appID: 'app-1' })
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://marketplace.example.com/publish?code=abc', '_blank')
+    })
+
+    windowOpenSpy.mockRestore()
+  })
+
+  it('should show toast error when publish to marketplace fails', async () => {
+    mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
+
+    renderWithSystemFeatures(
+      <AppPublisher
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+      />,
+      { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('common.publishToMarketplaceFailed')
+    })
+  })
+
+  it('should disable marketplace button when not yet published', () => {
+    renderWithSystemFeatures(
+      <AppPublisher
+        onPublish={mockOnPublish}
+      />,
+      { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    const marketplaceButton = screen.getByText('common.publishToMarketplace').closest('a, button, div[role="button"]') as HTMLElement
+    expect(marketplaceButton).toBeInTheDocument()
+    // clicking should not call the API because publishedAt is undefined
+    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+    expect(mockPublishToCreatorsPlatform).not.toHaveBeenCalled()
+  })
+
+  it('should hide marketplace button when enable_creators_platform is false', () => {
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    expect(screen.queryByText('common.publishToMarketplace')).not.toBeInTheDocument()
   })
 
   it('should keep access control open when app detail is unavailable during confirmation', async () => {

@@ -12,13 +12,14 @@
     "e2e:middleware:down": "tsx ./scripts/setup.ts middleware-down",
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
-    "type-check": "tsc"
+    "type-check": "tsgo"
   },
   "devDependencies": {
     "@cucumber/cucumber": "catalog:",
     "@dify/tsconfig": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

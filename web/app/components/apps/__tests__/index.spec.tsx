@@ -7,8 +7,20 @@ import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
-
 import Apps from '../index'
+
+vi.mock('@/next/dynamic', () => ({
+  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+    const LazyComp = React.lazy(loader)
+    return function DynamicWrapper(props: Record<string, unknown>) {
+      return React.createElement(
+        React.Suspense,
+        { fallback: null },
+        React.createElement(LazyComp, props),
+      )
+    }
+  },
+}))
 
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
@@ -63,6 +75,16 @@ vi.mock('@/hooks/use-import-dsl', () => ({
     versions: [],
     isFetching: false,
   }),
+}))
+
+const mockReplace = vi.fn()
+let mockSearchParams = new URLSearchParams()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+  }),
+  useSearchParams: () => mockSearchParams,
 }))
 
 vi.mock('../list', () => {
@@ -129,6 +151,16 @@ vi.mock('../../app/create-from-dsl-modal/dsl-confirm-modal', () => ({
   ),
 }))
 
+vi.mock('../import-from-marketplace-template-modal', () => ({
+  default: ({ templateId, onClose, onConfirm }: { templateId: string, onClose: () => void, onConfirm: (dsl: string) => void }) => (
+    <div data-testid="marketplace-template-modal">
+      <span data-testid="template-id">{templateId}</span>
+      <button data-testid="close-template" onClick={onClose}>Close Template</button>
+      <button data-testid="confirm-template" onClick={() => onConfirm('yaml-dsl-content')}>Confirm Template</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
 }))
@@ -161,6 +193,8 @@ describe('Apps', () => {
     vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
+    mockSearchParams = new URLSearchParams()
+    mockReplace.mockClear()
     mockFetchAppDetail.mockResolvedValue({
       id: 'template-1',
       name: 'Sample App',
@@ -301,6 +335,66 @@ describe('Apps', () => {
         expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       })
       expect(mockTrackCreateApp).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Marketplace Template', () => {
+    it('should render the template modal when template-id is in search params', async () => {
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      expect(await screen.findByTestId('marketplace-template-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('template-id')).toHaveTextContent('tpl-42')
+    })
+
+    it('should not render the template modal when no template-id is present', () => {
+      renderWithClient(<Apps />)
+
+      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
+    })
+
+    it('should close the template modal and remove template-id from URL', async () => {
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('close-template'))
+
+      expect(mockReplace).toHaveBeenCalledTimes(1)
+      const replaceArg = mockReplace.mock.calls[0]![0] as string
+      expect(replaceArg).not.toContain('template-id')
+    })
+
+    it('should import DSL from marketplace template on confirm', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
+        options.onSuccess?.()
+      })
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('confirm-template'))
+
+      await waitFor(() => {
+        expect(mockHandleImportDSL).toHaveBeenCalledWith(
+          { mode: 'yaml-content', yaml_content: 'yaml-dsl-content' },
+          expect.objectContaining({ onSuccess: expect.any(Function) }),
+        )
+        expect(mockReplace).toHaveBeenCalled()
+      })
+    })
+
+    it('should show DSL confirm modal when marketplace import is pending', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
+        options.onPending?.()
+      })
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('confirm-template'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalled()
+      })
     })
   })
 

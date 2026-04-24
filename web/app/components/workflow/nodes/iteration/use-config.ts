@@ -1,6 +1,5 @@
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
-import type { Item } from '@/app/components/base/select'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
@@ -21,6 +20,11 @@ import { useStore } from '../../store'
 import { VarType } from '../../types'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
 import useNodeCrud from '../_base/hooks/use-node-crud'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 const useConfig = (id: string, payload: IterationNodeType) => {
   const {
@@ -92,7 +96,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const changeErrorResponseMode = useCallback((item: Item) => {
+  const changeErrorResponseMode = useCallback((item: SelectOption) => {
     const newInputs = produce(inputs, (draft) => {
       draft.error_handle_mode = item.value as ErrorHandleMode
     })
