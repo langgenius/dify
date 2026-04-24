@@ -360,7 +360,7 @@ describe('Apps', () => {
       fireEvent.click(await screen.findByTestId('close-template'))
 
       expect(mockReplace).toHaveBeenCalledTimes(1)
-      const replaceArg = mockReplace.mock.calls[0][0] as string
+      const replaceArg = mockReplace.mock.calls[0]![0] as string
       expect(replaceArg).not.toContain('template-id')
     })
 
