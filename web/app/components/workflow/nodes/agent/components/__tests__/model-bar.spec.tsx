@@ -1,5 +1,5 @@
 import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ModelBar } from '../model-bar'
 
 type ModelProviderItem = {
@@ -52,11 +52,9 @@ describe('agent/model-bar', () => {
 
     const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
 
-    fireEvent.mouseEnter(emptySelector)
-
     expect(emptySelector).toBeInTheDocument()
     expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
   })
 
   it('should render the selected model without warning when it is installed', () => {
@@ -69,10 +67,8 @@ describe('agent/model-bar', () => {
   it('should show a warning tooltip when the selected model is not installed', () => {
     render(<ModelBar provider="openai" model="gpt-4.1" />)
 
-    fireEvent.mouseEnter(screen.getByText('openai/gpt-4.1:1'))
-
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
     expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
 })

@@ -44,12 +44,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 
 ## Allowlist maintenance
 
-- After each migration batch, run:
-
-```sh
-pnpm -C web lint:fix --prune-suppressions <changed-files>
-```
-
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
 - Never increase allowlist scope to bypass new code.
 

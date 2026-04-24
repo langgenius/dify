@@ -225,7 +225,7 @@ describe('FormInputItem branches', () => {
     })
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByText('alpha').closest('button') as HTMLButtonElement)
     fireEvent.click(screen.getByText('beta'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -320,9 +320,9 @@ describe('FormInputItem branches', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button')).not.toBeDisabled()
+      expect(screen.getByText('Select options').closest('button')).not.toBeDisabled()
     })
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByText('Select options').closest('button') as HTMLButtonElement)
     fireEvent.click(screen.getByText('trigger-option'))
 
     expect(onChange).toHaveBeenCalledWith({

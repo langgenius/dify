@@ -73,7 +73,7 @@ export function Infotip({
       />
       <PopoverContent
         placement={placement}
-        popupClassName={cn('max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
       >
         {children}
       </PopoverContent>
