@@ -1,4 +1,4 @@
-import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type {
   ChatItem,
@@ -661,7 +661,7 @@ export const useChat = (
     )
   }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
-  const handleSubmitHumanInputForm = async (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => {
+  const handleSubmitHumanInputForm = async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
   }
 

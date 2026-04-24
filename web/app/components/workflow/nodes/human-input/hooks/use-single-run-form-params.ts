@@ -1,17 +1,16 @@
 import type { HumanInputNodeType } from '../types'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
-import { isFileFormInput, isFileListFormInput, isParagraphFormInput } from '../types'
+import { isParagraphFormInput } from '../types'
 import { isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -22,40 +21,6 @@ type Params = {
   runInputData: Record<string, string>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, string>) => void
-}
-
-const getProcessedHumanInputFormInputs = (
-  formInputs: HumanInputNodeType['inputs'],
-  values: Record<string, HumanInputFieldValue> | undefined,
-) => {
-  if (!values)
-    return undefined
-
-  const processedInputs: Record<string, unknown> = { ...values }
-
-  formInputs.forEach((input) => {
-    const value = values[input.output_variable_name]
-
-    if (isFileListFormInput(input)) {
-      processedInputs[input.output_variable_name] = Array.isArray(value)
-        ? getProcessedFiles(value)
-        : []
-      return
-    }
-
-    if (isFileFormInput(input)) {
-      if (Array.isArray(value)) {
-        processedInputs[input.output_variable_name] = getProcessedFiles(value)[0]
-        return
-      }
-
-      processedInputs[input.output_variable_name] = value && typeof value !== 'string'
-        ? getProcessedFiles([value as FileEntity])[0]
-        : undefined
-    }
-  })
-
-  return processedInputs
 }
 
 const useSingleRunFormParams = ({

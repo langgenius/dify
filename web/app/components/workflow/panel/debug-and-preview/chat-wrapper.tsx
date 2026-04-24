@@ -1,6 +1,6 @@
 import type { StartNodeType } from '../../nodes/start/types'
 import type { ChatWrapperRefType } from './index'
-import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
@@ -130,7 +130,7 @@ const ChatWrapper = (
     })
   }, [handleSwitchSibling, appDetail])
 
-  const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => {
+  const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     await handleSubmitHumanInputForm(formToken, formData)
   }, [handleSubmitHumanInputForm])
 

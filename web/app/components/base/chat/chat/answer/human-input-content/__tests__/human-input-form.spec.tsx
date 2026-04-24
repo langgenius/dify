@@ -1,11 +1,10 @@
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
@@ -14,6 +13,36 @@ vi.mock('../content-item', () => ({
     <div data-testid="mock-content-item">
       {content}
       <button data-testid="update-input" onClick={() => onInputChange('field1', 'new value')}>Update</button>
+      <button data-testid="update-select" onClick={() => onInputChange('field2', 'approved')}>Update Select</button>
+      <button
+        data-testid="update-single-file"
+        onClick={() => onInputChange('field4', {
+          id: 'file-2',
+          name: 'main.png',
+          size: 256,
+          type: 'image/png',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'image',
+          uploadedId: 'upload-file-2',
+        })}
+      >
+        Update Single File
+      </button>
+      <button
+        data-testid="update-pending-single-file"
+        onClick={() => onInputChange('field4', {
+          id: 'file-2',
+          name: 'main.png',
+          size: 256,
+          type: 'image/png',
+          progress: 50,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'image',
+        })}
+      >
+        Update Pending Single File
+      </button>
       <button
         data-testid="update-input-file"
         onClick={() => onInputChange('field3', [{
@@ -24,9 +53,24 @@ vi.mock('../content-item', () => ({
           progress: 100,
           transferMethod: TransferMethod.local_file,
           supportFileType: 'image',
+          uploadedId: 'upload-file-1',
         }])}
       >
         Update File
+      </button>
+      <button
+        data-testid="update-pending-input-file"
+        onClick={() => onInputChange('field3', [{
+          id: 'file-1',
+          name: 'avatar.png',
+          size: 128,
+          type: 'image/png',
+          progress: 50,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'image',
+        }])}
+      >
+        Update Pending File
       </button>
     </div>
   ),
@@ -93,7 +137,7 @@ describe('HumanInputForm', () => {
     })
   })
 
-  it('should submit non-string field values without coercion', async () => {
+  it('should submit file field values using the backend payload shape', async () => {
     const user = userEvent.setup()
     const mockOnSubmit = vi.fn().mockResolvedValue(undefined)
     const formDataWithFileList: HumanInputFormData = {
@@ -108,9 +152,9 @@ describe('HumanInputForm', () => {
         {
           type: InputVarType.multiFiles,
           output_variable_name: 'field3',
-          allowed_file_extensions: [],
-          allowed_file_types: [],
-          allowed_file_upload_methods: [],
+          allowed_file_extensions: ['.png'],
+          allowed_file_types: [SupportUploadFileTypes.image],
+          allowed_file_upload_methods: [TransferMethod.local_file],
           max_upload_count: 5,
         },
       ] as FormInputItem[],
@@ -127,14 +171,84 @@ describe('HumanInputForm', () => {
       inputs: {
         field1: 'new value',
         field3: [{
-          id: 'file-1',
-          name: 'avatar.png',
-          size: 128,
-          type: 'image/png',
-          progress: 100,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'image',
-        } satisfies FileEntity],
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        }],
+      },
+    })
+  })
+
+  it('should disable buttons until select, file, and file list inputs have uploaded values', async () => {
+    const user = userEvent.setup()
+    const mockOnSubmit = vi.fn().mockResolvedValue(undefined)
+    const formDataWithRequiredInteractiveFields: HumanInputFormData = {
+      ...mockFormData,
+      form_content: '{{#$output.field2#}} {{#$output.field3#}} {{#$output.field4#}}',
+      inputs: [
+        {
+          type: InputVarType.select,
+          output_variable_name: 'field2',
+          option_source: {
+            type: 'constant',
+            value: ['approved'],
+            selector: [],
+          },
+        },
+        {
+          type: InputVarType.multiFiles,
+          output_variable_name: 'field3',
+          allowed_file_extensions: ['.png'],
+          allowed_file_types: [SupportUploadFileTypes.image],
+          allowed_file_upload_methods: [TransferMethod.local_file],
+          max_upload_count: 5,
+        },
+        {
+          type: InputVarType.singleFile,
+          output_variable_name: 'field4',
+          allowed_file_extensions: ['.png'],
+          allowed_file_types: [SupportUploadFileTypes.image],
+          allowed_file_upload_methods: [TransferMethod.local_file],
+        },
+      ] as FormInputItem[],
+    }
+
+    render(<HumanInputForm formData={formDataWithRequiredInteractiveFields} onSubmit={mockOnSubmit} />)
+
+    const submitButton = screen.getByRole('button', { name: 'Submit' })
+    expect(submitButton).toBeDisabled()
+
+    await user.click(screen.getAllByTestId('update-select')[0]!)
+    await user.click(screen.getAllByTestId('update-pending-single-file')[0]!)
+    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    expect(submitButton).toBeDisabled()
+
+    await user.click(screen.getAllByTestId('update-single-file')[0]!)
+    await user.click(screen.getAllByTestId('update-pending-input-file')[0]!)
+    expect(submitButton).toBeDisabled()
+
+    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    expect(submitButton).toBeEnabled()
+
+    await user.click(submitButton)
+
+    expect(mockOnSubmit).toHaveBeenCalledWith('token_123', {
+      action: 'action_1',
+      inputs: {
+        field2: 'approved',
+        field3: [{
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        }],
+        field4: {
+          type: 'image',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-2',
+        },
       },
     })
   })

@@ -10,7 +10,7 @@ import type {
   OnRegenerate,
   OnSend,
 } from '../types'
-import type { HumanInputFieldValue } from './answer/human-input-content/field-renderer'
+import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
@@ -70,7 +70,7 @@ export type ChatProps = {
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
-  onHumanInputFormSubmit?: (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
 

@@ -7,7 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import ContentItem from './content-item'
-import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
+import { getButtonStyle, getProcessedHumanInputFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from './utils'
 
 const HumanInputForm = ({
   formData,
@@ -28,9 +28,14 @@ const HumanInputForm = ({
 
   const submit = async (formToken: string, actionID: string, inputs: Record<string, HumanInputFieldValue>) => {
     setIsSubmitting(true)
-    await onSubmit?.(formToken, { inputs, action: actionID })
+    await onSubmit?.(formToken, {
+      inputs: getProcessedHumanInputFormInputs(formData.inputs, inputs) || {},
+      action: actionID,
+    })
     setIsSubmitting(false)
   }
+
+  const isActionDisabled = isSubmitting || hasInvalidSelectOrFileInput(formData.inputs, inputs)
 
   return (
     <>
@@ -47,7 +52,7 @@ const HumanInputForm = ({
         {formData.actions.map((action: UserAction) => (
           <Button
             key={action.id}
-            disabled={isSubmitting}
+            disabled={isActionDisabled}
             variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
             onClick={() => submit(formToken, action.id, inputs)}
             data-testid="action-button"

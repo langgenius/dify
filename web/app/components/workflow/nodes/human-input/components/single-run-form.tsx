@@ -1,7 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
@@ -11,9 +10,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
-import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { fileIsUploaded } from '@/app/components/base/file-uploader/utils'
-import { isFileFormInput, isFileListFormInput, isSelectFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import { getButtonStyle, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 
 type Props = {
   nodeName: string
@@ -21,19 +18,6 @@ type Props = {
   showBackButton?: boolean
   handleBack?: () => void
   onSubmit?: ({ inputs, action }: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
-}
-
-const isUploadedFile = (value: HumanInputFieldValue | undefined) => {
-  return !!value
-    && !Array.isArray(value)
-    && typeof value !== 'string'
-    && !!fileIsUploaded(value as FileEntity)
-}
-
-const hasUploadedFiles = (value: HumanInputFieldValue | undefined) => {
-  return Array.isArray(value)
-    && value.length > 0
-    && value.every(file => !!fileIsUploaded(file))
 }
 
 const FormContent = ({
@@ -56,20 +40,7 @@ const FormContent = ({
     }))
   }
 
-  const hasEmptySelectOrFileInput = data.inputs.some((input) => {
-    const value = inputs[input.output_variable_name]
-
-    if (isSelectFormInput(input))
-      return typeof value !== 'string' || value.length === 0
-
-    if (isFileFormInput(input))
-      return Array.isArray(value) ? !hasUploadedFiles(value) : !isUploadedFile(value)
-
-    if (isFileListFormInput(input))
-      return !hasUploadedFiles(value)
-
-    return false
-  })
+  const hasEmptySelectOrFileInput = hasInvalidSelectOrFileInput(data.inputs, inputs)
 
   const submit = async (actionID: string) => {
     setIsSubmitting(true)

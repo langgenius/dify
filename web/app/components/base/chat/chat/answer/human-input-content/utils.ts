@@ -1,4 +1,5 @@
 import type { HumanInputFieldValue } from './field-renderer'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n-config'
 import type { HumanInputResolvedValue } from '@/types/workflow'
@@ -6,6 +7,7 @@ import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
+import { fileIsUploaded, getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import {
   isFileFormInput,
   isFileListFormInput,
@@ -65,6 +67,73 @@ export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Rec
     }
   })
   return initialInputs
+}
+
+export const isHumanInputFileUploaded = (value: HumanInputFieldValue | undefined) => {
+  return !!value
+    && !Array.isArray(value)
+    && typeof value !== 'string'
+    && !!fileIsUploaded(value as FileEntity)
+}
+
+export const hasUploadedHumanInputFiles = (value: HumanInputFieldValue | undefined) => {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.every(file => !!fileIsUploaded(file))
+}
+
+export const hasInvalidSelectOrFileInput = (
+  formInputs: FormInputItem[],
+  values: Record<string, HumanInputFieldValue>,
+) => {
+  return formInputs.some((input) => {
+    const value = values[input.output_variable_name]
+
+    if (isSelectFormInput(input))
+      return typeof value !== 'string' || value.length === 0
+
+    if (isFileFormInput(input))
+      return Array.isArray(value) ? !hasUploadedHumanInputFiles(value) : !isHumanInputFileUploaded(value)
+
+    if (isFileListFormInput(input))
+      return !hasUploadedHumanInputFiles(value)
+
+    return false
+  })
+}
+
+export const getProcessedHumanInputFormInputs = (
+  formInputs: FormInputItem[],
+  values: Record<string, HumanInputFieldValue> | undefined,
+) => {
+  if (!values)
+    return undefined
+
+  const processedInputs: Record<string, unknown> = { ...values }
+
+  formInputs.forEach((input) => {
+    const value = values[input.output_variable_name]
+
+    if (isFileListFormInput(input)) {
+      processedInputs[input.output_variable_name] = Array.isArray(value)
+        ? getProcessedFiles(value)
+        : []
+      return
+    }
+
+    if (isFileFormInput(input)) {
+      if (Array.isArray(value)) {
+        processedInputs[input.output_variable_name] = getProcessedFiles(value)[0]
+        return
+      }
+
+      processedInputs[input.output_variable_name] = value && typeof value !== 'string'
+        ? getProcessedFiles([value as FileEntity])[0]
+        : undefined
+    }
+  })
+
+  return processedInputs
 }
 
 const localeMap: Record<string, string> = {
