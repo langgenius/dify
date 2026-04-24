@@ -200,7 +200,7 @@
   "marketplace.empower": "AI 開発をサポートする",
   "marketplace.featured": "注目",
   "marketplace.installs": "インストール",
-  "marketplace.languages": "言語",
+  "marketplace.languages": "言語フィルタ",
   "marketplace.listTopInfo.pluginsSubtitle": "コーディングとAI開発を加速するために設計されたプラグイン",
   "marketplace.listTopInfo.pluginsTitleAll": "すべてのプラグイン",
   "marketplace.listTopInfo.pluginsTitleByCategory": "すべての{{category}}プラグイン",
