@@ -74,7 +74,7 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
