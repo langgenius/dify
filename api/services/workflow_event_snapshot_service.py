@@ -26,6 +26,7 @@ from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
 from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -348,7 +349,7 @@ def _build_human_input_required_events(
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("type") == "human_input_required"
+        if reason.get("TYPE") == PauseReasonType
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]
@@ -376,7 +377,7 @@ def _build_human_input_required_events(
 
     events: list[dict[str, Any]] = []
     for reason in reasons:
-        if reason.get("type") != "human_input_required":
+        if reason.get("TYPE") != PauseReasonType.HUMAN_INPUT_REQUIRED:
             continue
 
         form_id_raw = reason.get("form_id")
@@ -483,7 +484,7 @@ def _build_pause_event(
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("type") == "human_input_required"
+        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]

@@ -18,6 +18,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
@@ -106,7 +107,7 @@ class WorkflowEventsApi(Resource):
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
-            terminal_events = [] if continue_on_pause else None
+            terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
 
             def _generate_stream_events():
                 if include_state_snapshot:

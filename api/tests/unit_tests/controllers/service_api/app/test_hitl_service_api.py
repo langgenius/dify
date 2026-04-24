@@ -142,7 +142,7 @@ def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingRespo
             created_at=1,
             finished_at=None,
             paused_nodes=["node-1"],
-            reasons=[{"type": "human_input_required", "form_id": "form-1", "expiration_time": 100}],
+            reasons=[{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}],
         ),
     )
 
@@ -388,7 +388,7 @@ class TestHitlServiceApi:
         assert response["data"]["status"] == WorkflowExecutionStatus.PAUSED
         assert response["data"]["paused_nodes"] == ["node-1"]
         assert response["data"]["reasons"] == [
-            {"type": "human_input_required", "form_id": "form-1", "expiration_time": 100}
+            {"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}
         ]
         assert "human_input_forms" not in response["data"]
 
@@ -542,7 +542,7 @@ class TestHitlServiceApi:
                     status=WorkflowExecutionStatus.PAUSED,
                     outputs={},
                     paused_nodes=["node-1"],
-                    reasons=[{"type": "human_input_required", "form_id": "form-1", "expiration_time": 1}],
+                    reasons=[{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}],
                     created_at=1,
                     elapsed_time=0.1,
                     total_tokens=0,
@@ -555,7 +555,7 @@ class TestHitlServiceApi:
         assert isinstance(response, WorkflowAppPausedBlockingResponse)
         assert response.data.status == WorkflowExecutionStatus.PAUSED
         assert response.data.paused_nodes == ["node-1"]
-        assert response.data.reasons == [{"type": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
+        assert response.data.reasons == [{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
 
     def test_service_api_pause_event_serializes_hitl_reason(self, monkeypatch: pytest.MonkeyPatch) -> None:
         converter = _build_service_api_pause_converter()
@@ -697,7 +697,7 @@ class TestHitlServiceApi:
         pause_data = events[-1]["data"]
         assert pause_data["paused_nodes"] == ["node-1"]
         assert pause_data["outputs"] == {"result": "value"}
-        assert pause_data["reasons"][0]["type"] == "human_input_required"
+        assert pause_data["reasons"][0]["TYPE"] == "human_input_required"
         assert pause_data["reasons"][0]["form_token"] == "wtok"
         assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
         assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value

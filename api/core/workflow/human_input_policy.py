@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
+from graphon.entities.pause_reason import PauseReasonType
 from models.human_input import RecipientType
 
 
@@ -61,7 +62,7 @@ def enrich_human_input_pause_reasons(
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
         updated = dict(reason)
-        if updated.get("type") == "human_input_required":
+        if updated.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
                 updated["form_token"] = form_tokens_by_form_id.get(form_id)

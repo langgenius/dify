@@ -203,7 +203,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         reasons = []
         for response in human_input_responses:
             reason = response.data.model_dump(mode="json")
-            reason["type"] = "human_input_required"
             reasons.append(reason)
 
         return WorkflowAppPausedBlockingResponse(
