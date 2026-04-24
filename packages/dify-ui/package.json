@@ -49,6 +49,10 @@
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
     },
+    "./preview-card": {
+      "types": "./src/preview-card/index.tsx",
+      "import": "./src/preview-card/index.tsx"
+    },
     "./scroll-area": {
       "types": "./src/scroll-area/index.tsx",
       "import": "./src/scroll-area/index.tsx"
@@ -79,7 +83,7 @@
     "storybook:build": "storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",
-    "type-check": "tsc"
+    "type-check": "tsgo"
   },
   "peerDependencies": {
     "@base-ui/react": "catalog:",
@@ -105,6 +109,7 @@
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",

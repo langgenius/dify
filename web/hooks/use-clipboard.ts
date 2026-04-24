@@ -43,12 +43,14 @@ export function useClipboard({
   const copy = useCallback(async (valueToCopy: string) => {
     try {
       await writeTextToClipboard(valueToCopy)
+      handleCopyResult(true)
     }
     catch (e) {
       if (usePromptAsFallback) {
         try {
           // eslint-disable-next-line no-alert -- prompt as fallback in case of copy error
           window.prompt(promptFallbackText, valueToCopy)
+          handleCopyResult(true)
         }
         catch (e2) {
           handleCopyError(e2 as Error)

@@ -1,8 +1,9 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Indicator from '@/app/components/header/indicator'
 import Card from './card'
 
@@ -15,6 +16,15 @@ const ServiceApi = ({
 }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+
+  const handleOpenSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(true)
+  }, [])
+
+  const handleCloseSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(false)
+  }, [])
 
   return (
     <div>
@@ -49,9 +59,14 @@ const ServiceApi = ({
         >
           <Card
             apiBaseUrl={apiBaseUrl}
+            onOpenSecretKeyModal={handleOpenSecretKeyModal}
           />
         </PopoverContent>
       </Popover>
+      <SecretKeyModal
+        isShow={isSecretKeyModalVisible}
+        onClose={handleCloseSecretKeyModal}
+      />
     </div>
   )
 }

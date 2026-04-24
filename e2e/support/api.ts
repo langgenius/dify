@@ -43,6 +43,34 @@ export async function createTestApp(name: string, mode = 'workflow'): Promise<Ap
   }
 }
 
+export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
+      data: {
+        graph: {
+          nodes: [
+            {
+              id: '1',
+              type: 'custom',
+              position: { x: 80, y: 282 },
+              data: { id: '1', type: 'start', title: 'Start', variables: [] },
+            },
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        features: {},
+        environment_variables: [],
+        conversation_variables: [],
+      },
+    })
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
 export async function deleteTestApp(id: string): Promise<void> {
   const ctx = await createApiContext()
   try {

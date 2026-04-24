@@ -270,7 +270,7 @@ describe('InputsFormContent', () => {
     renderWithContext(<InputsFormContent />, context)
     const selNodes = screen.getAllByText('Sel')
     expect(selNodes.length).toBeGreaterThan(0)
-    expect(screen.queryByText('existing')).toBeNull()
+    expect(screen.getByText('existing')).toBeInTheDocument()
   })
 
   it('handles select input empty branches (no current value -> show placeholder)', () => {
