@@ -1,5 +1,4 @@
 import type { FormData } from '../form'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
@@ -9,6 +8,29 @@ import FormContent from '../form'
 
 const mockSubmitForm = vi.hoisted(() => vi.fn())
 const mockUseGetHumanInputForm = vi.hoisted(() => vi.fn())
+const mockContentItemState = vi.hoisted(() => ({
+  staleAttachmentInputChange: undefined as ((name: string, value: unknown) => void) | undefined,
+  uploadedFile: {
+    id: 'file-1',
+    name: 'review.pdf',
+    size: 128,
+    type: 'document',
+    progress: 100,
+    transferMethod: 'local_file',
+    supportFileType: 'document',
+    uploadedId: 'upload-file-1',
+  },
+  uploadingFile: {
+    id: 'file-1',
+    name: 'review.pdf',
+    size: 128,
+    type: 'document',
+    progress: 50,
+    transferMethod: 'local_file',
+    supportFileType: 'document',
+    uploadedId: undefined,
+  },
+}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'token-123' }),
@@ -29,28 +51,45 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   __esModule: true,
-  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: unknown) => void }) => (
-    <div data-testid="share-form-content-item">
-      {content}
-      <button type="button" onClick={() => onInputChange('summary', 'updated summary')}>
-        share-update-summary
-      </button>
-      <button
-        type="button"
-        onClick={() => onInputChange('attachments', [{
-          id: 'file-1',
-          name: 'review.pdf',
-          size: 128,
-          type: 'document',
-          progress: 100,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'document',
-        }])}
-      >
-        share-update-attachments
-      </button>
-    </div>
-  ),
+  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: unknown) => void }) => {
+    const isSummaryField = content.includes('summary')
+    const isAttachmentField = content.includes('attachments')
+
+    if (isAttachmentField && !mockContentItemState.staleAttachmentInputChange)
+      mockContentItemState.staleAttachmentInputChange = onInputChange
+
+    return (
+      <div data-testid="share-form-content-item">
+        {content}
+        {isSummaryField && (
+          <>
+            <button type="button" onClick={() => onInputChange('summary', '')}>
+              share-clear-summary
+            </button>
+            <button type="button" onClick={() => onInputChange('summary', 'updated summary')}>
+              share-update-summary
+            </button>
+          </>
+        )}
+        {isAttachmentField && (
+          <>
+            <button
+              type="button"
+              onClick={() => mockContentItemState.staleAttachmentInputChange?.('attachments', [mockContentItemState.uploadingFile])}
+            >
+              share-uploading-attachments
+            </button>
+            <button
+              type="button"
+              onClick={() => mockContentItemState.staleAttachmentInputChange?.('attachments', [mockContentItemState.uploadedFile])}
+            >
+              share-update-attachments
+            </button>
+          </>
+        )}
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
@@ -124,6 +163,7 @@ describe('Human input share form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockContentItemState.staleAttachmentInputChange = undefined
     mockUseGetHumanInputForm.mockReturnValue({
       data: formData,
       isLoading: false,
@@ -136,8 +176,8 @@ describe('Human input share form', () => {
 
     render(<FormContent />)
 
-    await user.click(screen.getAllByRole('button', { name: 'share-update-summary' })[0]!)
-    await user.click(screen.getAllByRole('button', { name: 'share-update-attachments' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     expect(mockSubmitForm).toHaveBeenCalledWith({
@@ -146,19 +186,54 @@ describe('Human input share form', () => {
         action: 'approve',
         inputs: {
           summary: 'updated summary',
-          attachments: [{
-            id: 'file-1',
-            name: 'review.pdf',
-            size: 128,
-            type: 'document',
-            progress: 100,
-            transferMethod: TransferMethod.local_file,
-            supportFileType: 'document',
-          } satisfies FileEntity],
+          attachments: [mockContentItemState.uploadedFile],
         },
       },
     }, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
+  })
+
+  it('should keep initialized defaults when file upload uses the initial change callback', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+
+    expect(mockSubmitForm).toHaveBeenCalledWith({
+      token: 'token-123',
+      data: {
+        action: 'approve',
+        inputs: {
+          summary: 'initial summary',
+          attachments: [mockContentItemState.uploadedFile],
+        },
+      },
+    }, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+  })
+
+  it('should disable action buttons until every required field is filled and files are uploaded', async () => {
+    const user = userEvent.setup()
+
+    render(<FormContent />)
+
+    const approveButton = screen.getByRole('button', { name: 'Approve' })
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-uploading-attachments' }))
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
+    expect(approveButton).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-clear-summary' }))
+    expect(approveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
+    expect(approveButton).toBeEnabled()
   })
 })

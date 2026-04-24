@@ -102,6 +102,29 @@ export const hasInvalidSelectOrFileInput = (
   })
 }
 
+export const hasInvalidRequiredHumanInput = (
+  formInputs: FormInputItem[],
+  values: Record<string, HumanInputFieldValue>,
+) => {
+  return formInputs.some((input) => {
+    const value = values[input.output_variable_name]
+
+    if (isParagraphFormInput(input))
+      return typeof value !== 'string' || value.trim().length === 0
+
+    if (isSelectFormInput(input))
+      return typeof value !== 'string' || value.length === 0
+
+    if (isFileFormInput(input))
+      return Array.isArray(value) ? !hasUploadedHumanInputFiles(value) : !isHumanInputFileUploaded(value)
+
+    if (isFileListFormInput(input))
+      return !hasUploadedHumanInputFiles(value)
+
+    return false
+  })
+}
+
 export const getProcessedHumanInputFormInputs = (
   formInputs: FormInputItem[],
   values: Record<string, HumanInputFieldValue> | undefined,
