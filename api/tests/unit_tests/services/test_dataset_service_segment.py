@@ -89,7 +89,6 @@ class TestSegmentServiceChildChunks:
         document = _make_document()
         segment = _make_segment()
         existing_a = ChildChunk(
-            id="child-a",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -100,7 +99,6 @@ class TestSegmentServiceChildChunks:
             created_by="user-1",
         )
         existing_b = ChildChunk(
-            id="child-b",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
