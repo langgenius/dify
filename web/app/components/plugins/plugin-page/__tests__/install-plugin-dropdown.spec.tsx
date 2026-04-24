@@ -199,6 +199,7 @@ describe('InstallPluginDropdown', () => {
     const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
+    fireEvent.click(screen.getByText('plugin.source.local'))
     fireEvent.change(container.querySelector('input[type="file"]')!, {
       target: {
         files: [new File(['content'], 'plugin.difypkg')],
@@ -235,6 +236,7 @@ describe('InstallPluginDropdown', () => {
     const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
+    fireEvent.click(screen.getByText('plugin.source.local'))
     fireEvent.change(container.querySelector('input[type="file"]')!, {
       target: {
         files: [new File(['content'], 'plugin.difypkg')],
