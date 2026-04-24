@@ -153,7 +153,11 @@ const ProviderConfigModal: FC<Props> = ({
 
     return weaveConfigTemplate
   })())
-  const [isShowRemoveConfirm, {
+  const [isConfigDialogOpen, {
+    set: setIsConfigDialogOpen,
+  }] = useBoolean(true)
+  const [isRemoveDialogOpen, {
+    set: setIsRemoveDialogOpen,
     setTrue: showRemoveConfirm,
     setFalse: hideRemoveConfirm,
   }] = useBoolean(false)
@@ -291,16 +295,22 @@ const ProviderConfigModal: FC<Props> = ({
     }
   }, [appId, checkValid, config, isAdd, isEdit, isSaving, onChosen, onSaved, t, type])
 
-  const handleOpenChange = useCallback((open: boolean) => {
+  // Defer onCancel to onOpenChangeComplete so the dialog's exit animation
+  // (scale/opacity transition) can finish before the parent unmounts this modal.
+  const handleConfigDialogOpenChangeComplete = useCallback((open: boolean) => {
     if (!open)
       onCancel()
   }, [onCancel])
 
   return (
     <>
-      {!isShowRemoveConfirm
+      {!isRemoveDialogOpen
         ? (
-            <Dialog open onOpenChange={handleOpenChange}>
+            <Dialog
+              open={isConfigDialogOpen}
+              onOpenChange={setIsConfigDialogOpen}
+              onOpenChangeComplete={handleConfigDialogOpenChangeComplete}
+            >
               <DialogContent className="w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
                 <div className="flex items-center justify-center">
                   <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
@@ -655,7 +665,7 @@ const ProviderConfigModal: FC<Props> = ({
                           )}
                           <Button
                             className="mr-2 h-9 text-sm font-medium text-text-secondary"
-                            onClick={onCancel}
+                            onClick={() => setIsConfigDialogOpen(false)}
                           >
                             {t('operation.cancel', { ns: 'common' })}
                           </Button>
@@ -692,7 +702,7 @@ const ProviderConfigModal: FC<Props> = ({
             </Dialog>
           )
         : (
-            <AlertDialog open onOpenChange={open => !open && hideRemoveConfirm()}>
+            <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
               <AlertDialogContent>
                 <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                   <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

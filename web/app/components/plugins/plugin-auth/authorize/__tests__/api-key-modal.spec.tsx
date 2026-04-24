@@ -2,6 +2,7 @@ import type { ApiKeyModalProps } from '../api-key-modal'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
@@ -94,31 +95,50 @@ const PopoverModalHarness = ({
   onPopoverClose: () => void
 }) => {
   const [open, setOpen] = React.useState(true)
-  const [showModal, setShowModal] = React.useState(true)
 
   return (
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
-        if (!nextOpen) {
+        if (!nextOpen)
           onPopoverClose()
-          setShowModal(false)
-        }
       }}
     >
       <PopoverTrigger render={<button type="button">Credentials</button>} />
       <PopoverContent>
         <div data-testid="credential-popover">
-          {showModal && (
-            <ApiKeyModal
-              pluginPayload={basePayload}
-              onClose={onClose}
-            />
-          )}
+          <ApiKeyModal
+            open={open}
+            onOpenChange={setOpen}
+            pluginPayload={basePayload}
+            onClose={onClose}
+          />
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+const ControlledModalHarness = ({
+  ApiKeyModal,
+  onClose,
+}: {
+  ApiKeyModal: React.FC<ApiKeyModalProps>
+  onClose: () => void
+}) => {
+  const [open, setOpen] = React.useState(true)
+
+  return (
+    <>
+      <div data-testid="modal-open-state">{String(open)}</div>
+      <ApiKeyModal
+        open={open}
+        onOpenChange={setOpen}
+        pluginPayload={basePayload}
+        onClose={onClose}
+      />
+    </>
   )
 }
 
@@ -218,6 +238,18 @@ describe('ApiKeyModal', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
+  it('should close through controlled open state when cancel is clicked', async () => {
+    const mockOnClose = vi.fn()
+    render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
+    })
+    expect(mockOnClose).toHaveBeenCalled()
+  })
+
   it('should call addPluginCredential on confirm in add mode', async () => {
     const mockOnClose = vi.fn()
     const mockOnUpdate = vi.fn()
@@ -310,6 +342,10 @@ describe('ApiKeyModal', () => {
   })
 
   it('should stay open when clicking inside the modal from a popover', async () => {
+    // Use userEvent instead of fireEvent to avoid CI flakiness: userEvent
+    // awaits React act() between pointer/mouse/click so base-ui's dialog
+    // popup ref is guaranteed committed before outside-click detection runs.
+    const user = userEvent.setup()
     const mockOnClose = vi.fn()
     const mockOnPopoverClose = vi.fn()
 
@@ -323,25 +359,29 @@ describe('ApiKeyModal', () => {
 
     const form = await screen.findByTestId('auth-form')
 
-    fireEvent.pointerDown(form)
-    fireEvent.mouseDown(form)
-    fireEvent.click(form)
+    await user.click(form)
 
     expect(mockOnClose).not.toHaveBeenCalled()
     expect(mockOnPopoverClose).not.toHaveBeenCalled()
     expect(screen.getByTestId('modal')).toBeInTheDocument()
   })
 
-  it('should not close on outside pointer dismissal', () => {
+  it('should close on backdrop click through controlled open state', async () => {
     const mockOnClose = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
+    render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
 
-    fireEvent.pointerDown(document.body)
-    fireEvent.mouseDown(document.body)
-    fireEvent.click(document.body)
+    const backdrop = document.querySelector('.bg-background-overlay')
+    if (!backdrop)
+      throw new Error('Expected dialog backdrop to render')
 
-    expect(mockOnClose).not.toHaveBeenCalled()
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    fireEvent.pointerDown(backdrop)
+    fireEvent.mouseDown(backdrop)
+    fireEvent.click(backdrop)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
+    })
+    expect(mockOnClose).toHaveBeenCalled()
   })
 
   it('should render readme entrance when detail is provided', () => {

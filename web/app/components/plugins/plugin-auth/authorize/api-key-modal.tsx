@@ -29,6 +29,8 @@ import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
   editValues?: Record<string, unknown>
   onRemove?: () => void
@@ -38,6 +40,8 @@ export type ApiKeyModalProps = {
 }
 const ApiKeyModal = ({
   pluginPayload,
+  open = true,
+  onOpenChange,
   onClose,
   editValues,
   onRemove,
@@ -115,23 +119,25 @@ const ApiKeyModal = ({
       }
       toast.success(t('api.actionSuccess', { ns: 'common' }))
 
+      onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
 
   const isDisabled = disabled || isLoading || doingAction
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open)
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    onOpenChange?.(nextOpen)
+    if (!nextOpen)
       onClose?.()
-  }, [onClose])
+  }, [onClose, onOpenChange])
 
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
     >
       <DialogContent className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!">
@@ -187,7 +193,7 @@ const ApiKeyModal = ({
                 </>
               )}
               <Button
-                onClick={onClose}
+                onClick={() => handleOpenChange(false)}
                 disabled={isDisabled}
               >
                 {t('operation.cancel', { ns: 'common' })}
