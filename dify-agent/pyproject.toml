@@ -1,0 +1,44 @@
+[project]
+name = "dify-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anyio>=4.13.0",
+    "fastapi>=0.136.0",
+    "graphon~=0.2.2",
+    "httpx>=0.28.1",
+    "logfire>=4.32.1",
+    "pydantic>=2.13.3",
+    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
+    "sqlmodel>=0.0.38",
+    "unicorn>=2.1.4",
+    "uvloop>=0.22.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pyright]
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+extraPaths = [
+    "src",
+]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "*_test.py"]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.3",
+    "pytest>=9.0.3",
+    "ruff>=0.15.11",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
