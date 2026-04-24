@@ -1061,14 +1061,14 @@ class ChildChunk(TypeBase):
         EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'")
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp(),init=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, insert_default=None, server_default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=sa.func.current_timestamp(), onupdate=func.current_timestamp(),init=False
     )
-    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, insert_default=None, server_default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, insert_default=None, server_default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, insert_default=None, server_default=None)
 
     @property
     def dataset(self):

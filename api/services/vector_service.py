@@ -247,6 +247,7 @@ class VectorService:
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
+        assert child_chunk.index_node_id
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
