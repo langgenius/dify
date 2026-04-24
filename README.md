@@ -71,16 +71,66 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 <br/>
 
-The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
+The easiest way to start the Dify server is through our one-click installer. Before running Dify, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine.
+
+### Option 1: One-Click Installer (Recommended)
+
+**No need to clone the repository first!** Simply run this one command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash
+```
+
+The installer will automatically:
+
+- Create a `dify/docker` directory for you
+- Download all required configuration files
+- Guide you through configuration options
+- Start Dify services
+
+The installer will guide you through configuration options including:
+
+- Deployment type (private/local or public/domain)
+- Database selection (PostgreSQL or MySQL)
+- Vector database selection (Weaviate, Qdrant, Milvus, Chroma, pgvector)
+- Storage configuration (local, S3, Azure, GCS, Aliyun)
+- SSL/HTTPS setup
+- Email service configuration
+
+**Quick mode** (use all defaults, no questions):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash -s -- --yes
+```
+
+### Option 2: With Repository (Optional)
+
+If you prefer to have the full repository locally:
+
+```bash
+# Shallow clone (fast, only latest commit)
+git clone --depth 1 https://github.com/langgenius/dify.git
+cd dify/docker
+./install.sh
+```
+
+### Option 3: Manual Docker Compose
+
+If you prefer manual configuration:
 
 ```bash
 cd dify
 cd docker
 cp .env.example .env
+# Edit .env file to customize your configuration
 docker compose up -d
 ```
 
-After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+### Next Steps
+
+After installation, access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) to complete the initialization process.
+
+> **Note**: If your system doesn't meet the minimum requirements (2 CPU cores, 4GB RAM), or if you encounter issues during installation, consider trying [Dify Cloud](https://cloud.dify.ai) for a managed experience.
 
 #### Seeking help
 
