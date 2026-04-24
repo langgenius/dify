@@ -61,6 +61,9 @@ const setupMocks = (plugins: PluginStatus[] = []) => {
   return { mockMutateAsync, mockHandleRefetch }
 }
 
+const getTaskMenuTrigger = () =>
+  document.getElementById('plugin-task-trigger')!.closest('[role="button"]') as HTMLElement
+
 describe('usePluginTaskStatus Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -634,7 +637,7 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       // Click to open
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       // The popover content should be visible (PluginTaskList)
       expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
@@ -661,7 +664,7 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       // Open popover
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       // Wait for popover content to render
       await waitFor(() => {
@@ -687,7 +690,7 @@ describe('PluginTasks Component', () => {
 
       render(<PluginTasks />)
 
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       await waitFor(() => {
         expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
@@ -708,16 +711,14 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       // Open popover
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       await waitFor(() => {
         expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
       })
 
       // Find and click the clear all button in error section
-      const clearButtons = screen.getAllByRole('button')
-      if (clearButtons.length > 0)
-        fireEvent.click(clearButtons[0])
+      fireEvent.click(screen.getByRole('button', { name: /task\.clearAll/i }))
 
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalled()
@@ -736,7 +737,7 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       // Open popover
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       await waitFor(() => {
         expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
@@ -808,7 +809,7 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       // Open popover
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
     })
@@ -820,7 +821,7 @@ describe('PluginTasks Component', () => {
       ])
 
       render(<PluginTasks />)
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
     })
@@ -832,7 +833,7 @@ describe('PluginTasks Component', () => {
       ])
 
       render(<PluginTasks />)
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      fireEvent.click(getTaskMenuTrigger())
 
       expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
     })
@@ -887,7 +888,7 @@ describe('PluginTasks Integration', () => {
     render(<PluginTasks />)
 
     // Open popover
-    fireEvent.click(document.getElementById('plugin-task-trigger')!)
+    fireEvent.click(getTaskMenuTrigger())
 
     // All sections should be visible
     const sections = document.querySelectorAll('.max-h-\\[300px\\]')

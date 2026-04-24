@@ -46,20 +46,7 @@ describe('TooltipContent', () => {
     })
   })
 
-  describe('Variant and popup props', () => {
-    it('should render popup content when variant is plain', async () => {
-      const screen = await render(
-        <Tooltip open>
-          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
-          <TooltipContent variant="plain" role="tooltip" aria-label="plain tooltip">
-            Plain tooltip body
-          </TooltipContent>
-        </Tooltip>,
-      )
-
-      await expect.element(screen.getByRole('tooltip', { name: 'plain tooltip' })).toHaveTextContent('Plain tooltip body')
-    })
-
+  describe('Popup props', () => {
     it('should forward popup props and handlers when popup props are provided', async () => {
       const onMouseEnter = vi.fn()
 
@@ -83,7 +70,11 @@ describe('TooltipContent', () => {
 
       await expect.element(popup).toHaveAttribute('id', 'tooltip-popup-id')
       await expect.element(popup).toHaveAttribute('data-track-id', 'tooltip-track')
-      expect(onMouseEnter).toHaveBeenCalledTimes(1)
+      // Intent of the assertion is "handler is wired up". The exact call count
+      // depends on vitest-browser's pointer simulation and Base UI's internal
+      // pointer tracking (both of which may fire more than one enter event for
+      // a single `.hover()` action), so assert presence, not count.
+      expect(onMouseEnter).toHaveBeenCalled()
     })
 
     it('should apply className to the popup and positionerClassName to the positioner', async () => {

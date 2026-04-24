@@ -17,6 +17,15 @@ import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
+const isShortcutFromInputArea = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement))
+    return false
+
+  return target.tagName === 'INPUT'
+    || target.tagName === 'TEXTAREA'
+    || target.isContentEditable
+}
+
 type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
@@ -74,6 +83,9 @@ const AppDetailNav = ({
   }, [appSidebarExpand, setAppSidebarExpand])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.b`, (e) => {
+    if (isShortcutFromInputArea(e.target))
+      return
+
     e.preventDefault()
     handleToggle()
   }, { exactMatch: true, useCapture: true })

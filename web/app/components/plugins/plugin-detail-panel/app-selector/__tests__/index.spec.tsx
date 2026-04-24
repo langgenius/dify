@@ -76,7 +76,7 @@ afterAll(() => {
 
 // Mock portal components for controlled positioning in tests
 // Use React context to properly scope open state per portal instance (for nested portals)
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@langgenius/dify-ui/popover', () => {
   // Context reference shared across mock components
   let sharedContext: React.Context<boolean> | null = null
 
@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   }
 
   return {
-    PortalToFollowElem: ({
+    Popover: ({
       children,
       open,
     }: {
@@ -104,20 +104,22 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
         React.createElement('div', { 'data-testid': 'portal-to-follow-elem', 'data-open': open }, children),
       )
     },
-    PortalToFollowElemTrigger: ({
+    PopoverTrigger: ({
       children,
+      render,
       onClick,
       className,
     }: {
       children: ReactNode
+      render?: ReactNode
       onClick?: () => void
       className?: string
     }) => (
       <div data-testid="portal-trigger" onClick={onClick} className={className}>
-        {children}
+        {render ?? children}
       </div>
     ),
-    PortalToFollowElemContent: ({ children, className }: { children: ReactNode, className?: string }) => {
+    PopoverContent: ({ children, className }: { children: ReactNode, className?: string }) => {
       const Context = getContext()
       const isOpen = React.useContext(Context)
       if (!isOpen)
@@ -242,28 +244,42 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   ),
 }))
 
-// Mock PortalSelect for testing select field interactions
-vi.mock('@/app/components/base/select', () => ({
-  PortalSelect: ({ onSelect, value, placeholder, items }: {
-    onSelect: (item: { value: string }) => void
-    value: string
-    placeholder: string
-    items: Array<{ value: string, name: string }>
-  }) => (
-    <div data-testid="portal-select">
-      <span data-testid="select-value">{value || placeholder}</span>
-      {items?.map((item: { value: string, name: string }) => (
+// Mock Select for testing select field interactions
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void
+  }>({})
+
+  return {
+    Select: ({ children, onValueChange }: {
+      children: React.ReactNode
+      onValueChange?: (value: string) => void
+    }) => (
+      <SelectContext.Provider value={{ onValueChange }}>
+        <div data-testid="portal-select">{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+      <span data-testid="select-value">{children}</span>
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
         <button
-          key={item.value}
-          data-testid={`select-option-${item.value}`}
-          onClick={() => onSelect(item)}
+          key={value}
+          data-testid={`select-option-${value}`}
+          onClick={() => context.onValueChange?.(value)}
         >
-          {item.name}
+          {children}
         </button>
-      ))}
-    </div>
-  ),
-}))
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
+  }
+})
 
 // Mock Input component with onClear support
 vi.mock('@/app/components/base/input', () => ({

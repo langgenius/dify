@@ -44,18 +44,12 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 
 ## Allowlist maintenance
 
-- After each migration batch, run:
-
-```sh
-pnpm -C web lint:fix --prune-suppressions <changed-files>
-```
-
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
 - Never increase allowlist scope to bypass new code.
 
 ## z-index strategy
 
-All new overlay primitives in `@langgenius/dify-ui` share a single z-index value:
+All new overlay primitives in `@langgenius/dify-ui/*` share a single z-index value:
 **`z-1002`**, except Toast which stays one layer above at **`z-1003`**.
 
 ### Why z-[1002]?
@@ -94,7 +88,7 @@ back to `z-9999`.
 
 Once all legacy overlays are removed:
 
-1. Reduce `z-1002` back to `z-50` across all `@langgenius/dify-ui` primitives.
+1. Reduce `z-1002` back to `z-50` across all `@langgenius/dify-ui/*` primitives.
 1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
 

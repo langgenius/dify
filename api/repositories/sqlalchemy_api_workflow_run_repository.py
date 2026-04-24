@@ -42,7 +42,7 @@ from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from models.enums import WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -63,6 +63,7 @@ class _WorkflowRunError(Exception):
 def _build_human_input_required_reason(
     reason_model: WorkflowPauseReason,
     form_model: HumanInputForm | None,
+    recipients: Sequence[HumanInputFormRecipient] = (),
 ) -> HumanInputRequired:
     form_content = ""
     inputs = []
@@ -89,7 +90,7 @@ def _build_human_input_required_reason(
             resolved_default_values = dict(definition.default_values)
             node_title = definition.node_title or node_title
 
-    return HumanInputRequired(
+    reason = HumanInputRequired(
         form_id=form_id,
         form_content=form_content,
         inputs=inputs,
@@ -98,6 +99,7 @@ def _build_human_input_required_reason(
         node_title=node_title,
         resolved_default_values=resolved_default_values,
     )
+    return reason
 
 
 class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
@@ -804,12 +806,23 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             form_stmt = select(HumanInputForm).where(HumanInputForm.id.in_(form_ids))
             for form in session.scalars(form_stmt).all():
                 form_models[form.id] = form
+        recipients_by_form_id: dict[str, list[HumanInputFormRecipient]] = {}
+        if form_ids:
+            recipient_stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
+            for recipient in session.scalars(recipient_stmt).all():
+                recipients_by_form_id.setdefault(recipient.form_id, []).append(recipient)
 
         pause_reasons: list[PauseReason] = []
         for reason in pause_reason_models:
             if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
                 form_model = form_models.get(reason.form_id)
-                pause_reasons.append(_build_human_input_required_reason(reason, form_model))
+                pause_reasons.append(
+                    _build_human_input_required_reason(
+                        reason,
+                        form_model,
+                        recipients_by_form_id.get(reason.form_id, ()),
+                    )
+                )
             else:
                 pause_reasons.append(reason.to_entity())
         return pause_reasons

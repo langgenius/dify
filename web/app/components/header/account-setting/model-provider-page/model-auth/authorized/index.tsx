@@ -1,4 +1,9 @@
 import type {
+  OffsetOptions,
+} from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
+import type { MouseEvent } from 'react'
+import type {
   ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
@@ -6,9 +11,6 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,6 +22,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiAddLine,
 } from '@remixicon/react'
 import {
@@ -29,11 +36,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
@@ -43,7 +45,7 @@ type AuthorizedProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   authParams?: {
     isModelCredential?: boolean
-    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onUpdate?: (newPayload?: Record<string, unknown>, formValues?: Record<string, unknown>) => void
     onRemove?: (credentialId: string) => void
     mode?: ModelModalModeEnum
   }
@@ -57,8 +59,8 @@ type AuthorizedProps = {
   renderTrigger: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: PortalToFollowElemOptions['offset']
-  placement?: PortalToFollowElemOptions['placement']
+  offset?: number | OffsetOptions
+  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   showItemSelectedIcon?: boolean
@@ -132,9 +134,13 @@ const Authorized = ({
   )
 
   const handleEdit = useCallback((credential?: Credential, model?: CustomModel) => {
-    handleOpenModal(credential, model)
     setMergedIsOpen(false)
+    handleOpenModal(credential, model)
   }, [handleOpenModal, setMergedIsOpen])
+  const handleDelete = useCallback((credential?: Credential, model?: CustomModel) => {
+    setMergedIsOpen(false)
+    openConfirmDelete(credential, model)
+  }, [openConfirmDelete, setMergedIsOpen])
 
   const handleItemClick = useCallback((credential: Credential, model?: CustomModel) => {
     if (disableItemClick)
@@ -148,30 +154,37 @@ const Authorized = ({
     setMergedIsOpen(false)
   }, [handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick])
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
+  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
+  const popupProps = triggerPopupSameWidth
+    ? { style: { width: 'var(--anchor-width, auto)' } }
+    : undefined
+  const handleTriggerClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (!triggerOnlyOpenModal)
+      return
+
+    event.preventDefault()
+    handleOpenModal()
+  }, [handleOpenModal, triggerOnlyOpenModal])
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={mergedIsOpen}
         onOpenChange={setMergedIsOpen}
-        placement={placement}
-        offset={offset}
-        triggerPopupSameWidth={triggerPopupSameWidth}
       >
-        <PortalToFollowElemTrigger
-          onClick={() => {
-            if (triggerOnlyOpenModal) {
-              handleOpenModal()
-              return
-            }
-
-            setMergedIsOpen(!mergedIsOpen)
-          }}
-          asChild
+        <PopoverTrigger
+          render={<div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>{renderTrigger(mergedIsOpen)}</div>}
+          onClick={handleTriggerClick}
+        />
+        <PopoverContent
+          placement={placement}
+          sideOffset={sideOffset}
+          alignOffset={alignOffset}
+          popupProps={popupProps}
+          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
-          {renderTrigger(mergedIsOpen)}
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-1002">
           <div className={cn(
             'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
             popupClassName,
@@ -186,15 +199,15 @@ const Authorized = ({
             }
             <div className="max-h-[304px] overflow-y-auto">
               {
-                items.map((item, index) => (
-                  <Fragment key={index}>
+                items.map(item => (
+                  <Fragment key={item.model?.model ?? item.title ?? item.credentials.map(credential => credential.credential_id).join('-')}>
                     <AuthorizedItem
                       provider={provider}
                       title={item.title}
                       model={item.model}
                       credentials={item.credentials}
                       disabled={disabled}
-                      onDelete={openConfirmDelete}
+                      onDelete={handleDelete}
                       disableDeleteButShowAction={disableDeleteButShowAction}
                       disableDeleteTip={disableDeleteTip}
                       onEdit={handleEdit}
@@ -204,7 +217,7 @@ const Authorized = ({
                       showModelTitle={showModelTitle}
                     />
                     {
-                      index !== items.length - 1 && (
+                      item !== items[items.length - 1] && (
                         <div className="h-px bg-divider-subtle"></div>
                       )
                     }
@@ -245,8 +258,8 @@ const Authorized = ({
               )
             }
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={open => !open && closeConfirmDelete()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

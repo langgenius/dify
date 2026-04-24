@@ -14,7 +14,7 @@ describe('trigger-schedule/frequency-selector', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
+    const trigger = screen.getByRole('combobox')
     await user.click(trigger)
 
     await waitFor(() => {

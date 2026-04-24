@@ -137,6 +137,12 @@ const getUniquePastedNodeTitle = (
   return titleCandidate
 }
 
+const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
+  return node.type === CUSTOM_NOTE_NODE
+    && target instanceof HTMLElement
+    && !!target.closest('.note-editor-theme_link')
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const { data: appDslVersion } = useSuspenseQuery({
@@ -474,9 +480,11 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
-    (_, node) => {
+    (event, node) => {
       const { controlMode } = workflowStore.getState()
       if (controlMode === ControlMode.Comment)
+        return
+      if (isNoteLinkClickTarget(event.target, node))
         return
       if (node.type === CUSTOM_ITERATION_START_NODE)
         return
@@ -1543,7 +1551,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: newCurrentNode.data.type,
                 targetType: targetNodeForEdge.data.type,
                 isInIteration,
@@ -1583,7 +1591,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: sourceNode.data.type,
                 targetType: newCurrentNode.data.type,
                 isInIteration: newNodeIsInIteration,

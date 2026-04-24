@@ -205,7 +205,7 @@ const UpdateDSLModal = ({
         onClose={onCancel}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('common.importDSL', { ns: 'workflow' })}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t('importApp', { ns: 'app' })}</div>
           <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>

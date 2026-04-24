@@ -12,9 +12,9 @@ import storybook from 'eslint-plugin-storybook'
 import {
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   OVERLAY_MIGRATION_LEGACY_BASE_FILES,
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+  WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
@@ -170,13 +170,13 @@ export default antfu(
     },
   },
   {
-    name: 'dify/no-direct-next-imports',
+    name: 'dify/restricted-imports',
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+        patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
       }],
     },
   },
@@ -192,7 +192,7 @@ export default antfu(
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: [
-          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_RESTRICTED_IMPORT_PATTERNS,
           ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
         ],
       }],

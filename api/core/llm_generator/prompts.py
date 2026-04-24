@@ -107,6 +107,7 @@ DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
 DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS = 256
 DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE = 0.0
 
+
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
     " in the long text. Please think step by step."

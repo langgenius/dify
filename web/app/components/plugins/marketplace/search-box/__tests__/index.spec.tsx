@@ -62,31 +62,38 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-// Mock portal-to-follow-elem with shared open state
+// Mock popover with shared open state
 let mockPortalOpenState = false
+let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: {
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open, onOpenChange }: {
     children: React.ReactNode
     open: boolean
+    onOpenChange?: (open: boolean) => void
   }) => {
     mockPortalOpenState = open
+    mockPopoverOnOpenChange = onOpenChange
     return (
       <div data-testid="portal-elem" data-open={open}>
         {children}
       </div>
     )
   },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: () => void
+  PopoverTrigger: ({ children, render, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
     className?: string
   }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
+    <div
+      data-testid="portal-trigger"
+      onClick={() => mockPopoverOnOpenChange?.(!mockPortalOpenState)}
+      className={className}
+    >
+      {render ?? children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children, className }: {
+  PopoverContent: ({ children, className }: {
     children: React.ReactNode
     className?: string
   }) => {
