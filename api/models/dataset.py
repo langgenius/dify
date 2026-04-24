@@ -1064,7 +1064,7 @@ class ChildChunk(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, insert_default=None, server_default=None)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -1073,12 +1073,12 @@ class ChildChunk(TypeBase):
         init=False,
     )
     indexing_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True, insert_default=None, server_default=None
+        DateTime, nullable=True, insert_default=None, server_default=None, init=False
     )
     completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True, insert_default=None, server_default=None
+        DateTime, nullable=True, insert_default=None, server_default=None, init=False
     )
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True, insert_default=None, server_default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
     @property
     def dataset(self):
