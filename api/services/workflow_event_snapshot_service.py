@@ -12,7 +12,6 @@ from typing import Any
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.common.pause_reason_serializer import pause_reason_to_public_dict
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
