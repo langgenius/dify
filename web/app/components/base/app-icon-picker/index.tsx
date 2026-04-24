@@ -34,12 +34,17 @@ export type AppIconSelection = AppIconEmojiSelection | AppIconImageSelection
 type AppIconPickerProps = {
   onSelect?: (payload: AppIconSelection) => void
   onClose?: () => void
+  initialEmoji?: {
+    icon: string
+    background?: string | null
+  }
   className?: string
 }
 
 const AppIconPicker: FC<AppIconPickerProps> = ({
   onSelect,
   onClose,
+  initialEmoji,
   className,
 }) => {
   const { t } = useTranslation()
@@ -138,7 +143,14 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
         </div>
       )}
 
-      {activeTab === 'emoji' && <EmojiPickerInner className={cn('flex-1 overflow-hidden pt-2')} onSelect={handleSelectEmoji} />}
+      {activeTab === 'emoji' && (
+        <EmojiPickerInner
+          className={cn('flex-1 overflow-hidden pt-2')}
+          emoji={initialEmoji?.icon}
+          background={initialEmoji?.background ?? undefined}
+          onSelect={handleSelectEmoji}
+        />
+      )}
       {activeTab === 'image' && <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />}
 
       <Divider className="m-0" />
