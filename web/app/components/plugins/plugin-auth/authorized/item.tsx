@@ -6,6 +6,7 @@ import {
   RiDeleteBinLine,
   RiEditLine,
   RiEqualizer2Line,
+  RiLock2Line,
 } from '@remixicon/react'
 import {
   memo,
@@ -16,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
+// eslint-disable-next-line no-restricted-imports -- legacy tooltip, migration tracked in #32767
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { CredentialTypeEnum } from '../types'
@@ -24,7 +26,8 @@ type ItemProps = {
   credential: Credential
   disabled?: boolean
   onDelete?: (id: string) => void
-  onEdit?: (id: string, values: Record<string, any>) => void
+  onEdit?: (id: string, values: Record<string, unknown>) => void
+  onEditPermissions?: (id: string, values: Record<string, unknown>) => void
   onSetDefault?: (id: string) => void
   onRename?: (payload: {
     credential_id: string
@@ -34,6 +37,7 @@ type ItemProps = {
   disableEdit?: boolean
   disableDelete?: boolean
   disableSetDefault?: boolean
+  disableEditPermissions?: boolean
   onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
   selectedCredentialId?: string
@@ -43,12 +47,14 @@ const Item = ({
   disabled,
   onDelete,
   onEdit,
+  onEditPermissions,
   onSetDefault,
   onRename,
   disableRename,
   disableEdit,
   disableDelete,
   disableSetDefault,
+  disableEditPermissions,
   onItemClick,
   showSelectedIcon,
   selectedCredentialId,
@@ -58,8 +64,8 @@ const Item = ({
   const [renameValue, setRenameValue] = useState(credential.name)
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const showAction = useMemo(() => {
-    return !(disableRename && disableEdit && disableDelete && disableSetDefault)
-  }, [disableRename, disableEdit, disableDelete, disableSetDefault])
+    return !(disableRename && disableEdit && disableDelete && disableSetDefault && disableEditPermissions)
+  }, [disableRename, disableEdit, disableDelete, disableSetDefault, disableEditPermissions])
 
   const CredentialItem = (
     <div
@@ -199,11 +205,38 @@ const Item = ({
                           ...credential.credentials,
                           __name__: credential.name,
                           __credential_id__: credential.id,
+                          __visibility__: credential.visibility ?? 'all_team_members',
+                          __created_by__: credential.created_by ?? '',
+                          __partial_member_list__: credential.partial_member_list ?? [],
                         },
                       )
                     }}
                   >
                     <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                  </ActionButton>
+                </Tooltip>
+              )
+            }
+            {
+              !disableEditPermissions && !credential.from_enterprise && !credential.not_allowed_to_use && (
+                <Tooltip popupContent="Manage Permissions">
+                  <ActionButton
+                    disabled={disabled}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditPermissions?.(
+                        credential.id,
+                        {
+                          __credential_id__: credential.id,
+                          __name__: credential.name,
+                          __visibility__: credential.visibility ?? 'all_team_members',
+                          __created_by__: credential.created_by ?? '',
+                          __partial_member_list__: credential.partial_member_list ?? [],
+                        },
+                      )
+                    }}
+                  >
+                    <RiLock2Line className="h-4 w-4 text-text-tertiary" />
                   </ActionButton>
                 </Tooltip>
               )

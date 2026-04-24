@@ -19,7 +19,7 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
 
@@ -110,6 +110,12 @@ class TriggerSubscription(TypeBase):
     )
     expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
+    )
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
     )
 
     created_at: Mapped[datetime] = mapped_column(

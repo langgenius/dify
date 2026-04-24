@@ -126,6 +126,7 @@ from .tag import tags
 from .workspace import (
     account,
     agent_providers,
+    credential_visibility,
     endpoint,
     load_balancing_config,
     members,
@@ -159,6 +160,7 @@ __all__ = [
     "console_ns",
     "conversation",
     "conversation_variables",
+    "credential_visibility",
     "data_source",
     "data_source_bearer_auth",
     "data_source_oauth",

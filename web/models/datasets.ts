@@ -7,6 +7,7 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import { PermissionLevel } from './permission'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -14,11 +15,10 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-export enum DatasetPermission {
-  onlyMe = 'only_me',
-  allTeamMembers = 'all_team_members',
-  partialMembers = 'partial_members',
-}
+// Re-export PermissionLevel as DatasetPermission for backward compatibility
+export const DatasetPermission = PermissionLevel
+// eslint-disable-next-line ts/no-redeclare -- intentional: merging const + type under one name
+export type DatasetPermission = PermissionLevel
 
 export enum ChunkingMode {
   text = 'text_model', // General text

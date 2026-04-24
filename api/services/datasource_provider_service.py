@@ -726,24 +726,45 @@ class DatasourceProviderService:
 
         return secret_input_form_variables
 
-    def list_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
+    def list_datasource_credentials(
+        self,
+        tenant_id: str,
+        provider: str,
+        plugin_id: str,
+        user_id: str = "",
+        is_admin: bool = False,
+    ) -> list[dict]:
         """
-        list datasource credentials with obfuscated sensitive fields.
+        list datasource credentials with obfuscated sensitive fields,
+        filtered by visibility.
 
         :param tenant_id: workspace id
-        :param provider_id: provider id
+        :param provider: provider name
+        :param plugin_id: plugin id
+        :param user_id: current user id for visibility filtering
+        :param is_admin: whether user is admin/owner (bypasses visibility)
         :return:
         """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = list(
-            db.session.scalars(
-                select(DatasourceProvider).where(
-                    DatasourceProvider.tenant_id == tenant_id,
-                    DatasourceProvider.provider == provider,
-                    DatasourceProvider.plugin_id == plugin_id,
-                )
-            ).all()
+        query = select(DatasourceProvider).where(
+            DatasourceProvider.tenant_id == tenant_id,
+            DatasourceProvider.provider == provider,
+            DatasourceProvider.plugin_id == plugin_id,
         )
+        if user_id:
+            query = CredentialPermissionService.apply_visibility_filter(
+                query,
+                model_id_column=DatasourceProvider.id,
+                model_user_id_column=DatasourceProvider.user_id,
+                model_visibility_column=DatasourceProvider.visibility,
+                credential_type=CredPermType.DATASOURCE_PROVIDER,
+                user_id=user_id,
+                is_admin=is_admin,
+            )
+        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(query).all())
         if not datasource_providers:
             return []
         copy_credentials_list = []

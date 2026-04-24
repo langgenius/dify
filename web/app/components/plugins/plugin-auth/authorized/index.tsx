@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
+import PermissionModal from '../authorize/permission-modal'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
@@ -138,6 +139,11 @@ const Authorized = ({
     pendingOperationCredentialId.current = id
     setEditValues(values)
   }, [setMergedIsOpen])
+  const [permissionValues, setPermissionValues] = useState<Record<string, unknown> | null>(null)
+  const handleEditPermissions = useCallback((id: string, values: Record<string, unknown>) => {
+    pendingOperationCredentialId.current = id
+    setPermissionValues(values)
+  }, [])
   const handleRemove = useCallback(() => {
     setDeleteCredentialId(pendingOperationCredentialId.current)
   }, [])
@@ -275,6 +281,7 @@ const Authorized = ({
                           onDelete={openConfirm}
                           onSetDefault={handleSetDefault}
                           onRename={handleRename}
+                          onEditPermissions={handleEditPermissions}
                           disableSetDefault={disableSetDefault}
                           onItemClick={onItemClick}
                           showSelectedIcon={showItemSelectedIcon}
@@ -306,6 +313,7 @@ const Authorized = ({
                           onSetDefault={handleSetDefault}
                           disableSetDefault={disableSetDefault}
                           disableRename
+                          disableEditPermissions
                           onItemClick={onItemClick}
                           onRename={handleRename}
                           showSelectedIcon={showItemSelectedIcon}
@@ -363,6 +371,24 @@ const Authorized = ({
               pendingOperationCredentialId.current = null
             }}
             onRemove={handleRemove}
+            disabled={disabled || doingAction}
+            onUpdate={onUpdate}
+          />
+        )
+      }
+      {
+        !!permissionValues && (
+          <PermissionModal
+            pluginPayload={pluginPayload}
+            credentialId={permissionValues.__credential_id__ as string}
+            credentialName={permissionValues.__name__ as string}
+            createdBy={permissionValues.__created_by__ as string}
+            initialVisibility={permissionValues.__visibility__ as string}
+            initialPartialMemberList={permissionValues.__partial_member_list__ as string[]}
+            onClose={() => {
+              setPermissionValues(null)
+              pendingOperationCredentialId.current = null
+            }}
             disabled={disabled || doingAction}
             onUpdate={onUpdate}
           />

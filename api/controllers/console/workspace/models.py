@@ -259,7 +259,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
@@ -285,6 +285,8 @@ class ModelProviderModelCredentialApi(Resource):
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
+                user_id=user.id,
+                is_admin=user.is_admin_or_owner,
             )
         else:
             available_credentials = model_provider_service.get_provider_model_available_credentials(

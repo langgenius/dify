@@ -196,12 +196,14 @@ class DatasourceAuth(Resource):
     def get(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
-        _, current_tenant_id = current_account_with_tenant()
+        user, current_tenant_id = current_account_with_tenant()
 
         datasources = datasource_provider_service.list_datasource_credentials(
             tenant_id=current_tenant_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
+            user_id=user.id,
+            is_admin=user.is_admin_or_owner,
         )
         return {"result": datasources}, 200
 
