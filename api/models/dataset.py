@@ -1055,11 +1055,6 @@ class ChildChunk(TypeBase):
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
-    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
-    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
-    type: Mapped[SegmentType] = mapped_column(
-        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'"), init=False
-    )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
@@ -1077,6 +1072,11 @@ class ChildChunk(TypeBase):
     )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, insert_default=None, server_default=None, init=False
+    )
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    type: Mapped[SegmentType] = mapped_column(
+        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'"), default=SegmentType.AUTOMATIC
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
