@@ -3,12 +3,6 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp, enableAppSiteAndGetURL, publishWorkflowApp, syncRunnableWorkflowDraft } from '../../../support/api'
 
-When('I navigate to the app overview page', async function (this: DifyWorld) {
-  const page = this.getPage()
-  await page.getByRole('link', { name: 'Overview' }).click()
-  await expect(page).toHaveURL(/\/overview/, { timeout: 15_000 })
-})
-
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()
   await expect(page.getByText('Web App')).toBeVisible({ timeout: 15_000 })
