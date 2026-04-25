@@ -1,13 +1,16 @@
 from opentelemetry.metrics import Histogram, get_meter
 
+from configs import dify_config
+
 _event_delivery_latency_histogram: Histogram | None = None
 
-METRIC_EVENT_DELIVERY_LATENCY = "event_stream.delivery_latency_seconds"
+METRIC_EVENT_DELIVERY_LATENCY = "dify.event_stream.delivery_latency"
+
 
 def _get_delivery_latency_histogram() -> Histogram:
     global _event_delivery_latency_histogram
     if _event_delivery_latency_histogram is None:
-        meter = get_meter("event_stream")
+        meter = get_meter("dify.event_stream", version=dify_config.project.version)
         _event_delivery_latency_histogram = meter.create_histogram(
             name=METRIC_EVENT_DELIVERY_LATENCY,
             description="End-to-end delivery latency of streaming events from publish to receive",

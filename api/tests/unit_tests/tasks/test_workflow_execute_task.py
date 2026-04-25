@@ -101,7 +101,7 @@ def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
     payload = json.loads(mock_topic.publish.call_args[0][0])
     assert payload["event"] == "bar"
     assert "_meta" in payload
-    assert "_meta" in payload
+    assert "emit_ts" in payload["_meta"]
     assert payload["_meta"]["workflow_run_id"] == str(workflow_run_id)
 
 

@@ -30,8 +30,22 @@ class RedisPubSubConfig(BaseSettings):
 
     PUBSUB_METRICS_RECORD_APP_ID: bool = Field(
         validation_alias=AliasChoices("EVENT_BUS_LATENCY_RECORD_APP_ID", "PUBSUB_LATENCY_RECORD_APP_ID"),
-        description="Record app ID in latency metrics.",
+        description=(
+            "Record app ID in pub/sub event delivery latency metrics. "
+            "Enabling increases label cardinality; keep disabled in large multi-tenant "
+            "deployments unless breakdowns by app are required."
+        ),
         default=False,
+    )
+
+    PUBSUB_METRICS_RECORD_TENANT_ID: bool = Field(
+        validation_alias=AliasChoices("EVENT_BUS_LATENCY_RECORD_TENANT_ID", "PUBSUB_LATENCY_RECORD_TENANT_ID"),
+        description=(
+            "Record tenant ID in pub/sub event delivery latency metrics. "
+            "Disabling reduces time-series cardinality when many distinct tenants are active. "
+            "Defaults to on for per-tenant analysis."
+        ),
+        default=True,
     )
 
     PUBSUB_REDIS_URL: str | None = Field(

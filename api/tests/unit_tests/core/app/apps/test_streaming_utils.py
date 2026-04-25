@@ -232,6 +232,28 @@ class TestProcessEventMeta:
         assert len(called) == 1
         assert called[0][2] == {"tenant_id": "t1", "app_id": ""}
 
+    def test_calls_record_delivery_latency_omits_tenant_id_when_pubsub_metrics_record_tenant_id_disabled(
+        self, monkeypatch
+    ):
+        called = []
+
+        def fake_record(latency_seconds, *, event_type="", additional_attributes=None):
+            called.append((latency_seconds, event_type, additional_attributes or {}))
+
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.ENABLE_OTEL", True)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.PUBSUB_METRICS_RECORD_TENANT_ID", False)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.PUBSUB_METRICS_RECORD_APP_ID", True)
+        monkeypatch.setattr("core.app.apps.streaming_utils.record_delivery_latency", fake_record)
+
+        event = {
+            EVENT_META_KEY: {"emit_ts": 999.0, "tenant_id": "t1", "app_id": "a1"},
+            "event": "text_chunk",
+        }
+        _process_event_meta(event)
+        assert len(called) == 1
+        assert called[0][2] == {"tenant_id": "", "app_id": "a1"}
+
     def test_skips_record_when_otel_disabled(self, monkeypatch):
         called = []
 

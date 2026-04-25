@@ -11,7 +11,7 @@ from core.app.entities.task_entities import StreamEvent
 from extensions.otel.metrics import record_delivery_latency
 from libs.broadcast_channel.channel import Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.meta import EventMeta, EVENT_META_KEY
+from libs.broadcast_channel.meta import EVENT_META_KEY, EventMeta
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +37,18 @@ def _process_event_meta(event: Any) -> None:
                 meta.get("workflow_run_id", ""),
             )
             if dify_config.ENABLE_OTEL:
-                record_delivery_latency(latency, event_type=event.get("event", ""), additional_attributes={
-                    "tenant_id": meta["tenant_id"],
-                    "app_id": meta.get("app_id", "") if dify_config.PUBSUB_METRICS_RECORD_APP_ID else "",
-                })
+                record_delivery_latency(
+                    latency,
+                    event_type=event.get("event", ""),
+                    additional_attributes={
+                        "tenant_id": meta.get("tenant_id", "")
+                        if dify_config.PUBSUB_METRICS_RECORD_TENANT_ID
+                        else "",
+                        "app_id": meta.get("app_id", "")
+                        if dify_config.PUBSUB_METRICS_RECORD_APP_ID
+                        else "",
+                    },
+                )
     except Exception:
         logger.exception("Failed to process event meta")
 
