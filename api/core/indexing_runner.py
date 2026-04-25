@@ -1,4 +1,5 @@
 import concurrent.futures
+import gc
 import json
 import logging
 import re
@@ -8,6 +9,7 @@ import uuid
 from collections.abc import Mapping
 from typing import Any
 
+import psutil
 from flask import Flask, current_app
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -65,6 +67,23 @@ class IndexingRunner:
             document.error = str(error_message)
             document.stopped_at = naive_utc_now()
             db.session.commit()
+
+    @staticmethod
+    def _log_memory_snapshot(stage: str, *, dataset_document_id: str, extra: Mapping[str, Any] | None = None) -> None:
+        if not dify_config.INDEXING_MEMORY_SNAPSHOT_ENABLED:
+            return
+        try:
+            rss_bytes = psutil.Process().memory_info().rss
+            payload: dict[str, Any] = {
+                "stage": stage,
+                "dataset_document_id": dataset_document_id,
+                "rss_mb": round(rss_bytes / 1024 / 1024, 2),
+            }
+            if extra:
+                payload.update(extra)
+            logger.info("indexing-memory-snapshot %s", payload)
+        except Exception:
+            logger.exception("Failed to capture indexing memory snapshot")
 
     def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
@@ -601,8 +620,19 @@ class IndexingRunner:
             )
             create_keyword_thread.start()
 
-        max_workers = 10
+        # High-quality indexing is memory intensive (embedding generation + vector writes).
+        # Running too many chunks in parallel can trigger OOM and freeze the service until reboot.
+        max_workers = max(1, int(dify_config.INDEXING_MAX_WORKERS))
+        max_workers = min(max_workers, len(documents)) if documents else 1
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            self._log_memory_snapshot(
+                "high_quality_load_start",
+                dataset_document_id=dataset_document.id,
+                extra={
+                    "max_workers": max_workers,
+                    "documents": len(documents),
+                },
+            )
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
 
@@ -629,8 +659,13 @@ class IndexingRunner:
                         )
                     )
 
-                for future in futures:
+                for completed_idx, future in enumerate(futures, start=1):
                     tokens += future.result()
+                    self._log_memory_snapshot(
+                        "high_quality_chunk_completed",
+                        dataset_document_id=dataset_document.id,
+                        extra={"completed_chunks": completed_idx, "total_chunks": len(futures)},
+                    )
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
             and dataset.indexing_technique == IndexTechniqueType.ECONOMY
@@ -724,6 +759,14 @@ class IndexingRunner:
 
             db.session.commit()
 
+            # Help reclaim memory between chunk tasks.
+            # This is especially important for self-hosted setups that may run repeated re-indexing.
+            gc.collect()
+            self._log_memory_snapshot(
+                "chunk_gc_collected",
+                dataset_document_id=dataset_document.id,
+                extra={"chunk_documents": len(chunk_documents)},
+            )
             return tokens
 
     @staticmethod
