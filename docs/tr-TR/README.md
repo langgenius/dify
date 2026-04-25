@@ -134,7 +134,7 @@ Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](../../do
 
 Uygulamalar, kiracılar, mesajlar ve daha fazlasının granularitesinde metrikleri izlemek için Dify'nin PostgreSQL veritabanını veri kaynağı olarak kullanarak panoyu Grafana'ya aktarın.
 
-- [@bowenliang123 tarafından Grafana Panosu](%E9%93%BE%E6%8E%A5)
+- [@bowenliang123 tarafından Grafana Panosu](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Kubernetes ile Dağıtım
 
