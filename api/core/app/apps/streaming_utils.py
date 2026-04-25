@@ -41,12 +41,8 @@ def _process_event_meta(event: Any) -> None:
                     latency,
                     event_type=event.get("event", ""),
                     additional_attributes={
-                        "tenant_id": meta.get("tenant_id", "")
-                        if dify_config.PUBSUB_METRICS_RECORD_TENANT_ID
-                        else "",
-                        "app_id": meta.get("app_id", "")
-                        if dify_config.PUBSUB_METRICS_RECORD_APP_ID
-                        else "",
+                        "tenant_id": meta.get("tenant_id", "") if dify_config.PUBSUB_METRICS_RECORD_TENANT_ID else "",
+                        "app_id": meta.get("app_id", "") if dify_config.PUBSUB_METRICS_RECORD_APP_ID else "",
                     },
                 )
     except Exception:

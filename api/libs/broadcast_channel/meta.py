@@ -1,4 +1,4 @@
-from typing import TypedDict, Required
+from typing import Required, TypedDict
 
 EVENT_META_KEY = "_meta"
 

@@ -24,7 +24,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.runtime import GraphRuntimeState
-from libs.broadcast_channel.meta import EventMeta, EVENT_META_KEY
+from libs.broadcast_channel.meta import EVENT_META_KEY, EventMeta
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
