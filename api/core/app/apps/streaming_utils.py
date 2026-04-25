@@ -38,7 +38,7 @@ def _process_event_meta(event: Any) -> None:
             )
             if dify_config.ENABLE_OTEL:
                 record_delivery_latency(latency, event_type=event.get("event", ""), additional_attributes={
-                    "tenant_id": meta.get("tenant_id", ""),
+                    "tenant_id": meta["tenant_id"],
                     "app_id": meta.get("app_id", "") if dify_config.PUBSUB_METRICS_RECORD_APP_ID else "",
                 })
     except Exception:
