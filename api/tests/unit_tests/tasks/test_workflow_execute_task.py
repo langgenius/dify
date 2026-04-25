@@ -74,10 +74,22 @@ def test_publish_streaming_response_with_uuid(mock_topic: MagicMock):
     workflow_run_id = uuid.uuid4()
     response_stream = iter([{"event": "foo"}, "ping"])
 
-    _publish_streaming_response(response_stream, workflow_run_id, app_mode=AppMode.ADVANCED_CHAT)
+    _publish_streaming_response(
+        response_stream,
+        workflow_run_id,
+        app_mode=AppMode.ADVANCED_CHAT,
+        tenant_id="tenant-1",
+        app_id="app-1",
+    )
 
     payloads = [call.args[0] for call in mock_topic.publish.call_args_list]
-    assert payloads == [json.dumps({"event": "foo"}).encode(), json.dumps("ping").encode()]
+    assert json.loads(payloads[0])["event"] == "foo"
+    meta = json.loads(payloads[0])["_meta"]
+    assert "emit_ts" in meta
+    assert meta["tenant_id"] == "tenant-1"
+    assert meta["app_id"] == "app-1"
+    assert meta["workflow_run_id"] == str(workflow_run_id)
+    assert json.loads(payloads[1]) == "ping"
 
 
 def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
@@ -86,7 +98,11 @@ def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
 
     _publish_streaming_response(response_stream, str(workflow_run_id), app_mode=AppMode.ADVANCED_CHAT)
 
-    mock_topic.publish.assert_called_once_with(json.dumps({"event": "bar"}).encode())
+    payload = json.loads(mock_topic.publish.call_args[0][0])
+    assert payload["event"] == "bar"
+    assert "_meta" in payload
+    assert "_meta" in payload
+    assert payload["_meta"]["workflow_run_id"] == str(workflow_run_id)
 
 
 def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(monkeypatch: pytest.MonkeyPatch):
@@ -270,7 +286,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
     )
 
     _resume_advanced_chat(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="tenant-1"),
         workflow=SimpleNamespace(created_by="workflow-owner"),
         user=MagicMock(),
         conversation=SimpleNamespace(id="conversation-id"),
@@ -285,7 +301,9 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
-    publish_streaming_response.assert_called_once_with(response_stream, "workflow-run-id", AppMode.ADVANCED_CHAT)
+    publish_streaming_response.assert_called_once_with(
+        response_stream, "workflow-run-id", AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-id"
+    )
 
 
 def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypatch: pytest.MonkeyPatch):
@@ -315,7 +333,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
     pause_entity = MagicMock()
 
     _resume_workflow(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="tenant-1"),
         workflow=SimpleNamespace(created_by="workflow-owner"),
         user=MagicMock(),
         generate_entity=generate_entity,
@@ -330,7 +348,9 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
-    publish_streaming_response.assert_called_once_with(response_stream, "workflow-run-id", AppMode.WORKFLOW)
+    publish_streaming_response.assert_called_once_with(
+        response_stream, "workflow-run-id", AppMode.WORKFLOW, tenant_id="tenant-1", app_id="app-id"
+    )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
 
 
@@ -362,7 +382,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: py
     pause_entity = MagicMock()
 
     _resume_workflow(
-        app_model=SimpleNamespace(id="app-id"),
+        app_model=SimpleNamespace(id="app-id", tenant_id="tenant-1"),
         workflow=SimpleNamespace(created_by="workflow-owner"),
         user=MagicMock(),
         generate_entity=generate_entity,
@@ -375,5 +395,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: py
         pause_entity=pause_entity,
     )
 
-    publish_streaming_response.assert_called_once_with(response_stream, "workflow-run-id", AppMode.WORKFLOW)
+    publish_streaming_response.assert_called_once_with(
+        response_stream, "workflow-run-id", AppMode.WORKFLOW, tenant_id="tenant-1", app_id="app-id"
+    )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)

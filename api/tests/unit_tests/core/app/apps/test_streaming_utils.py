@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
+import time
 
 import pytest
 
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.streaming_utils import _normalize_terminal_events, stream_topic_events
+from core.app.apps.streaming_utils import (
+    _get_event_meta,
+    _normalize_terminal_events,
+    _process_event_meta,
+    stream_topic_events,
+)
 from core.app.entities.task_entities import StreamEvent
+from libs.broadcast_channel.meta import EVENT_META_KEY
 from models.model import AppMode
 
 
@@ -128,3 +136,112 @@ def test_stream_topic_events_can_continue_past_pause():
     assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
         next(generator)
+
+
+class TestGetEventMeta:
+    def test_returns_meta_from_dict(self):
+        event = {EVENT_META_KEY: {"emit_ts": 1234.5}, "event": "text_chunk"}
+        meta = _get_event_meta(event)
+        assert meta is not None
+        assert meta["emit_ts"] == 1234.5
+
+    def test_strips_meta_key_from_event(self):
+        event = {EVENT_META_KEY: {"emit_ts": 1234.5}, "event": "text_chunk"}
+        _get_event_meta(event)
+        assert EVENT_META_KEY not in event
+        assert "event" in event
+
+    def test_returns_none_when_no_meta_key(self):
+        event = {"event": "text_chunk"}
+        meta = _get_event_meta(event)
+        assert meta is None
+
+    def test_returns_none_for_non_dict(self):
+        assert _get_event_meta("string event") is None
+        assert _get_event_meta(None) is None
+        assert _get_event_meta(42) is None
+
+
+class TestProcessEventMeta:
+    def test_logs_debug_for_normal_latency(self, monkeypatch, caplog):
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        event = {EVENT_META_KEY: {"emit_ts": 999.5}, "event": "text_chunk"}
+        with caplog.at_level(logging.DEBUG):
+            _process_event_meta(event)
+        assert "Event delivery latency: 0.50s" in caplog.text
+        assert EVENT_META_KEY not in event
+
+    def test_logs_debug_for_high_latency(self, monkeypatch, caplog):
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.ENABLE_OTEL", False)
+        event = {EVENT_META_KEY: {"emit_ts": 990.0}, "event": "text_chunk"}
+        with caplog.at_level(logging.DEBUG):
+            _process_event_meta(event)
+        assert "Event delivery latency: 10.00s" in caplog.text
+        assert EVENT_META_KEY not in event
+
+    def test_no_log_when_meta_missing(self, monkeypatch, caplog):
+        event = {"event": "text_chunk"}
+        with caplog.at_level(logging.DEBUG):
+            _process_event_meta(event)
+        assert "Event delivery latency" not in caplog.text
+
+    def test_no_log_when_emit_ts_missing(self, monkeypatch, caplog):
+        event = {EVENT_META_KEY: {}, "event": "text_chunk"}
+        with caplog.at_level(logging.DEBUG):
+            _process_event_meta(event)
+        assert "Event delivery latency" not in caplog.text
+
+    def test_calls_record_delivery_latency_includes_app_id_when_configured(self, monkeypatch):
+        called = []
+
+        def fake_record(latency_seconds, *, event_type="", additional_attributes=None):
+            called.append((latency_seconds, event_type, additional_attributes or {}))
+
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.ENABLE_OTEL", True)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.PUBSUB_METRICS_RECORD_APP_ID", True)
+        monkeypatch.setattr("core.app.apps.streaming_utils.record_delivery_latency", fake_record)
+
+        event = {
+            EVENT_META_KEY: {"emit_ts": 999.0, "tenant_id": "t1", "app_id": "a1"},
+            "event": "text_chunk",
+        }
+        _process_event_meta(event)
+        assert len(called) == 1
+        assert called[0][0] == 1.0
+        assert called[0][1] == "text_chunk"
+        assert called[0][2] == {"tenant_id": "t1", "app_id": "a1"}
+
+    def test_calls_record_delivery_latency_omits_app_id_when_pubsub_metrics_record_app_id_disabled(self, monkeypatch):
+        called = []
+
+        def fake_record(latency_seconds, *, event_type="", additional_attributes=None):
+            called.append((latency_seconds, event_type, additional_attributes or {}))
+
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.ENABLE_OTEL", True)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.PUBSUB_METRICS_RECORD_APP_ID", False)
+        monkeypatch.setattr("core.app.apps.streaming_utils.record_delivery_latency", fake_record)
+
+        event = {
+            EVENT_META_KEY: {"emit_ts": 999.0, "tenant_id": "t1", "app_id": "a1"},
+            "event": "text_chunk",
+        }
+        _process_event_meta(event)
+        assert len(called) == 1
+        assert called[0][2] == {"tenant_id": "t1", "app_id": ""}
+
+    def test_skips_record_when_otel_disabled(self, monkeypatch):
+        called = []
+
+        def fake_record(*args, **kwargs):
+            called.append(1)
+
+        monkeypatch.setattr(time, "time", lambda: 1000.0)
+        monkeypatch.setattr("core.app.apps.streaming_utils.dify_config.ENABLE_OTEL", False)
+        monkeypatch.setattr("core.app.apps.streaming_utils.record_delivery_latency", fake_record)
+
+        event = {EVENT_META_KEY: {"emit_ts": 999.0}, "event": "text_chunk"}
+        _process_event_meta(event)
+        assert len(called) == 0

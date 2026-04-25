@@ -28,6 +28,12 @@ class RedisPubSubConfig(BaseSettings):
     - streams: Redis Streams (at-least-once, supports late subscribers)
     """
 
+    PUBSUB_METRICS_RECORD_APP_ID: bool = Field(
+        validation_alias=AliasChoices("EVENT_BUS_LATENCY_RECORD_APP_ID", "PUBSUB_LATENCY_RECORD_APP_ID"),
+        description="Record app ID in latency metrics.",
+        default=False,
+    )
+
     PUBSUB_REDIS_URL: str | None = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_URL", "PUBSUB_REDIS_URL"),
         description=(

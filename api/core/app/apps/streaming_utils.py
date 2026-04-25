@@ -1,13 +1,48 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Callable, Generator, Iterable, Mapping
 from typing import Any
 
+from configs import dify_config
 from core.app.entities.task_entities import StreamEvent
+from extensions.otel.metrics import record_delivery_latency
 from libs.broadcast_channel.channel import Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.broadcast_channel.meta import EventMeta, EVENT_META_KEY
+
+logger = logging.getLogger(__name__)
+
+
+def _get_event_meta(event: Any) -> EventMeta | None:
+    if isinstance(event, dict):
+        return event.pop(EVENT_META_KEY, None)
+    return None
+
+
+def _process_event_meta(event: Any) -> None:
+    """Process event meta. Must not raise any exceptions."""
+    try:
+        meta = _get_event_meta(event)
+        if meta is None:
+            return
+        emit_ts = meta["emit_ts"]
+        if isinstance(emit_ts, (int, float)):
+            latency = time.time() - emit_ts
+            logger.debug(
+                "Event delivery latency: %.2fs, workflow_run_id=%s",
+                latency,
+                meta.get("workflow_run_id", ""),
+            )
+            if dify_config.ENABLE_OTEL:
+                record_delivery_latency(latency, event_type=event.get("event", ""), additional_attributes={
+                    "tenant_id": meta.get("tenant_id", ""),
+                    "app_id": meta.get("app_id", "") if dify_config.PUBSUB_METRICS_RECORD_APP_ID else "",
+                })
+    except Exception:
+        logger.exception("Failed to process event meta")
 
 
 def stream_topic_events(
@@ -52,6 +87,8 @@ def stream_topic_events(
             yield event
             if not isinstance(event, dict):
                 continue
+
+            _process_event_meta(event)
 
             event_type = event.get("event")
             if event_type in terminal_values:
