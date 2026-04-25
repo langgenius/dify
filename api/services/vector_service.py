@@ -223,6 +223,7 @@ class VectorService:
             )
             documents.append(new_child_document)
         for update_child_chunk in update_child_chunks:
+            assert update_child_chunk.index_node_id
             child_document = Document(
                 page_content=update_child_chunk.content,
                 metadata={
@@ -235,6 +236,7 @@ class VectorService:
             documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert delete_child_chunk.index_node_id
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
