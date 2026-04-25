@@ -108,7 +108,8 @@ class TestSegmentServiceChildChunks:
             word_count=9,
             created_by="user-1",
         )
-
+        existing_a.id = "child-a"
+        existing_b.id = "child-b"
         with (
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-new"),
