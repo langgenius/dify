@@ -98,7 +98,12 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
               id: 'end',
               type: 'custom',
               position: { x: 480, y: 282 },
-              data: { id: 'end', type: 'end', title: 'End', outputs: [] },
+              data: {
+                id: 'end',
+                type: 'end',
+                title: 'End',
+                outputs: [{ variable: 'result', value_selector: ['sys', 'workflow_run_id'] }],
+              },
             },
           ],
           edges: [
@@ -107,6 +112,8 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
               type: 'custom',
               source: 'start',
               target: 'end',
+              sourceHandle: 'source',
+              targetHandle: 'target',
             },
           ],
           viewport: { x: 0, y: 0, zoom: 1 },

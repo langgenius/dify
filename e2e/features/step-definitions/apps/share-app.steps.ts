@@ -5,13 +5,17 @@ import { createTestApp, enableAppSiteAndGetURL, publishWorkflowApp, syncRunnable
 
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()
-  await expect(page.getByText('Web App')).toBeVisible({ timeout: 15_000 })
-  const webAppCard = page.locator('div').filter({ hasText: /^Web App/ }).filter({ has: page.getByRole('switch') }).first()
-  await webAppCard.getByRole('switch').click()
+  const appName = this.lastCreatedAppName
+  if (!appName)
+    throw new Error('No app name available. Run "a \\"workflow\\" app has been created via API" first.')
+
+  await page.locator('button').filter({ hasText: appName }).filter({ hasText: 'Workflow' }).click()
+  await expect(page.getByRole('switch').first()).toBeEnabled({ timeout: 15_000 })
+  await page.getByRole('switch').first().click()
 })
 
 Then('the Web App should be in service', async function (this: DifyWorld) {
-  await expect(this.getPage().getByText('In Service')).toBeVisible({ timeout: 10_000 })
+  await expect(this.getPage().getByText('In Service').first()).toBeVisible({ timeout: 10_000 })
 })
 
 Given('a workflow app has been published and shared via API', async function (this: DifyWorld) {
