@@ -1076,7 +1076,10 @@ class ChildChunk(TypeBase):
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     type: Mapped[SegmentType] = mapped_column(
-        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'"), default=SegmentType.AUTOMATIC
+        EnumText(SegmentType, length=255),
+        nullable=False,
+        server_default=sa.text("'automatic'"),
+        default=SegmentType.AUTOMATIC,
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
