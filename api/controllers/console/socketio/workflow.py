@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from typing import cast
+from typing import Any, Protocol, cast
 
 from flask import Request as FlaskRequest
 
@@ -13,6 +13,14 @@ from services.workflow_collaboration_service import WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
+
+
+class _SocketIOAppHolder(Protocol):
+    app: "_FlaskLikeApp"
+
+
+class _FlaskLikeApp(Protocol):
+    def app_context(self) -> Any: ...
 
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -42,7 +50,8 @@ def socket_connect(sid, environ, auth):
             logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
-        with sio.app.app_context():
+        app = cast(_SocketIOAppHolder, sio).app
+        with app.app_context():
             user = AccountService.load_logged_in_account(account_id=user_id)
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)

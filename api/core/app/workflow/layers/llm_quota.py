@@ -116,7 +116,7 @@ class LLMQuotaLayer(GraphEngineLayer):
                 case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                     model_instance = cast("ParameterExtractorNode", node).model_instance
                 case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    model_instance = cast("QuestionClassifierNode", node).model_instance
+                    model_instance = getattr(cast("QuestionClassifierNode", node), "model_instance", None)
                 case _:
                     return None
         except AttributeError:

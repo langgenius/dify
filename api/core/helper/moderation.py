@@ -6,9 +6,9 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.entities import DEFAULT_PLUGIN_ID
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
 from extensions.ext_hosting_provider import hosting_configuration
-from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
+from graphon.model_runtime.protocols import ModerationModelRuntime
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
@@ -42,12 +42,10 @@ def check_moderation(tenant_id: str, model_config: ModelConfigWithCredentialsEnt
 
             try:
                 model_provider_factory = create_plugin_model_provider_factory(tenant_id=tenant_id)
-
-                # Get model instance of LLM
-                model_type_instance = model_provider_factory.get_model_type_instance(
-                    provider=openai_provider_name, model_type=ModelType.MODERATION
+                model_type_instance = ModerationModel(
+                    provider_schema=model_provider_factory.get_model_provider(openai_provider_name),
+                    model_runtime=cast(ModerationModelRuntime, model_provider_factory.runtime),
                 )
-                model_type_instance = cast(ModerationModel, model_type_instance)
                 moderation_result = model_type_instance.invoke(
                     model="omni-moderation-latest", credentials=hosting_openai_config.credentials, text=text_chunk
                 )

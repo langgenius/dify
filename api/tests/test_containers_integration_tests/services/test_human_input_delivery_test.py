@@ -84,9 +84,11 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
         rag_pipeline_variables=[],
     )
     session.add(workflow)
+    app_id = app.id
+    account_id = account.id
     session.commit()
 
-    return app, account
+    return session.get(App, app_id), session.get(Account, account_id)
 
 
 def test_human_input_delivery_test_sends_email(

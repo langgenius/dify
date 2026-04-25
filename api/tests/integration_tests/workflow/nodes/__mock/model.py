@@ -16,17 +16,18 @@ def get_mocked_fetch_model_config(
     credentials: dict,
 ):
     model_provider_factory = create_plugin_model_provider_factory(tenant_id="9d2074fc-6f86-45a9-b09d-6ecc63b9056b")
-    model_type_instance = model_provider_factory.get_model_type_instance(provider, ModelType.LLM)
+    configuration = ProviderConfiguration(
+        tenant_id="1",
+        provider=model_provider_factory.get_provider_schema(provider),
+        preferred_provider_type=ProviderType.CUSTOM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
+        model_settings=[],
+    )
+    model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
     provider_model_bundle = ProviderModelBundle(
-        configuration=ProviderConfiguration(
-            tenant_id="1",
-            provider=model_provider_factory.get_provider_schema(provider),
-            preferred_provider_type=ProviderType.CUSTOM,
-            using_provider_type=ProviderType.CUSTOM,
-            system_configuration=SystemConfiguration(enabled=False),
-            custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
-            model_settings=[],
-        ),
+        configuration=configuration,
         model_type_instance=model_type_instance,
     )
     model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model=model)

@@ -53,7 +53,7 @@ def init_llm_node(config: dict) -> LLMNode:
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="aaa",
             app_id=app_id,
@@ -77,7 +77,7 @@ def init_llm_node(config: dict) -> LLMNode:
 
     node = LLMNode(
         node_id=str(uuid.uuid4()),
-        config=LLMNodeData.model_validate(config["data"]),
+        data=LLMNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),

@@ -169,6 +169,7 @@ def test_node_variable_collection_get_success(
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
     node_variable = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_123")
     _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_456", name="other")
+    node_variable_id = node_variable.id
 
     response = test_client_with_containers.get(
         f"/console/api/apps/{app.id}/workflows/draft/nodes/node_123/variables",
@@ -178,7 +179,7 @@ def test_node_variable_collection_get_success(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
-    assert [item["id"] for item in payload["items"]] == [node_variable.id]
+    assert [item["id"] for item in payload["items"]] == [node_variable_id]
 
 
 def test_node_variable_collection_get_invalid_node_id(
@@ -234,16 +235,17 @@ def test_variable_api_get_success(
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
     _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
     variable = _create_node_variable(db_session_with_containers, app.id, account.id)
+    variable_id = variable.id
 
     response = test_client_with_containers.get(
-        f"/console/api/apps/{app.id}/workflows/draft/variables/{variable.id}",
+        f"/console/api/apps/{app.id}/workflows/draft/variables/{variable_id}",
         headers=authenticate_console_client(test_client_with_containers, account),
     )
 
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
-    assert payload["id"] == variable.id
+    assert payload["id"] == variable_id
     assert payload["name"] == "test_var"
 
 

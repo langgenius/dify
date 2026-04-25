@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import cast
 
 import socketio  # type: ignore[reportMissingTypeStubs]
 from flask import request
@@ -16,6 +17,10 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
+
+
+class _SocketIOAppHolder:
+    app: DifyApp
 
 # Console bootstrap APIs exempt from license check.
 # Defined at module level to avoid per-request tuple construction.
@@ -129,7 +134,7 @@ def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     app = create_flask_app_with_configs()
     initialize_extensions(app)
 
-    sio.app = app
+    cast(_SocketIOAppHolder, sio).app = app
     socketio_app = socketio.WSGIApp(sio, app)
 
     end_time = time.perf_counter()

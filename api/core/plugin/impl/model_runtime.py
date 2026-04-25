@@ -4,24 +4,35 @@ import hashlib
 import logging
 from collections.abc import Generator, Iterable, Sequence
 from threading import Lock
-from typing import IO, Any, Union
+from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload
+from types import SimpleNamespace
 
 from pydantic import ValidationError
 from redis import RedisError
 
 from configs import dify_config
+from core.plugin.entities.request import RequestInvokeLLMWithStructuredOutput
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
 from extensions.ext_redis import redis_client
 from graphon.model_runtime import ModelRuntime
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from models.provider_ids import ModelProviderID
+
+if TYPE_CHECKING:
+    from models.account import Tenant
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +206,34 @@ class PluginModelRuntime(ModelRuntime):
 
         return schema
 
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: list[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: list[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunk, None, None]: ...
+
     def invoke_llm(
         self,
         *,
@@ -206,7 +245,7 @@ class PluginModelRuntime(ModelRuntime):
         tools: list[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
+    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_llm(
             tenant_id=self.tenant_id,
@@ -220,6 +259,64 @@ class PluginModelRuntime(ModelRuntime):
             tools=tools,
             stop=list(stop) if stop else None,
             stream=stream,
+        )
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResultWithStructuredOutput: ...
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        json_schema: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        stream: bool,
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        tenant = cast("Tenant", SimpleNamespace(id=self.tenant_id))
+        return PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
+            user_id=self.user_id or TENANT_SCOPE_SCHEMA_CACHE_USER_ID,
+            tenant=tenant,
+            payload=RequestInvokeLLMWithStructuredOutput(
+                provider=provider,
+                model=model,
+                model_type=ModelType.LLM,
+                mode="chat",
+                completion_params=model_parameters,
+                prompt_messages=list(prompt_messages),
+                tools=[],
+                structured_output_schema=json_schema,
+                stop=list(stop) if stop else None,
+                stream=stream,
+            ),
         )
 
     def get_llm_num_tokens(
