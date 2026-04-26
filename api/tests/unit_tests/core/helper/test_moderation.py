@@ -68,8 +68,9 @@ def test_check_moderation_returns_true_when_model_accepts_text(mocker: MockerFix
     mocker.patch("core.helper.moderation.secrets.choice", return_value="chunk")
 
     moderation_model = SimpleNamespace(invoke=lambda **invoke_kwargs: invoke_kwargs["text"] == "chunk")
-    factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: moderation_model)
+    factory = SimpleNamespace(get_model_provider=lambda *_factory_args: SimpleNamespace(), runtime=SimpleNamespace())
     mocker.patch("core.helper.moderation.create_plugin_model_provider_factory", return_value=factory)
+    moderation_model_cls = mocker.patch("core.helper.moderation.ModerationModel", return_value=moderation_model)
 
     assert (
         check_moderation(
@@ -79,6 +80,7 @@ def test_check_moderation_returns_true_when_model_accepts_text(mocker: MockerFix
         )
         is True
     )
+    moderation_model_cls.assert_called_once()
 
 
 def test_check_moderation_returns_true_when_text_is_empty(mocker: MockerFixture) -> None:
@@ -119,8 +121,9 @@ def test_check_moderation_returns_false_when_model_rejects_text(mocker: MockerFi
     mocker.patch("core.helper.moderation.secrets.choice", return_value="chunk")
 
     moderation_model = SimpleNamespace(invoke=lambda **_invoke_kwargs: False)
-    factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: moderation_model)
+    factory = SimpleNamespace(get_model_provider=lambda *_factory_args: SimpleNamespace(), runtime=SimpleNamespace())
     mocker.patch("core.helper.moderation.create_plugin_model_provider_factory", return_value=factory)
+    moderation_model_cls = mocker.patch("core.helper.moderation.ModerationModel", return_value=moderation_model)
 
     assert (
         check_moderation(
@@ -130,6 +133,7 @@ def test_check_moderation_returns_false_when_model_rejects_text(mocker: MockerFi
         )
         is False
     )
+    moderation_model_cls.assert_called_once()
 
 
 def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: MockerFixture) -> None:
@@ -147,8 +151,9 @@ def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: Mo
     failing_model = SimpleNamespace(
         invoke=lambda **_invoke_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: failing_model)
+    factory = SimpleNamespace(get_model_provider=lambda *_factory_args: SimpleNamespace(), runtime=SimpleNamespace())
     mocker.patch("core.helper.moderation.create_plugin_model_provider_factory", return_value=factory)
+    mocker.patch("core.helper.moderation.ModerationModel", return_value=failing_model)
 
     with pytest.raises(InvokeBadRequestError, match="Rate limit exceeded, please try again later."):
         check_moderation(
