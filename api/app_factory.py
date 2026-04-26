@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class _SocketIOAppHolder:
     app: DifyApp
 
+
 # Console bootstrap APIs exempt from license check.
 # Defined at module level to avoid per-request tuple construction.
 # - system-features: license status for expiry UI (GlobalPublicStoreProvider)

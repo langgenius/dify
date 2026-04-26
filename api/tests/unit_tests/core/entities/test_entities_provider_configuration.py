@@ -438,9 +438,7 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
             "core.entities.provider_configuration.create_plugin_model_provider_factory",
             return_value=mock_factory,
         ) as mock_factory_builder,
-        patch(
-            "graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel"
-        ) as mock_model_cls,
+        patch("graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel") as mock_model_cls,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
@@ -475,9 +473,7 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
             "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
         ) as mock_factory_cls,
         patch("core.entities.provider_configuration.create_plugin_model_provider_factory") as mock_factory_builder,
-        patch(
-            "graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel"
-        ) as mock_model_cls,
+        patch("graphon.model_runtime.model_providers.base.large_language_model.LargeLanguageModel") as mock_model_cls,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})

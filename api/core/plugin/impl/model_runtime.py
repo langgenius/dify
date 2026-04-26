@@ -4,16 +4,16 @@ import hashlib
 import logging
 from collections.abc import Generator, Iterable, Sequence
 from threading import Lock
-from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload
 from types import SimpleNamespace
+from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload
 
 from pydantic import ValidationError
 from redis import RedisError
 
 from configs import dify_config
-from core.plugin.entities.request import RequestInvokeLLMWithStructuredOutput
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.entities.request import RequestInvokeLLMWithStructuredOutput
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
 from extensions.ext_redis import redis_client

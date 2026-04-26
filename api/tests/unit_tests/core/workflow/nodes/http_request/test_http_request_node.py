@@ -110,7 +110,9 @@ def _build_http_node(
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool.from_bootstrap(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}
+        ),
         start_at=time.perf_counter(),
     )
     return HttpRequestNode(

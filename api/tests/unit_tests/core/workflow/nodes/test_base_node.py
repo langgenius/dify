@@ -35,7 +35,9 @@ def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams,
         invoke_from="debugger",
     )
     runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool.from_bootstrap(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}
+        ),
         start_at=0.0,
     )
     return init_params, runtime_state
@@ -82,7 +84,9 @@ def test_node_accepts_invoke_from_enum():
         invoke_from=InvokeFrom.DEBUGGER,
     )
     runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool.from_bootstrap(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}
+        ),
         start_at=0.0,
     )
 
