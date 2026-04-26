@@ -110,6 +110,7 @@ class LLMQuotaLayer(GraphEngineLayer):
     @staticmethod
     def _extract_model_instance(node: Node) -> ModelInstance | None:
         try:
+            model_instance: object | None
             match node.node_type:
                 case BuiltinNodeTypes.LLM:
                     model_instance = cast("LLMNode", node).model_instance
