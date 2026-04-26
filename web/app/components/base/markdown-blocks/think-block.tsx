@@ -37,11 +37,31 @@ const removeEndThink = (children: any): any => {
   return children
 }
 
+const getThinkContentKey = (children: any): string => {
+  if (typeof children === 'string')
+    return children.replace('[ENDTHINKFLAG]', '')
+
+  if (typeof children === 'number')
+    return String(children)
+
+  if (Array.isArray(children))
+    return children.map(child => getThinkContentKey(child)).join('')
+
+  if (children?.props?.children)
+    return getThinkContentKey(children.props.children)
+
+  return ''
+}
+
+const completedThinkDurations = new Map<string, number>()
+
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
   const endThinkDetected = hasEndThink(children)
+  const contentKey = getThinkContentKey(children)
+  const cachedElapsedTime = completedThinkDurations.get(contentKey) ?? 0
   const [startTime] = useState(() => Date.now())
-  const [elapsedTime, setElapsedTime] = useState(0)
+  const [elapsedTime, setElapsedTime] = useState(cachedElapsedTime)
   const [isComplete, setIsComplete] = useState(() => endThinkDetected)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -63,9 +83,16 @@ const useThinkTimer = (children: any) => {
     // Stop timer when:
     // 1. Content has [ENDTHINKFLAG] marker (normal completion)
     // 2. isResponding is not true (false = user clicked stop, undefined = historical conversation)
-    if (endThinkDetected || !isResponding)
+    if (endThinkDetected || !isResponding) {
+      const finalElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
+      setElapsedTime((currentElapsedTime) => {
+        const elapsedTimeToStore = currentElapsedTime || finalElapsedTime
+        completedThinkDurations.set(contentKey, elapsedTimeToStore)
+        return elapsedTimeToStore
+      })
       setIsComplete(true)
-  }, [endThinkDetected, isResponding])
+    }
+  }, [contentKey, endThinkDetected, isResponding, startTime])
 
   return { elapsedTime, isComplete }
 }
