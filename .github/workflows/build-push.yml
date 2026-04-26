@@ -35,7 +35,7 @@ jobs:
             build_context: "{{defaultContext}}:api"
             file: "Dockerfile"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
           - service_name: "build-api-arm64"
             image_name_env: "DIFY_API_IMAGE_NAME"
             artifact_context: "api"
@@ -49,7 +49,7 @@ jobs:
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
           - service_name: "build-web-arm64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             artifact_context: "web"
@@ -110,7 +110,7 @@ jobs:
 
   create-manifest:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     if: github.repository == 'langgenius/dify'
     strategy:
       matrix:

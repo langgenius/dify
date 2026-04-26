@@ -20,7 +20,7 @@ jobs:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}:api"
             file: "Dockerfile"
           - service_name: "api-arm64"
@@ -30,7 +30,7 @@ jobs:
             file: "Dockerfile"
           - service_name: "web-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
           - service_name: "web-arm64"
