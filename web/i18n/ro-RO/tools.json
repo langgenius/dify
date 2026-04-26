@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "de exemplu, Bearer token123",
   "mcp.modal.headers": "Antete",
   "mcp.modal.headersTip": "Header-uri HTTP suplimentare de trimis cu cererile către serverul MCP",
+  "mcp.modal.invalidServerIdentifier": "Vă rugăm să introduceți un identificator de server valid",
+  "mcp.modal.invalidServerUrl": "Vă rugăm să introduceți un URL de server valid",
   "mcp.modal.maskedHeadersTip": "Valorile de antet sunt mascate pentru securitate. Modificările vor actualiza valorile reale.",
   "mcp.modal.name": "Nume și Pictogramă",
   "mcp.modal.namePlaceholder": "Denumiți-vă serverul MCP",

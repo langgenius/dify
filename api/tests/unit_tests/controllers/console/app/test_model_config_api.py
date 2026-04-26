@@ -92,10 +92,7 @@ def test_post_encrypts_agent_tool_parameters(app, monkeypatch: pytest.MonkeyPatc
     )
 
     session = MagicMock()
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = original_config
-    session.query.return_value = query
+    session.get.return_value = original_config
     monkeypatch.setattr(model_config_module.db, "session", session)
 
     monkeypatch.setattr(

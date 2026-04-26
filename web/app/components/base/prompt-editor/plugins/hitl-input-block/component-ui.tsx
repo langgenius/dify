@@ -102,9 +102,9 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
   return (
     <div
-      className="group relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5"
+      className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none"
     >
-      <div className="absolute left-2.5 top-[-12px]">
+      <div className="absolute top-[-12px] left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
           <VariableX className="size-3" />
@@ -126,7 +126,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             />
           )}
           {!isDefaultValueVariable && (
-            <div className="max-w-full truncate text-components-input-text-filled system-xs-medium">{formInput.default?.value}</div>
+            <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">{formInput.default?.value}</div>
           )}
         </div>
 
@@ -160,8 +160,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         <Modal
           isShow
           onClose={hideEditModal}
-          wrapperClassName="z-[999]"
-          className="max-w-[372px] !p-0"
+          wrapperClassName="z-999"
+          className="max-w-[372px] p-0!"
         >
           <InputField
             nodeId={nodeId}

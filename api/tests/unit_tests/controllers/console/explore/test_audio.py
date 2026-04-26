@@ -19,7 +19,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,

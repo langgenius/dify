@@ -35,6 +35,8 @@
   "error.emailEmpty": "آدرس ایمیل لازم است",
   "error.emailInValid": "لطفاً یک آدرس ایمیل معتبر وارد کنید",
   "error.invalidEmailOrPassword": "ایمیل یا رمز عبور نامعتبر است.",
+  "error.invalidRedirectUrlOrAppCode": "آدرس تغییر مسیر یا کد برنامه نامعتبر است",
+  "error.invalidSSOProtocol": "پروتکل SSO نامعتبر است",
   "error.nameEmpty": "نام لازم است",
   "error.passwordEmpty": "رمز عبور لازم است",
   "error.passwordInvalid": "رمز عبور باید شامل حروف و اعداد باشد و طول آن بیشتر از ۸ کاراکتر باشد",

@@ -77,7 +77,6 @@ class TestAuthType:
 
     def test_auth_type_immutability(self):
         """Test that enum values cannot be modified"""
-        # In Python 3.11+, enum members are read-only
         with pytest.raises(AttributeError):
             AuthType.FIRECRAWL = "modified"
 

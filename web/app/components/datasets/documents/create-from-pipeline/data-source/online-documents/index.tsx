@@ -1,11 +1,11 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
@@ -96,10 +96,7 @@ const OnlineDocuments = ({
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          Toast.notify({
-            type: 'error',
-            message: error.error,
-          })
+          toast.error(error.error)
         },
       },
     )
@@ -109,7 +106,7 @@ const OnlineDocuments = ({
     if (!currentCredentialId)
       return
     getOnlineDocuments()
-  }, [currentCredentialId])
+  }, [currentCredentialId, getOnlineDocuments])
 
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
@@ -118,7 +115,7 @@ const OnlineDocuments = ({
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     setOnlineDocuments(selectedPages)
   }, [dataSourceStore, PagesMapAndSelectedPagesId])
@@ -159,16 +156,16 @@ const OnlineDocuments = ({
           {documentsData?.length
             ? (
                 <PageSelector
+                  key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
                   checkedIds={selectedPagesId}
                   disabledValue={new Set()}
                   searchValue={searchValue}
-                  list={documentsData[0].pages || []}
+                  list={documentsData[0]!.pages || []}
                   pagesMap={PagesMapAndSelectedPagesId}
                   onSelect={handleSelectPages}
                   canPreview={!isInPipeline}
                   onPreview={handlePreviewPage}
                   isMultipleChoice={supportBatchUpload}
-                  currentCredentialId={currentCredentialId}
                 />
               )
             : (

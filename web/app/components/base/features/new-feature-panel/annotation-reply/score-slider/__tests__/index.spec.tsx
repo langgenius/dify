@@ -1,20 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import ScoreSlider from '../index'
 
-vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider', () => ({
-  default: ({ value, onChange, min, max }: { value: number, onChange: (v: number) => void, min: number, max: number }) => (
-    <input
-      type="range"
-      data-testid="slider"
-      value={value}
-      min={min}
-      max={max}
-      onChange={e => onChange(Number(e.target.value))}
-    />
-  ),
-}))
-
 describe('ScoreSlider', () => {
+  const getSliderInput = () => screen.getByLabelText('appDebug.feature.annotation.scoreThreshold.title')
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -22,7 +11,7 @@ describe('ScoreSlider', () => {
   it('should render the slider', () => {
     render(<ScoreSlider value={90} onChange={vi.fn()} />)
 
-    expect(screen.getByTestId('slider')).toBeInTheDocument()
+    expect(getSliderInput()).toBeInTheDocument()
   })
 
   it('should display easy match and accurate match labels', () => {
@@ -37,14 +26,14 @@ describe('ScoreSlider', () => {
   it('should render with custom className', () => {
     const { container } = render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
 
-    // Verifying the component renders successfully with a custom className
-    expect(screen.getByTestId('slider')).toBeInTheDocument()
+    expect(getSliderInput()).toBeInTheDocument()
     expect(container.firstChild).toHaveClass('custom-class')
   })
 
   it('should pass value to the slider', () => {
     render(<ScoreSlider value={95} onChange={vi.fn()} />)
 
-    expect(screen.getByTestId('slider')).toHaveValue('95')
+    expect(getSliderInput()).toHaveValue('95')
+    expect(screen.getByText('0.95')).toBeInTheDocument()
   })
 })

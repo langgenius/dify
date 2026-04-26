@@ -35,6 +35,7 @@
   "details.structureTooltip": "청크 구조는 문서를 분할하고 인덱싱하는 방법(일반, 부모-자식 및 Q&A 모드를 제공)을 결정하며 각 기술 자료에 고유합니다.",
   "documentSettings.title": "문서 설정",
   "editPipelineInfo": "파이프라인 정보 편집",
+  "editPipelineInfoNameRequired": "기술 자료의 이름을 입력해 주세요.",
   "exportDSL.errorTip": "파이프라인 DSL을 내보내지 못했습니다.",
   "exportDSL.successTip": "파이프라인 DSL 내보내기 성공",
   "inputField": "입력 필드",

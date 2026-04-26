@@ -1,13 +1,19 @@
-import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
-import { useEffect, useRef, useState } from 'react'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
-import { SimpleSelect } from '@/app/components/base/select'
-import Slider from '@/app/components/base/slider'
-import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
 
@@ -19,17 +25,42 @@ type ParameterItemProps = {
   onChange?: (value: ParameterValue) => void
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
-const ParameterItem: FC<ParameterItemProps> = ({
+
+function ParameterItem({
   parameterRule,
   value,
   onChange,
   onSwitch,
   isInWorkflow,
-}) => {
+  nodesOutputVars,
+  availableNodes = [],
+}: ParameterItemProps) {
+  const { t } = useTranslation()
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
+
+  const workflowNodesMap = useMemo(() => {
+    if (!isInWorkflow || !availableNodes.length)
+      return undefined
+
+    return availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
+      acc[node.id] = {
+        title: node.data.title,
+        type: node.data.type,
+      }
+      if (node.data.type === BlockEnum.Start) {
+        acc.sys = {
+          title: t('blocks.start', { ns: 'workflow' }),
+          type: BlockEnum.Start,
+        }
+      }
+      return acc
+    }, {})
+  }, [availableNodes, isInWorkflow, t])
 
   const getDefaultValue = () => {
     let defaultValue: ParameterValue
@@ -47,6 +78,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   const renderValue = value ?? localValue ?? getDefaultValue()
+  const sliderLabel = parameterRule.label[language] || parameterRule.label.en_US
 
   const handleInputChange = (newValue: ParameterValue) => {
     setLocalValue(newValue)
@@ -99,10 +131,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
     handleInputChange(e.target.value)
   }
 
-  const handleSelect = (option: { value: string | number, name: string }) => {
-    handleInputChange(option.value)
-  }
-
   const handleTagChange = (newSequences: string[]) => {
     handleInputChange(newSequences)
   }
@@ -143,12 +171,13 @@ const ParameterItem: FC<ParameterItemProps> = ({
               min={parameterRule.min}
               max={parameterRule.max}
               step={step}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -170,12 +199,13 @@ const ParameterItem: FC<ParameterItemProps> = ({
               min={parameterRule.min}
               max={parameterRule.max}
               step={0.1}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -201,9 +231,28 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
 
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
+      if (isInWorkflow && nodesOutputVars) {
+        return (
+          <div className="ml-4 w-[200px] rounded-lg bg-components-input-bg-normal px-2 py-1">
+            <PromptEditor
+              compact
+              className="min-h-[22px] text-[13px]"
+              value={renderValue as string}
+              onChange={(text) => { handleInputChange(text) }}
+              workflowVariableBlock={{
+                show: true,
+                variables: nodesOutputVars,
+                workflowNodesMap,
+              }}
+              editable
+            />
+          </div>
+        )
+      }
+
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none system-sm-regular')}
+          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -211,30 +260,58 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
 
     if (parameterRule.type === 'text') {
+      if (isInWorkflow && nodesOutputVars) {
+        return (
+          <div className="ml-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
+            <PromptEditor
+              compact
+              className="min-h-[56px] text-[13px]"
+              value={renderValue as string}
+              onChange={(text) => { handleInputChange(text) }}
+              workflowVariableBlock={{
+                show: true,
+                variables: nodesOutputVars,
+                workflowNodesMap,
+              }}
+              editable
+            />
+          </div>
+        )
+      }
+
       return (
         <textarea
-          className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 text-components-input-text-filled system-sm-regular"
+          className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 system-sm-regular text-components-input-text-filled"
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
       )
     }
 
-    if (parameterRule.type === 'string' && !!parameterRule?.options?.length) {
+    if (parameterRule.type === 'string' && !!parameterRule.options?.length) {
       return (
-        <SimpleSelect
-          className="!py-0"
-          wrapperClassName={cn('!h-8 w-full')}
-          defaultValue={renderValue as string}
-          onSelect={handleSelect}
-          items={parameterRule.options.map(option => ({ value: option, name: option }))}
-        />
+        <Select
+          value={renderValue as string}
+          onValueChange={v => handleInputChange(v ?? undefined)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {parameterRule.options!.map(option => (
+              <SelectItem key={option} value={option}>
+                <SelectItemText>{option}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
 
     if (parameterRule.type === 'tag') {
       return (
-        <div className={cn('!h-8 w-full')}>
+        <div className={cn('h-8! w-full')}>
           <TagInput
             items={renderValue as string[]}
             onChange={handleTagChange}
@@ -257,34 +334,34 @@ const ParameterItem: FC<ParameterItemProps> = ({
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className="mr-2 w-7">
                 <Switch
-                  value={!isNullOrUndefined(value)}
-                  onChange={handleSwitch}
+                  checked={!isNullOrUndefined(value)}
+                  onCheckedChange={handleSwitch}
                   size="md"
                 />
               </div>
             )
           }
           <div
-            className="mr-0.5 truncate text-text-secondary system-xs-regular"
-            title={parameterRule.label[language] || parameterRule.label.en_US}
+            className="mr-0.5 truncate system-xs-regular text-text-secondary"
+            title={sliderLabel}
           >
-            {parameterRule.label[language] || parameterRule.label.en_US}
+            {sliderLabel}
           </div>
           {
             parameterRule.help && (
-              <Tooltip
-                popupContent={(
-                  <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
-                )}
-                popupClassName="mr-1"
-                triggerClassName="mr-1 w-4 h-4 shrink-0"
-              />
+              <Infotip
+                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
+                className="mr-1"
+                popupClassName="w-[150px] whitespace-pre-wrap"
+              >
+                {parameterRule.help[language] || parameterRule.help.en_US}
+              </Infotip>
             )
           }
         </div>
         {
           parameterRule.type === 'tag' && (
-            <div className={cn(!isInWorkflow && 'w-[150px]', 'text-text-tertiary system-xs-regular')}>
+            <div className={cn(!isInWorkflow && 'w-[150px]', 'system-xs-regular text-text-tertiary')}>
               {parameterRule?.tagPlaceholder?.[language]}
             </div>
           )

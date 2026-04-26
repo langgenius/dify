@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock
@@ -11,16 +12,28 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.entities import WorkflowExecution
-from dify_graph.entities.pause_reason import PauseReasonType
-from dify_graph.enums import WorkflowExecutionStatus
+from core.workflow.human_input_adapter import DeliveryMethodType
 from extensions.ext_storage import storage
+from graphon.entities import WorkflowExecution
+from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.human_input import (
+    BackstageRecipientPayload,
+    HumanInputDelivery,
+    HumanInputForm,
+    HumanInputFormRecipient,
+    RecipientType,
+)
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
+    _build_human_input_required_reason,
+    _PrivateWorkflowPauseEntity,
     _WorkflowRunError,
 )
 
@@ -88,6 +101,19 @@ def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
         delete(WorkflowRun).where(
             WorkflowRun.tenant_id == scope.tenant_id,
             WorkflowRun.app_id == scope.app_id,
+        )
+    )
+
+    form_ids_subquery = select(HumanInputForm.id).where(
+        HumanInputForm.tenant_id == scope.tenant_id,
+        HumanInputForm.app_id == scope.app_id,
+    )
+    session.execute(delete(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids_subquery)))
+    session.execute(delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids_subquery)))
+    session.execute(
+        delete(HumanInputForm).where(
+            HumanInputForm.tenant_id == scope.tenant_id,
+            HumanInputForm.app_id == scope.app_id,
         )
     )
     session.commit()
@@ -193,12 +219,11 @@ class TestDeleteRunsWithRelated:
             app_id=test_scope.app_id,
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -253,12 +278,11 @@ class TestCountRunsWithRelated:
             app_id=test_scope.app_id,
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -504,3 +528,306 @@ class TestDeleteWorkflowPause:
 
         with pytest.raises(_WorkflowRunError, match="WorkflowPause not found"):
             repository.delete_workflow_pause(pause_entity=pause_entity)
+
+
+class TestPrivateWorkflowPauseEntity:
+    """Integration tests for _PrivateWorkflowPauseEntity using real DB models."""
+
+    def test_properties(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Entity properties delegate to the persisted WorkflowPause model."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=f"workflow-state-{uuid4()}.json",
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.commit()
+        db_session_with_containers.refresh(pause)
+        test_scope.state_keys.add(pause.state_object_key)
+
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+
+        assert entity.id == pause.id
+        assert entity.workflow_execution_id == workflow_run.id
+        assert entity.resumed_at is None
+
+    def test_get_state(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """get_state loads state data from storage using the persisted state_object_key."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        state_key = f"workflow-state-{uuid4()}.json"
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=state_key,
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.commit()
+        db_session_with_containers.refresh(pause)
+        test_scope.state_keys.add(state_key)
+
+        expected_state = b'{"test": "state"}'
+        storage.save(state_key, expected_state)
+
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+        result = entity.get_state()
+
+        assert result == expected_state
+
+    def test_get_state_caching(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """get_state caches the result so storage is only accessed once."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        state_key = f"workflow-state-{uuid4()}.json"
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=state_key,
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.commit()
+        db_session_with_containers.refresh(pause)
+        test_scope.state_keys.add(state_key)
+
+        expected_state = b'{"test": "state"}'
+        storage.save(state_key, expected_state)
+
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+        result1 = entity.get_state()
+        # Delete from storage to prove second call uses cache
+        storage.delete(state_key)
+        test_scope.state_keys.discard(state_key)
+        result2 = entity.get_state()
+
+        assert result1 == expected_state
+        assert result2 == expected_state
+
+
+class TestBuildHumanInputRequiredReason:
+    """Integration tests for _build_human_input_required_reason using real DB models."""
+
+    def test_prefers_standalone_web_app_token_when_available(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Use the public standalone web-app token for service API payloads."""
+
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=str(uuid4()),
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        db_session_with_containers.add(form_model)
+        db_session_with_containers.flush()
+
+        delivery = HumanInputDelivery(
+            form_id=form_model.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload="{}",
+        )
+        db_session_with_containers.add(delivery)
+        db_session_with_containers.flush()
+
+        backstage_access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=backstage_access_token,
+        )
+        console_access_token = secrets.token_urlsafe(8)
+        console_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload="{}",
+            access_token=console_access_token,
+        )
+        web_app_access_token = secrets.token_urlsafe(8)
+        web_app_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            recipient_payload="{}",
+            access_token=web_app_access_token,
+        )
+        db_session_with_containers.add_all([backstage_recipient, console_recipient, web_app_recipient])
+        db_session_with_containers.flush()
+        # Create a pause so the reason has a valid pause_id
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=f"workflow-state-{uuid4()}.json",
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.flush()
+        test_scope.state_keys.add(pause.state_object_key)
+
+        reason_model = WorkflowPauseReason(
+            pause_id=pause.id,
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id=form_model.id,
+            node_id="node-1",
+            message="",
+        )
+        db_session_with_containers.add(reason_model)
+        db_session_with_containers.commit()
+
+        # Refresh to ensure we have DB-round-tripped objects
+        db_session_with_containers.refresh(form_model)
+        db_session_with_containers.refresh(reason_model)
+        db_session_with_containers.refresh(backstage_recipient)
+        db_session_with_containers.refresh(console_recipient)
+        db_session_with_containers.refresh(web_app_recipient)
+
+        reason = _build_human_input_required_reason(
+            reason_model,
+            form_model,
+            [backstage_recipient, console_recipient, web_app_recipient],
+        )
+
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "content"
+        assert reason.inputs[0].output_variable_name == "name"
+        assert reason.actions[0].id == "approve"
+        assert reason.resolved_default_values == {"name": "Alice"}
+        assert not hasattr(reason, "form_token")
+
+    def test_falls_back_to_console_token_when_web_app_token_missing(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Use the console token only when no standalone web-app token exists."""
+
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=str(uuid4()),
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        db_session_with_containers.add(form_model)
+        db_session_with_containers.flush()
+
+        delivery = HumanInputDelivery(
+            form_id=form_model.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload="{}",
+        )
+        db_session_with_containers.add(delivery)
+        db_session_with_containers.flush()
+
+        backstage_access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=backstage_access_token,
+        )
+        console_access_token = secrets.token_urlsafe(8)
+        console_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload="{}",
+            access_token=console_access_token,
+        )
+        db_session_with_containers.add_all([backstage_recipient, console_recipient])
+        db_session_with_containers.flush()
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=f"workflow-state-{uuid4()}.json",
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.flush()
+        test_scope.state_keys.add(pause.state_object_key)
+
+        reason_model = WorkflowPauseReason(
+            pause_id=pause.id,
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id=form_model.id,
+            node_id="node-1",
+            message="",
+        )
+        db_session_with_containers.add(reason_model)
+        db_session_with_containers.commit()
+
+        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient, console_recipient])
+
+        assert isinstance(reason, HumanInputRequired)
+        assert not hasattr(reason, "form_token")

@@ -1,11 +1,10 @@
 from collections.abc import Mapping
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base.node import Node
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
 
 from .entities import TriggerScheduleNodeData
 
@@ -31,13 +30,11 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
         }
 
     def _run(self) -> NodeRunResult:
-        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
+        node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
+        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
-        # TODO: System variables should be directly accessible, no need for special handling
-        # Set system variables as node outputs.
-        for var in system_inputs:
-            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
+        for variable_name, value in system_inputs.items():
+            node_inputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value
         outputs = dict(node_inputs)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

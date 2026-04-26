@@ -1,10 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -63,7 +63,7 @@ const StrategyPicker = ({
           <RiArrowDownSLine className="h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[99]">
+      <PortalToFollowElemContent className="z-99">
         <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (
@@ -85,7 +85,7 @@ const StrategyPicker = ({
                   }
                 </div>
                 <div className="grow">
-                  <div className="system-sm-semibold mb-0.5 text-text-secondary">{option.label}</div>
+                  <div className="mb-0.5 system-sm-semibold text-text-secondary">{option.label}</div>
                   <div className="system-xs-regular text-text-tertiary">{option.description}</div>
                 </div>
               </div>

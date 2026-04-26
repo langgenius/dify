@@ -378,12 +378,12 @@ const FilterSelectorDemo = () => {
       <div className="rounded-lg bg-blue-50 p-4 text-sm">
         <div className="mb-2 font-medium text-gray-700">Active Filters:</div>
         <div className="flex gap-2">
-          <span className="rounded bg-blue-200 px-2 py-1 text-xs text-blue-800">
+          <span className="rounded-sm bg-blue-200 px-2 py-1 text-xs text-blue-800">
             Status:
             {' '}
             {status}
           </span>
-          <span className="rounded bg-blue-200 px-2 py-1 text-xs text-blue-800">
+          <span className="rounded-sm bg-blue-200 px-2 py-1 text-xs text-blue-800">
             Priority:
             {' '}
             {priority}

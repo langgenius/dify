@@ -383,7 +383,7 @@ describe('Drawer', () => {
       const { container } = renderDrawer({ positionCenter: true })
 
       // Assert
-      const containerDiv = container.querySelector('.\\!justify-center')
+      const containerDiv = container.querySelector('.justify-center\\!')
       expect(containerDiv).toBeInTheDocument()
     })
 

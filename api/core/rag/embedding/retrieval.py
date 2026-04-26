@@ -1,6 +1,17 @@
+from typing import TypedDict
+
 from pydantic import BaseModel
 
 from models.dataset import DocumentSegment
+
+
+class AttachmentInfoDict(TypedDict):
+    id: str
+    name: str
+    extension: str
+    mime_type: str
+    source_url: str
+    size: int
 
 
 class RetrievalChildChunk(BaseModel):
@@ -19,5 +30,5 @@ class RetrievalSegments(BaseModel):
     segment: DocumentSegment
     child_chunks: list[RetrievalChildChunk] | None = None
     score: float | None = None
-    files: list[dict[str, str | int]] | None = None
+    files: list[AttachmentInfoDict] | None = None
     summary: str | None = None  # Summary content if retrieved via summary index

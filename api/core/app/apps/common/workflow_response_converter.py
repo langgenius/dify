@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -50,22 +51,24 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
+from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import (
+from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import (
     BuiltinNodeTypes,
-    SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import FILE_MODEL_IDENTITY, File
-from dify_graph.runtime import GraphRuntimeState
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
+from graphon.file import FILE_MODEL_IDENTITY, File
+from graphon.runtime import GraphRuntimeState
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.variables import Variable
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.human_input import HumanInputForm
@@ -111,11 +114,11 @@ class WorkflowResponseConverter:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
-        system_variables: SystemVariable,
+        system_variables: Sequence[Variable],
     ):
         self._application_generate_entity = application_generate_entity
         self._user = user
-        self._system_variables = system_variables
+        self._system_variables = system_variables_to_mapping(system_variables)
         self._workflow_inputs = self._prepare_workflow_inputs()
 
         # Disable truncation for SERVICE_API calls to keep backward compatibility.
@@ -133,7 +136,7 @@ class WorkflowResponseConverter:
     # ------------------------------------------------------------------
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
         inputs = dict(self._application_generate_entity.inputs)
-        for field_name, value in self._system_variables.to_dict().items():
+        for field_name, value in self._system_variables.items():
             # TODO(@future-refactor): store system variables separately from user inputs so we don't
             # need to flatten `sys.*` entries into the input payload just for rerun/export tooling.
             if field_name == SystemVariableKey.CONVERSATION_ID:
@@ -318,13 +321,42 @@ class WorkflowResponseConverter:
         pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
+        display_in_ui_by_form_id: dict[str, bool] = {}
+        form_token_by_form_id: dict[str, str] = {}
         if human_input_form_ids:
-            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
-                HumanInputForm.id.in_(human_input_form_ids)
-            )
+            stmt = select(
+                HumanInputForm.id,
+                HumanInputForm.expiration_time,
+                HumanInputForm.form_definition,
+            ).where(HumanInputForm.id.in_(human_input_form_ids))
             with Session(bind=db.engine) as session:
-                for form_id, expiration_time in session.execute(stmt):
+                for form_id, expiration_time, form_definition in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
+                    try:
+                        definition_payload = json.loads(form_definition) if form_definition else {}
+                    except (TypeError, json.JSONDecodeError):
+                        definition_payload = {}
+                    display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+                form_token_by_form_id = load_form_tokens_by_form_id(
+                    human_input_form_ids,
+                    session=session,
+                    surface=(
+                        HumanInputSurface.SERVICE_API
+                        if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API
+                        else None
+                    ),
+                )
+
+        # Reconnect paths must preserve the same pause-reason contract as live streams;
+        # otherwise clients see schema drift after resume.
+        pause_reasons = enrich_human_input_pause_reasons(
+            pause_reasons,
+            form_tokens_by_form_id=form_token_by_form_id,
+            expiration_times_by_form_id={
+                form_id: int(expiration_time.timestamp())
+                for form_id, expiration_time in expiration_times_by_form_id.items()
+            },
+        )
 
         responses: list[StreamResponse] = []
 
@@ -344,8 +376,8 @@ class WorkflowResponseConverter:
                             form_content=reason.form_content,
                             inputs=reason.inputs,
                             actions=reason.actions,
-                            display_in_ui=reason.display_in_ui,
-                            form_token=reason.form_token,
+                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
+                            form_token=form_token_by_form_id.get(reason.form_id),
                             resolved_default_values=reason.resolved_default_values,
                             expiration_time=int(expiration_time.timestamp()),
                         ),
@@ -517,7 +549,7 @@ class WorkflowResponseConverter:
         snapshot = self._pop_snapshot(event.node_execution_id)
 
         start_at = snapshot.start_at if snapshot else event.start_at
-        finished_at = naive_utc_now()
+        finished_at = event.finished_at or naive_utc_now()
         elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)

@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "ตัวอย่าง: รหัสตัวแทน token123",
   "mcp.modal.headers": "หัวเรื่อง",
   "mcp.modal.headersTip": "HTTP header เพิ่มเติมที่จะส่งไปกับคำขอ MCP server",
+  "mcp.modal.invalidServerIdentifier": "กรุณาระบุตัวระบุเซิร์ฟเวอร์ที่ถูกต้อง",
+  "mcp.modal.invalidServerUrl": "กรุณาระบุ URL เซิร์ฟเวอร์ที่ถูกต้อง",
   "mcp.modal.maskedHeadersTip": "ค่าหัวถูกปกปิดเพื่อความปลอดภัย การเปลี่ยนแปลงจะปรับปรุงค่าที่แท้จริง",
   "mcp.modal.name": "ชื่อ & ไอคอน",
   "mcp.modal.namePlaceholder": "ตั้งชื่อเซิร์ฟเวอร์ MCP ของคุณ",

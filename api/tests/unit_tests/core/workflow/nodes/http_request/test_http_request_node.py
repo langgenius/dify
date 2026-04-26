@@ -7,12 +7,13 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.file.file_manager import file_manager
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from dify_graph.nodes.http_request.entities import HttpRequestNodeTimeout, Response
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file.file_manager import file_manager
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.nodes.http_request.entities import HttpRequestNodeData, HttpRequestNodeTimeout, Response
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
@@ -65,8 +66,8 @@ def test_get_default_config_uses_injected_http_request_config():
     assert default_config["retry_config"]["max_retries"] == 7
 
 
-def test_get_default_config_with_malformed_http_request_config_raises_value_error():
-    with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+def test_get_default_config_with_malformed_http_request_config_raises_type_error():
+    with pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"):
         HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"})
 
 
@@ -109,18 +110,19 @@ def _build_http_node(
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
         start_at=time.perf_counter(),
     )
     return HttpRequestNode(
-        id="http-node",
-        config=node_config,
+        node_id="http-node",
+        config=HttpRequestNodeData.model_validate(node_data),
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
     )
 
 
@@ -161,7 +163,7 @@ def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyP
                 )
             )
 
-    monkeypatch.setattr("dify_graph.nodes.http_request.node.Executor", FakeExecutor)
+    monkeypatch.setattr("graphon.nodes.http_request.node.Executor", FakeExecutor)
 
     result = node._run()
 

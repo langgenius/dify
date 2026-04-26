@@ -11,7 +11,9 @@ from uuid import uuid4
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -27,12 +29,12 @@ class TestCreateSegmentToIndexTask:
         """Clean up database and Redis before each test to ensure isolation."""
 
         # Clear all test data using fixture session
-        db_session_with_containers.query(DocumentSegment).delete()
-        db_session_with_containers.query(Document).delete()
-        db_session_with_containers.query(Dataset).delete()
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(DocumentSegment))
+        db_session_with_containers.execute(delete(Document))
+        db_session_with_containers.execute(delete(Dataset))
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -120,7 +122,7 @@ class TestCreateSegmentToIndexTask:
             description=fake.text(max_nb_chars=100),
             tenant_id=tenant_id,
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             created_by=account_id,
@@ -141,7 +143,7 @@ class TestCreateSegmentToIndexTask:
             enabled=True,
             archived=False,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="qa_model",
+            doc_form=IndexStructureType.QA_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -301,7 +303,7 @@ class TestCreateSegmentToIndexTask:
             enabled=True,
             archived=False,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -552,7 +554,11 @@ class TestCreateSegmentToIndexTask:
         - Processing completes successfully for different forms
         """
         # Arrange: Test different doc_forms
-        doc_forms = ["qa_model", "text_model", "web_model"]
+        doc_forms = [
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.PARAGRAPH_INDEX,
+        ]
 
         for doc_form in doc_forms:
             # Create fresh test data for each form

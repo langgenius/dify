@@ -10,8 +10,8 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.plugin.impl.oauth import OAuthHandler
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
@@ -120,7 +120,8 @@ class DatasourceOAuthCallback(Resource):
         if context is None:
             raise Forbidden("Invalid context_id")
 
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         datasource_provider_service = DatasourceProviderService()
@@ -141,7 +142,7 @@ class DatasourceOAuthCallback(Resource):
             system_credentials=oauth_client_params,
             request=request,
         )
-        credential_id = context.get("credential_id")
+        credential_id: str | None = context.get("credential_id")
         if credential_id:
             datasource_provider_service.reauthorize_datasource_oauth_provider(
                 tenant_id=tenant_id,
@@ -150,7 +151,7 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
-                credential_id=context.get("credential_id"),
+                credential_id=credential_id,
             )
         else:
             datasource_provider_service.add_datasource_oauth_provider(

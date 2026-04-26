@@ -2,6 +2,7 @@ from typing import Literal
 
 from flask import request
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -100,6 +101,6 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
 
 def get_setup_status() -> DifySetup | bool | None:
     if dify_config.EDITION == "SELF_HOSTED":
-        return db.session.query(DifySetup).first()
+        return db.session.scalar(select(DifySetup).limit(1))
 
     return True

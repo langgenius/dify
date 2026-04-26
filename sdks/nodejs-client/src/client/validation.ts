@@ -1,4 +1,5 @@
 import { ValidationError } from "../errors/dify-error";
+import { isRecord } from "../internal/type-guards";
 
 const MAX_STRING_LENGTH = 10000;
 const MAX_LIST_LENGTH = 1000;
@@ -109,8 +110,8 @@ export function validateParams(params: Record<string, unknown>): void {
           `Parameter '${key}' exceeds maximum size of ${MAX_LIST_LENGTH} items`
         );
       }
-    } else if (typeof value === "object") {
-      if (Object.keys(value as Record<string, unknown>).length > MAX_DICT_LENGTH) {
+    } else if (isRecord(value)) {
+      if (Object.keys(value).length > MAX_DICT_LENGTH) {
         throw new ValidationError(
           `Parameter '${key}' exceeds maximum size of ${MAX_DICT_LENGTH} items`
         );

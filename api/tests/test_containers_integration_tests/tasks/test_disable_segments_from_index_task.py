@@ -9,8 +9,10 @@ The task is responsible for removing document segments from the search index whe
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, DocumentSegment
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
@@ -102,7 +104,7 @@ class TestDisableSegmentsFromIndexTask:
             provider="vendor",
             permission="only_me",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
             updated_by=account.id,
             embedding_model="text-embedding-ada-002",
@@ -153,7 +155,7 @@ class TestDisableSegmentsFromIndexTask:
         document.indexing_status = "completed"
         document.enabled = True
         document.archived = False
-        document.doc_form = "text_model"  # Use text_model form for testing
+        document.doc_form = IndexStructureType.PARAGRAPH_INDEX  # Use text_model form for testing
         document.doc_language = "en"
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -470,9 +472,9 @@ class TestDisableSegmentsFromIndexTask:
                 db_session_with_containers.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = (
-                    db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
-                )
+                updated_segments = db_session_with_containers.scalars(
+                    select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                ).all()
 
                 for segment in updated_segments:
                     assert segment.enabled is True
@@ -500,7 +502,11 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Test different document forms
-        doc_forms = ["text_model", "qa_model", "hierarchical_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             # Update document form

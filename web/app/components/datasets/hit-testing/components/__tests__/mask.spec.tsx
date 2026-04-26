@@ -15,7 +15,7 @@ describe('Mask', () => {
       const div = container.firstElementChild
       expect(div).toBeInTheDocument()
       expect(div?.className).toContain('h-12')
-      expect(div?.className).toContain('bg-gradient-to-b')
+      expect(div?.className).toContain('bg-linear-to-b')
     })
 
     it('should apply custom className', () => {

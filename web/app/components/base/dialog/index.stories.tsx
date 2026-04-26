@@ -124,7 +124,7 @@ export const WithoutFooter: Story = {
 export const CustomStyling: Story = {
   render: args => <DialogDemo {...args} />,
   args: {
-    className: 'max-w-[560px] bg-white/95 backdrop-blur',
+    className: 'max-w-[560px] bg-white/95 backdrop-blur-sm',
     bodyClassName: 'bg-gray-50 rounded-xl p-5',
     footerClassName: 'justify-between px-4 pb-4 pt-4',
     titleClassName: 'text-lg text-primary-600',

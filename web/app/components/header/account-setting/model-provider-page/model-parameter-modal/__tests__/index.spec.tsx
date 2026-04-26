@@ -1,7 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ModelParameterModal from '../index'
 
-let isAPIKeySet = true
 let parameterRules: Array<Record<string, unknown>> | undefined = [
   {
     name: 'temperature',
@@ -40,7 +39,7 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    isAPIKeySet,
+    isAPIKeySet: true,
   }),
 }))
 
@@ -49,6 +48,7 @@ vi.mock('@/service/use-common', () => ({
     data: {
       data: parameterRules,
     },
+    isLoading: isRulesLoading,
     isPending: isRulesLoading,
   }),
 }))
@@ -62,12 +62,18 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../parameter-item', () => ({
-  default: ({ parameterRule, onChange, onSwitch }: {
+  default: ({ parameterRule, onChange, onSwitch, nodesOutputVars, availableNodes }: {
     parameterRule: { name: string, label: { en_US: string } }
     onChange: (v: number) => void
     onSwitch: (checked: boolean, val: unknown) => void
+    nodesOutputVars?: unknown[]
+    availableNodes?: unknown[]
   }) => (
-    <div data-testid={`param-${parameterRule.name}`}>
+    <div
+      data-testid={`param-${parameterRule.name}`}
+      data-has-nodes-output-vars={!!nodesOutputVars}
+      data-has-available-nodes={!!availableNodes}
+    >
       {parameterRule.label.en_US}
       <button onClick={() => onChange(0.9)}>Change</button>
       <button onClick={() => onSwitch(false, undefined)}>Remove</button>
@@ -77,9 +83,10 @@ vi.mock('../parameter-item', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: ({ onSelect }: { onSelect: (value: { provider: string, model: string }) => void }) => (
+  default: ({ onHide, onSelect }: { onHide: () => void, onSelect: (value: { provider: string, model: string }) => void }) => (
     <div data-testid="model-selector">
       <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>Select GPT-4.1</button>
+      <button onClick={onHide}>hide</button>
     </div>
   ),
 }))
@@ -91,7 +98,7 @@ vi.mock('../presets-parameter', () => ({
 }))
 
 vi.mock('../trigger', () => ({
-  default: () => <button>Open Settings</button>,
+  default: () => <button type="button">Open Settings</button>,
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -118,7 +125,6 @@ describe('ModelParameterModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    isAPIKeySet = true
     isRulesLoading = false
     parameterRules = [
       {
@@ -229,6 +235,89 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     fireEvent.click(screen.getByText('Open Settings'))
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+  })
+
+  it('should pass nodesOutputVars and availableNodes to ParameterItem', () => {
+    const mockNodesOutputVars = [{ nodeId: 'n1', title: 'Node', vars: [] }]
+    const mockAvailableNodes = [{ id: 'n1', data: { title: 'Node', type: 'llm' } }]
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isInWorkflow
+        nodesOutputVars={mockNodesOutputVars as never}
+        availableNodes={mockAvailableNodes as never}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    const paramEl = screen.getByTestId('param-temperature')
+    expect(paramEl).toHaveAttribute('data-has-nodes-output-vars', 'true')
+    expect(paramEl).toHaveAttribute('data-has-available-nodes', 'true')
+  })
+
+  it('should support custom triggers, workflow mode, and missing default model values', async () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        provider=""
+        modelId=""
+        isInWorkflow
+        renderTrigger={({ open }) => <span>{open ? 'Custom Open' : 'Custom Closed'}</span>}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Custom Closed'))
+
+    expect(screen.getByText('Custom Open')).toBeInTheDocument()
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('hide'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should append the stop parameter in advanced mode and show the single-model debug label', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        debugWithMultipleModel
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
+  })
+
+  it('should render the empty loading fallback when rules resolve to an empty list', () => {
+    parameterRules = []
+    isRulesLoading = true
+
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+  })
+
+  it('should support custom trigger placement outside workflow mode', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        renderTrigger={({ open }) => <span>{open ? 'Popup Open' : 'Popup Closed'}</span>}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Popup Closed'))
+
+    expect(screen.getByText('Popup Open')).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })

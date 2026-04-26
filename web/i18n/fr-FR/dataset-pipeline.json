@@ -35,6 +35,7 @@
   "details.structureTooltip": "La structure par blocs détermine la façon dont les documents sont divisés et indexés (en proposant les modes Général, Parent-Enfant et Q&R) et est unique à chaque base de connaissances.",
   "documentSettings.title": "Paramètres du document",
   "editPipelineInfo": "Modifier les informations sur le pipeline",
+  "editPipelineInfoNameRequired": "Veuillez saisir un nom pour la Base de connaissances.",
   "exportDSL.errorTip": "Echec de l’exportation du DSL du pipeline",
   "exportDSL.successTip": "Pipeline d’exportation DSL réussi",
   "inputField": "Champ de saisie",

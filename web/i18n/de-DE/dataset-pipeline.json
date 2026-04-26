@@ -35,6 +35,7 @@
   "details.structureTooltip": "Die Blockstruktur bestimmt, wie Dokumente aufgeteilt und indiziert werden, und bietet die Modi \"Allgemein\", \"Über-Eltern-Kind\" und \"Q&A\" und ist für jede Wissensdatenbank einzigartig.",
   "documentSettings.title": "Dokument-Einstellungen",
   "editPipelineInfo": "Bearbeiten von Pipeline-Informationen",
+  "editPipelineInfoNameRequired": "Bitte geben Sie einen Namen für die Wissensdatenbank ein.",
   "exportDSL.errorTip": "Fehler beim Exportieren der Pipeline-DSL",
   "exportDSL.successTip": "Pipeline-DSL erfolgreich exportieren",
   "inputField": "Eingabefeld",

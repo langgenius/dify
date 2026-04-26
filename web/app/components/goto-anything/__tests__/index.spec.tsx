@@ -3,7 +3,7 @@ import type { ActionItem, SearchResult } from '../actions/types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import GotoAnything from '../index'
+import { GotoAnything } from '../index'
 
 type TestSearchResult = Omit<SearchResult, 'icon' | 'data'> & {
   icon?: ReactNode
@@ -11,7 +11,7 @@ type TestSearchResult = Omit<SearchResult, 'icon' | 'data'> & {
 }
 
 const routerPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: routerPush,
   }),

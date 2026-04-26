@@ -1,9 +1,9 @@
 'use client'
 import type { CSSProperties, FC } from 'react'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContext } from '@/context/modal-context'
 import PremiumBadge from '../../base/premium-badge'
@@ -71,7 +71,7 @@ const UpgradeBtn: FC<Props> = ({
       className={className}
       style={style}
     >
-      <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
       <div className="system-xs-medium">
         <span className="p-1">
           {label}

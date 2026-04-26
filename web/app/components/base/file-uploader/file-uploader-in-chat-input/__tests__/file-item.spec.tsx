@@ -222,6 +222,21 @@ describe('FileItem (chat-input)', () => {
     expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
+  it('should not throw when file type is missing', () => {
+    expect(() => {
+      render(
+        <FileItem
+          file={createFile({
+            name: 'generated.png',
+            type: undefined as unknown as string,
+            supportFileType: 'document',
+          })}
+          canPreview
+        />,
+      )
+    }).not.toThrow()
+  })
+
   it('should close video preview', () => {
     render(
       <FileItem

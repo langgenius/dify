@@ -1,8 +1,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 enum ActionButtonState {
   Destructive = 'destructive',
@@ -30,7 +30,7 @@ const actionButtonVariants = cva(
   },
 )
 
-export type ActionButtonProps = {
+type ActionButtonProps = {
   size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   state?: ActionButtonState
   styleCss?: CSSProperties
@@ -73,4 +73,4 @@ const ActionButton = ({ className, size, state = ActionButtonState.Default, styl
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton
-export { ActionButton, ActionButtonState, actionButtonVariants }
+export { ActionButton, ActionButtonState }

@@ -621,7 +621,7 @@ class TestConvertDatasetRetrieverTool:
 class TestBaseAgentRunnerInit:
     def test_init_sets_stream_tool_call_and_files(self, mocker):
         session = mocker.MagicMock()
-        session.query.return_value.where.return_value.count.return_value = 2
+        session.scalar.return_value = 2
         mocker.patch.object(module.db, "session", session)
 
         mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])

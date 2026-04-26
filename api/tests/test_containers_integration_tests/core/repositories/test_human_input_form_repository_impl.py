@@ -7,21 +7,25 @@ from uuid import uuid4
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from dify_graph.nodes.human_input.entities import (
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    FormDefinition,
-    HumanInputNodeData,
     MemberRecipient,
-    UserAction,
     WebAppDeliveryMethod,
 )
-from dify_graph.repositories.human_input_form_repository import FormCreateParams
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
@@ -32,7 +36,7 @@ from models.human_input import (
 
 
 def _create_tenant_with_members(session: Session, member_emails: list[str]) -> tuple[Tenant, list[Account]]:
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     session.add(tenant)
     session.flush()
 
@@ -42,7 +46,7 @@ def _create_tenant_with_members(session: Session, member_emails: list[str]) -> t
             email=email,
             name=f"Member {index}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         session.add(account)
         session.flush()
@@ -68,7 +72,6 @@ def _build_form_params(delivery_methods: list[DeliveryChannelConfig]) -> FormCre
         user_actions=[UserAction(id="approve", title="Approve")],
     )
     return FormCreateParams(
-        app_id=str(uuid4()),
         workflow_execution_id=str(uuid4()),
         node_id="human-input-node",
         form_config=form_config,
@@ -84,7 +87,7 @@ def _build_email_delivery(
 ) -> EmailDeliveryMethod:
     return EmailDeliveryMethod(
         config=EmailDeliveryConfig(
-            recipients=EmailRecipients(whole_workspace=whole_workspace, items=recipients),
+            recipients=EmailRecipients(include_bound_group=whole_workspace, items=recipients),
             subject="Approval Needed",
             body="Please review",
         )
@@ -100,7 +103,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["member1@example.com", "member2@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=str(uuid4()))
         params = _build_form_params(
             delivery_methods=[_build_email_delivery(whole_workspace=True, recipients=[])],
         )
@@ -129,13 +132,13 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["primary@example.com", "secondary@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=str(uuid4()))
         params = _build_form_params(
             delivery_methods=[
                 _build_email_delivery(
                     whole_workspace=False,
                     recipients=[
-                        MemberRecipient(user_id=members[0].id),
+                        MemberRecipient(reference_id=members[0].id),
                         ExternalRecipient(email="external@example.com"),
                     ],
                 )
@@ -173,10 +176,9 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["prefill@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=str(uuid4()))
         resolved_values = {"greeting": "Hello!"}
         params = FormCreateParams(
-            app_id=str(uuid4()),
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(
@@ -210,9 +212,8 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["ui@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=str(uuid4()))
         params = FormCreateParams(
-            app_id=str(uuid4()),
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(

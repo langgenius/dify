@@ -1,16 +1,13 @@
 'use client'
 
 import type { PluginDetail } from '../../types'
-import {
-  RiArrowLeftRightLine,
-  RiCloseLine,
-} from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -19,7 +16,6 @@ import { useAppContext } from '@/context/app-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
@@ -180,7 +176,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -191,25 +187,42 @@ const DetailHeader = ({
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
-              <Tooltip popupContent={t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
-                <div>
-                  <Badge className="mr-1 cursor-pointer px-1">
-                    <AutoUpdateLine className="size-3" />
-                  </Badge>
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div>
+                      <Badge className="mr-1 cursor-pointer px-1">
+                        <AutoUpdateLine className="size-3" />
+                      </Badge>
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}
+                </TooltipContent>
               </Tooltip>
             )}
 
             {/* Update Button */}
             {(hasNewVersion || isFromGitHub) && (
-              <Button
-                variant="secondary-accent"
-                size="small"
-                className="!h-5"
-                onClick={handleTriggerLatestUpdate}
-              >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={300}
+                  render={(
+                    <Button
+                      variant="secondary-accent"
+                      size="small"
+                      className="h-5!"
+                      onClick={handleTriggerLatestUpdate}
+                    >
+                      {t('detailPanel.operation.update', { ns: 'plugin' })}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 
@@ -237,7 +250,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
         )}
@@ -255,7 +268,7 @@ const DetailHeader = ({
       )}
 
       {/* Description */}
-      {!isReadmeView && <Description className="mb-2 mt-3 h-auto" text={description[locale]} descriptionLineRows={2} />}
+      {!isReadmeView && <Description className="mt-3 mb-2 h-auto" text={description[locale]} descriptionLineRows={2} />}
 
       {/* Plugin Auth for Tools */}
       {category === PluginCategoryEnum.tool && !isReadmeView && (

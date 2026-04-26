@@ -1,8 +1,3 @@
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import Slider from '@/app/components/base/slider'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +5,12 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
@@ -33,7 +33,7 @@ const KeyWordNumber = ({
   return (
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate text-text-secondary system-xs-medium">
+        <div className="truncate system-xs-medium text-text-secondary">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
@@ -47,7 +47,8 @@ const KeyWordNumber = ({
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
-        onChange={onKeywordNumberChange}
+        onValueChange={onKeywordNumberChange}
+        aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
       />
       <NumberField
         className="w-12 shrink-0"
@@ -56,11 +57,11 @@ const KeyWordNumber = ({
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
-        <NumberFieldGroup size="regular">
-          <NumberFieldInput size="regular" />
+        <NumberFieldGroup>
+          <NumberFieldInput />
           <NumberFieldControls>
-            <NumberFieldIncrement size="regular" />
-            <NumberFieldDecrement size="regular" />
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>

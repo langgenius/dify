@@ -35,6 +35,7 @@
   "details.structureTooltip": "區塊結構會決定文件的分割和索引方式 （提供一般、父子和問答模式），而且每個知識庫都是唯一的。",
   "documentSettings.title": "文件設定",
   "editPipelineInfo": "編輯管線資訊",
+  "editPipelineInfoNameRequired": "請輸入知識庫的名稱。",
   "exportDSL.errorTip": "無法匯出管線 DSL",
   "exportDSL.successTip": "成功匯出管線 DSL",
   "inputField": "輸入欄位",

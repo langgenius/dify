@@ -1,13 +1,13 @@
 from configs import dify_config
-from dify_graph.nodes.code.code_node import CodeNode
-from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
-from dify_graph.nodes.code.exc import (
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
+from graphon.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.variables.types import SegmentType
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

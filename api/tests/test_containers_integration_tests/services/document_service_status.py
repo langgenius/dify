@@ -13,6 +13,8 @@ from uuid import uuid4
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -90,7 +92,7 @@ class DocumentStatusTestDataFactory:
             name=name,
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id
         document.indexing_status = indexing_status
@@ -198,7 +200,7 @@ class DocumentStatusTestDataFactory:
         """
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"uploads/{uuid4()}",
             name=name,
             size=128,

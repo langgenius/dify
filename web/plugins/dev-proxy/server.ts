@@ -8,7 +8,7 @@ type DevProxyEnv = Partial<Record<
   string
 >>
 
-export type DevProxyTargets = {
+type DevProxyTargets = {
   consoleApiTarget: string
   publicApiTarget: string
 }
@@ -55,7 +55,7 @@ export const isAllowedDevOrigin = (origin?: string | null) => {
   }
 }
 
-export const applyCorsHeaders = (headers: Headers, origin?: string | null) => {
+const applyCorsHeaders = (headers: Headers, origin?: string | null) => {
   if (!isAllowedDevOrigin(origin))
     return
 

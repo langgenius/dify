@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
 }))
@@ -74,7 +74,7 @@ vi.mock('@/service/use-base', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mocks.toastNotify },
 }))
 

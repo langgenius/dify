@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
@@ -25,7 +26,7 @@ from dify_graph.model_runtime.errors.invoke import (
 )
 
 
-def _mock_model_instance(*, schema: dict | None = None) -> SimpleNamespace:
+def _mock_model_instance(*, schema: dict[str, Any] | None = None) -> SimpleNamespace:
     model_type_instance = Mock()
     model_type_instance.get_model_schema.return_value = (
         SimpleNamespace(model_properties=schema or {}) if schema is not None else None
@@ -60,20 +61,23 @@ def test_get_max_llm_context_tokens_branches(model_instance, expected, error_mat
     manager = Mock()
     manager.get_default_model_instance.return_value = model_instance
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
         if error_match:
             with pytest.raises(InvokeModelError, match=error_match):
-                ModelInvocationUtils.get_max_llm_context_tokens("tenant")
+                ModelInvocationUtils.get_max_llm_context_tokens("tenant", user_id="user-1")
         else:
-            assert ModelInvocationUtils.get_max_llm_context_tokens("tenant") == expected
+            assert ModelInvocationUtils.get_max_llm_context_tokens("tenant", user_id="user-1") == expected
+
+    mock_factory.assert_called_once_with(tenant_id="tenant", user_id="user-1")
 
 
 def test_calculate_tokens_handles_missing_model():
     manager = Mock()
     manager.get_default_model_instance.return_value = None
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
         with pytest.raises(InvokeModelError, match="Model not found"):
             ModelInvocationUtils.calculate_tokens("tenant", [])
+    mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
 def test_invoke_success_and_error_mappings():
@@ -98,7 +102,7 @@ def test_invoke_success_and_error_mappings():
 
     db_mock = SimpleNamespace(session=Mock())
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
         with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
             with patch("core.tools.utils.model_invocation_utils.db", db_mock):
                 response = ModelInvocationUtils.invoke(
@@ -107,11 +111,13 @@ def test_invoke_success_and_error_mappings():
                     tool_type="builtin",
                     tool_name="tool-a",
                     prompt_messages=[],
+                    caller_user_id="caller-1",
                 )
 
     assert response.message.content == "ok"
     assert db_mock.session.add.call_count == 1
     assert db_mock.session.commit.call_count == 2
+    mock_factory.assert_called_once_with(tenant_id="tenant", user_id="caller-1")
 
 
 @pytest.mark.parametrize(
@@ -145,7 +151,7 @@ def test_invoke_error_mappings(exc, expected):
 
     db_mock = SimpleNamespace(session=Mock())
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
         with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
             with patch("core.tools.utils.model_invocation_utils.db", db_mock):
                 with pytest.raises(InvokeModelError, match=expected):
@@ -156,3 +162,4 @@ def test_invoke_error_mappings(exc, expected):
                         tool_name="tool-a",
                         prompt_messages=[],
                     )
+    mock_factory.assert_called_once_with(tenant_id="tenant", user_id="u1")

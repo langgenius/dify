@@ -13,7 +13,7 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
         from core.workflow import workflow_entry
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
         from core.workflow.node_factory import DifyNodeFactory, NODE_TYPE_CLASSES_MAPPING
-        from dify_graph.enums import BuiltinNodeTypes
+        from graphon.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline
 

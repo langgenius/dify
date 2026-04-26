@@ -1,9 +1,11 @@
 import json
-from typing import cast
+from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -18,30 +20,30 @@ from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
 
+class ModelConfigRequest(BaseModel):
+    provider: str | None = Field(default=None, description="Model provider")
+    model: str | None = Field(default=None, description="Model name")
+    configs: dict[str, Any] | None = Field(default=None, description="Model configuration parameters")
+    opening_statement: str | None = Field(default=None, description="Opening statement")
+    suggested_questions: list[str] | None = Field(default=None, description="Suggested questions")
+    more_like_this: dict[str, Any] | None = Field(default=None, description="More like this configuration")
+    speech_to_text: dict[str, Any] | None = Field(default=None, description="Speech to text configuration")
+    text_to_speech: dict[str, Any] | None = Field(default=None, description="Text to speech configuration")
+    retrieval_model: dict[str, Any] | None = Field(default=None, description="Retrieval model configuration")
+    tools: list[dict[str, Any]] | None = Field(default=None, description="Available tools")
+    dataset_configs: dict[str, Any] | None = Field(default=None, description="Dataset configurations")
+    agent_mode: dict[str, Any] | None = Field(default=None, description="Agent mode configuration")
+
+
+register_schema_models(console_ns, ModelConfigRequest)
+
+
 @console_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
     @console_ns.doc("update_app_model_config")
     @console_ns.doc(description="Update application model configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "ModelConfigRequest",
-            {
-                "provider": fields.String(description="Model provider"),
-                "model": fields.String(description="Model name"),
-                "configs": fields.Raw(description="Model configuration parameters"),
-                "opening_statement": fields.String(description="Opening statement"),
-                "suggested_questions": fields.List(fields.String(), description="Suggested questions"),
-                "more_like_this": fields.Raw(description="More like this configuration"),
-                "speech_to_text": fields.Raw(description="Speech to text configuration"),
-                "text_to_speech": fields.Raw(description="Text to speech configuration"),
-                "retrieval_model": fields.Raw(description="Retrieval model configuration"),
-                "tools": fields.List(fields.Raw(), description="Available tools"),
-                "dataset_configs": fields.Raw(description="Dataset configurations"),
-                "agent_mode": fields.Raw(description="Agent mode configuration"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[ModelConfigRequest.__name__])
     @console_ns.response(200, "Model configuration updated successfully")
     @console_ns.response(400, "Invalid configuration")
     @console_ns.response(404, "App not found")
@@ -69,9 +71,7 @@ class ModelConfigResource(Resource):
 
         if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
             # get original app model config
-            original_app_model_config = (
-                db.session.query(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).first()
-            )
+            original_app_model_config = db.session.get(AppModelConfig, app_model.app_model_config_id)
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
@@ -90,6 +90,7 @@ class ModelConfigResource(Resource):
                         tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_tenant_id,
@@ -129,6 +130,7 @@ class ModelConfigResource(Resource):
                             tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
+                            user_id=current_user.id,
                         )
                     except Exception:
                         continue

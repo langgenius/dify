@@ -12,17 +12,17 @@ import type {
 import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { cn } from '@/utils/classnames'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
@@ -161,7 +161,7 @@ function Form<
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -204,7 +204,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -223,14 +223,14 @@ function Form<
                 className={`
                     flex cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2
                     ${value[variable] === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'}
-                    ${disabled && '!cursor-not-allowed opacity-60'}
+                    ${disabled && 'cursor-not-allowed! opacity-60'}
                   `}
                 onClick={() => handleFormChange(variable, option.value)}
                 key={`${variable}-${option.value}`}
               >
                 <RadioE isChecked={value[variable] === option.value} />
 
-                <div className="text-text-secondary system-sm-regular">{option.label[language] || option.label.en_US}</div>
+                <div className="system-sm-regular text-text-secondary">{option.label[language] || option.label.en_US}</div>
               </div>
             ))}
           </div>
@@ -253,9 +253,20 @@ function Form<
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
+      const filteredOptions = options.filter((option) => {
+        if (option.show_on.length)
+          return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+
+        return true
+      }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))
+      const currentValue = (isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null))
+        ? formSchema.default
+        : value[variable]
+      const selectedOption = filteredOptions.find(option => option.value === currentValue)
+
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
 
             {required && (
@@ -263,20 +274,27 @@ function Form<
             )}
             {tooltipContent}
           </div>
-          <SimpleSelect
-            wrapperClassName="h-8"
-            className={cn(inputClassName)}
+          <Select
             disabled={readonly}
-            defaultValue={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
-            items={options.filter((option) => {
-              if (option.show_on.length)
-                return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
-
-              return true
-            }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-            onSelect={item => handleFormChange(variable, item.value as string)}
-            placeholder={placeholder?.[language] || placeholder?.en_US}
-          />
+            value={selectedOption?.value ?? null}
+            onValueChange={(nextValue) => {
+              if (!nextValue)
+                return
+              handleFormChange(variable, nextValue)
+            }}
+          >
+            <SelectTrigger size="medium" className={cn(inputClassName)}>
+              {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+            </SelectTrigger>
+            <SelectContent popupClassName="w-(--anchor-width)">
+              {filteredOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -296,9 +314,9 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className="flex items-center justify-between py-2 text-text-secondary system-sm-semibold">
+          <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
             <div className="flex items-center space-x-2">
-              <span className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className="ml-1 text-red-500">*</span>
               )}
@@ -309,7 +327,7 @@ function Form<
               value={value[variable]}
               onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={true} className="!mr-1">True</Radio>
+              <Radio value={true} className="mr-1!">True</Radio>
               <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
@@ -327,7 +345,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -335,7 +353,7 @@ function Form<
             {tooltipContent}
           </div>
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
             isAgentStrategy={isAgentStrategy}
@@ -359,7 +377,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -423,7 +441,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -452,7 +470,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>

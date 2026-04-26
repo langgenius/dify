@@ -13,6 +13,7 @@ from datetime import datetime
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
@@ -292,7 +293,7 @@ class TestLoadManifestFromZip:
         zip_buffer.seek(0)
 
         with zipfile.ZipFile(zip_buffer, "r") as archive:
-            with pytest.raises(json.JSONDecodeError):
+            with pytest.raises(ValidationError):
                 WorkflowRunRestore._load_manifest_from_zip(archive)
 
 

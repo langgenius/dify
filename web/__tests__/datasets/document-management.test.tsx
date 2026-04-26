@@ -13,7 +13,7 @@ import { DataSourceType } from '@/models/datasets'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
   useRouter: () => ({ push: mockPush }),
   usePathname: () => '/datasets/ds-1/documents',
@@ -109,7 +109,7 @@ describe('Document Management Flow', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
       expect(update.searchParams.get('keyword')).toBe('test')
       expect(update.searchParams.get('page')).toBe('2')
@@ -123,7 +123,7 @@ describe('Document Management Flow', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
       expect(update.searchParams.toString()).toBe('')
     })

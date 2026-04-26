@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 
 type StepTwoFooterProps = {
   isSetting?: boolean

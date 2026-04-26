@@ -63,7 +63,8 @@ pnpm analyze-component <path> --review
 
 ### File Naming
 
-- Test files: `ComponentName.spec.tsx` (same directory as component)
+- Test files: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
+- Placement rule: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 - Integration tests: `web/__tests__/` directory
 
 ## Test Structure Template
@@ -199,7 +200,7 @@ When assigned to test a directory/path, test **ALL content** within that path:
 
 - ✅ **Import real project components** directly (including base components and siblings)
 - ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
-- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`) or dify-ui primitives (`@langgenius/dify-ui/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
 > See [Test Structure Template](#test-structure-template) for correct import/mock patterns.
@@ -324,12 +325,12 @@ For more detailed information, refer to:
 ### Reference Examples in Codebase
 
 - `web/utils/classnames.spec.ts` - Utility function tests
-- `web/app/components/base/button/index.spec.tsx` - Component tests
+- `web/app/components/base/radio/__tests__/index.spec.tsx` - Component tests
 - `web/__mocks__/provider-context.ts` - Mock factory example
 
 ### Project Configuration
 
-- `web/vitest.config.ts` - Vitest configuration
+- `web/vite.config.ts` - Vite/Vitest configuration
 - `web/vitest.setup.ts` - Test environment setup
 - `web/scripts/analyze-component.js` - Component analysis tool
 - Modules are not mocked automatically. Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.

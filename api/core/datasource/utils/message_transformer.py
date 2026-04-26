@@ -4,7 +4,8 @@ from mimetypes import guess_extension, guess_type
 
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.file import File, FileTransferMethod, FileType
+from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
@@ -69,8 +70,8 @@ class DatasourceFileMessageTransformer:
                 if not isinstance(message.message, DatasourceMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
-                # FIXME: should do a type check here.
-                assert isinstance(message.message.blob, bytes)
+                if not isinstance(message.message.blob, bytes):
+                    raise TypeError(f"Expected blob to be bytes, got {type(message.message.blob).__name__}")
                 tool_file_manager = ToolFileManager()
                 blob_tool_file: ToolFile | None = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
@@ -103,8 +104,14 @@ class DatasourceFileMessageTransformer:
                 file: File | None = meta.get("file")
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                        assert file.related_id is not None
-                        url = cls.get_datasource_file_url(datasource_file_id=file.related_id, extension=file.extension)
+                        reference = getattr(file, "reference", None) or getattr(file, "related_id", None)
+                        parsed_reference = parse_file_reference(reference) if isinstance(reference, str) else None
+                        if parsed_reference is None:
+                            raise ValueError("datasource file is missing reference")
+                        url = cls.get_datasource_file_url(
+                            datasource_file_id=parsed_reference.record_id,
+                            extension=file.extension,
+                        )
                         if file.type == FileType.IMAGE:
                             yield DatasourceMessage(
                                 type=DatasourceMessage.MessageType.IMAGE_LINK,

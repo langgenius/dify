@@ -8,6 +8,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
 from services.dataset_service import DatasetService
 
@@ -117,8 +118,10 @@ class DatasetConfigManager:
                     score_threshold=float(score_threshold_val)
                     if dataset_configs.get("score_threshold_enabled", False) and score_threshold_val is not None
                     else None,
-                    reranking_model=reranking_model_val if isinstance(reranking_model_val, dict) else None,
-                    weights=weights_val if isinstance(weights_val, dict) else None,
+                    reranking_model=cast(RerankingModelDict, reranking_model_val)
+                    if isinstance(reranking_model_val, dict)
+                    else None,
+                    weights=cast(WeightsDict, weights_val) if isinstance(weights_val, dict) else None,
                     reranking_enabled=bool(dataset_configs.get("reranking_enabled", True)),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
                     metadata_filtering_mode=cast(
@@ -135,7 +138,9 @@ class DatasetConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for dataset feature
 
@@ -169,7 +174,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]):
         """
         Extract dataset config for legacy compatibility
 

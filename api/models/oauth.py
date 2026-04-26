@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import func
@@ -22,7 +23,7 @@ class DatasourceOauthParamConfig(TypeBase):
     )
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    system_credentials: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    system_credentials: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False)
 
 
 class DatasourceProvider(TypeBase):
@@ -40,7 +41,7 @@ class DatasourceProvider(TypeBase):
     provider: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     auth_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    encrypted_credentials: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    encrypted_credentials: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False)
     avatar_url: Mapped[str] = mapped_column(LongText, nullable=True, default="default")
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1", default=-1)
@@ -70,7 +71,7 @@ class DatasourceOauthTenantParamConfig(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    client_params: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False, default_factory=dict)
+    client_params: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False, default_factory=dict)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(

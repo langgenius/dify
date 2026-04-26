@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { Openai } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
@@ -21,7 +21,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
-      <div className="mb-2 py-[7px]">
+      <div className={cn('py-[7px]', className)}>
         {theme === Theme.dark && <AnthropicLight className="h-2.5 w-[90px]" />}
         {theme === Theme.light && <AnthropicDark className="h-2.5 w-[90px]" />}
       </div>
@@ -30,7 +30,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
 
   if (provider.provider === 'langgenius/openai/openai') {
     return (
-      <div className="mb-2">
+      <div className={className}>
         <Openai className="h-6 w-auto text-text-inverted-dimmed" />
       </div>
     )

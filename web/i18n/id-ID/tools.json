@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "Bearer 123",
   "mcp.modal.headers": "Header",
   "mcp.modal.headersTip": "Header HTTP tambahan untuk dikirim bersama permintaan server MCP",
+  "mcp.modal.invalidServerIdentifier": "Harap masukkan pengidentifikasi server yang valid",
+  "mcp.modal.invalidServerUrl": "Harap masukkan URL server yang valid",
   "mcp.modal.maskedHeadersTip": "Nilai header disembunyikan untuk keamanan. Perubahan akan memperbarui nilai yang sebenarnya.",
   "mcp.modal.name": "Nama & Ikon",
   "mcp.modal.namePlaceholder": "Beri nama server MCP Anda",

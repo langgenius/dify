@@ -1,10 +1,10 @@
 import type { Plugin } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiArrowRightUpLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
-import Link from 'next/link'
 import {
   memo,
   useCallback,
@@ -15,7 +15,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
-import { cn } from '@/utils/classnames'
+import Link from '@/next/link'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
   useMarketplaceAllPlugins,
@@ -46,15 +46,15 @@ const InstallFromMarketplace = ({
 
   return (
     <div className="mb-2">
-      <Divider className="!mt-4 h-px" />
+      <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
-        <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
+        <div className="flex cursor-pointer items-center gap-1 system-md-semibold text-text-primary" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
           {t('modelProvider.installDataSourceProvider', { ns: 'common' })}
         </div>
         <div className="mb-2 flex items-center pt-2">
-          <span className="system-sm-regular pr-1 text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="system-sm-medium inline-flex items-center text-text-accent">
+          <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
+          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="inline-flex items-center system-sm-medium text-text-accent">
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
             <RiArrowRightUpLine className="h-4 w-4" />
           </Link>

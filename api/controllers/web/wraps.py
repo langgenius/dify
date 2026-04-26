@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate
 
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
@@ -20,14 +20,13 @@ from services.enterprise.enterprise_service import EnterpriseService, WebAppSett
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = None):
-    def decorator(view: Callable[Concatenate[App, EndUser, P], R]):
+def validate_jwt_token[**P, R](
+    view: Callable[Concatenate[App, EndUser, P], R] | None = None,
+) -> Callable[P, R] | Callable[[Callable[Concatenate[App, EndUser, P], R]], Callable[P, R]]:
+    def decorator(view: Callable[Concatenate[App, EndUser, P], R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             app_model, end_user = decode_jwt_token()
             return view(app_model, end_user, *args, **kwargs)
 
@@ -38,7 +37,7 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
     return decorator
 
 
-def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
+def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
     system_features = FeatureService.get_system_features()
     if not app_code:
         app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
@@ -49,7 +48,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { baseRunningData, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { baseRunningData, renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '../../types'
 import {
   useIsChatMode,
@@ -10,9 +10,6 @@ import {
   useWorkflowReadOnly,
 } from '../use-workflow'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
-
 let mockAppMode = 'workflow'
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) => selector({ appDetail: { mode: mockAppMode } }),
@@ -20,7 +17,6 @@ vi.mock('@/app/components/app/store', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  resetReactFlowMockState()
   mockAppMode = 'workflow'
 })
 
@@ -158,37 +154,50 @@ describe('useNodesReadOnly', () => {
 // ---------------------------------------------------------------------------
 
 describe('useIsNodeInIteration', () => {
-  beforeEach(() => {
-    rfState.nodes = [
-      { id: 'iter-1', position: { x: 0, y: 0 }, data: { type: 'iteration' } },
-      { id: 'child-1', position: { x: 10, y: 0 }, parentId: 'iter-1', data: {} },
-      { id: 'grandchild-1', position: { x: 20, y: 0 }, parentId: 'child-1', data: {} },
-      { id: 'outside-1', position: { x: 100, y: 0 }, data: {} },
-    ]
-  })
+  const createIterationNodes = () => [
+    createNode({ id: 'iter-1' }),
+    createNode({ id: 'child-1', parentId: 'iter-1' }),
+    createNode({ id: 'grandchild-1', parentId: 'child-1' }),
+    createNode({ id: 'outside-1' }),
+  ]
 
   it('should return true when node is a direct child of the iteration', () => {
-    const { result } = renderHook(() => useIsNodeInIteration('iter-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
+      nodes: createIterationNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInIteration('child-1')).toBe(true)
   })
 
   it('should return false for a grandchild (only checks direct parentId)', () => {
-    const { result } = renderHook(() => useIsNodeInIteration('iter-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
+      nodes: createIterationNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInIteration('grandchild-1')).toBe(false)
   })
 
   it('should return false when node is outside the iteration', () => {
-    const { result } = renderHook(() => useIsNodeInIteration('iter-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
+      nodes: createIterationNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInIteration('outside-1')).toBe(false)
   })
 
   it('should return false when node does not exist', () => {
-    const { result } = renderHook(() => useIsNodeInIteration('iter-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
+      nodes: createIterationNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInIteration('nonexistent')).toBe(false)
   })
 
   it('should return false when iteration id has no children', () => {
-    const { result } = renderHook(() => useIsNodeInIteration('no-such-iter'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('no-such-iter'), {
+      nodes: createIterationNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInIteration('child-1')).toBe(false)
   })
 })
@@ -198,37 +207,50 @@ describe('useIsNodeInIteration', () => {
 // ---------------------------------------------------------------------------
 
 describe('useIsNodeInLoop', () => {
-  beforeEach(() => {
-    rfState.nodes = [
-      { id: 'loop-1', position: { x: 0, y: 0 }, data: { type: 'loop' } },
-      { id: 'child-1', position: { x: 10, y: 0 }, parentId: 'loop-1', data: {} },
-      { id: 'grandchild-1', position: { x: 20, y: 0 }, parentId: 'child-1', data: {} },
-      { id: 'outside-1', position: { x: 100, y: 0 }, data: {} },
-    ]
-  })
+  const createLoopNodes = () => [
+    createNode({ id: 'loop-1' }),
+    createNode({ id: 'child-1', parentId: 'loop-1' }),
+    createNode({ id: 'grandchild-1', parentId: 'child-1' }),
+    createNode({ id: 'outside-1' }),
+  ]
 
   it('should return true when node is a direct child of the loop', () => {
-    const { result } = renderHook(() => useIsNodeInLoop('loop-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
+      nodes: createLoopNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInLoop('child-1')).toBe(true)
   })
 
   it('should return false for a grandchild (only checks direct parentId)', () => {
-    const { result } = renderHook(() => useIsNodeInLoop('loop-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
+      nodes: createLoopNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInLoop('grandchild-1')).toBe(false)
   })
 
   it('should return false when node is outside the loop', () => {
-    const { result } = renderHook(() => useIsNodeInLoop('loop-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
+      nodes: createLoopNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInLoop('outside-1')).toBe(false)
   })
 
   it('should return false when node does not exist', () => {
-    const { result } = renderHook(() => useIsNodeInLoop('loop-1'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
+      nodes: createLoopNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInLoop('nonexistent')).toBe(false)
   })
 
   it('should return false when loop id has no children', () => {
-    const { result } = renderHook(() => useIsNodeInLoop('no-such-loop'))
+    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('no-such-loop'), {
+      nodes: createLoopNodes(),
+      edges: [],
+    })
     expect(result.current.isNodeInLoop('child-1')).toBe(false)
   })
 })

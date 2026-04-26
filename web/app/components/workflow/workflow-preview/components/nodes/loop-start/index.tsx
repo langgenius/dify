@@ -18,7 +18,7 @@ const LoopStartNode = ({ id, data }: NodeProps) => {
       <NodeSourceHandle
         id={id}
         data={data}
-        handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
+        handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
         handleId="source"
       />
     </div>

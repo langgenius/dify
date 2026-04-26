@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -42,7 +42,7 @@ const Result: FC<Props> = ({
     <div className="flex h-full flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between">
         <div>
-          <div className="shrink-0 text-base font-semibold leading-[160%] text-text-secondary">{t('generate.resTitle', { ns: 'appDebug' })}</div>
+          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">{t('generate.resTitle', { ns: 'appDebug' })}</div>
           <VersionSelector
             versionLen={versions.length}
             value={currentVersionIndex}
@@ -54,7 +54,7 @@ const Result: FC<Props> = ({
             className="px-2"
             onClick={() => {
               copy(current.modified)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
             }}
           >
             <RiClipboardLine className="h-4 w-4 text-text-secondary" />

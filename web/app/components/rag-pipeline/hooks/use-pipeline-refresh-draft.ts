@@ -16,6 +16,7 @@ export const usePipelineRefreshDraft = () => {
       setIsSyncingWorkflowDraft,
       setEnvironmentVariables,
       setEnvSecrets,
+      setRagPipelineVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`).then((response) => {
@@ -34,6 +35,7 @@ export const usePipelineRefreshDraft = () => {
         return acc
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
+      setRagPipelineVariables?.(response.rag_pipeline_variables || [])
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 

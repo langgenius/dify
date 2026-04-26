@@ -1,24 +1,24 @@
 import type { FC } from 'react'
-import { headers } from 'next/headers'
-import Script from 'next/script'
 import * as React from 'react'
 import { IS_CE_EDITION, IS_PROD } from '@/config'
+import { headers } from '@/next/headers'
+import Script from '@/next/script'
 
 export enum GaType {
   admin = 'admin',
   webapp = 'webapp',
 }
 
-export const GA_MEASUREMENT_ID_ADMIN = 'G-DM9497FN4V'
-export const GA_MEASUREMENT_ID_WEBAPP = 'G-2MFWXK7WYT'
-export const COOKIEYES_SCRIPT_SRC = 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
+const GA_MEASUREMENT_ID_ADMIN = 'G-DM9497FN4V'
+const GA_MEASUREMENT_ID_WEBAPP = 'G-2MFWXK7WYT'
+const COOKIEYES_SCRIPT_SRC = 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
 
 const gaIdMaps = {
   [GaType.admin]: GA_MEASUREMENT_ID_ADMIN,
   [GaType.webapp]: GA_MEASUREMENT_ID_WEBAPP,
 }
 
-export type IGAProps = {
+type IGAProps = {
   gaType: GaType
 }
 
