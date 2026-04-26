@@ -42,7 +42,6 @@
     "dify_vdb_qdrant",
     "dify_vdb_tidb_on_qdrant"
   ],
-  "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
   "reportUnknownArgumentType": "hint",
   "reportUnknownVariableType": "hint",
