@@ -401,7 +401,7 @@ describe('human-input/panel', () => {
             allowed_file_extensions: [],
             allowed_file_types: [],
             allowed_file_upload_methods: [],
-            max_upload_count: 3,
+            number_limits: 3,
           },
         ],
       }),

@@ -196,7 +196,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
           allowed_file_extensions: ['.pdf'],
           allowed_file_types: [SupportUploadFileTypes.document],
           allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-          max_upload_count: 3,
+          number_limits: 3,
         },
       ],
     } satisfies HumanInputFormData

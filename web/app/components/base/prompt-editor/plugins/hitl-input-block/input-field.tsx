@@ -174,7 +174,7 @@ const InputField: React.FC<InputFieldProps> = ({
         allowed_file_extensions: payload.allowed_file_extensions || [],
         allowed_file_types: payload.allowed_file_types,
         allowed_file_upload_methods: payload.allowed_file_upload_methods,
-        max_upload_count: payload.max_length,
+        number_limits: payload.number_limits ?? payload.max_length,
       }
     })
   }, [])
@@ -302,7 +302,7 @@ const InputField: React.FC<InputFieldProps> = ({
           <FileUploadSetting
             payload={{
               ...tempPayload,
-              max_length: tempPayload.max_upload_count || 5,
+              max_length: tempPayload.number_limits || 5,
             }}
             isMultiple
             onChange={handleFileListPayloadChange}

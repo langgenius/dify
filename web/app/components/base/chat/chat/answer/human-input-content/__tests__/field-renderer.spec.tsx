@@ -122,7 +122,7 @@ describe('HumanInputFieldRenderer', () => {
           allowed_file_extensions: ['.pdf'],
           allowed_file_types: [SupportUploadFileTypes.document],
           allowed_file_upload_methods: [TransferMethod.local_file],
-          max_upload_count: 3,
+          number_limits: 3,
         }}
         value={[]}
         onChange={onChange}

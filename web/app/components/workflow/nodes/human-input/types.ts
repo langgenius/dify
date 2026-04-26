@@ -104,7 +104,7 @@ export type FileFormInput = BaseFormInputItem & SharedFileFormInput & {
 
 export type FileListFormInput = BaseFormInputItem & SharedFileFormInput & {
   type: InputVarType.multiFiles
-  max_upload_count?: number
+  number_limits?: UploadFileSetting['number_limits']
 }
 
 export type FormInputItem
@@ -191,7 +191,7 @@ export const createDefaultFileListFormInput = (
   allowed_file_extensions: [],
   allowed_file_types: [SupportUploadFileTypes.image],
   allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-  max_upload_count: 5,
+  number_limits: 5,
 })
 
 export const createDefaultFormInputByType = (

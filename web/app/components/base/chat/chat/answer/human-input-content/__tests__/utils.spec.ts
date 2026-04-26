@@ -48,7 +48,7 @@ const fileListInput = (overrides: Partial<Extract<FormInputItem, { type: InputVa
   allowed_file_extensions: [],
   allowed_file_types: [SupportUploadFileTypes.image],
   allowed_file_upload_methods: [TransferMethod.local_file],
-  max_upload_count: 5,
+  number_limits: 5,
   ...overrides,
 })
 

@@ -156,7 +156,7 @@ describe('HITLInputComponentUI', () => {
           allowed_file_extensions: ['.pdf'],
           allowed_file_types: [SupportUploadFileTypes.document],
           allowed_file_upload_methods: [TransferMethod.local_file],
-          max_upload_count: 4,
+          number_limits: 4,
         } satisfies FormInputItem,
       })
 

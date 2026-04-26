@@ -575,7 +575,7 @@ describe('InputField', () => {
       allowed_file_extensions: ['.pdf'],
       allowed_file_types: ['document'],
       allowed_file_upload_methods: ['local_file'],
-      max_upload_count: 4,
+      number_limits: 4,
     })
   })
 

@@ -100,7 +100,7 @@ const HumanInputFieldRenderer = ({
           allowed_file_types: field.allowed_file_types,
           allowed_file_extensions: field.allowed_file_extensions,
           allowed_file_upload_methods: field.allowed_file_upload_methods,
-          number_limits: field.max_upload_count || 5,
+          number_limits: field.number_limits || 5,
         }}
       />
     )
