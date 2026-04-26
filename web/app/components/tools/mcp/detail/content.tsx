@@ -31,6 +31,8 @@ import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
   useDeleteMCP,
+  useInvalidateAllMCPTools,
+  useInvalidateAllToolProviders,
   useInvalidateMCPTools,
   useMCPTools,
   useUpdateMCP,
@@ -60,6 +62,8 @@ const MCPDetailContent: FC<Props> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
+  const invalidateAllMCPTools = useInvalidateAllMCPTools()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateMCPTools = useInvalidateMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
@@ -75,9 +79,11 @@ const MCPDetailContent: FC<Props> = ({
     if (!detail)
       return
     await updateTools(detail.id)
+    invalidateAllMCPTools()
+    invalidateAllToolProviders()
     invalidateMCPTools(detail.id)
     onUpdate()
-  }, [detail, hideUpdateConfirm, invalidateMCPTools, onUpdate, updateTools])
+  }, [detail, hideUpdateConfirm, invalidateAllMCPTools, invalidateAllToolProviders, invalidateMCPTools, onUpdate, updateTools])
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -137,10 +143,12 @@ const MCPDetailContent: FC<Props> = ({
     })
     if ((res as any)?.result === 'success') {
       hideUpdateModal()
+      invalidateAllMCPTools()
+      invalidateAllToolProviders()
       onUpdate()
       handleAuthorize()
     }
-  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
+  }, [detail, updateMCP, hideUpdateModal, invalidateAllMCPTools, invalidateAllToolProviders, onUpdate, handleAuthorize])
 
   const handleDelete = useCallback(async () => {
     if (!detail)
@@ -150,9 +158,11 @@ const MCPDetailContent: FC<Props> = ({
     hideDeleting()
     if ((res as any)?.result === 'success') {
       hideDeleteConfirm()
+      invalidateAllMCPTools()
+      invalidateAllToolProviders()
       onUpdate(true)
     }
-  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
+  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, invalidateAllMCPTools, invalidateAllToolProviders, onUpdate])
 
   useEffect(() => {
     if (isTriggerAuthorize)

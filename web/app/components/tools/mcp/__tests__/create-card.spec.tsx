@@ -7,12 +7,16 @@ import NewMCPCard from '../create-card'
 
 // Track the mock functions
 const mockCreateMCP = vi.fn().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
+const mockInvalidateAllMCPTools = vi.fn()
+const mockInvalidateAllToolProviders = vi.fn()
 
 // Mock the service
 vi.mock('@/service/use-tools', () => ({
   useCreateMCP: () => ({
     mutateAsync: mockCreateMCP,
   }),
+  useInvalidateAllMCPTools: () => mockInvalidateAllMCPTools,
+  useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
 // Mock the MCP Modal
@@ -87,6 +91,8 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
+    mockInvalidateAllMCPTools.mockClear()
+    mockInvalidateAllToolProviders.mockClear()
     mockIsCurrentWorkspaceManager = true
   })
 
@@ -189,6 +195,8 @@ describe('NewMCPCard', () => {
             name: 'Test MCP',
             server_url: 'https://test.com',
           })
+          expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
+          expect(mockInvalidateAllToolProviders).toHaveBeenCalled()
           expect(handleCreate).toHaveBeenCalled()
         })
       }
