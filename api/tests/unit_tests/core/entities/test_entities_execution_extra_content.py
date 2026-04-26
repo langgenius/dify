@@ -4,8 +4,7 @@ from core.entities.execution_extra_content import (
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType
+from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
 
@@ -16,8 +15,8 @@ def test_human_input_content_defaults_and_domain_alias() -> None:
         node_id="node-1",
         node_title="Human Input",
         form_content="Please confirm",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="answer")],
-        actions=[UserAction(id="confirm", title="Confirm")],
+        inputs=[ParagraphInputConfig(output_variable_name="answer")],
+        actions=[UserActionConfig(id="confirm", title="Confirm")],
         resolved_default_values={"answer": "yes"},
         expiration_time=1_700_000_000,
     )

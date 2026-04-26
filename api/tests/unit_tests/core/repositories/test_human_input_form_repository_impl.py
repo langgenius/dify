@@ -23,7 +23,7 @@ from core.workflow.human_input_adapter import (
 )
 from graphon.nodes.human_input.entities import (
     FormDefinition,
-    UserAction,
+    UserActionConfig,
 )
 from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
@@ -272,7 +272,7 @@ def _make_form_definition() -> str:
     return FormDefinition(
         form_content="hello",
         inputs=[],
-        user_actions=[UserAction(id="submit", title="Submit")],
+        user_actions=[UserActionConfig(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
         expiration_time=naive_utc_now(),
     ).model_dump_json()

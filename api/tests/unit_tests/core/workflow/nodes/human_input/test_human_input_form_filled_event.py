@@ -6,15 +6,26 @@ from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes
+from graphon.file import FileTransferMethod, FileType
 from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 
 
@@ -76,19 +87,15 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
             "title": "Human Input",
             "form_content": form_content,
             "inputs": [
-                {
-                    "type": "text_input",
-                    "output_variable_name": "name",
-                    "default": {"type": "constant", "value": ""},
-                }
+                ParagraphInputConfig(output_variable_name="name").model_dump(mode="json"),
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(type="constant", value=["approve", "reject"]),
+                ).model_dump(mode="json"),
+                FileInputConfig(output_variable_name="attachment").model_dump(mode="json"),
+                FileListInputConfig(output_variable_name="attachments", number_limits=2).model_dump(mode="json"),
             ],
-            "user_actions": [
-                {
-                    "id": "Accept",
-                    "title": "Approve",
-                    "button_style": "default",
-                }
-            ],
+            "user_actions": [UserActionConfig(id="Accept", title="Approve").model_dump(mode="json")],
         },
     }
 
@@ -97,7 +104,28 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
         rendered_content=form_content,
         submitted=True,
         selected_action_id="Accept",
-        submitted_data={"name": "Alice"},
+        submitted_data={
+            "name": "Alice",
+            "decision": "approve",
+            "attachment": {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/resume.pdf",
+                "filename": "resume.pdf",
+                "extension": ".pdf",
+                "mime_type": "application/pdf",
+            },
+            "attachments": [
+                {
+                    "type": "image",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/a.png",
+                    "filename": "a.png",
+                    "extension": ".png",
+                    "mime_type": "image/png",
+                }
+            ],
+        },
         status=HumanInputFormStatus.SUBMITTED,
         expiration_time=naive_utc_now() + datetime.timedelta(days=1),
     )
@@ -138,20 +166,8 @@ def _build_timeout_node() -> HumanInputNode:
         "data": {
             "title": "Human Input",
             "form_content": "Please enter your name:\n\n{{#$output.name#}}",
-            "inputs": [
-                {
-                    "type": "text_input",
-                    "output_variable_name": "name",
-                    "default": {"type": "constant", "value": ""},
-                }
-            ],
-            "user_actions": [
-                {
-                    "id": "Accept",
-                    "title": "Approve",
-                    "button_style": "default",
-                }
-            ],
+            "inputs": [ParagraphInputConfig(output_variable_name="name").model_dump(mode="json")],
+            "user_actions": [UserActionConfig(id="Accept", title="Approve").model_dump(mode="json")],
         },
     }
 

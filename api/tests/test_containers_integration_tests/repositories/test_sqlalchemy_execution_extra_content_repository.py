@@ -177,9 +177,9 @@ def _create_submitted_form(
 ) -> HumanInputForm:
     expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(
-        form_content="content",
-        inputs=[],
-        user_actions=[UserAction(id=action_id, title=action_title)],
+        form_content=form_content,
+        inputs=inputs or [],
+        user_actions=[UserActionConfig(id=action_id, title=action_title)],
         rendered_content="rendered",
         expiration_time=expiration_time,
         node_title=node_title,

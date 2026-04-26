@@ -12,8 +12,7 @@ from controllers.console.app import workflow_run as workflow_run_module
 from controllers.web.error import NotFoundError
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType
+from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.workflow import WorkflowRun
@@ -63,8 +62,8 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     reason = HumanInputRequired(
         form_id="form-1",
         form_content="content",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
-        actions=[UserAction(id="approve", title="Approve")],
+        inputs=[ParagraphInputConfig(output_variable_name="name")],
+        actions=[UserActionConfig(id="approve", title="Approve")],
         node_id="node-1",
         node_title="Ask Name",
     )

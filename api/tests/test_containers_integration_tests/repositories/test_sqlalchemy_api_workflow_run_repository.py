@@ -15,8 +15,8 @@ from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormDefinition, FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType, HumanInputFormStatus
+from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
+from graphon.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (
@@ -638,8 +638,8 @@ class TestBuildHumanInputRequiredReason:
         expiration_time = naive_utc_now()
         form_definition = FormDefinition(
             form_content="content",
-            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
-            user_actions=[UserAction(id="approve", title="Approve")],
+            inputs=[ParagraphInputConfig(output_variable_name="name")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
             rendered_content="rendered",
             expiration_time=expiration_time,
             default_values={"name": "Alice"},
