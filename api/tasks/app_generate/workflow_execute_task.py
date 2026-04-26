@@ -1,7 +1,9 @@
 import contextlib
 import logging
+import traceback
 import uuid
 from collections.abc import Generator, Mapping
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -27,7 +29,7 @@ from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import Workflow, WorkflowExecutionStatus, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
@@ -238,6 +240,33 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
     return session.get(EndUser, workflow_run.created_by)
 
 
+def _mark_workflow_run_failed(workflow_run_id: str, engine: Engine) -> None:
+    """Mark a workflow_run as FAILED directly in the database.
+
+    Used as a safety net when the Celery task crashes before the workflow engine
+    has a chance to handle the error (e.g. input validation failures).
+    """
+    try:
+        with Session(engine) as session, session.begin():
+            workflow_run = session.get(WorkflowRun, workflow_run_id)
+            if workflow_run is None:
+                logger.warning("Cannot mark workflow_run %s as failed: not found", workflow_run_id)
+                return
+            # Only update if still in a non-terminal state
+            if workflow_run.status in (
+                WorkflowExecutionStatus.SCHEDULED,
+                WorkflowExecutionStatus.RUNNING,
+            ):
+                workflow_run.status = WorkflowExecutionStatus.FAILED
+                workflow_run.error = traceback.format_exc()
+                workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+                if workflow_run.created_at:
+                    workflow_run.elapsed_time = (workflow_run.finished_at - workflow_run.created_at).total_seconds()
+                logger.info("Marked workflow_run %s as FAILED", workflow_run_id)
+    except Exception:
+        logger.exception("Failed to mark workflow_run %s as FAILED", workflow_run_id)
+
+
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
     workflow_run_id: str,
@@ -266,7 +295,12 @@ def workflow_based_app_execution_task(
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
-    return runner.run()
+    try:
+        return runner.run()
+    except Exception:
+        logger.exception("workflow_based_app_execution_task failed for workflow_run %s", exec_params.workflow_run_id)
+        _mark_workflow_run_failed(exec_params.workflow_run_id, db.engine)
+        return None
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:

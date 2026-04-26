@@ -27,6 +27,7 @@ class WorkflowRunTriggeredFrom(StrEnum):
     WEBHOOK = "webhook"
     SCHEDULE = "schedule"
     PLUGIN = "plugin"
+    API_ASYNC = "api-async"
 
 
 class DraftVariableType(StrEnum):

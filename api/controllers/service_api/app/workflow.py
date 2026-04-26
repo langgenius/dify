@@ -1,14 +1,15 @@
+import json
 import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Literal
 
 from dateutil.parser import isoparse
-from flask import request
+from flask import Response, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound, TooManyRequests
 
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.schema import register_schema_models
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
-    response_mode: Literal["blocking", "streaming"] | None = None
+    response_mode: Literal["blocking", "streaming", "async"] | None = None
 
 
 class WorkflowLogQuery(BaseModel):
@@ -255,6 +256,7 @@ class WorkflowRunApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Workflow executed successfully",
+            202: "Async workflow scheduled (response_mode=async)",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
             404: "Workflow not found",
@@ -267,7 +269,7 @@ class WorkflowRunApi(Resource):
         """Execute a workflow.
 
         Runs a workflow with the provided inputs and returns the results.
-        Supports both blocking and streaming response modes.
+        Supports blocking, streaming, and async response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
@@ -278,6 +280,33 @@ class WorkflowRunApi(Resource):
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
+        if payload.response_mode == "async":
+            idempotency_key = request.headers.get("Idempotency-Key")
+            try:
+                response, is_duplicate = AppGenerateService.generate_async(
+                    app_model=app_model,
+                    user=end_user,
+                    args=args,
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    idempotency_key=idempotency_key,
+                )
+                http_response = Response(
+                    response=json.dumps(response),
+                    status=200 if is_duplicate else 202,
+                    content_type="application/json; charset=utf-8",
+                )
+                if not is_duplicate:
+                    http_response.headers["Location"] = f"/v1/workflows/run/{response['workflow_run_id']}"
+                    http_response.headers["Retry-After"] = "1"
+                return http_response
+            except TooManyRequests as ex:
+                return {"error": ex.description, "code": "too_many_requests"}, 429
+            except ValueError as e:
+                raise BadRequest(str(e))
+            except Exception:
+                logger.exception("internal server error.")
+                raise InternalServerError()
+
         streaming = payload.response_mode == "streaming"
 
         try:
@@ -312,6 +341,7 @@ class WorkflowRunByIdApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Workflow executed successfully",
+            202: "Async workflow scheduled (response_mode=async)",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
             404: "Workflow not found",
@@ -324,6 +354,7 @@ class WorkflowRunByIdApi(Resource):
         """Run specific workflow by ID.
 
         Executes a specific workflow version identified by its ID.
+        Supports blocking, streaming, and async response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
@@ -338,6 +369,34 @@ class WorkflowRunByIdApi(Resource):
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
+
+        if payload.response_mode == "async":
+            idempotency_key = request.headers.get("Idempotency-Key")
+            try:
+                response, is_duplicate = AppGenerateService.generate_async(
+                    app_model=app_model,
+                    user=end_user,
+                    args=args,
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    idempotency_key=idempotency_key,
+                )
+                http_response = Response(
+                    response=json.dumps(response),
+                    status=200 if is_duplicate else 202,
+                    content_type="application/json; charset=utf-8",
+                )
+                if not is_duplicate:
+                    http_response.headers["Location"] = f"/v1/workflows/run/{response['workflow_run_id']}"
+                    http_response.headers["Retry-After"] = "1"
+                return http_response
+            except TooManyRequests as ex:
+                return {"error": ex.description, "code": "too_many_requests"}, 429
+            except ValueError as e:
+                raise BadRequest(str(e))
+            except Exception:
+                logger.exception("internal server error.")
+                raise InternalServerError()
+
         streaming = payload.response_mode == "streaming"
 
         try:

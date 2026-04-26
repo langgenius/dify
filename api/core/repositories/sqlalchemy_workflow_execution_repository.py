@@ -201,6 +201,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     raise ValueError("Unauthorized access to workflow run")
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
+                db_model.triggered_from = existing_model.triggered_from
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key

@@ -290,3 +290,30 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         saved_model = session.merge.call_args.args[0]
         assert saved_model.created_at == existing_created_at
         session.commit.assert_called_once()
+
+    def test_save_preserves_existing_triggered_from_when_record_already_exists(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        """Merge should preserve the original triggered_from (e.g. API_ASYNC) from pre-created rows."""
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        execution_id = sample_workflow_execution.id_
+
+        existing_run = WorkflowRun()
+        existing_run.id = execution_id
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        existing_run.triggered_from = WorkflowRunTriggeredFrom.API_ASYNC
+
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+
+        repo.save(sample_workflow_execution)
+
+        saved_model = session.merge.call_args.args[0]
+        assert saved_model.triggered_from == WorkflowRunTriggeredFrom.API_ASYNC
