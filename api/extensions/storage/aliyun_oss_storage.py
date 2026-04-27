@@ -13,7 +13,7 @@ class AliyunOssStorage(BaseStorage):
     def __init__(self):
         super().__init__()
         self.bucket_name = dify_config.ALIYUN_OSS_BUCKET_NAME
-        self.folder = dify_config.ALIYUN_OSS_PATH
+        self.folder = None if dify_config.STORAGE_PATH_PREFIX else dify_config.ALIYUN_OSS_PATH
         oss_auth_method = aliyun_s3.Auth
         region = None
         if dify_config.ALIYUN_OSS_AUTH_VERSION == "v4":
