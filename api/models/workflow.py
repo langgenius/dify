@@ -1958,11 +1958,12 @@ class WorkflowDraftVariableFile(TypeBase):
         nullable=False,
     )
 
-    # Relationship to UploadFile
+    # Rows are created with `upload_file_id`; callers should load this relationship explicitly when needed.
     upload_file: Mapped["UploadFile"] = orm.relationship(
         UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
+        init=False,
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
     )
