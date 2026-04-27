@@ -59,9 +59,10 @@ class MCPTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        inputs: dict[str, Any] | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        result = self.invoke_remote_mcp_tool(tool_parameters)
-
+        result = self.invoke_remote_mcp_tool(tool_parameters, _meta=inputs)
+        
         # Extract usage metadata from MCP protocol's _meta field
         self._latest_usage = self._derive_usage_from_result(result)
 
@@ -242,7 +243,7 @@ class MCPTool(Tool):
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
 
-    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any]) -> CallToolResult:
+    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any], _meta: dict[str, Any] | None) -> CallToolResult:
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
@@ -277,7 +278,9 @@ class MCPTool(Tool):
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
             ) as mcp_client:
-                return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+                return mcp_client.invoke_tool(
+                    tool_name=self.entity.identity.name, tool_args=tool_parameters, _meta=_meta
+                )
         except MCPConnectionError as e:
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
