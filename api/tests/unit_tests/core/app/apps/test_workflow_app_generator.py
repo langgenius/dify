@@ -32,9 +32,13 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
     )
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
-        lambda *args, **kwargs: SimpleNamespace(app_id="app-1", tenant_id="tenant-1", workflow_id="workflow-1", variables=[]),
+        lambda *args, **kwargs: SimpleNamespace(
+            app_id="app-1", tenant_id="tenant-1", workflow_id="workflow-1", variables=[]
+        ),
     )
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
+    )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.TraceQueueManager", MagicMock())
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
@@ -57,7 +61,9 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         captured["application_generate_entity"] = kwargs["application_generate_entity"]
         return {"data": {}}
 
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerateEntity", fake_workflow_app_generate_entity)
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.WorkflowAppGenerateEntity", fake_workflow_app_generate_entity
+    )
     monkeypatch.setattr(generator, "_generate", fake_generate)
 
     result = generator.generate(

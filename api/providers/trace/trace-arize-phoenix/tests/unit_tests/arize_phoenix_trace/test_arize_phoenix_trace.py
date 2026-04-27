@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import dify_trace_arize_phoenix.arize_phoenix_trace as arize_phoenix_trace_module
 import pytest
 from dify_trace_arize_phoenix.arize_phoenix_trace import (
-    ArizePhoenixDataTrace,
     _NODE_TYPE_TO_SPAN_KIND,
+    ArizePhoenixDataTrace,
     _build_graph_parent_index,
     _get_node_span_kind,
     _phoenix_parent_span_redis_key,
@@ -24,7 +24,6 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     wrap_span_metadata,
 )
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
-from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry.sdk.trace import Tracer
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
@@ -42,6 +41,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.exceptions import PendingTraceParentContextError
+from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 
 # --- Helpers ---
 
