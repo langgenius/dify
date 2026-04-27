@@ -863,7 +863,7 @@ class ToolManager:
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str):
+    def user_get_api_provider(cls, provider: str, tenant_id: str, mask: bool = True):
         """
         get api provider
         """
@@ -902,8 +902,10 @@ class ToolManager:
             tenant_id=tenant_id,
             controller=controller,
         )
-
-        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
+        if mask:
+            masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
+        else:
+            masked_credentials = encrypter.decrypt(credentials)
 
         try:
             icon = emoji_icon_adapter.validate_json(provider_obj.icon)

@@ -14,14 +14,17 @@ def init_app(app: DifyApp):
         create_tenant,
         delete_archived_workflow_runs,
         export_app_messages,
+        export_custom_data,
         extract_plugins,
         extract_unique_plugins,
         file_usage,
         fix_app_site_missing,
+        import_custom_data,
         install_plugins,
         install_rag_pipeline_plugins,
         migrate_data_for_plugin,
         migrate_oss,
+        migration_custom_datas,
         old_metadata_migration,
         remove_orphaned_files_on_storage,
         reset_email,
@@ -68,6 +71,9 @@ def init_app(app: DifyApp):
         clean_workflow_runs,
         clean_expired_messages,
         export_app_messages,
+        export_custom_data,
+        import_custom_data,
+        migration_custom_datas,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
