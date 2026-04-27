@@ -1,6 +1,11 @@
 import pytest
 
-from core.helper.trace_id_helper import extract_external_trace_id_from_args, get_external_trace_id, is_valid_trace_id
+from core.helper.trace_id_helper import (
+    extract_external_trace_id_from_args,
+    extract_parent_trace_context_from_args,
+    get_external_trace_id,
+    is_valid_trace_id,
+)
 
 
 class DummyRequest:
@@ -84,3 +89,61 @@ class TestTraceIdHelper:
     def test_extract_external_trace_id_from_args(self, args, expected):
         """Test extraction of external_trace_id from args mapping"""
         assert extract_external_trace_id_from_args(args) == expected
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            (
+                {
+                    "parent_trace_context": {
+                        "parent_workflow_run_id": "workflow-run-1",
+                        "parent_node_execution_id": "node-execution-1",
+                    }
+                },
+                {
+                    "parent_trace_context": {
+                        "parent_workflow_run_id": "workflow-run-1",
+                        "parent_node_execution_id": "node-execution-1",
+                    }
+                },
+            ),
+            (
+                {
+                    "parent_trace_context": {
+                        "parent_workflow_run_id": "workflow-run-1",
+                    }
+                },
+                {},
+            ),
+            (
+                {
+                    "parent_trace_context": {
+                        "parent_node_execution_id": "node-execution-1",
+                    }
+                },
+                {},
+            ),
+            (
+                {
+                    "parent_trace_context": {
+                        "parent_workflow_run_id": 123,
+                        "parent_node_execution_id": "node-execution-1",
+                    }
+                },
+                {},
+            ),
+            (
+                {
+                    "parent_trace_context": {
+                        "parent_workflow_run_id": "workflow-run-1",
+                        "parent_node_execution_id": None,
+                    }
+                },
+                {},
+            ),
+            ({}, {}),
+        ],
+    )
+    def test_extract_parent_trace_context_from_args(self, args, expected):
+        """Test extraction of parent_trace_context from args mapping"""
+        assert extract_parent_trace_context_from_args(args) == expected
