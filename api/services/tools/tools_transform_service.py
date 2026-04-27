@@ -14,7 +14,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
-from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.common_entities import EmojiIconDict, I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -39,8 +39,8 @@ class ToolTransformService:
 
     @classmethod
     def get_tool_provider_icon_url(
-        cls, provider_type: str, provider_name: str, icon: str | Mapping[str, str]
-    ) -> str | Mapping[str, str]:
+        cls, provider_type: str, provider_name: str, icon: str | Mapping[str, str] | EmojiIconDict
+    ) -> str | Mapping[str, str] | EmojiIconDict:
         """
         get tool provider icon url
         """

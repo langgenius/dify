@@ -482,8 +482,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 )
                 if provider.name == provider_name
             )
-            icon = builtin_tool.icon
-            icon_dark = builtin_tool.icon_dark
+            # EmojiIconDict is a TypedDict with str values, compatible with Mapping[str, str]
+            icon = cast("str | Mapping[str, str] | None", builtin_tool.icon)
+            icon_dark = cast("str | Mapping[str, str] | None", builtin_tool.icon_dark)
         except StopIteration:
             pass
 

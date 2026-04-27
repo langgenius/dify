@@ -3,6 +3,11 @@ from typing import TypedDict
 from pydantic import BaseModel, Field, model_validator
 
 
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
 class I18nObjectDict(TypedDict):
     zh_Hans: str | None
     en_US: str
