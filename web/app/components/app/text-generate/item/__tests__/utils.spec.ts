@@ -67,5 +67,10 @@ describe('text generation utils', () => {
       isWorkflow: true,
       workflowProcessData: { resultText: 'workflow-result' } as any,
     })).toBe('workflow-result')
+    expect(getCopyContent({
+      content: '{"answer":"fallback"}',
+      isWorkflow: true,
+      workflowProcessData: { resultText: '' } as any,
+    })).toBe('{"answer":"fallback"}')
   })
 })

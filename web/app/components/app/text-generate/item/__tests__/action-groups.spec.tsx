@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { AppSourceType } from '@/service/share'
 import GenerationActionGroups from '../action-groups'
 
@@ -125,6 +126,34 @@ describe('GenerationActionGroups', () => {
     fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
 
     expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
+  })
+
+  it('should copy serialized workflow detail output when result text is unavailable', () => {
+    render(
+      <GenerationActionGroups
+        appSourceType={AppSourceType.webApp}
+        content='{"confirmed_rules":["rule-1"],"master_json":{"ok":true}}'
+        currentTab="DETAIL"
+        depth={1}
+        isError={false}
+        isInWebApp
+        isWorkflow
+        messageId="msg-5"
+        onMoreLikeThis={mockOnMoreLikeThis}
+        onOpenLogModal={mockOnOpenLogModal}
+        onRetry={mockOnRetry}
+        workflowProcessData={{
+          expand: false,
+          resultText: '',
+          status: WorkflowRunningStatus.Succeeded,
+          tracing: [],
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
+
+    expect(mockCopy).toHaveBeenCalledWith('{"confirmed_rules":["rule-1"],"master_json":{"ok":true}}')
   })
 
   it('should expose retry and disagree actions in the appropriate states', () => {

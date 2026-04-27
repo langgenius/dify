@@ -83,4 +83,4 @@ export const getCopyContent = ({
   content: unknown
   isWorkflow?: boolean
   workflowProcessData?: WorkflowProcess
-}) => isWorkflow ? workflowProcessData?.resultText : content
+}) => isWorkflow ? (workflowProcessData?.resultText || content) : content
