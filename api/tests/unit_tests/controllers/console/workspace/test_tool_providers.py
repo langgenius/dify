@@ -22,7 +22,7 @@ _WRAPS_MODULE: ModuleType | None = None
 
 @contextmanager
 def _mock_db():
-    mock_session = SimpleNamespace(query=lambda *args, **kwargs: SimpleNamespace(first=lambda: True))
+    mock_session = SimpleNamespace(scalar=lambda *args, **kwargs: True)
     with patch("extensions.ext_database.db.session", mock_session):
         yield
 

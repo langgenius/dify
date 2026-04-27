@@ -156,7 +156,7 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('common.run'))
     fireEvent.click(screen.getByText('common.pasteHere'))
     fireEvent.click(screen.getByText('export'))
-    fireEvent.click(screen.getByText('common.importDSL'))
+    fireEvent.click(screen.getByText('importApp'))
     clickAwayHandler?.()
 
     expect(mockHandleAddNote).toHaveBeenCalledTimes(1)

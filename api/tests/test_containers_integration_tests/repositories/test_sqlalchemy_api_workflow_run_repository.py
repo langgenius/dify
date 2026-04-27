@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock
@@ -11,6 +12,7 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.human_input_adapter import DeliveryMethodType
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
@@ -20,9 +22,11 @@ from graphon.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (
+    BackstageRecipientPayload,
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
+    RecipientType,
 )
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -628,12 +632,12 @@ class TestPrivateWorkflowPauseEntity:
 class TestBuildHumanInputRequiredReason:
     """Integration tests for _build_human_input_required_reason using real DB models."""
 
-    def test_builds_reason_from_form_definition(
+    def test_prefers_standalone_web_app_token_when_available(
         self,
         db_session_with_containers: Session,
         test_scope: _TestScope,
     ) -> None:
-        """Build the graph pause reason from the stored form definition."""
+        """Use the public standalone web-app token for service API payloads."""
 
         expiration_time = naive_utc_now()
         form_definition = FormDefinition(
@@ -660,6 +664,40 @@ class TestBuildHumanInputRequiredReason:
         db_session_with_containers.add(form_model)
         db_session_with_containers.flush()
 
+        delivery = HumanInputDelivery(
+            form_id=form_model.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload="{}",
+        )
+        db_session_with_containers.add(delivery)
+        db_session_with_containers.flush()
+
+        backstage_access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=backstage_access_token,
+        )
+        console_access_token = secrets.token_urlsafe(8)
+        console_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload="{}",
+            access_token=console_access_token,
+        )
+        web_app_access_token = secrets.token_urlsafe(8)
+        web_app_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            recipient_payload="{}",
+            access_token=web_app_access_token,
+        )
+        db_session_with_containers.add_all([backstage_recipient, console_recipient, web_app_recipient])
+        db_session_with_containers.flush()
         # Create a pause so the reason has a valid pause_id
         workflow_run = _create_workflow_run(
             db_session_with_containers,
@@ -688,8 +726,15 @@ class TestBuildHumanInputRequiredReason:
         # Refresh to ensure we have DB-round-tripped objects
         db_session_with_containers.refresh(form_model)
         db_session_with_containers.refresh(reason_model)
+        db_session_with_containers.refresh(backstage_recipient)
+        db_session_with_containers.refresh(console_recipient)
+        db_session_with_containers.refresh(web_app_recipient)
 
-        reason = _build_human_input_required_reason(reason_model, form_model)
+        reason = _build_human_input_required_reason(
+            reason_model,
+            form_model,
+            [backstage_recipient, console_recipient, web_app_recipient],
+        )
 
         assert isinstance(reason, HumanInputRequired)
         assert reason.node_title == "Ask Name"
@@ -697,3 +742,92 @@ class TestBuildHumanInputRequiredReason:
         assert reason.inputs[0].output_variable_name == "name"
         assert reason.actions[0].id == "approve"
         assert reason.resolved_default_values == {"name": "Alice"}
+        assert not hasattr(reason, "form_token")
+
+    def test_falls_back_to_console_token_when_web_app_token_missing(
+        self,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Use the console token only when no standalone web-app token exists."""
+
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=str(uuid4()),
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        db_session_with_containers.add(form_model)
+        db_session_with_containers.flush()
+
+        delivery = HumanInputDelivery(
+            form_id=form_model.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload="{}",
+        )
+        db_session_with_containers.add(delivery)
+        db_session_with_containers.flush()
+
+        backstage_access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=backstage_access_token,
+        )
+        console_access_token = secrets.token_urlsafe(8)
+        console_recipient = HumanInputFormRecipient(
+            form_id=form_model.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload="{}",
+            access_token=console_access_token,
+        )
+        db_session_with_containers.add_all([backstage_recipient, console_recipient])
+        db_session_with_containers.flush()
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        pause = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=f"workflow-state-{uuid4()}.json",
+        )
+        db_session_with_containers.add(pause)
+        db_session_with_containers.flush()
+        test_scope.state_keys.add(pause.state_object_key)
+
+        reason_model = WorkflowPauseReason(
+            pause_id=pause.id,
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id=form_model.id,
+            node_id="node-1",
+            message="",
+        )
+        db_session_with_containers.add(reason_model)
+        db_session_with_containers.commit()
+
+        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient, console_recipient])
+
+        assert isinstance(reason, HumanInputRequired)
+        assert not hasattr(reason, "form_token")

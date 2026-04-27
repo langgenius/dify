@@ -15,7 +15,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -57,7 +57,7 @@ jobs:
 
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
@@ -131,7 +131,7 @@ jobs:
 
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code

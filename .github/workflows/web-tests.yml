@@ -16,7 +16,7 @@ concurrency:
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       VITEST_COVERAGE_SCOPE: app-components
     strategy:
@@ -54,7 +54,7 @@ jobs:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
     needs: [test]
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -92,7 +92,7 @@ jobs:
 
   dify-ui-test:
     name: dify-ui Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:

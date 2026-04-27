@@ -42,12 +42,13 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
-import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
+import { collectionPluginsContract, collectionsContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
+  templateDetail: templateDetailContract,
 }
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
