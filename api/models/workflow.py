@@ -1568,12 +1568,14 @@ class WorkflowDraftVariable(Base):
         ),
     )
 
-    # Relationship to WorkflowDraftVariableFile
+    # WorkflowDraftVariableFile uses TypeBase while WorkflowDraftVariable uses Base, so the relationship
+    # must resolve the class object lazily instead of relying on string lookup across registries.
     variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+        lambda: WorkflowDraftVariableFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariable.file_id) == WorkflowDraftVariableFile.id,
     )
 
     # Cache for deserialized value
