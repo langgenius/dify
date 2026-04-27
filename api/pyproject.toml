@@ -34,13 +34,13 @@ dependencies = [
     "json-repair>=0.55.1",
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
-    "langsmith~=0.7.16",
+    "langsmith~=0.7.31",
     "markdown~=3.10.2",
     "mlflow-skinny>=3.0.0",
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.10.37",
-    "litellm==1.83.0",                                    # Pinned to avoid madoka dependency issue
+    "litellm==1.83.7",                                    # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.28.0",
     "opentelemetry-distro==0.49b0",
     "opentelemetry-exporter-otlp==1.28.0",
@@ -103,6 +103,13 @@ packages = []
 [tool.uv]
 default-groups = ["storage", "tools", "vdb"]
 package = false
+# litellm==1.83.7 pins jsonschema==4.23.0 and python-dotenv==1.0.1; overrides keep
+# resolution aligned with our direct deps (see dependency-groups / CI lock checks).
+override-dependencies = [
+    "jsonschema>=4.25.1",
+    "python-dotenv==1.2.2",
+    "pyarrow>=18.0.0",
+ ]
 
 [dependency-groups]
 
