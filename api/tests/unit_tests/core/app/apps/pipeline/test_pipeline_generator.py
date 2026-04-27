@@ -284,10 +284,11 @@ def test_generate_worker_handles_errors(generator, mocker):
         app_config=SimpleNamespace(tenant_id="tenant", app_id="pipe", workflow_id="wf"),
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
+        user_session_id="session",
     )
 
     session = DummySession()
-    session.scalar.side_effect = [MagicMock(), MagicMock(session_id="session")]
+    session.scalar.side_effect = [MagicMock()]
     _patch_session(mocker, session)
 
     runner_instance = MagicMock()
@@ -319,10 +320,11 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
         app_config=SimpleNamespace(tenant_id="tenant", app_id="pipe", workflow_id="wf"),
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
+        user_session_id="session",
     )
 
     session = DummySession()
-    session.scalar.side_effect = [MagicMock(), MagicMock(session_id="session")]
+    session.scalar.side_effect = [MagicMock()]
     _patch_session(mocker, session)
 
     runner_instance = MagicMock()
