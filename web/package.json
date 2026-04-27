@@ -34,7 +34,7 @@
     "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
-    "lint:tss": "node --max-old-space-size=4096 --experimental-strip-types --no-warnings ./node_modules/@tsslint/cli/bin/tsslint.js --project tsconfig.json",
+    "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "refactor-component": "node ./scripts/refactor-component.js",
     "start": "node ./scripts/copy-and-start.mjs",
