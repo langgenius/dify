@@ -276,6 +276,28 @@ describe('PromptEditor', () => {
       expect(onFocus).toHaveBeenCalledTimes(1)
       expect(onBlur).toHaveBeenCalledTimes(1)
     })
+
+    it('should not call onBlur when blur target is var-search-input', () => {
+      const onBlur = vi.fn()
+      const onFocus = vi.fn()
+
+      render(
+        <PromptEditor
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />,
+      )
+
+      const blurHandler = mocks.commandHandlers.get(BLUR_COMMAND)
+      expect(blurHandler).toBeDefined()
+
+      const varInput = document.createElement('input')
+      varInput.classList.add('var-search-input')
+
+      blurHandler?.({ relatedTarget: varInput } as unknown as ReactFocusEvent<Element>)
+
+      expect(onBlur).not.toHaveBeenCalled()
+    })
   })
 
   // Prop typing guard for shortcut popup shape without any-casts.
