@@ -108,7 +108,8 @@ package = false
 override-dependencies = [
     "jsonschema>=4.25.1",
     "python-dotenv==1.2.2",
-]
+    "pyarrow>=18.0.0",
+ ]
 
 [dependency-groups]
 
