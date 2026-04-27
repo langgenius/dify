@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: VDB Smoke Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     strategy:
       matrix:
         python-version:
