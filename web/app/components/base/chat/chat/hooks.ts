@@ -357,14 +357,24 @@ export const useChat = (
         })
       },
       onMessageEnd: (messageEnd) => {
-        updateChatTreeNode(messageId, (responseItem) => {
-          if (messageEnd.metadata?.annotation_reply) {
+        const annotationReply = messageEnd.metadata?.annotation_reply
+        if (annotationReply) {
+          updateChatTreeNode(messageId, (responseItem) => {
             responseItem.annotation = ({
-              id: messageEnd.metadata.annotation_reply.id,
-              authorName: messageEnd.metadata.annotation_reply.account.name,
+              id: annotationReply.id,
+              authorName: annotationReply.account.name,
             })
-            return
-          }
+          })
+          // When the backend short-circuits with an annotation reply, the
+          // regular onCompleted terminal event is not emitted, so the chat UI
+          // would otherwise stay locked in the "generating" state until the
+          // SSE connection closes. Release the responding lock here to match
+          // the regenerate-flow onMessageEnd handler in this same file and to
+          // fix #34885.
+          handleResponding(false)
+          return
+        }
+        updateChatTreeNode(messageId, (responseItem) => {
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
