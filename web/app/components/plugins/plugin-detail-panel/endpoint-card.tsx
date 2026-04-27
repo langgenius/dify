@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { EndpointListItem, PluginDetail } from '../types'
 import {
   AlertDialog,
@@ -9,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -17,7 +18,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
@@ -28,6 +28,8 @@ import {
 } from '@/service/use-endpoints'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
+
+type EndpointModalFormSchemas = ComponentProps<typeof EndpointModal>['formSchemas']
 
 type Props = {
   pluginDetail: PluginDetail
@@ -118,7 +120,7 @@ const EndpointCard = ({
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     },
   })
-  const handleUpdate = (state: Record<string, any>) => updateEndpoint({
+  const handleUpdate = (state: Record<string, unknown>) => updateEndpoint({
     endpointID,
     state,
   })
@@ -148,22 +150,22 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
+  const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
       <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 system-md-semibold text-text-secondary">
-            <RiLoginCircleLine className="h-4 w-4" />
+            <span aria-hidden className="i-ri-login-circle-line h-4 w-4" />
             <div>{data.name}</div>
           </div>
           <div className="hidden items-center group-hover:flex">
             <ActionButton onClick={showEndpointModalConfirm}>
-              <RiEditLine className="h-4 w-4" />
+              <span aria-hidden className="i-ri-edit-line h-4 w-4" />
             </ActionButton>
             <ActionButton onClick={showDeleteConfirm} className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-              <RiDeleteBinLine className="h-4 w-4" />
+              <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
             </ActionButton>
           </div>
         </div>
@@ -172,10 +174,23 @@ const EndpointCard = ({
             <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">{endpoint.method}</div>
             <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
               <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
-              <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">
-                <ActionButton className="ml-2 hidden shrink-0 group-hover/item:flex" onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
-                  <CopyIcon className="h-3.5 w-3.5 text-text-tertiary" />
-                </ActionButton>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <ActionButton
+                      aria-label={copyLabel}
+                      className="ml-2 hidden shrink-0 group-hover/item:flex"
+                      onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
+                    >
+                      {isCopied
+                        ? <CopyCheck aria-hidden className="h-3.5 w-3.5 text-text-tertiary" />
+                        : <span aria-hidden className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" />}
+                    </ActionButton>
+                  )}
+                />
+                <TooltipContent placement="top">
+                  {copyLabel}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -244,7 +259,7 @@ const EndpointCard = ({
       </AlertDialog>
       {isShowEndpointModal && (
         <EndpointModal
-          formSchemas={formSchemas as any}
+          formSchemas={formSchemas as EndpointModalFormSchemas}
           defaultValues={formValue}
           onCancel={hideEndpointModalConfirm}
           onSaved={handleUpdate}

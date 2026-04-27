@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   db-migration-test-postgres:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -59,7 +59,7 @@ jobs:
         run: uv run --directory api flask upgrade-db
 
   db-migration-test-mysql:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
