@@ -1,264 +1,48 @@
-"""SSO-branch device-flow endpoints. Browser hits sso-initiate → API
-signs an SSOState envelope → Enterprise inner-API returns IdP authorize
-URL → 302. IdP → Enterprise ACS → DeviceFlowDispatcher mints a signed
-external-subject assertion → 302 to /v1/device/sso-complete → API mints
-the approval-grant cookie → /device → user clicks Approve → /approve-
-external mints the OAuth token. All four endpoints are EE-only.
+"""Legacy /v1/* mounts for SSO-branch device-flow endpoints. Canonical
+handlers live in controllers/openapi/oauth_device/. This file just
+re-registers them on the legacy blueprint until Phase F retires the
+legacy paths entirely.
+
+Note: /v1/device/sso-complete (no /oauth/ in the path) is the existing
+ACS callback. Its canonical home is /openapi/v1/oauth/device/sso-complete.
+IdP-side ACS callback URLs need re-registration before Phase F.
 """
 from __future__ import annotations
 
-import logging
-import secrets
+from flask import Blueprint
 
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from flask import Blueprint, jsonify, make_response, redirect, request
-from libs import jws
-from libs.oauth_bearer import SubjectType
-from libs.rate_limit import (
-    LIMIT_APPROVE_EXT_PER_EMAIL,
-    LIMIT_SSO_INITIATE_PER_IP,
-    enforce,
-    rate_limit,
-)
-from libs.device_flow_security import (APPROVAL_GRANT_COOKIE_NAME, ApprovalGrantClaims,
-                                       approval_grant_cleared_cookie_kwargs,
-                                       approval_grant_cookie_kwargs,
-                                       attach_anti_framing,
-                                       consume_approval_grant_nonce,
-                                       consume_sso_assertion_nonce,
-                                       enterprise_only, mint_approval_grant,
-                                       verify_approval_grant)
-from services.enterprise.enterprise_service import EnterpriseService
-from services.oauth_device_flow import (PREFIX_OAUTH_EXTERNAL_SSO,
-                                        DeviceFlowRedis, DeviceFlowStatus,
-                                        InvalidTransition, StateNotFound,
-                                        mint_oauth_token, oauth_ttl_days)
-from werkzeug.exceptions import (BadGateway, BadRequest, Conflict, Forbidden,
-                                 NotFound, Unauthorized)
-
-logger = logging.getLogger(__name__)
-
+from controllers.openapi.oauth_device.approval_context import approval_context
+from controllers.openapi.oauth_device.approve_external import approve_external
+from controllers.openapi.oauth_device.sso_complete import sso_complete
+from controllers.openapi.oauth_device.sso_initiate import sso_initiate
+from libs.device_flow_security import attach_anti_framing
 
 bp = Blueprint("oauth_device_sso", __name__, url_prefix="/v1")
 attach_anti_framing(bp)
 
-
-# Matches DEVICE_FLOW_TTL_SECONDS so the signed state can't outlive the
-# device_code it references.
-STATE_ENVELOPE_TTL_SECONDS = 15 * 60
-
-
-@bp.route("/oauth/device/sso-initiate", methods=["GET"])
-@enterprise_only
-@rate_limit(LIMIT_SSO_INITIATE_PER_IP)
-def sso_initiate():
-    user_code = (request.args.get("user_code") or "").strip().upper()
-    if not user_code:
-        raise BadRequest("user_code required")
-
-    store = DeviceFlowRedis(redis_client)
-    found = store.load_by_user_code(user_code)
-    if found is None:
-        raise BadRequest("invalid_user_code")
-    _, state = found
-    if state.status is not DeviceFlowStatus.PENDING:
-        raise BadRequest("invalid_user_code")
-
-    keyset = jws.KeySet.from_shared_secret()
-    signed_state = jws.sign(
-        keyset,
-        payload={
-            "redirect_url": "",
-            "app_code": "",
-            "intent": "device_flow",
-            "user_code": user_code,
-            "nonce": secrets.token_urlsafe(16),
-            "return_to": "",
-            "idp_callback_url": f"{request.host_url.rstrip('/')}/v1/device/sso-complete",
-        },
-        aud=jws.AUD_STATE_ENVELOPE,
-        ttl_seconds=STATE_ENVELOPE_TTL_SECONDS,
-    )
-
-    try:
-        reply = EnterpriseService.initiate_device_flow_sso(signed_state)
-    except Exception as e:
-        logger.warning("sso-initiate: enterprise call failed: %s", e)
-        raise BadGateway("sso_initiate_failed") from e
-
-    url = (reply or {}).get("url")
-    if not url:
-        raise BadGateway("sso_initiate_missing_url")
-
-    # Clear stale approval-grant — defends against cross-tab/back-button mixing.
-    resp = redirect(url, code=302)
-    resp.set_cookie(**approval_grant_cleared_cookie_kwargs())
-    return resp
-
-
-@bp.route("/device/sso-complete", methods=["GET"])
-@enterprise_only
-def sso_complete():
-    blob = request.args.get("sso_assertion")
-    if not blob:
-        raise BadRequest("sso_assertion required")
-
-    keyset = jws.KeySet.from_shared_secret()
-
-    try:
-        claims = jws.verify(keyset, blob, expected_aud=jws.AUD_EXT_SUBJECT_ASSERTION)
-    except jws.VerifyError as e:
-        logger.warning("sso-complete: rejected assertion: %s", e)
-        raise BadRequest("invalid_sso_assertion") from e
-
-    if not consume_sso_assertion_nonce(redis_client, claims.get("nonce", "")):
-        raise BadRequest("invalid_sso_assertion")
-
-    user_code = (claims.get("user_code") or "").strip().upper()
-    store = DeviceFlowRedis(redis_client)
-    found = store.load_by_user_code(user_code)
-    if found is None:
-        raise Conflict("user_code_not_pending")
-    _, state = found
-    if state.status is not DeviceFlowStatus.PENDING:
-        raise Conflict("user_code_not_pending")
-
-    iss = request.host_url.rstrip("/")
-    cookie_value, _ = mint_approval_grant(
-        keyset=keyset,
-        iss=iss,
-        subject_email=claims["email"],
-        subject_issuer=claims["issuer"],
-        user_code=user_code,
-    )
-
-    resp = redirect("/device?sso_verified=1", code=302)
-    resp.set_cookie(**approval_grant_cookie_kwargs(cookie_value))
-    return resp
-
-
-@bp.route("/oauth/device/approval-context", methods=["GET"])
-@enterprise_only
-def approval_context():
-    token = request.cookies.get(APPROVAL_GRANT_COOKIE_NAME)
-    if not token:
-        raise Unauthorized("no_session")
-
-    keyset = jws.KeySet.from_shared_secret()
-    try:
-        claims = verify_approval_grant(keyset, token)
-    except jws.VerifyError as e:
-        logger.warning("approval-context: bad cookie: %s", e)
-        raise Unauthorized("no_session") from e
-
-    return jsonify({
-        "subject_email": claims.subject_email,
-        "subject_issuer": claims.subject_issuer,
-        "user_code": claims.user_code,
-        "csrf_token": claims.csrf_token,
-        "expires_at": claims.expires_at.isoformat(),
-    }), 200
-
-
-
-@bp.route("/oauth/device/approve-external", methods=["POST"])
-@enterprise_only
-def approve_external():
-    token = request.cookies.get(APPROVAL_GRANT_COOKIE_NAME)
-    if not token:
-        raise Unauthorized("invalid_session")
-
-    keyset = jws.KeySet.from_shared_secret()
-    try:
-        claims: ApprovalGrantClaims = verify_approval_grant(keyset, token)
-    except jws.VerifyError as e:
-        logger.warning("approve-external: bad cookie: %s", e)
-        raise Unauthorized("invalid_session") from e
-
-    enforce(LIMIT_APPROVE_EXT_PER_EMAIL, key=f"subject:{claims.subject_email}")
-
-    csrf_header = request.headers.get("X-CSRF-Token", "")
-    if not csrf_header or csrf_header != claims.csrf_token:
-        raise Forbidden("csrf_mismatch")
-
-    data = request.get_json(silent=True) or {}
-    body_user_code = (data.get("user_code") or "").strip().upper()
-    if body_user_code != claims.user_code:
-        raise BadRequest("user_code_mismatch")
-
-    store = DeviceFlowRedis(redis_client)
-    found = store.load_by_user_code(claims.user_code)
-    if found is None:
-        raise NotFound("user_code_not_pending")
-    device_code, state = found
-    if state.status is not DeviceFlowStatus.PENDING:
-        raise Conflict("user_code_not_pending")
-
-    if not consume_approval_grant_nonce(redis_client, claims.nonce):
-        raise Unauthorized("session_already_consumed")
-
-    ttl_days = oauth_ttl_days(tenant_id=None)
-    mint = mint_oauth_token(
-        db.session,
-        redis_client,
-        subject_email=claims.subject_email,
-        subject_issuer=claims.subject_issuer,
-        account_id=None,
-        client_id=state.client_id,
-        device_label=state.device_label,
-        prefix=PREFIX_OAUTH_EXTERNAL_SSO,
-        ttl_days=ttl_days,
-    )
-
-    poll_payload = {
-        "token": mint.token,
-        "expires_at": mint.expires_at.isoformat(),
-        "subject_type": SubjectType.EXTERNAL_SSO,
-        "subject_email": claims.subject_email,
-        "subject_issuer": claims.subject_issuer,
-        "account": None,
-        "workspaces": [],
-        "default_workspace_id": None,
-        "token_id": str(mint.token_id),
-    }
-
-    try:
-        store.approve(
-            device_code,
-            subject_email=claims.subject_email,
-            account_id=None,
-            subject_issuer=claims.subject_issuer,
-            minted_token=mint.token,
-            token_id=str(mint.token_id),
-            poll_payload=poll_payload,
-        )
-    except (StateNotFound, InvalidTransition) as e:
-        logger.error("approve-external: state transition raced: %s", e)
-        raise Conflict("state_lost") from e
-
-    _emit_approve_external_audit(state, claims, mint)
-
-    resp = make_response(jsonify({"status": "approved"}), 200)
-    resp.set_cookie(**approval_grant_cleared_cookie_kwargs())
-    return resp
-
-
-def _emit_approve_external_audit(state, claims, mint) -> None:
-    logger.warning(
-        "audit: oauth.device_flow_approved subject_type=%s "
-        "subject_email=%s subject_issuer=%s token_id=%s",
-        SubjectType.EXTERNAL_SSO, claims.subject_email, claims.subject_issuer, mint.token_id,
-        extra={
-            "audit": True,
-            "event": "oauth.device_flow_approved",
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "subject_email": claims.subject_email,
-            "subject_issuer": claims.subject_issuer,
-            "token_id": str(mint.token_id),
-            "client_id": state.client_id,
-            "device_label": state.device_label,
-            "scopes": ["apps:run"],
-            "expires_at": mint.expires_at.isoformat(),
-        },
-    )
+# Legacy /v1/* mounts — handlers live in controllers/openapi/oauth_device/.
+# Removed in Phase F.
+bp.add_url_rule(
+    "/oauth/device/sso-initiate",
+    endpoint="sso_initiate",
+    view_func=sso_initiate,
+    methods=["GET"],
+)
+bp.add_url_rule(
+    "/device/sso-complete",
+    endpoint="sso_complete",
+    view_func=sso_complete,
+    methods=["GET"],
+)
+bp.add_url_rule(
+    "/oauth/device/approval-context",
+    endpoint="approval_context",
+    view_func=approval_context,
+    methods=["GET"],
+)
+bp.add_url_rule(
+    "/oauth/device/approve-external",
+    endpoint="approve_external",
+    view_func=approve_external,
+    methods=["POST"],
+)
