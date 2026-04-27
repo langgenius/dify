@@ -202,6 +202,32 @@ export const startApi = async () => {
   })
 }
 
+export const startCelery = async () => {
+  const env = await getApiEnvironment()
+
+  await runForegroundProcess({
+    command: 'uv',
+    args: [
+      'run',
+      '--project',
+      '.',
+      '--no-sync',
+      'celery',
+      '-A',
+      'app.celery',
+      'worker',
+      '--pool',
+      'solo',
+      '--loglevel',
+      'INFO',
+      '-Q',
+      'workflow_based_app_execution',
+    ],
+    cwd: apiDir,
+    env,
+  })
+}
+
 export const stopMiddleware = async () => {
   await runCommandOrThrow({
     command: 'docker',
@@ -308,7 +334,7 @@ export const startMiddleware = async () => {
 }
 
 const printUsage = () => {
-  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|web>')
+  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|celery|web>')
 }
 
 const main = async () => {
@@ -317,6 +343,9 @@ const main = async () => {
   switch (command) {
     case 'api':
       await startApi()
+      return
+    case 'celery':
+      await startCelery()
       return
     case 'middleware-down':
       await stopMiddleware()

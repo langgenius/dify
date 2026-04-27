@@ -32,7 +32,7 @@ export type WeightedScore = {
   }
 }
 
-export type RetrievalSetting = {
+type RetrievalSetting = {
   search_method?: RETRIEVE_METHOD
   reranking_enable?: boolean
   reranking_model?: RerankingModel
