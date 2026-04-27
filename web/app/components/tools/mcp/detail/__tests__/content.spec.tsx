@@ -698,16 +698,9 @@ describe('MCPDetailContent', () => {
       const onHide = vi.fn()
       render(<MCPDetailContent {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      // Find the close button (ActionButton with RiCloseLine)
-      const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(btn =>
-        btn.querySelector('svg.h-4.w-4'),
-      )
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(onHide).toHaveBeenCalled()
-      }
+      expect(onHide).toHaveBeenCalled()
     })
   })
 
