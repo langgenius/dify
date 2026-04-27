@@ -21,6 +21,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 
+from configs import dify_config
 from models import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -385,6 +386,22 @@ def validate_bearer(*, accept: frozenset[Accepts]) -> Callable:
         return inner
 
     return wrap
+
+
+def bearer_feature_required(fn: Callable) -> Callable:
+    """503 if ENABLE_OAUTH_BEARER is off — minted tokens would be unusable
+    without the authenticator, so fail fast instead of approving silently.
+    """
+
+    @wraps(fn)
+    def inner(*args, **kwargs):
+        if not dify_config.ENABLE_OAUTH_BEARER:
+            raise ServiceUnavailable(
+                "bearer_auth_disabled: set ENABLE_OAUTH_BEARER=true to enable"
+            )
+        return fn(*args, **kwargs)
+
+    return inner
 
 
 # ============================================================================

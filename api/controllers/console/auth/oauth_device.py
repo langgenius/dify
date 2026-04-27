@@ -5,36 +5,16 @@ from __future__ import annotations
 
 import logging
 
-from functools import wraps
-
 from flask_login import login_required
 from flask_restx import Resource, reqparse
-from werkzeug.exceptions import ServiceUnavailable
 
-from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant
-from libs.oauth_bearer import SubjectType
+from libs.oauth_bearer import SubjectType, bearer_feature_required
 from libs.rate_limit import LIMIT_APPROVE_CONSOLE, rate_limit
-
-
-def bearer_feature_required(fn):
-    """503 if ENABLE_OAUTH_BEARER is off — minted tokens would be unusable
-    without the authenticator, so fail fast instead of approving silently.
-    """
-
-    @wraps(fn)
-    def inner(*args, **kwargs):
-        if not dify_config.ENABLE_OAUTH_BEARER:
-            raise ServiceUnavailable(
-                "bearer_auth_disabled: set ENABLE_OAUTH_BEARER=true to enable"
-            )
-        return fn(*args, **kwargs)
-
-    return inner
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
     PREFIX_OAUTH_ACCOUNT,
