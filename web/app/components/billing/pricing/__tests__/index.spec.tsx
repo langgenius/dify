@@ -60,6 +60,8 @@ describe('Pricing', () => {
         usage: buildUsage(),
         total: buildUsage(),
       },
+      enableEducationPlan: false,
+      isEducationAccount: false,
     })
     ;(useGetPricingPageLanguage as Mock).mockImplementation(() => mockLanguage)
   })
@@ -71,6 +73,22 @@ describe('Pricing', () => {
       expect(screen.getByRole('dialog', { name: 'billing.plansCommon.title.plans' })).toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
       expect(screen.getByTestId('pricing-link')).toHaveAttribute('href', 'https://dify.ai/en/pricing#plans-and-features')
+    })
+
+    it('should default to yearly billing for education accounts', () => {
+      ;(useProviderContext as Mock).mockReturnValue({
+        plan: {
+          type: Plan.sandbox,
+          usage: buildUsage(),
+          total: buildUsage(),
+        },
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(<Pricing onCancel={vi.fn()} />)
+
+      expect(screen.getByRole('switch')).toBeChecked()
     })
   })
 

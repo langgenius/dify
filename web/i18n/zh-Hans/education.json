@@ -1,5 +1,8 @@
 {
   "currentSigned": "您当前登录的账户是",
+  "educationPricingConfirm.continue": "继续当前计划",
+  "educationPricingConfirm.description": "改选符合条件的计划吗？",
+  "educationPricingConfirm.title": "该计划不适用教育优惠价格。",
   "emailLabel": "您当前的邮箱",
   "form.schoolName.placeholder": "请输入您的学校的官方全称（不得缩写）",
   "form.schoolName.title": "您的学校名称",
@@ -31,6 +34,7 @@
   "notice.stillInEducation.expired": "立即重新认证，获取新学年的教育优惠券。优惠券将发放至您的账户，并可在下次升级时使用。",
   "notice.stillInEducation.isAboutToExpire": "立即重新验证，获取新学年的教育优惠券。优惠券将发放至您的账户，并可在下次续订时使用。",
   "notice.stillInEducation.title": "仍在就读？",
+  "planNotSupportEducationDiscount": "不适用教育优惠价格",
   "rejectContent": "非常遗憾，您无法使用此电子邮件以获得教育版认证资格，也无法领取 Dify Professional 版的 100% 独家优惠券。",
   "rejectTitle": "您的 Dify 教育版认证已被拒绝",
   "submit": "提交",
