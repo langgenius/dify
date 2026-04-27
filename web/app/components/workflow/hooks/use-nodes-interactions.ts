@@ -1712,7 +1712,7 @@ export const useNodesInteractions = () => {
           nodeId: node.id,
         },
       })
-      handleNodeSelect(node.id)
+      handleNodeSelect(node.id, true)
     },
     [workflowStore, handleNodeSelect],
   )

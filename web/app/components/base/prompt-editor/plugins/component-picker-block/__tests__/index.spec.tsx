@@ -599,6 +599,48 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
+  it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('first_value', VarType.string),
+        makeWorkflowNodeVar('second_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/e', true)
+    await flushNextTick()
+
+    const firstItem = screen.getByText('first_value').closest('[data-selected]')
+    const secondItem = screen.getByText('second_value').closest('[data-selected]')
+
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    expect(secondItem).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+
+    expect(firstItem).toHaveAttribute('data-selected', 'false')
+    expect(secondItem).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'second_value'])
+    await waitFor(() => expect(readEditorText(editor)).not.toContain('/e'))
+  })
+
   it('skips removing the trigger when selection is null (needRemove is null) and still dispatches', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
