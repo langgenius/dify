@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
@@ -37,11 +38,13 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
     <Tooltip>
       <TooltipTrigger
         render={(
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="small"
             aria-label={tip}
             className={cn(
-              'relative flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
+              'relative h-8 w-8 rounded-lg px-0',
               'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               showErrorStyle && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
               (isInstalling || isInstallingWithSuccess || isSuccess) && 'cursor-pointer hover:bg-components-button-secondary-bg-hover',
@@ -83,7 +86,7 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
                 <span aria-hidden className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
               )}
             </div>
-          </button>
+          </Button>
         )}
       />
       <TooltipContent sideOffset={8}>{tip}</TooltipContent>

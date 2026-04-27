@@ -3,6 +3,8 @@
 import type { FC, ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { Github } from '@/app/components/base/icons/src/public/common'
+import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { PluginSource } from '../../../types'
 
 type SourceConfig = {
@@ -16,11 +18,11 @@ type PluginSourceBadgeProps = {
 
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
-    icon: <span aria-hidden className="i-custom-vender-plugin-box-sparkle-fill h-3.5 w-3.5 text-text-tertiary hover:text-text-accent" />,
+    icon: <BoxSparkleFill className="h-3.5 w-3.5 text-text-tertiary hover:text-text-accent" />,
     tipKey: 'detailPanel.categoryTip.marketplace',
   },
   [PluginSource.github]: {
-    icon: <span aria-hidden className="i-custom-public-common-github h-3.5 w-3.5 text-text-secondary hover:text-text-primary" />,
+    icon: <Github className="h-3.5 w-3.5 text-text-secondary hover:text-text-primary" />,
     tipKey: 'detailPanel.categoryTip.github',
   },
   [PluginSource.local]: {

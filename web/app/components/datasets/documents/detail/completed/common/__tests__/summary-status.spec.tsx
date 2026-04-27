@@ -1,9 +1,13 @@
+import type * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import SummaryStatus from '../summary-status'
 
 vi.mock('@/app/components/base/badge', () => ({
   default: ({ children }: { children: React.ReactNode }) => <span data-testid="badge">{children}</span>,
+}))
+vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
+  SearchLinesSparkle: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="sparkle-icon" {...props} />,
 }))
 
 describe('SummaryStatus', () => {

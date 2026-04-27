@@ -2,6 +2,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 
 type SummaryStatusProps = {
   status: string
@@ -26,7 +27,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
         render={(
           <span className="inline-flex">
             <Badge className="border-text-accent-secondary text-text-accent-secondary">
-              <span aria-hidden className="mr-0.5 i-custom-vender-knowledge-search-lines-sparkle h-3 w-3" />
+              <SearchLinesSparkle aria-hidden className="mr-0.5 h-3 w-3" />
               <span>{t('list.summary.generating', { ns: 'datasetDocuments' })}</span>
             </Badge>
           </span>

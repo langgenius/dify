@@ -179,14 +179,16 @@ const MCPDetailContent: FC<Props> = ({
               <Tooltip>
                 <TooltipTrigger
                   render={(
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="small"
                       aria-label={identifierLabel}
-                      className="shrink-0 cursor-pointer rounded border-0 bg-transparent p-0 text-left system-xs-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-left system-xs-regular text-text-secondary hover:bg-transparent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       onClick={() => copy(detail.server_identifier || '')}
                     >
                       {detail.server_identifier}
-                    </button>
+                    </Button>
                   )}
                 />
                 <TooltipContent>

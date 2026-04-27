@@ -8,7 +8,6 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -18,6 +17,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
@@ -150,7 +150,6 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const copyIconClassName = isCopied ? 'i-custom-vender-line-files-copy-check' : 'i-ri-clipboard-line'
   const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
 
   return (
@@ -183,7 +182,9 @@ const EndpointCard = ({
                       className="ml-2 hidden shrink-0 group-hover/item:flex"
                       onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
                     >
-                      <span aria-hidden className={cn('h-3.5 w-3.5 text-text-tertiary', copyIconClassName)} />
+                      {isCopied
+                        ? <CopyCheck aria-hidden className="h-3.5 w-3.5 text-text-tertiary" />
+                        : <span aria-hidden className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" />}
                     </ActionButton>
                   )}
                 />

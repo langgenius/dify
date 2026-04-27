@@ -1,8 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 
 type BucketProps = {
   bucketName: string
@@ -33,14 +35,16 @@ const Bucket = ({
       <Tooltip>
         <TooltipTrigger
           render={(
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="small"
               aria-label={allBucketsLabel}
-              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="size-6 shrink-0 rounded-md px-0 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={handleBackToBucketList}
             >
-              <span aria-hidden className="i-custom-public-knowledge-online-drive-buckets-gray size-4" />
-            </button>
+              <BucketsGray aria-hidden />
+            </Button>
           )}
         />
         <TooltipContent>
